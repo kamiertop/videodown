@@ -1,9 +1,18 @@
-// 声明 api 模块 → 对应 src/api.rs（或 src/api/mod.rs）
 mod api;
 mod settings;
 
+use log::LevelFilter;
+
+fn init_logger() {
+    // 简单的控制台日志初始化
+    let _ = env_logger::builder()
+        .filter_level(LevelFilter::Info)
+        .try_init();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    init_logger();
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![

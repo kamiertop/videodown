@@ -34,6 +34,8 @@ pub struct PollQrcodeResponseData {
     message: String,
 }
 
+const DB_COOKIE_KEY: &str = "bilibili_cookies";
+
 #[tauri::command]
 pub async fn qrcode() -> Result<Response, String> {
     let client = reqwest::Client::new();
@@ -52,6 +54,7 @@ pub async fn qrcode() -> Result<Response, String> {
         .header("sec-fetch-mode","cors")
         .header("sec-fetch-site","same-site")
         .header("Referer","https://www.bilibili.com/")
+        .header("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
         .send().await
         .map_err(|e| format!("网络请求失败: {}", e))?;
 
@@ -64,8 +67,9 @@ pub async fn qrcode() -> Result<Response, String> {
 #[tauri::command]
 pub fn is_logged_in() -> bool {
     if let Ok(tree) = sled::open("db") {
-        if let Ok(res) = tree.get("bilibili_cookies") {
+        if let Ok(res) = tree.get(DB_COOKIE_KEY) {
             if res.is_some() {
+                log::info!("已登录, cookie: {:?}", res);
                 return true;
             }
         }
@@ -91,6 +95,7 @@ pub async fn poll_qrcode(qrcode_key: &str) -> Result<PollQrcodeResponseData, Str
         .header("sec-ch-ua","\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\"")
         .header("sec-ch-ua-mobile","?0")
         .header("sec-ch-ua-platform","\"Windows\"")
+        .header("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
         .send().await
         .map_err(|e|format!("轮询二维码扫描状态失败: {}", e))?;
 
@@ -112,38 +117,42 @@ pub async fn poll_qrcode(qrcode_key: &str) -> Result<PollQrcodeResponseData, Str
 }
 
 fn save_cookies(header_map: HeaderMap) -> Option<String>{
-    let mut result = String::new();
-    let mut cookie_set = HashSet::new();
+    let mut cookie_str = String::new();
+    let mut cookie_map = HashMap::new();
     // 保存所有的 set-cookie 到集合中
     for cookies in header_map.get_all("set-cookie") {
         if let Ok(cookie_str) = cookies.to_str() {
             let cookie_list: Vec<&str> = cookie_str.split("; ").collect();
             for cookie in cookie_list {
                 if cookie.contains("=") {
-                    cookie_set.insert(cookie);
+                    let t: Vec<&str> = cookie.split("=").collect();
+                    cookie_map.insert(t[0], t[1]);
                 }
             }
         }
     }
     let required = ["SESSDATA","bili_jct", "DedeUserID","DedeUserID__ckMd5","sid"];
     // 提取必要的 cookie, 拼接成字符串
-    for cookie in required {
-        if let Some(value) = cookie_set.get(cookie) {
-            result.push_str(value);
-            result.push(';');
+    for key in required {
+        if let Some(value) = cookie_map.get(key) {
+            cookie_str += key;
+            cookie_str += "=";
+            cookie_str += value;
+            cookie_str += ";";
         }
     }
     // 移除多余的分号
-    if result.ends_with(";") {
-        result.pop();
+    if cookie_str.ends_with(";") {
+        cookie_str.pop();
     }
+    log::info!("cookie拼接成功: {}", cookie_str);
 
     if let Ok(tree) = sled::open("db") {
-        let result = tree.insert("bilibili_cookies", result.as_bytes());
+        let result = tree.insert(DB_COOKIE_KEY, cookie_str.as_bytes());
         if result.is_ok() {
-            log::info!("保存cookie成功");
             None
         } else {
+            log::error!("保存cookie失败: {:?}", result.clone().err());
             Some(format!("保存cookie失败: {:?}", result.err()))
         }
     } else {
