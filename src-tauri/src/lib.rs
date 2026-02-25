@@ -10,6 +10,7 @@ pub fn run() {
             settings::get_storage,
             api::bilibili::qrcode::qrcode,  // generate_handler! 需要“模块::函数”完整路径，不能是重导出
             api::bilibili::qrcode::is_logged_in,
+            api::bilibili::qrcode::poll_qrcode,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

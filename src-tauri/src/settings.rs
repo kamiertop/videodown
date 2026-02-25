@@ -8,6 +8,7 @@ pub fn get_storage() -> Result<String, String> {
 }
 
 #[tauri::command]
+#[allow(dead_code)]
 pub fn set_storage(value: &str) {
 
 }

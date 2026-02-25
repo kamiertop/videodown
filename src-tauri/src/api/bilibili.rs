@@ -1,5 +1,6 @@
-// 声明子模块：qrcode 对应 api/bilibili/qrcode.rs（或 api/bilibili/qrcode/mod.rs）
 pub mod qrcode;
+pub mod cookie;
+pub mod myinfo;
+pub mod info;
 
-pub use qrcode::qrcode;
-pub use qrcode::is_logged_in;
+pub use qrcode::*;
