@@ -1,11 +1,13 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct Other {
-    user: User
+    user: User,
 }
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
+#[allow(dead_code)]
 struct User {
     aweme_count: u32, // 抖音作品数
     ip_location: String,
@@ -14,13 +16,14 @@ struct User {
     signature: String,  // 个性签名
     uid: String,
     unique_id: String,
-    avatar_300x300: Avatar
+    avatar_300x300: Avatar,
 }
 
-#[derive(Serialize,Deserialize)]
+#[derive(Serialize, Deserialize)]
+#[allow(dead_code)]
 struct Avatar {
     height: u16,
     width: u16,
     uri: String,
-    url_list: Vec<String>
+    url_list: Vec<String>,
 }

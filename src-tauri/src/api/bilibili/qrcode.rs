@@ -1,6 +1,6 @@
-use std::collections::{HashMap, HashSet};
-use std::fmt::format;
+use crate::api::client::build_client;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use tauri::http::HeaderMap;
 
 #[derive(Deserialize, Serialize)]
@@ -38,23 +38,21 @@ const DB_COOKIE_KEY: &str = "bilibili_cookies";
 
 #[tauri::command]
 pub async fn qrcode() -> Result<Response, String> {
-    let client = reqwest::Client::new();
-
-    let response = client.get("https://passport.bilibili.com/x/passport-login/web/qrcode/generate")
+    let response = build_client()?.get("https://passport.bilibili.com/x/passport-login/web/qrcode/generate")
         .query(&[
-            ("source","main-fe-header"),("go_url","https://www.bilibili.com"),("x-bili-locale-json","")
+            ("source", "main-fe-header"), ("go_url", "https://www.bilibili.com"), ("x-bili-locale-json", "")
         ])
-        .header("accept","*/*")
+        .header("accept", "*/*")
         .header("accept-language", "zh-CN,zh;q=0.9")
-        .header("priority","u=1, i")
-        .header("sec-ch-ua","\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\"")
-        .header("sec-ch-ua-mobile","?0")
-        .header("sec-ch-ua-platform","\"Windows\"")
-        .header("sec-fetch-dest","empty")
-        .header("sec-fetch-mode","cors")
-        .header("sec-fetch-site","same-site")
-        .header("Referer","https://www.bilibili.com/")
-        .header("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
+        .header("priority", "u=1, i")
+        .header("sec-ch-ua", "\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\"")
+        .header("sec-ch-ua-mobile", "?0")
+        .header("sec-ch-ua-platform", "\"Windows\"")
+        .header("sec-fetch-dest", "empty")
+        .header("sec-fetch-mode", "cors")
+        .header("sec-fetch-site", "same-site")
+        .header("Referer", "https://www.bilibili.com/")
+        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
         .send().await
         .map_err(|e| format!("网络请求失败: {}", e))?;
 
@@ -69,7 +67,6 @@ pub fn is_logged_in() -> bool {
     if let Ok(tree) = sled::open("db") {
         if let Ok(res) = tree.get(DB_COOKIE_KEY) {
             if res.is_some() {
-                log::info!("已登录, cookie: {:?}", res);
                 return true;
             }
         }
@@ -83,27 +80,26 @@ pub fn is_logged_in() -> bool {
 /// code: 86090: 二维码已扫描未确认
 /// code: 0: 扫码登录成功
 #[tauri::command]
-pub async fn poll_qrcode(qrcode_key: &str) -> Result<PollQrcodeResponseData, String>{
-    let client = reqwest::Client::new();
-    let resp = client.get("https://passport.bilibili.com/x/passport-login/web/qrcode/poll")
+pub async fn poll_qrcode(qrcode_key: &str) -> Result<PollQrcodeResponseData, String> {
+    let resp = build_client()?.get("https://passport.bilibili.com/x/passport-login/web/qrcode/poll")
         .query(&[
             ("qrcode_key", qrcode_key),
-            ("source","main-fe-header"),
-            ("x-bili-locale-json","%7B%22c_locale%22:%7B%22language%22:%22zh%22,%22region%22:%22CN%22%7D,%22always_translate%22:true%7D")
+            ("source", "main-fe-header"),
+            ("x-bili-locale-json", "%7B%22c_locale%22:%7B%22language%22:%22zh%22,%22region%22:%22CN%22%7D,%22always_translate%22:true%7D")
         ])
-        .header("Referer","https://www.bilibili.com/")
-        .header("sec-ch-ua","\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\"")
-        .header("sec-ch-ua-mobile","?0")
-        .header("sec-ch-ua-platform","\"Windows\"")
-        .header("User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
+        .header("Referer", "https://www.bilibili.com/")
+        .header("sec-ch-ua", "\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\"")
+        .header("sec-ch-ua-mobile", "?0")
+        .header("sec-ch-ua-platform", "\"Windows\"")
+        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
         .send().await
-        .map_err(|e|format!("轮询二维码扫描状态失败: {}", e))?;
+        .map_err(|e| format!("轮询二维码扫描状态失败: {}", e))?;
 
     if resp.status() != reqwest::StatusCode::OK {
         return Err(format!("轮询二维码扫描状态失败: {}", resp.status()));
     }
     let resp_headers = resp.headers().clone();
-    let response = resp.json::<PollQrcodeResponse>().await.map_err(|e|format!("接口返回数据解析失败: {}", e))?;
+    let response = resp.json::<PollQrcodeResponse>().await.map_err(|e| format!("接口返回数据解析失败: {}", e))?;
     if response.code != 0 || response.message != "OK" {
         return Err(format!("轮询二维码扫描状态失败: {}", response.message));
     }
@@ -116,7 +112,7 @@ pub async fn poll_qrcode(qrcode_key: &str) -> Result<PollQrcodeResponseData, Str
     Ok(response.data)
 }
 
-fn save_cookies(header_map: HeaderMap) -> Option<String>{
+fn save_cookies(header_map: HeaderMap) -> Option<String> {
     let mut cookie_str = String::new();
     let mut cookie_map = HashMap::new();
     // 保存所有的 set-cookie 到集合中
@@ -131,7 +127,7 @@ fn save_cookies(header_map: HeaderMap) -> Option<String>{
             }
         }
     }
-    let required = ["SESSDATA","bili_jct", "DedeUserID","DedeUserID__ckMd5","sid"];
+    let required = ["SESSDATA", "bili_jct", "DedeUserID", "DedeUserID__ckMd5", "sid"];
     // 提取必要的 cookie, 拼接成字符串
     for key in required {
         if let Some(value) = cookie_map.get(key) {

@@ -1,5 +1,3 @@
-
-
 #[tauri::command]
 pub fn get_storage() -> Result<String, String> {
     let value = std::fs::read_to_string("path")
@@ -9,6 +7,4 @@ pub fn get_storage() -> Result<String, String> {
 
 #[tauri::command]
 #[allow(dead_code)]
-pub fn set_storage(value: &str) {
-
-}
+pub fn set_storage(_value: &str) {}

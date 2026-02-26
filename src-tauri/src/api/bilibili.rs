@@ -1,6 +1,5 @@
 pub mod qrcode;
-pub mod cookie;
 pub mod myinfo;
 pub mod info;
-
+#[allow(unused)]
 pub use qrcode::*;
