@@ -1,4 +1,4 @@
-use crate::api::client::build_client;
+use crate::api::utils::build_client;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -51,14 +51,15 @@ pub struct StatInfoData {
 
 #[tauri::command]
 #[allow(dead_code)]
-pub async fn my_info<T: AsRef<str>>(cookie: T) -> Result<Data, String> {
+pub async fn my_info(cookie: &str) -> Result<Data, String> {
     let resp = build_client()?.get("https://api.bilibili.com/x/space/v2/myinfo")
+        .query(&[("web_location", "333.1387")])
         .header("Accept", "*/*")
         .header("Accept-Language", "zh-CN,zh;q=0.9")
         .header("Accept-Encoding", "gzip, deflate, br, zstd")
         .header("Origin", "https://space.bilibili.com")
         .header("Priority", "u=1,i")
-        .header("Cookie", cookie.as_ref())    // 传入 Cookie
+        .header("Cookie", cookie)    // 传入 Cookie
         .header("Sec-Ch-Ua", "\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\"")
         .header("Sec-Ch-Ua-Mobile", "?0")
         .header("Sec-Ch-Ua-Platform", "\"Windows\"")
@@ -82,9 +83,9 @@ pub async fn my_info<T: AsRef<str>>(cookie: T) -> Result<Data, String> {
 
 #[allow(dead_code)]
 #[tauri::command]
-pub async fn fans_stat(vmid: String) -> Result<StatInfoData, String> {
+pub async fn fans_stat(vmid: &str) -> Result<StatInfoData, String> {
     let resp = build_client()?.get("https://api.bilibili.com/x/relation/stat")
-        .query(&[("vmid", &vmid)])
+        .query(&[("vmid", vmid), ("web_location", "333.1387")])
         .header("Accept", "*/*")
         .header("Accept-Language", "zh-CN,zh;q=0.9")
         .header("Accept-Encoding", "gzip, deflate, br, zstd")
@@ -118,7 +119,7 @@ mod test_my_info {
     #[tokio::test]
     async fn test_fans_stat() {
         println!("开始测试获取粉丝统计数据...");
-        let result = fans_stat("325428150".to_string()).await;
+        let result = fans_stat("325428150").await;
         match result {
             Ok(data) => {
                 println!("测试成功! 获取到的数据:");

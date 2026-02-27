@@ -1,4 +1,4 @@
-use crate::api::client::build_client;
+use crate::api::utils::build_client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tauri::http::HeaderMap;
@@ -40,7 +40,10 @@ const DB_COOKIE_KEY: &str = "bilibili_cookies";
 pub async fn qrcode() -> Result<Response, String> {
     let response = build_client()?.get("https://passport.bilibili.com/x/passport-login/web/qrcode/generate")
         .query(&[
-            ("source", "main-fe-header"), ("go_url", "https://www.bilibili.com"), ("x-bili-locale-json", "")
+            ("source", "main-fe-header"),
+            ("go_url", "https://www.bilibili.com"),
+            ("x-bili-locale-json", "%7B%22c_locale%22:%7B%22language%22:%22zh%22,%22region%22:%22CN%22%7D,%22always_translate%22:true%7D"),
+            ("web_location", "333.1007")
         ])
         .header("accept", "*/*")
         .header("accept-language", "zh-CN,zh;q=0.9")
@@ -85,7 +88,8 @@ pub async fn poll_qrcode(qrcode_key: &str) -> Result<PollQrcodeResponseData, Str
         .query(&[
             ("qrcode_key", qrcode_key),
             ("source", "main-fe-header"),
-            ("x-bili-locale-json", "%7B%22c_locale%22:%7B%22language%22:%22zh%22,%22region%22:%22CN%22%7D,%22always_translate%22:true%7D")
+            ("x-bili-locale-json", "%7B%22c_locale%22:%7B%22language%22:%22zh%22,%22region%22:%22CN%22%7D,%22always_translate%22:true%7D"),
+            ("web_location", "333.1007")
         ])
         .header("Referer", "https://www.bilibili.com/")
         .header("sec-ch-ua", "\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\"")
