@@ -26,7 +26,7 @@ pub struct InfoData {
 #[tauri::command]
 #[allow(dead_code)]
 pub async fn info(mid: &str, cookie: &str) -> Result<InfoData, String> {
-    let (img_key, sub_key) = get_nav_key(cookie).await?;
+    let (img_key, sub_key) = get_nav_key(mid, cookie).await?;
     // 2. 组装原始参数
     let mut params = BTreeMap::new();
     params.insert("mid", mid.to_string());
@@ -62,6 +62,8 @@ pub async fn info(mid: &str, cookie: &str) -> Result<InfoData, String> {
         .header("Accept-Language", "zh-CN,zh;q=0.9")
         .header("Sec-Ch-Ua", "\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\"")
         .header("Sec-Ch-Ua-Mobile", "?0")
+        .header("Referer", format!("https://space.bilibili.com/{}/upload/opus", mid))
+        .header("Priority", "u=1, i")
         .header("Sec-Ch-Ua-Platform", "\"Windows\"")
         .header("Sec-Fetch-Dest", "empty")
         .header("Sec-Fetch-Mode", "cors")
@@ -73,6 +75,9 @@ pub async fn info(mid: &str, cookie: &str) -> Result<InfoData, String> {
         return Err("获取up主空间信息失败".to_string());
     }
     let response: Info = resp.json().await.map_err(|e| e.to_string())?;
+    if response.code != 0 {
+        return Err(response.message);
+    }
 
     Ok(response.data)
 }

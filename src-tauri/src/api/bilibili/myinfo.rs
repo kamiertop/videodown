@@ -107,7 +107,7 @@ pub async fn fans_stat(vmid: &str) -> Result<StatInfoData, String> {
     // 尝试解析JSON
     let info: StatInfo = resp.json().await.map_err(|e| format!("反序列化响应体失败: {:?}", e))?;
     if info.code != 0 { // 此处的message是: "0"
-        return Err(format!("获取粉丝数/关注数/黑名单数: {}", info.message));
+        return Err(format!("获取粉丝数/关注数/黑名单数失败: {}", info.message));
     }
 
     Ok(info.data)
