@@ -1,5 +1,5 @@
 use crate::api::bilibili::nav::get_nav_key;
-use crate::api::utils::{build_client, enc_wbi_params};
+use crate::api::utils::{bilibli_header_map, build_client, enc_wbi_params};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 
@@ -82,7 +82,6 @@ pub async fn user_video_info(mid: &str, cookie: &str, pn: u32, ps: u32) -> Resul
     if ps > 30 {
         ps_str = ps.to_string();
     }
-    let (img_key, sub_key) = get_nav_key(mid, cookie).await?;
     let mut params = BTreeMap::new();
     params.insert("mid", mid.to_string());
     params.insert("pn", pn_str);
@@ -94,25 +93,15 @@ pub async fn user_video_info(mid: &str, cookie: &str, pn: u32, ps: u32) -> Resul
     params.insert("order_avoided", "true".to_string());
     params.insert("platform", "web".to_string());
     params.insert("special_type", "".to_string());
+    let (img_key, sub_key) = get_nav_key(cookie).await?;
     let signed_params = enc_wbi_params(params, &img_key, &sub_key);
 
     let resp = build_client()?.
         get("https://api.bilibili.com/x/space/wbi/arc/search")
         .query(&signed_params)
         .header("Cookie", cookie)
-        .header("Accept", "*/*")
-        .header("Origin", "https://space.bilibili.com")
-        .header("Accept-Encoding", "gzip, deflate, br, zstd")
-        .header("Accept-Language", "zh-CN,zh;q=0.9")
         .header("Referer", format!("https://space.bilibili.com/{}/upload/video", mid))
-        .header("Priority", "u=1, i")
-        .header("Sec-Ch-Ua", "\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\"")
-        .header("Sec-Ch-Ua-Mobile", "?0")
-        .header("Sec-Ch-Ua-Platform", "\"Windows\"")
-        .header("Sec-Fetch-Dest", "empty")
-        .header("Sec-Fetch-Mode", "cors")
-        .header("Sec-Fetch-Site", "same-site")
-        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
+        .headers(bilibli_header_map())
         .send().await.map_err(|e| e.to_string())?;
     if !resp.status().is_success() {
         return Err(format!("获取视频列表信息失败: {:?}", resp.status()));
@@ -125,3 +114,126 @@ pub async fn user_video_info(mid: &str, cookie: &str, pn: u32, ps: u32) -> Resul
     Ok(response.data)
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+struct DetailResp {
+    code: i32,
+    message: String,
+    ttl: u32,
+    data: DetailData,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DetailData {
+    #[serde(rename = "View")]
+    view: View,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct View {
+    bvid: Option<String>,
+    aid: u64,
+    videos: u32,    // 稿件分P总数, 默认为1
+    cid: Option<u64>,       // 视频1Pcid
+    dimension: Dimension, //视频1P分辨率
+    pic: String,    // 稿件封面图片url
+    title: String,  // 稿件标题
+    pubdate: u64,   // 稿件发布时间
+    ctime: u64,     // 用户投稿时间
+    dynamic: String,    // 简介
+    desc: String,   // 视频简介
+    duration: u64,  // 稿件总时长(所有分P)
+    owner: Option<Owner>,   // 视频作者信息
+    is_upower_exclusive: Option<bool>, // 是否为充电视频
+    is_story: Option<bool>, // 是否为动态视频
+    pages: Option<Vec<VideoPage>>, // 视频分P信息,
+    ugc_season: Option<Season>,
+}
+// 合集
+#[derive(Serialize, Deserialize, Debug)]
+struct Season {
+    id: u64,        // 视频合集id
+    title: String,  // 视频合集标题
+    cover: String,  // 视频合集封面图片url
+    mid: u64,       // 作者mid
+    intro: String,  // 视频合集简介
+    sections: Vec<SeasonSection>,
+    ep_count: u32,  // 视频合集中的视频数量
+    is_pay_season: bool, // 是否为付费合集
+}
+#[derive(Serialize, Deserialize, Debug)]
+struct SeasonSection {
+    season_id: u64, // 视频合集中分部所属视频合集id
+    section_id: Option<u64>, // 视频合集分部id
+    title: String, // 视频合集分部标题
+    episodes: Vec<Episode>,
+}
+#[derive(Serialize, Deserialize, Debug)]
+struct Episode {
+    season_id: u64,
+    section_id: u64,
+    id: u64,
+    aid: u64,
+    cid: u64,
+    title: String,
+    arc: Option<View>,
+    bvid: Option<String>,
+    page: VideoPage,
+    pages: Vec<VideoPage>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Dimension {
+    width: u32,
+    height: u32,
+    rotate: i32,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Owner {
+    mid: u64,
+    name: String,
+    face: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct VideoPage {
+    cid: u64,
+    page: u32,  // 分P序号
+    part: String,   // 分P标题
+    duration: u64,
+    dimension: Dimension,
+    first_frame: Option<String>,
+    ctime: Option<u64>,
+}
+
+#[tauri::command]
+#[allow(dead_code)]
+pub async fn video_detail(avid: u64, cookie: &str) -> Result<DetailData, String> {
+    let mut params = BTreeMap::new();
+    params.insert("aid", avid.to_string());
+    params.insert("need_view", "1".to_string());
+    params.insert("isGaiaAvoided", "false".to_string());
+    params.insert("web_location", "1315873".to_string());
+    let (img_key, sub_key) = get_nav_key(cookie).await?;
+    let signed_params = enc_wbi_params(params, &img_key, &sub_key);
+    let resp = build_client()?
+        .get("https://api.bilibili.com/x/web-interface/wbi/view/detail")
+        .query(&signed_params)
+        .header("Cookie", cookie)
+        .headers(bilibli_header_map())
+        .send().await.map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        return Err(format!("获取视频详情信息失败: {:?}", resp.status()));
+    };
+
+    let response: DetailResp = resp.json().await.map_err(|e| {
+        eprintln!("反序列化错误：{:?}", e);
+        format!("获取视频详情信息失败：{:?}", e)
+    })?;
+
+    if response.code != 0 {
+        return Err(response.message);
+    }
+
+    Ok(response.data)
+}

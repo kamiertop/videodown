@@ -1,6 +1,6 @@
 //! 收藏夹
 
-use crate::api::utils::build_client;
+use crate::api::utils::{bilibli_header_map, build_client};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -36,18 +36,7 @@ pub async fn list_all(mid: &str, cookie: &str) -> Result<ListData, String> {
         .get("https://api.bilibili.com/x/v3/fav/folder/created/list-all")
         .query(&[("up_mid", mid), ("web_location", "333.1387")])
         .header("Cookie", cookie)
-        .header("Accept", "*/*")
-        .header("Origin", "https://space.bilibili.com")
-        .header("Accept-Encoding", "gzip, deflate, br, zstd")
-        .header("Accept-Language", "zh-CN,zh;q=0.9")
-        .header("Sec-Ch-Ua", "\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\"")
-        .header("Sec-Ch-Ua-Mobile", "?0")
-        .header("Priority", "u=1, i")
-        .header("Sec-Ch-Ua-Platform", "\"Windows\"")
-        .header("Sec-Fetch-Dest", "empty")
-        .header("Sec-Fetch-Mode", "cors")
-        .header("Sec-Fetch-Site", "same-site")
-        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
+        .headers(bilibli_header_map())
         .send().await.map_err(|e| e.to_string())?;
     if !resp.status().is_success() {
         return Err("请求收藏夹列表接口失败".to_string());
@@ -125,18 +114,7 @@ pub async fn star_video_list(media_id: &str, cookie: &str, mut pn: u64, mut ps: 
             ("platform", "web"), ("web_location", "333.1387"), ("tid", "0")
         ])
         .header("Cookie", cookie)
-        .header("Accept", "*/*")
-        .header("Origin", "https://space.bilibili.com")
-        .header("Accept-Encoding", "gzip, deflate, br, zstd")
-        .header("Accept-Language", "zh-CN,zh;q=0.9")
-        .header("Sec-Ch-Ua", "\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\"")
-        .header("Sec-Ch-Ua-Mobile", "?0")
-        .header("Priority", "u=1, i")
-        .header("Sec-Ch-Ua-Platform", "\"Windows\"")
-        .header("Sec-Fetch-Dest", "empty")
-        .header("Sec-Fetch-Mode", "cors")
-        .header("Sec-Fetch-Site", "same-site")
-        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
+        .headers(bilibli_header_map())
         .send().await.map_err(|e| e.to_string())?;
 
     if !resp.status().is_success() {

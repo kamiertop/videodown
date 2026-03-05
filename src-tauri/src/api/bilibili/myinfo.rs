@@ -1,4 +1,4 @@
-use crate::api::utils::build_client;
+use crate::api::utils::{bilibli_header_map, build_client};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -54,19 +54,8 @@ pub struct StatInfoData {
 pub async fn my_info(cookie: &str) -> Result<Data, String> {
     let resp = build_client()?.get("https://api.bilibili.com/x/space/v2/myinfo")
         .query(&[("web_location", "333.1387")])
-        .header("Accept", "*/*")
-        .header("Accept-Language", "zh-CN,zh;q=0.9")
-        .header("Accept-Encoding", "gzip, deflate, br, zstd")
-        .header("Origin", "https://space.bilibili.com")
-        .header("Priority", "u=1,i")
-        .header("Cookie", cookie)    // 传入 Cookie
-        .header("Sec-Ch-Ua", "\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\"")
-        .header("Sec-Ch-Ua-Mobile", "?0")
-        .header("Sec-Ch-Ua-Platform", "\"Windows\"")
-        .header("Sec-Fetch-Dest", "empty")
-        .header("Sec-Fetch-Mode", "cors")
-        .header("Sec-Fetch-Site", "same-site")
-        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
+        .header("Cookie", cookie)
+        .headers(bilibli_header_map())
         .send().await.map_err(|e| e.to_string())?;
     if !resp.status().is_success() {
         return Err(format!("请求失败: {}", resp.status()));
@@ -86,18 +75,7 @@ pub async fn my_info(cookie: &str) -> Result<Data, String> {
 pub async fn fans_stat(vmid: &str) -> Result<StatInfoData, String> {
     let resp = build_client()?.get("https://api.bilibili.com/x/relation/stat")
         .query(&[("vmid", vmid), ("web_location", "333.1387")])
-        .header("Accept", "*/*")
-        .header("Accept-Language", "zh-CN,zh;q=0.9")
-        .header("Accept-Encoding", "gzip, deflate, br, zstd")
-        .header("Origin", "https://space.bilibili.com")
-        .header("Priority", "u=1,i")
-        .header("Sec-Fetch-Dest", "empty")
-        .header("Sec-Fetch-Mode", "cors")
-        .header("Sec-Fetch-Site", "same-site")
-        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
-        .header("Sec-Ch-Ua", "\"Not:A-Brand\";v=\"99\", \"Google Chrome\";v=\"145\", \"Chromium\";v=\"145\"")
-        .header("Sec-Ch-Ua-Mobile", "?0")
-        .header("Sec-Ch-Ua-Platform", "\"Windows\"")
+        .headers(bilibli_header_map())
         .send().await.map_err(|e| format!("发送请求失败: {}", e))?;
 
     if !resp.status().is_success() {

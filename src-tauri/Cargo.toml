@@ -38,6 +38,7 @@ tokio = { version = "1.49.0", features = ["macros"] }
 sled = "0.34.7"
 md5 = "0.8.0"
 percent-encoding = "2.3.2"
+thiserror = "2.0.18"
 
 [profile.release]
 panic = "abort"

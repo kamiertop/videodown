@@ -1,1 +1,2 @@
-pub mod other;  // 抖音其他人主页模块
+pub mod profile;
+pub mod webid;
