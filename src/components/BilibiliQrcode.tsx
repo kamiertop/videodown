@@ -17,7 +17,11 @@ interface PollQrCodeDataResponse {
     message: string;
 }
 
-export default function BilibiliQrcode(): JSXElement {
+interface BilibiliQrcodeProps {
+    onLoginSuccess?: () => void;
+}
+
+export default function BilibiliQrcode(props: BilibiliQrcodeProps): JSXElement {
     const [qrUrl, setQrUrl] = createSignal<string | null>(null);    // 展示二维码
     const [loading, setLoading] = createSignal(false);
     const [error, setError] = createSignal<string | null>(null);
@@ -70,6 +74,7 @@ export default function BilibiliQrcode(): JSXElement {
                 console.log("扫码成功, 停止轮询")
                 stopPolling()
                 setQrUrl(null);
+                props.onLoginSuccess?.();
             } else if (result.code === 86038) { // 二维码已失效, 需要停止轮询, 点击重新获取
                 stopPolling()
                 setQrExpired(true);

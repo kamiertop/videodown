@@ -3,7 +3,6 @@ use crate::api::utils::{bilibli_header_map, build_client, enc_wbi_params};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-
 #[derive(Serialize, Deserialize)]
 pub struct Info {
     code: i32,

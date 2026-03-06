@@ -4,7 +4,6 @@ mod settings;
 use log::LevelFilter;
 
 fn init_logger() {
-    // 简单的控制台日志初始化
     let _ = env_logger::builder()
         .filter_level(LevelFilter::Info)
         .try_init();
@@ -20,6 +19,7 @@ pub fn run() {
             api::bilibili::qrcode::qrcode,  // generate_handler! 需要“模块::函数”完整路径，不能是重导出
             api::bilibili::qrcode::is_logged_in,
             api::bilibili::qrcode::poll_qrcode,
+            api::bilibili::myinfo::my_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -6,6 +6,11 @@ import About from "./pages/About.tsx";
 import Home from "./pages/Home.tsx";
 import Bilibili from "./pages/Bilibili.tsx";
 import Douyin from "./pages/Douyin.tsx";
+import BilibiliAvatar from "./pages/bilibili/Avatar.tsx";
+import BilibiliVideo from "./pages/bilibili/Single.tsx";
+import BilibiliUploader from "./pages/bilibili/Uploader.tsx";
+import BilibiliSeries from "./pages/bilibili/Series.tsx";
+import BilibiliFavorite from "./pages/bilibili/Favorite.tsx";
 
 function Layout(props: RouteSectionProps): JSXElement {
     return (
@@ -18,13 +23,19 @@ function Layout(props: RouteSectionProps): JSXElement {
     )
 }
 
-export default function App() :JSXElement{
+export default function App(): JSXElement {
     return (
         <Router root={Layout}>
             <Route path={"/"} component={Home}/>
             <Route path={"/settings"} component={Settings}/>
             <Route path={"/about"} component={About}/>
-            <Route path={"/bilibili"} component={Bilibili}/>
+            <Route path={"/bilibili"} component={Bilibili}>
+                <Route path={"avatar"} component={BilibiliAvatar}/>
+                <Route path={"video"} component={BilibiliVideo}/>
+                <Route path={"uploader"} component={BilibiliUploader}/>
+                <Route path={"series"} component={BilibiliSeries}/>
+                <Route path={"favorite"} component={BilibiliFavorite}/>
+            </Route>
             <Route path={"/douyin"} component={Douyin}/>
         </Router>
     )

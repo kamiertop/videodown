@@ -306,3 +306,13 @@ unsafe fn unchecked_swap<I>(array: &mut [I], index_a: usize, index_b: usize) {
         ptr::swap(pa, pb);
     }
 }
+
+const DB_COOKIE_KEY: &str = "bilibili_cookies";
+pub fn read_bilibili_cookie() -> Result<String, String> {
+    let tree = sled::open("db").map_err(|e| format!("打开数据库失败: {}", e))?;
+    let value = tree
+        .get(DB_COOKIE_KEY)
+        .map_err(|e| format!("读取登录信息失败: {}", e))?
+        .ok_or_else(|| "未找到登录信息，请先扫码登录 B站 账号".to_string())?;
+    String::from_utf8(value.to_vec()).map_err(|e| format!("登录信息格式错误: {}", e))
+}

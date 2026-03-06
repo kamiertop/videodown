@@ -6,5 +6,6 @@ pub mod video;
 pub mod star;
 pub mod series;
 
+pub use myinfo::my_info;
 #[allow(unused)]
 pub use qrcode::*;

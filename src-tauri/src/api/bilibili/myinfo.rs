@@ -1,4 +1,5 @@
-use crate::api::utils::{bilibli_header_map, build_client};
+use crate::api::utils::{bilibli_header_map, build_client, read_bilibili_cookie};
+use base64::Engine as _;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -51,7 +52,8 @@ pub struct StatInfoData {
 
 #[tauri::command]
 #[allow(dead_code)]
-pub async fn my_info(cookie: &str) -> Result<Data, String> {
+pub async fn my_info() -> Result<Data, String> {
+    let cookie = read_bilibili_cookie()?;
     let resp = build_client()?.get("https://api.bilibili.com/x/space/v2/myinfo")
         .query(&[("web_location", "333.1387")])
         .header("Cookie", cookie)

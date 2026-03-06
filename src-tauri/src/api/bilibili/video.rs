@@ -1,5 +1,6 @@
 use crate::api::bilibili::nav::get_nav_key;
 use crate::api::utils::{bilibli_header_map, build_client, enc_wbi_params};
+use scraper::{Html, Selector};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 
@@ -73,19 +74,17 @@ struct Page {
 
 #[tauri::command]
 #[allow(dead_code)]
-pub async fn user_video_info(mid: &str, cookie: &str, pn: u32, ps: u32) -> Result<Data, String> {
-    let mut pn_str = "1".to_string();
-    let mut ps_str = "30".to_string();
-    if pn > 1 {
-        pn_str = pn.to_string();
+pub async fn user_video_info(mid: &str, cookie: &str, mut pn: u32, mut ps: u32) -> Result<Data, String> {
+    if pn <= 0 {
+        pn = 1;
     }
-    if ps > 30 {
-        ps_str = ps.to_string();
+    if ps > 30 || ps <= 0 {
+        ps = 30;
     }
     let mut params = BTreeMap::new();
     params.insert("mid", mid.to_string());
-    params.insert("pn", pn_str);
-    params.insert("ps", ps_str);
+    params.insert("pn", pn.to_string());
+    params.insert("ps", ps.to_string());
     params.insert("order", "pubdate".to_string());
     params.insert("tid", "".to_string());
     params.insert("keyword", "".to_string());
@@ -132,7 +131,7 @@ pub struct DetailData {
 struct View {
     bvid: Option<String>,
     aid: u64,
-    videos: u32,    // 稿件分P总数, 默认为1
+    videos: u32,            // 稿件分P总数, 默认为1
     cid: Option<u64>,       // 视频1Pcid
     dimension: Dimension, //视频1P分辨率
     pic: String,    // 稿件封面图片url
@@ -160,6 +159,7 @@ struct Season {
     ep_count: u32,  // 视频合集中的视频数量
     is_pay_season: bool, // 是否为付费合集
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 struct SeasonSection {
     season_id: u64, // 视频合集中分部所属视频合集id
@@ -167,6 +167,7 @@ struct SeasonSection {
     title: String, // 视频合集分部标题
     episodes: Vec<Episode>,
 }
+
 #[derive(Serialize, Deserialize, Debug)]
 struct Episode {
     season_id: u64,
@@ -206,6 +207,7 @@ struct VideoPage {
     ctime: Option<u64>,
 }
 
+/// 视频详情
 #[tauri::command]
 #[allow(dead_code)]
 pub async fn video_detail(avid: u64, cookie: &str) -> Result<DetailData, String> {
@@ -226,14 +228,136 @@ pub async fn video_detail(avid: u64, cookie: &str) -> Result<DetailData, String>
         return Err(format!("获取视频详情信息失败: {:?}", resp.status()));
     };
 
-    let response: DetailResp = resp.json().await.map_err(|e| {
-        eprintln!("反序列化错误：{:?}", e);
-        format!("获取视频详情信息失败：{:?}", e)
-    })?;
+    let response: DetailResp = resp.json().await.map_err(|e| { format!("获取视频详情信息失败：{:?}", e) })?;
 
     if response.code != 0 {
         return Err(response.message);
     }
 
     Ok(response.data)
+}
+
+#[tauri::command]
+#[allow(dead_code)]
+pub async fn play_url(b_vid: &str, cookie: &str) -> Result<PlayUrlResp, String> {
+    let resp = build_client()?
+        .get(format!("https://www.bilibili.com/video/{b_vid}/"))
+        .header("Cookie", cookie)
+        .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
+        .header("Accept-Encoding", "gzip, deflate, br, zstd")
+        .header("Accept-Language", "zh-CN,zh;q=0.9")
+        .header("Cache-Control", "max-age=0")
+        .header("Priority", "u=0, i")
+        .header("Referer", "https://www.bilibili.com/")
+        .header("Sec-Ch-Ua", r#""Not:A-Brand";v="99", "Google Chrome";v="145", "Chromium";v="145""#)
+        .header("Sec-Ch-Ua-Mobile", "?0")
+        .header("Sec-Ch-Ua-Platform", "\"Windows\"")
+        .header("Sec-Fetch-Dest", "document")
+        .header("Sec-Fetch-Mode", "navigate")
+        .header("Sec-Fetch-Site", "same-origin")
+        .header("Sec-Fetch-User", "?1")
+        .header("Upgrade-Insecure-Requests", "1")
+        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36")
+        .send().await.map_err(|e| e.to_string())?;
+    if !resp.status().is_success() {
+        return Err(format!("获取视频播放页失败: {:?}", resp.status()));
+    }
+
+    let html = resp.text().await.map_err(|e| { format!("获取视频播放页失败：{:?}", e) })?;
+    let html = Html::parse_document(html.as_str());
+    let element = html
+        .select(&Selector::parse("script").map_err(|e| format!("解析视频播放页失败: {:?}", e))?)
+        .nth(3);
+    if element.is_none() {
+        return Err("解析script标签失败".to_string());
+    }
+    let inner_html = element.unwrap().inner_html();
+    let element = inner_html.trim_start_matches("window.__playinfo__=");
+
+    Ok(
+        serde_json::from_str::<PlayUrlResp>(element).map_err(|e| { format!("解析视频数据失败: {:?}", e) })?
+    )
+}
+
+#[tokio::test]
+async fn test_video_detail() {
+    let detail = play_url("BV1JuPmz4EeS", "buvid3=65D342B3-95E2-A774-700B-BD581E2F648B56847infoc; b_nut=1762910656; _uuid=F83E8A67-FD1C-167A-F369-5B51056210FA6357168infoc; buvid4=75CEDBA2-1EF3-B37D-46CE-4610A3278C0A57736-025111209-5otwGjAybxfmCoc2t4RgEA%3D%3D; buvid_fp=ac3b8f33e35fe595e9f480efb69876fc; DedeUserID=480886769; DedeUserID__ckMd5=07bc883e752e334a; theme-tip-show=SHOWED; rpdid=|(J~JmuJJRY|0J'u~Ykmu|~ku; theme-avatar-tip-show=SHOWED; LIVE_BUVID=AUTO9117629158752385; CURRENT_QUALITY=80; hit-dyn-v2=1; theme-switch-show=SHOWED; PVID=1; bp_t_offset_480886769=1176314439121502208; bmg_af_switch=1; bmg_src_def_domain=i0.hdslb.com; bili_ticket=eyJhbGciOiJIUzI1NiIsImtpZCI6InMwMyIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3NzMwMzU4NDQsImlhdCI6MTc3Mjc3NjU4NCwicGx0IjotMX0.JsJB-HDT4_mJGuks4iKldF1cKAkpV1ORke1M_L203r0; bili_ticket_expires=1773035784; SESSDATA=de332b00%2C1788328644%2C9a5b3%2A32CjBBVFCxnJCWvsugb3mAlUwwlEuMEJHwbf0jb8GWxBMrOQ5YdJsaPVCiAIj-yW1u78kSVl9lNlJhWE9xak9yai1HMTJ3d1VfeXFQd00tcVZTVHdaRXJET2FobnBlX19sbHJSZmhGZ3ptZllLN3lOMXk5Z2I1TXZCb0NnRXdnT041a29nRXJtXzNnIIEC; bili_jct=482822a6a6eff224f0e4757ebe42c258; sid=6tnvy4ml; home_feed_column=4; browser_resolution=2048-999; CURRENT_FNVAL=4048; b_lsid=CC1BF83C_19CC1D7E820").await;
+    println!("{:#?}", detail)
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PlayUrlResp {
+    code: i64,
+    message: String,
+    ttl: i64,
+    data: PlayUrlData,
+    session: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PlayUrlData {
+    from: String,
+    result: String,
+    message: String,
+    quality: i64,
+    format: String,
+    timelength: i64,
+    accept_format: String,
+    accept_description: Vec<String>,
+    accept_quality: Vec<i64>,
+    video_codecid: i64, // 视频编码
+    seek_param: String,
+    seek_type: String,
+    dash: Dash,
+    support_formats: Vec<SupportFormat>,
+    last_play_time: i64,
+    last_play_cid: i64,
+    cur_language: String,
+    cur_production_type: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Dash {
+    duration: u64,
+    min_buffer_time: f64,
+    video: Vec<Video>,
+    audio: Vec<Audio>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct SupportFormat {
+    quality: u32,
+    format: String, //格式, 比如: hdflv2
+    new_description: String, //格式的描述, 比如: 4K 超高清
+    display_desc: String,
+    superscript: String,
+    codecs: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Video {
+    id: u64,    // 音视频清晰度代码
+    base_url: String,
+    backup_url: Vec<String>,
+    bandwidth: u64,
+    mime_type: String,
+    width: u32,
+    height: u32,
+    frame_rate: String, //帧率
+    sar: String,
+    codecid: i32,   // 7->AVC编码,8k视频不支持; 12->HEVC编码; 13->AV1编码
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Audio {
+    id: u64,
+    base_url: String,
+    backup_url: Vec<String>,
+    bandwidth: u64,
+    mime_type: String,
+    width: u32,
+    height: u32,
+    frame_rate: String, //帧率
+    sar: String,
+    codecid: i32,
 }
