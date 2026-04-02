@@ -10,12 +10,12 @@ import (
 )
 
 type Settings struct {
-	db     *badger.DB
+	DB     *badger.DB
 	logger *logger.Logger
 }
 
 func (s *Settings) init() error {
-	return s.db.Update(func(txn *badger.Txn) error {
+	return s.DB.Update(func(txn *badger.Txn) error {
 		if _, err := txn.Get(themeKey); errors.Is(err, badger.ErrKeyNotFound) {
 			s.logger.Info("No theme found, setting to default: light")
 			return txn.Set([]byte("theme"), []byte("light"))
@@ -23,7 +23,8 @@ func (s *Settings) init() error {
 		if _, err := txn.Get(storageKey); errors.Is(err, badger.ErrKeyNotFound) {
 			s.logger.Info("No storage path found, setting to default: ./downloads")
 			if err := os.Mkdir("./downloads", 0755); err != nil {
-				return fmt.Errorf("failed to create storage path [%s], err: %v", "./downloads", err)
+				s.logger.Errorf("failed to create default storage path [./downloads]: %v", err)
+				return errors.New("创建默认存储目录失败")
 			}
 
 			return txn.Set(storageKey, []byte("./downloads"))
@@ -37,7 +38,7 @@ var storageKey = []byte("storage")
 
 func (s *Settings) getValue(key []byte) (string, error) {
 	var result string
-	err := s.db.View(func(txn *badger.Txn) error {
+	err := s.DB.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(key)
 		if err != nil {
 			return err
@@ -64,7 +65,7 @@ func NewSettingsWithMemory(logger *logger.Logger) *Settings {
 	if err != nil {
 		panic(err)
 	}
-	s := &Settings{db: db, logger: logger.WithName("Settings")}
+	s := &Settings{DB: db, logger: logger.WithName("Settings")}
 
 	if err := s.init(); err != nil {
 		panic(err)
@@ -78,7 +79,7 @@ func NewSettings(logger *logger.Logger) *Settings {
 		panic(err)
 	}
 
-	s := &Settings{db: db, logger: logger.WithName("Settings")}
+	s := &Settings{DB: db, logger: logger.WithName("Settings")}
 
 	if err := s.init(); err != nil {
 		panic(err)
@@ -88,15 +89,21 @@ func NewSettings(logger *logger.Logger) *Settings {
 }
 
 func (s *Settings) GetTheme() (string, error) {
-	return s.getValue(themeKey)
+	theme, err := s.getValue(themeKey)
+	if err != nil {
+		s.logger.Errorf("failed to get theme: %v", err)
+		return "", errors.New("获取主题设置失败")
+	}
+
+	return theme, nil
 }
 
 func (s *Settings) SetTheme(theme string) error {
-	if err := s.db.Update(func(txn *badger.Txn) error {
+	if err := s.DB.Update(func(txn *badger.Txn) error {
 		return txn.Set(themeKey, []byte(theme))
 	}); err != nil {
 		s.logger.Errorf("Failed to set new theme [%s], err: %v", theme, err)
-		return err
+		return errors.New("设置主题失败")
 	}
 	s.logger.Infof("Theme set to: %s", theme)
 
@@ -104,7 +111,13 @@ func (s *Settings) SetTheme(theme string) error {
 }
 
 func (s *Settings) GetStorage() (string, error) {
-	return s.getValue(storageKey)
+	path, err := s.getValue(storageKey)
+	if err != nil {
+		s.logger.Errorf("failed to get storage path: %v", err)
+		return "", errors.New("获取存储目录失败")
+	}
+
+	return path, nil
 }
 
 func (s *Settings) SetStorage(path string) error {
@@ -114,23 +127,24 @@ func (s *Settings) SetStorage(path string) error {
 		s.logger.Errorf("Failed to set new storage path [%s], err: %v", path, err)
 
 		if errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("storage path [%s] does not exist", path)
+			return fmt.Errorf("存储目录 [%s] 不存在", path)
 		}
 		if errors.Is(err, os.ErrPermission) {
-			return fmt.Errorf("storage path [%s] is not accessible", path)
-		}
-		if !info.IsDir() {
-			return fmt.Errorf("storage path [%s] is not a directory", path)
+			return fmt.Errorf("存储目录 [%s] 无法访问", path)
 		}
 
-		return fmt.Errorf("failed to access storage path [%s], err: %v", path, err)
+		return errors.New("访问存储目录失败")
 	}
 
-	if err = s.db.Update(func(txn *badger.Txn) error {
+	if !info.IsDir() {
+		return fmt.Errorf("存储目录 [%s] 不是文件夹", path)
+	}
+
+	if err = s.DB.Update(func(txn *badger.Txn) error {
 		return txn.Set(storageKey, []byte(path))
 	}); err != nil {
-		s.logger.Infof("Failed to set new storage path [%s], err: %v", path, err)
-		return err
+		s.logger.Errorf("Failed to set new storage path [%s], err: %v", path, err)
+		return errors.New("设置存储目录失败")
 	}
 	s.logger.Infof("Storage path set to: %s", path)
 

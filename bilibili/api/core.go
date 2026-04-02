@@ -12,18 +12,27 @@ type BiliBili struct {
 	db     *badger.DB
 }
 
-func New(logger *logger.Logger) *BiliBili {
+func New(logger *logger.Logger, db *badger.DB) *BiliBili {
 	logger = logger.WithName("BiliBili")
 	return &BiliBili{
 		logger: logger,
 		client: req.C().SetLogger(logger).EnableDebugLog(),
+		db:     db,
 	}
 }
 
 func NewTest() *BiliBili {
 	testLogger := logger.New().WithName("BiliBiliTest")
+	db, err := badger.Open(badger.
+		DefaultOptions("").
+		WithInMemory(true).
+		WithLoggingLevel(badger.ERROR))
+	if err != nil {
+		panic(err)
+	}
 	return &BiliBili{
 		logger: testLogger,
 		client: req.C().SetLogger(testLogger).EnableDebugLog(),
+		db:     db,
 	}
 }

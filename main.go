@@ -3,8 +3,8 @@ package main
 import (
 	"embed"
 
-	"github.com/kamiertop/videodown/bilibili/api"
-	api2 "github.com/kamiertop/videodown/douyin/api"
+	bilibiliapi "github.com/kamiertop/videodown/bilibili/api"
+	douyinapi "github.com/kamiertop/videodown/douyin/api"
 	mylogger "github.com/kamiertop/videodown/logger"
 	"github.com/kamiertop/videodown/utils"
 
@@ -25,6 +25,7 @@ var icon []byte
 func main() {
 	app := NewApp()
 	log := mylogger.New()
+	settings := utils.NewSettings(log)
 	// Create application with options
 	err := wails.Run(&options.App{
 		Title:             "videodown",
@@ -53,9 +54,9 @@ func main() {
 		WindowStartState: options.Normal,
 		Bind: []interface{}{
 			app,
-			api.New(log),
-			api2.New(log),
-			utils.NewSettings(log),
+			bilibiliapi.New(log, settings.DB),
+			douyinapi.New(log, settings.DB),
+			settings,
 		},
 		// Windows platform specific options
 		Windows: &windows.Options{
