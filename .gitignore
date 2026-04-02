@@ -1,0 +1,13 @@
+.idea
+
+.DS_Store
+
+*.log
+
+*.exe
+
+node_modules
+
+dist
+
+videodown.db

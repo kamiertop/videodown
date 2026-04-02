@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+@plugin "daisyui" {
+    themes: light --default, dark --prefersdark, cupcake;
+}
+
+
+/* 平滑滚动 */
+html {
+    scroll-behavior: smooth;
+}

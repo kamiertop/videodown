@@ -1,0 +1,14 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "videodown",
+  "outputfilename": "videodown",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "debounceMS": 100,
+  "author": {
+    "name": "kamiertop",
+    "email": "kamiertop@gmail.com"
+  }
+}
