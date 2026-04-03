@@ -1,13 +1,15 @@
 import type {JSXElement} from "solid-js";
-import {For} from "solid-js";
+import {createSignal, For, onCleanup, onMount} from "solid-js";
 import {Link} from "@tanstack/solid-router";
+import {IsLoggedIn, MyInfo} from "../../wailsjs/go/api/BiliBili";
+import bilibiliAvatarFallback from "../assets/bilibili_256_256.svg";
 
 const menuItems = [
     {
         name: "单视频",
         link: "/bilibili/single",
         icon: <svg x="1775035399268" class="icon" viewBox="0 0 1024 1024"
-                   xmlns="http://www.w3.org/2000/svg" p-id="17180" width="20" height="20">
+                   xmlns="http://www.w3.org/2000/svg" p-id="17180" width="18" height="18">
             <path
                 d="M347.2384 196.5056l110.592 110.6944h108.2368l110.6944-110.6944c13.312-13.312 34.9184-13.312 48.3328 0 13.312 13.312 13.312 34.9184 0 48.3328l-62.464 62.3616h71.168c65.9456 0 119.5008 53.4528 119.5008 119.5008v273.1008c0 65.9456-53.4528 119.5008-119.5008 119.5008H290.0992c-65.9456 0-119.5008-53.4528-119.5008-119.5008V426.7008c0-65.9456 53.4528-119.5008 119.5008-119.5008h71.168l-62.3616-62.464c-13.312-13.312-13.312-34.9184 0-48.3328 13.312-13.312 34.9184-13.312 48.3328 0.1024z m386.6624 178.9952H290.0992c-26.4192 0-48.4352 20.0704-50.9952 46.2848l-0.2048 4.9152v273.1008c0 26.4192 20.0704 48.4352 46.2848 50.9952l4.9152 0.2048h443.6992c26.4192 0 48.4352-20.0704 50.9952-46.2848l0.2048-4.9152V426.7008c0.1024-28.2624-22.8352-51.2-51.0976-51.2z m-358.4 102.4c18.8416 0 34.0992 15.2576 34.0992 34.0992v68.3008c0 18.8416-15.2576 34.0992-34.0992 34.0992s-34.0992-15.2576-34.0992-34.0992V512c-0.1024-18.8416 15.2576-34.0992 34.0992-34.0992z m272.9984 0c18.8416 0 34.0992 15.2576 34.0992 34.0992v68.3008c0 18.8416-15.2576 34.0992-34.0992 34.0992S614.4 599.1424 614.4 580.3008V512c0-18.8416 15.2576-34.0992 34.0992-34.0992z"
                 fill="#040000" p-id="17181"></path>
@@ -16,7 +18,7 @@ const menuItems = [
     {
         name: "收藏夹",
         link: "/bilibili/favorite",
-        icon: <svg width="20" height="21" viewBox="0 0 20 21" fill="none" xmlns="http://www.w3.org/2000/svg"
+        icon: <svg width="18" height="19" viewBox="0 0 20 21" fill="none" xmlns="http://www.w3.org/2000/svg"
                    class="right-entry-icon">
             <path fill-rule="evenodd" clip-rule="evenodd"
                   d="M11.0505 3.16759L12.7915 6.69573C12.954 7.02647 13.2702 7.25612 13.6349 7.30949L17.5294 7.87474C18.448 8.00817 18.8159 9.13785 18.1504 9.78639L15.3331 12.5334C15.0686 12.7905 14.9481 13.1609 15.0104 13.5256L15.6759 17.4031C15.8328 18.3184 14.8721 19.0171 14.0497 18.5845L10.5661 16.7537C10.2402 16.5823 9.85042 16.5823 9.52373 16.7537L6.04087 18.5845C5.21848 19.0171 4.2578 18.3184 4.41468 17.4031L5.07939 13.5256C5.14166 13.1609 5.02198 12.7905 4.75755 12.5334L1.9394 9.78639C1.27469 9.13785 1.64182 8.00817 2.56126 7.87474L6.4549 7.30949C6.82041 7.25612 7.13578 7.02647 7.29832 6.69573L9.04015 3.16759C9.45095 2.33468 10.6389 2.33468 11.0505 3.16759Z"
@@ -30,7 +32,7 @@ const menuItems = [
         name: "UP主",
         link: "/bilibili/up",
         icon: <svg x="1775035354017" class="icon" viewBox="0 0 1024 1024" version="1.1"
-                   xmlns="http://www.w3.org/2000/svg" p-id="15993" width="20" height="20">
+                   xmlns="http://www.w3.org/2000/svg" p-id="15993" width="18" height="18">
             <path
                 d="M262.4 351.914667a32 32 0 0 1 32 32v161.109333a62.890667 62.890667 0 0 0 125.781333 0V383.914667a32 32 0 0 1 64 0v161.109333a126.890667 126.890667 0 1 1-253.781333 0V383.914667a32 32 0 0 1 32-32zM539.818667 383.914667a32 32 0 0 1 32-32h99.114666a122.666667 122.666667 0 1 1 0 245.333333h-67.114666v42.666667a32 32 0 0 1-64 0v-256z m64 149.333333h67.114666a58.666667 58.666667 0 1 0 0-117.333333h-67.114666v117.333333z"
                 fill="#2c2c2c" p-id="15994"></path>
@@ -43,7 +45,7 @@ const menuItems = [
         name: "合集|系列",
         link: "/bilibili/series",
         icon: <svg class="vui_icon fav-sidebar-item__icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
-                   width="20" height="20" xmlns:xlink="http://www.w3.org/1999/xlink">
+                   width="18" height="18" xmlns:xlink="http://www.w3.org/1999/xlink">
             <path
                 d="M8.298191666666666 2.9306916666666667C9.374833333333335 2.4180166666666665 10.625208333333333 2.4180166666666665 11.701833333333333 2.9306916666666667L17.280708333333333 5.5873083333333335C18.4525 6.145308333333333 18.4525 7.813125 17.280708333333333 8.371108333333334L11.701833333333333 11.027750000000001C10.625208333333333 11.540416666666667 9.374833333333335 11.540416666666667 8.298191666666666 11.027750000000001L2.719316666666667 8.371108333333334C1.5475166666666667 7.813125 1.5475166666666667 6.145308333333333 2.719316666666667 5.5873083333333335L8.298191666666666 2.9306916666666667zM11.164416666666666 4.059275C10.427791666666668 3.7084916666666667 9.57225 3.7084916666666667 8.835625 4.059275L3.2567333333333335 6.715883333333334C3.0349916666666665 6.821475 3.0349916666666665 7.136958333333333 3.2567333333333335 7.242541666666668L8.835625 9.899166666666666C9.57225 10.249916666666666 10.427791666666668 10.249916666666666 11.164416666666666 9.899166666666666L16.743291666666668 7.242541666666668C16.963958333333334 7.137466666666667 16.965791666666668 6.821833333333333 16.743291666666668 6.715883333333334L11.164416666666666 4.059275z"
                 fill="currentColor"></path>
@@ -58,7 +60,7 @@ const menuItems = [
     {
         name: "下载历史",
         link: "/bilibili/history",
-        icon: <svg width="20" height="21" viewBox="0 0 20 21" fill="none" xmlns="http://www.w3.org/2000/svg"
+        icon: <svg width="18" height="19" viewBox="0 0 20 21" fill="none" xmlns="http://www.w3.org/2000/svg"
                    class="right-entry-icon">
             <path fill-rule="evenodd" clip-rule="evenodd"
                   d="M10 1.74286C5.02955 1.74286 1 5.7724 1 10.7429C1 15.7133 5.02955 19.7429 10 19.7429C14.9705 19.7429 19 15.7133 19 10.7429C19 5.7724 14.9705 1.74286 10 1.74286ZM10.0006 3.379C14.0612 3.379 17.3642 6.68282 17.3642 10.7426C17.3642 14.8033 14.0612 18.1063 10.0006 18.1063C5.93996 18.1063 2.63696 14.8033 2.63696 10.7426C2.63696 6.68282 5.93996 3.379 10.0006 3.379Z"
@@ -70,35 +72,103 @@ const menuItems = [
 ]
 
 export default function BiliBiliMenu(): JSXElement {
+    const [avatar, setAvatar] = createSignal(bilibiliAvatarFallback);
+    const [avatarLoadFailed, setAvatarLoadFailed] = createSignal(false);
+
+    const resetAvatar = () => {
+        setAvatarLoadFailed(false);
+        setAvatar(bilibiliAvatarFallback);
+    }
+
+    const loadAccountAvatar = async () => {
+        setAvatarLoadFailed(false);
+
+        try {
+            const loggedIn = await IsLoggedIn();
+            if (!loggedIn) {
+                resetAvatar();
+                return;
+            }
+
+            const profile = await MyInfo();
+            setAvatar(profile.face?.trim() ? profile.face : bilibiliAvatarFallback);
+        } catch {
+            resetAvatar();
+        }
+    }
+
+    const handleAuthChanged = (event: Event) => {
+        const detail = (event as CustomEvent<{ loggedIn?: boolean }>).detail;
+        if (detail?.loggedIn === false) {
+            resetAvatar();
+            return;
+        }
+
+        void loadAccountAvatar();
+    }
+
+    onMount(() => {
+        void loadAccountAvatar();
+        window.addEventListener("bilibili-auth-changed", handleAuthChanged);
+    })
+
+    onCleanup(() => {
+        window.removeEventListener("bilibili-auth-changed", handleAuthChanged);
+    })
+
     return (
-        <div class="flex flex-col gap-3 px-3 py-3 border-r-8 border-base-300 bg-base-100/60">
-            <For each={menuItems} fallback={<span class="text-sm text-base-content/60">暂无可用入口</span>}>
+        <div
+            class="flex h-full w-[5.5rem] shrink-0 flex-col gap-1.5 overflow-hidden border-r border-base-300/90 bg-gradient-to-b from-base-100 via-base-100 to-base-200/50 px-2 py-3">
+            <p class="mb-0.5 select-none px-0.5 text-center text-[9px] font-semibold uppercase tracking-widest text-base-content/40">
+                B 站
+            </p>
+            <For each={menuItems} fallback={<span class="px-1 text-center text-[10px] text-base-content/60">暂无</span>}>
                 {item => (
                     <Link
-                        class="group flex items-center gap-3 rounded-xl border border-base-300 bg-base-100/80 p-2 shadow-sm transition hover:border-primary hover:shadow-lg"
+                        title={item.name}
+                        class="group relative flex flex-col items-center gap-1 rounded-2xl border border-base-300/50 bg-base-100/90 px-1.5 py-2.5 shadow-sm transition-all duration-200 hover:-translate-y-px hover:border-primary/40 hover:bg-base-100 hover:shadow-md"
+                        activeProps={{
+                            class:
+                                "border-primary/50 bg-gradient-to-b from-primary/[0.14] to-primary/[0.06] shadow-md ring-1 ring-primary/25",
+                        }}
                         to={item.link}
                     >
-                            <span
-                                class="flex h-11 w-11 items-center justify-center rounded-2xl bg-linear-to-br from-primary/80 to-secondary/80 text-3xl shadow-inner leading-none">
-                                {item.icon}
-                            </span>
-                        <p class="text-lg font-semibold text-base-content">{item.name}</p>
+                        <span
+                            class="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-secondary text-[0] text-white shadow-inner transition-transform duration-200 group-hover:scale-[1.04] group-active:scale-[0.98] group-data-[status=active]:brightness-110">
+                            {item.icon}
+                        </span>
+                        <span class="max-w-full truncate px-0.5 text-center text-[10px] font-semibold leading-tight tracking-tight text-base-content/90">
+                            {item.name}
+                        </span>
                     </Link>
                 )}
             </For>
-            <div class="mt-auto pt-4 pb-6">
-                <div
-                    class="flex items-center gap-3 rounded-2xl border border-base-300/80 bg-base-100/90 p-3.5 shadow-sm transition hover:border-primary/40 hover:shadow-md">
+            <div class="mt-auto border-t border-base-300/70 pt-3">
+                <Link
+                    title="我的账号"
+                    to="/bilibili/profile"
+                    class="group flex flex-col items-center gap-1 rounded-2xl border border-base-300/50 bg-base-100/95 p-2.5 shadow-sm transition-all duration-200 hover:border-primary/40 hover:shadow-md"
+                    activeProps={{
+                        class: "border-primary/50 bg-gradient-to-b from-primary/[0.12] to-transparent shadow-md ring-1 ring-primary/20",
+                    }}
+                >
                     <div class="avatar">
                         <div
-                            class="w-11 rounded-full bg-linear-to-br from-primary/20 to-secondary/20 text-primary ring-2 ring-primary/25 ring-offset-2 ring-offset-base-100">
-                            <span class="flex h-full w-full items-center justify-center text-sm font-semibold">XL</span>
+                            class="h-10 w-10 rounded-full bg-base-200 p-0.5 shadow-inner ring-2 ring-base-100 ring-offset-2 ring-offset-base-100 transition group-hover:ring-primary/30 group-data-[status=active]:ring-primary/50">
+                            <img
+                                src={avatarLoadFailed() ? bilibiliAvatarFallback : avatar()}
+                                alt=""
+                                referrerPolicy="no-referrer"
+                                class="h-full w-full rounded-full object-cover"
+                                onError={() => {
+                                    setAvatarLoadFailed(true);
+                                    setAvatar(bilibiliAvatarFallback);
+                                }}
+                            />
                         </div>
                     </div>
-                    <div class="min-w-0">
-                        <p class="truncate text-sm font-semibold tracking-wide text-base-content/90">我的账号</p>
-                    </div>
-                </div>
+                    <span class="text-[10px] font-semibold tracking-tight text-base-content/80">账号</span>
+                </Link>
             </div>
         </div>
 

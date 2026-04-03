@@ -15,7 +15,7 @@ type Douyin struct {
 func New(logger *logger.Logger, db *badger.DB) *Douyin {
 	return &Douyin{
 		logger: logger.WithName("Douyin"),
-		client: req.C(),
+		client: req.C().EnableAutoDecompress(),
 		db:     db,
 	}
 }

@@ -31,7 +31,7 @@ export default function HomeHeader(): JSXElement {
     }
 
     return (
-        <nav class="navbar bg-base-100 shadow-lg backdrop-blur-md">
+        <nav class="navbar sticky top-0 z-50 bg-base-100 shadow-md">
             <div class="w-full flex items-center justify-between px-4">
                 {/* left: logo */}
                 <Link to="/" class="btn btn-ghost normal-case text-xl text-primary flex items-center gap-3">
@@ -43,6 +43,7 @@ export default function HomeHeader(): JSXElement {
                 <div class="flex items-center gap-2">
                     <For each={NAV_ITEMS}>{(item) => (
                         <Link to={item.to}
+                              preload="intent"
                               class={`${baseClass} ${isActive(item.to) ? 'bg-accent text-white font-semibold' : ''}`}>
                             <span class="text-lg mr-1">{item.emoji}</span>
                             {item.label}

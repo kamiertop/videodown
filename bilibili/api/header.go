@@ -1,14 +1,16 @@
-package header
+package api
 
 const (
 	BiliBiliUrl    = "https://www.bilibili.com/"
-	UserAgentValue = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
+	BiliBiliOrigin = "https://space.bilibili.com"
 )
 
 const (
+	Origin          = "Origin"
 	Referer         = "Referer"
 	UserAgent       = "User-Agent"
 	Accept          = "Accept"
+	AcceptEncoding  = "Accept-Encoding"
 	AcceptLanguage  = "Accept-Language"
 	Priority        = "Priority"
 	SecCHUA         = "Sec-CH-UA"
@@ -17,4 +19,9 @@ const (
 	SecFetchDest    = "Sec-Fetch-Dest"
 	SecFetchMode    = "Sec-Fetch-Mode"
 	SecFetchSite    = "Sec-Fetch-Site"
+	Cookie          = "Cookie"
+)
+
+const (
+	webLocation = "web_location"
 )

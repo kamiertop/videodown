@@ -12,7 +12,7 @@ type Logger struct {
 
 func New() *Logger {
 	return &Logger{
-		zerolog.New(os.Stdout).With().Timestamp().Logger(),
+		zerolog.New(os.Stdout).With().Timestamp().CallerWithSkipFrameCount(3).Logger(),
 	}
 }
 

@@ -7,7 +7,6 @@ import (
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kamiertop/videodown/bilibili/model"
-	"github.com/kamiertop/videodown/header"
 )
 
 // QRCode 获取二维码, 180秒内有效
@@ -21,17 +20,17 @@ func (b *BiliBili) QRCode() (model.QRCodeData, error) {
 			"x-bili-locale-json": `{"c_locale":{"language":"zh","region":"CN"},"always_translate":true}`,
 		}).
 		SetHeaders(map[string]string{
-			header.Accept:          "*/*",
-			header.AcceptLanguage:  "zh-CN,zh;q=0.9",
-			header.Priority:        "u=1, i",
-			header.SecCHUA:         `"Google Chrome";v="123", "Not:A-Brand";v="8", "Chromium";v="123"`,
-			header.SecCHUAMobile:   "?0",
-			header.SecCHUAPlatform: `Windows"`,
-			header.SecFetchDest:    "empty",
-			header.SecFetchMode:    "cors",
-			header.SecFetchSite:    "same-site",
-			header.Referer:         header.BiliBiliUrl,
-			header.UserAgent:       header.UserAgentValue,
+			Accept:          "*/*",
+			AcceptLanguage:  "zh-CN,zh;q=0.9",
+			Priority:        "u=1, i",
+			SecCHUA:         `"Google Chrome";v="123", "Not:A-Brand";v="8", "Chromium";v="123"`,
+			SecCHUAMobile:   "?0",
+			SecCHUAPlatform: `Windows"`,
+			SecFetchDest:    "empty",
+			SecFetchMode:    "cors",
+			SecFetchSite:    "same-site",
+			Referer:         BiliBiliUrl,
+			UserAgent:       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
 		}).
 		Get("https://passport.bilibili.com/x/passport-login/web/qrcode/generate")
 
@@ -59,15 +58,15 @@ func (b *BiliBili) PollQRCode(qrcodeKey string) (model.PollQRCodeData, error) {
 		SetQueryParams(map[string]string{
 			"qrcode_key":         qrcodeKey,
 			"source":             "main-fe-header",
-			"web_location":       "333.1007",
+			webLocation:          "333.1007",
 			"x-bili-locale-json": `{"c_locale":{"language":"zh","region":"CN"},"always_translate":true}`,
 		}).
 		SetHeaders(map[string]string{
-			header.Referer:         header.BiliBiliUrl,
-			header.SecCHUA:         `"Not:A-Brand";v="99", "Google Chrome";v="145", "Chromium";v="145"`,
-			header.SecCHUAMobile:   "?0",
-			header.SecCHUAPlatform: `"Windows"`,
-			header.UserAgent:       header.UserAgentValue,
+			Referer:         BiliBiliUrl,
+			SecCHUA:         `"Not:A-Brand";v="99", "Google Chrome";v="145", "Chromium";v="145"`,
+			SecCHUAMobile:   "?0",
+			SecCHUAPlatform: `"Windows"`,
+			UserAgent:       userAgent(),
 		}).
 		Get("https://passport.bilibili.com/x/passport-login/web/qrcode/poll")
 
@@ -95,13 +94,13 @@ func (b *BiliBili) PollQRCode(qrcodeKey string) (model.PollQRCodeData, error) {
 		return res.Data, nil
 	case model.PollQRCodeStatusNotScanned:
 		b.logger.Infof("bilibili qrcode not scanned yet: message=%s", res.Data.Message)
-		return res.Data, errors.New("二维码未扫码")
+		return res.Data, nil
 	case model.PollQRCodeStatusScannedUnconfirmed:
 		b.logger.Infof("bilibili qrcode scanned but unconfirmed: message=%s", res.Data.Message)
-		return res.Data, errors.New("二维码已扫码但未确认")
+		return res.Data, nil
 	case model.PollQRCodeStatusExpired:
 		b.logger.Infof("bilibili qrcode expired: message=%s", res.Data.Message)
-		return res.Data, errors.New("二维码已失效")
+		return res.Data, nil
 	default:
 		b.logger.Errorf("unexpected bilibili qrcode status: data_code=%d message=%s", res.Data.Code, res.Data.Message)
 		return res.Data, errors.New("未知二维码状态")
@@ -110,13 +109,24 @@ func (b *BiliBili) PollQRCode(qrcodeKey string) (model.PollQRCodeData, error) {
 
 // IsLoggedIn 检测是否已登录, 通过检查数据库中是否存在有效的 cookies 来判断登录状态
 func (b *BiliBili) IsLoggedIn() bool {
-	_, err := b.GetCookies()
-	return err == nil
+	_, err := b.getCookies()
+	if err != nil {
+		b.logger.Errorf("failed to get bilibili cookies: %v", err)
+		return false
+	}
+
+	if _, err = b.getCSRF(); err != nil {
+		b.logger.Errorf("failed to get bilibili csrf: %v", err)
+		return false
+	}
+
+	b.logger.Info("bilibili is logged in")
+
+	return true
 }
 
-// GetCookies 获取已登录的 cookies
-func (b *BiliBili) GetCookies() (string, error) {
-	const bilibiliCookieKey = "bilibili_cookies"
+// getCookies 获取已登录的 cookies
+func (b *BiliBili) getCookies() (string, error) {
 
 	var cookie string
 	err := b.db.View(func(txn *badger.Txn) error {
@@ -146,8 +156,6 @@ func (b *BiliBili) GetCookies() (string, error) {
 }
 
 func (b *BiliBili) saveCookies(cookies []*http.Cookie) error {
-	const bilibiliCookieKey = "bilibili_cookies"
-
 	cookieMap := make(map[string]string, len(cookies))
 	for _, cookie := range cookies {
 		cookieMap[cookie.Name] = cookie.Value
@@ -169,7 +177,17 @@ func (b *BiliBili) saveCookies(cookies []*http.Cookie) error {
 	cookieStr := strings.Join(parts, ";")
 	b.logger.Infof("bilibili cookies assembled successfully: %s", cookieStr)
 
+	csrf := cookieMap[bilibiliCSRFKey]
+	if csrf == "" {
+		b.logger.Error("missing bili_jct in login cookies")
+		return errors.New("保存登录信息失败")
+	}
+
 	if err := b.db.Update(func(txn *badger.Txn) error {
+		if err := txn.Set([]byte(bilibiliCSRFKey), []byte(csrf)); err != nil {
+			b.logger.Errorf("failed to save bilibili cookies with [bili_jct], cookies: %v,err: %e", cookieMap, err)
+			return err
+		}
 		return txn.Set([]byte(bilibiliCookieKey), []byte(cookieStr))
 	}); err != nil {
 		b.logger.Errorf("failed to save bilibili cookies: %v", err)
@@ -177,4 +195,82 @@ func (b *BiliBili) saveCookies(cookies []*http.Cookie) error {
 	}
 
 	return nil
+}
+
+func (b *BiliBili) Refresh() (model.RefreshData, error) {
+	cookies, err := b.getCookies()
+	if err != nil {
+		return model.RefreshData{}, err
+	}
+	csrf, err := b.getCSRF()
+	if err != nil {
+		return model.RefreshData{}, err
+	}
+	resp, err := b.client.R().
+		SetQueryParam(webLocation, "333.1387").
+		SetQueryParam("csrf", csrf).
+		SetHeaders(publicHeaders()).
+		SetHeader(Cookie, cookies).
+		Get("https://passport.bilibili.com/x/passport-login/web/cookie/info")
+	if err != nil {
+		b.logger.Errorf("Check if cookies need to be refreshed errors: %e", err)
+		return model.RefreshData{}, errors.New("检查Cookie是否需要刷新错误")
+	}
+	var response model.RefreshResponse
+	if err := resp.Into(&response); err != nil {
+		b.logger.Errorf("failed to decode refresh response: %v", err)
+		return model.RefreshData{}, errors.New("解析刷新响应失败")
+	}
+	if response.Code != model.SuccessCode {
+		b.logger.Errorf("refresh request failed: code=%d message=%s", response.Code, response.Message)
+		return model.RefreshData{}, errors.New("请求Cookie是否需要刷新的接口失败")
+	}
+
+	return response.Data, nil
+}
+
+func (b *BiliBili) LogOut() (model.LogOut, error) {
+	defer func() {
+		if err := b.clearAuthState(); err != nil {
+			b.logger.Errorf("failed to clear auth state: %v", err)
+		}
+	}()
+	cookies, err := b.getCookies()
+	if err != nil {
+		return model.LogOut{}, err
+	}
+	csrf, err := b.getCSRF()
+	if err != nil {
+		return model.LogOut{}, err
+	}
+	resp, err := b.client.
+		R().
+		SetQueryParam("biliCSRF", csrf).
+		SetQueryParam("gourl", BiliBiliUrl).
+		SetHeader(Cookie, cookies).
+		SetHeader(Referer, BiliBiliOrigin).
+		SetHeader("Content-Type", "application/x-www-form-urlencoded").
+		SetHeader("Cache-Control", "no-cache").
+		SetHeader("Pragma", "no-cache").
+		SetHeaders(publicHeaders()).
+		Post("https://passport.bilibili.com/login/exit/v2")
+	if err != nil {
+		b.logger.Errorf("logout request failed: %v", err)
+		return model.LogOut{}, errors.New("请求退出登录失败")
+	}
+	var response model.LogOut
+	if err := resp.Into(&response); err != nil {
+		b.logger.Errorf("failed to decode logout response: %v", err)
+		return model.LogOut{}, errors.New("解析登出响应失败")
+	}
+	if response.Code != model.SuccessCode {
+		b.logger.Errorf("logout request failed: code=%d", response.Code)
+		return model.LogOut{}, errors.New("请求退出登录失败")
+	}
+
+	if response.Code == 2202 {
+		return model.LogOut{}, errors.New("CSRF请求非法，可能是因为登录状态无效或已过期")
+	}
+
+	return response, nil
 }
