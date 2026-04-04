@@ -1,5 +1,330 @@
 export namespace model {
 	
+	export class CollectionUpper {
+	    mid: number;
+	    name: string;
+	    face: string;
+	    jump_link: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CollectionUpper(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mid = source["mid"];
+	        this.name = source["name"];
+	        this.face = source["face"];
+	        this.jump_link = source["jump_link"];
+	    }
+	}
+	export class CollectionDataList {
+	    id: number;
+	    fid: number;
+	    mid: number;
+	    attr: number;
+	    attr_desc: string;
+	    title: string;
+	    cover: string;
+	    upper: CollectionUpper;
+	    cover_type: number;
+	    intro: string;
+	    ctime: number;
+	    mtime: number;
+	    state: number;
+	    fav_state: number;
+	    media_count: number;
+	    view_count: number;
+	    vt: number;
+	    is_top: boolean;
+	    recent_fav: any;
+	    play_switch: number;
+	    type: number;
+	    link: string;
+	    bvid: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CollectionDataList(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.fid = source["fid"];
+	        this.mid = source["mid"];
+	        this.attr = source["attr"];
+	        this.attr_desc = source["attr_desc"];
+	        this.title = source["title"];
+	        this.cover = source["cover"];
+	        this.upper = this.convertValues(source["upper"], CollectionUpper);
+	        this.cover_type = source["cover_type"];
+	        this.intro = source["intro"];
+	        this.ctime = source["ctime"];
+	        this.mtime = source["mtime"];
+	        this.state = source["state"];
+	        this.fav_state = source["fav_state"];
+	        this.media_count = source["media_count"];
+	        this.view_count = source["view_count"];
+	        this.vt = source["vt"];
+	        this.is_top = source["is_top"];
+	        this.recent_fav = source["recent_fav"];
+	        this.play_switch = source["play_switch"];
+	        this.type = source["type"];
+	        this.link = source["link"];
+	        this.bvid = source["bvid"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CollectionData {
+	    count: number;
+	    list: CollectionDataList[];
+	    has_more: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new CollectionData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.count = source["count"];
+	        this.list = this.convertValues(source["list"], CollectionDataList);
+	        this.has_more = source["has_more"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class CollectionItemCntInfo {
+	    collect: number;
+	    play: number;
+	    danmaku: number;
+	    vt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CollectionItemCntInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.collect = source["collect"];
+	        this.play = source["play"];
+	        this.danmaku = source["danmaku"];
+	        this.vt = source["vt"];
+	    }
+	}
+	export class CollectionItemMediaCntInfo {
+	    collect: number;
+	    play: number;
+	    danmaku: number;
+	    vt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CollectionItemMediaCntInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.collect = source["collect"];
+	        this.play = source["play"];
+	        this.danmaku = source["danmaku"];
+	        this.vt = source["vt"];
+	    }
+	}
+	export class CollectionItemMediaUpper {
+	    mid: number;
+	    name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CollectionItemMediaUpper(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mid = source["mid"];
+	        this.name = source["name"];
+	    }
+	}
+	export class CollectionItemMedias {
+	    id: number;
+	    title: string;
+	    cover: string;
+	    duration: number;
+	    pubtime: number;
+	    bvid: string;
+	    upper: CollectionItemMediaUpper;
+	    cnt_info: CollectionItemMediaCntInfo;
+	    enable_vt: number;
+	    vt_display: string;
+	    is_self_view: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new CollectionItemMedias(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.title = source["title"];
+	        this.cover = source["cover"];
+	        this.duration = source["duration"];
+	        this.pubtime = source["pubtime"];
+	        this.bvid = source["bvid"];
+	        this.upper = this.convertValues(source["upper"], CollectionItemMediaUpper);
+	        this.cnt_info = this.convertValues(source["cnt_info"], CollectionItemMediaCntInfo);
+	        this.enable_vt = source["enable_vt"];
+	        this.vt_display = source["vt_display"];
+	        this.is_self_view = source["is_self_view"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CollectionItemUpper {
+	    mid: number;
+	    name: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new CollectionItemUpper(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mid = source["mid"];
+	        this.name = source["name"];
+	    }
+	}
+	export class CollectionItemInfo {
+	    id: number;
+	    season_type: number;
+	    title: string;
+	    cover: string;
+	    upper: CollectionItemUpper;
+	    cnt_info: CollectionItemCntInfo;
+	    media_count: number;
+	    intro: string;
+	    enable_vt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new CollectionItemInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.season_type = source["season_type"];
+	        this.title = source["title"];
+	        this.cover = source["cover"];
+	        this.upper = this.convertValues(source["upper"], CollectionItemUpper);
+	        this.cnt_info = this.convertValues(source["cnt_info"], CollectionItemCntInfo);
+	        this.media_count = source["media_count"];
+	        this.intro = source["intro"];
+	        this.enable_vt = source["enable_vt"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CollectionItemData {
+	    info: CollectionItemInfo;
+	    medias: CollectionItemMedias[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CollectionItemData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.info = this.convertValues(source["info"], CollectionItemInfo);
+	        this.medias = this.convertValues(source["medias"], CollectionItemMedias);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
+	
+	
+	
 	export class FavoriteMediaUgc {
 	    first_cid: number;
 	

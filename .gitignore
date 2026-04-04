@@ -13,3 +13,9 @@ dist
 videodown.db
 
 .codex
+
+build/bin
+
+frontend/package.json.md5
+.cursor
+.vscode

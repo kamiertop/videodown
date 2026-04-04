@@ -19,20 +19,16 @@ func (b *BiliBili) FavoritesList() (model.FavoritesData, error) {
 		return model.FavoritesData{}, err
 	}
 
-	resp, err := b.client.
-		R().
+	var response model.FavoritesResponse
+	if err = b.client.
+		Get("https://api.bilibili.com/x/v3/fav/folder/created/list-all").
 		SetQueryParam("up_mid", mid).SetQueryParam(webLocation, "333.1387").
 		SetHeaders(publicHeaders()).
 		SetHeader(Cookie, cookie).
-		Get("https://api.bilibili.com/x/v3/fav/folder/created/list-all")
-	if err != nil {
+		Do().
+		Into(&response); err != nil {
 		b.logger.Errorf("get favorites list error: %v", err)
-		return model.FavoritesData{}, err
-	}
-	var response model.FavoritesResponse
-	if err := resp.Into(&response); err != nil {
-		b.logger.Errorf("unmarshal favorites list response error: %v", err)
-		return model.FavoritesData{}, errors.New("解析收藏列表响应失败")
+		return model.FavoritesData{}, errors.New("获取收藏列表失败")
 	}
 	switch response.Code {
 	case 11010:
@@ -56,30 +52,26 @@ func (b *BiliBili) Favorites(mediaId, pn, ps int) (model.FavoriteData, error) {
 	if err != nil {
 		return model.FavoriteData{}, err
 	}
-	resp, err := b.client.
-		R().
+	var response model.FavoriteResponse
+	if err = b.client.
+		Get("https://api.bilibili.com/x/v3/fav/resource/list").
 		SetQueryParamsAnyType(map[string]any{
-			"media_id":  mediaId, // 收藏夹的列表中的id model.FavoriteItem 中的id字段
+			"media_id":  mediaId,
 			webLocation: "333.1387",
 			"platform":  "web",
-			"tid":       0, // 分区id，0表示全部分区
+			"tid":       0,
 			"keyword":   "",
-			"order":     "mtime", // 排序方式，默认按收藏时间排序,播放量： view，投稿时间：pubtime
-			"type":      0,       // 查询范围.0：当前收藏夹，对应media_id，1：全部收藏夹
-			"pn":        pn,      // 页码
-			"ps":        ps,      // 每页数量
+			"order":     "mtime",
+			"type":      0,
+			"pn":        pn,
+			"ps":        ps,
 		}).
 		SetHeader("Cookie", cookies).
 		SetHeaders(publicHeaders()).
-		Get("https://api.bilibili.com/x/v3/fav/resource/list")
-	if err != nil {
+		Do().
+		Into(&response); err != nil {
 		b.logger.Errorf("request favorites error: %v", err)
-		return model.FavoriteData{}, errors.New("请求收藏夹详情接口失败")
-	}
-	var response model.FavoriteResponse
-	if err := resp.Into(&response); err != nil {
-		b.logger.Errorf("unmarshal favorites response error: %v", err)
-		return model.FavoriteData{}, errors.New("解析收藏夹详情响应失败")
+		return model.FavoriteData{}, errors.New("获取收藏夹详情失败")
 	}
 	if response.Code != model.SuccessCode {
 		b.logger.Errorf("get favorites failed: code=%d message=%s", response.Code, response.Message)

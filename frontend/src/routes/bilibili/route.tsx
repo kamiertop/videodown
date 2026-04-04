@@ -9,10 +9,10 @@ export const Route = createFileRoute('/bilibili')({
 function BiliBiliLayout(): JSXElement {
     return (
         <section class={"flex h-full min-h-0 w-full flex-1 overflow-hidden"}>
-            <aside class={"h-full shrink-0 [contain:layout_paint_style]"}>
+            <aside class={"h-full shrink-0 contain-[layout_paint_style]"}>
                 <BiliBiliMenu/>
             </aside>
-            <main class={"flex-1 min-w-0 overflow-hidden [contain:layout_paint]"}>
+            <main class={"flex-1 min-w-0 overflow-hidden contain-[layout_paint]"}>
                 <Outlet/>
             </main>
         </section>

@@ -16,7 +16,7 @@ const menuItems = [
         </svg>,
     },
     {
-        name: "收藏夹",
+        name: "收藏",
         link: "/bilibili/favorite",
         icon: <svg width="18" height="19" viewBox="0 0 20 21" fill="none" xmlns="http://www.w3.org/2000/svg"
                    class="right-entry-icon">
@@ -122,7 +122,8 @@ export default function BiliBiliMenu(): JSXElement {
             <p class="mb-0.5 select-none px-0.5 text-center text-[9px] font-semibold uppercase tracking-widest text-base-content/40">
                 B 站
             </p>
-            <For each={menuItems} fallback={<span class="px-1 text-center text-[10px] text-base-content/60">暂无</span>}>
+            <For each={menuItems}
+                 fallback={<span class="px-1 text-center text-[10px] text-base-content/60">暂无</span>}>
                 {item => (
                     <Link
                         title={item.name}
@@ -137,7 +138,8 @@ export default function BiliBiliMenu(): JSXElement {
                             class="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-secondary text-[0] text-white shadow-inner transition-transform duration-200 group-hover:scale-[1.04] group-active:scale-[0.98] group-data-[status=active]:brightness-110">
                             {item.icon}
                         </span>
-                        <span class="max-w-full truncate px-0.5 text-center text-[10px] font-semibold leading-tight tracking-tight text-base-content/90">
+                        <span
+                            class="max-w-full truncate px-0.5 text-center text-[10px] font-semibold leading-tight tracking-tight text-base-content/90">
                             {item.name}
                         </span>
                     </Link>

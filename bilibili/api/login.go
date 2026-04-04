@@ -11,8 +11,9 @@ import (
 
 // QRCode 获取二维码, 180秒内有效
 func (b *BiliBili) QRCode() (model.QRCodeData, error) {
-	resp, err := b.client.
-		R().
+	var res model.QRCodeResponse
+	if err := b.client.
+		Get("https://passport.bilibili.com/x/passport-login/web/qrcode/generate").
 		SetQueryParams(map[string]string{
 			"source":             "main-fe-header",
 			"go_url":             "https://www.bilibili.com/",
@@ -32,16 +33,10 @@ func (b *BiliBili) QRCode() (model.QRCodeData, error) {
 			Referer:         BiliBiliUrl,
 			UserAgent:       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
 		}).
-		Get("https://passport.bilibili.com/x/passport-login/web/qrcode/generate")
-
-	if err != nil {
+		Do().
+		Into(&res); err != nil {
 		b.logger.Errorf("failed to get bilibili qrcode: %v", err)
 		return model.QRCodeData{}, errors.New("获取二维码失败")
-	}
-	var res model.QRCodeResponse
-	if err := resp.Into(&res); err != nil {
-		b.logger.Errorf("failed to decode bilibili qrcode response: %v", err)
-		return model.QRCodeData{}, errors.New("解析二维码响应失败")
 	}
 	if res.Code != model.SuccessCode {
 		b.logger.Errorf("bilibili qrcode request failed: code=%d message=%s", res.Code, res.Message)
@@ -76,7 +71,7 @@ func (b *BiliBili) PollQRCode(qrcodeKey string) (model.PollQRCodeData, error) {
 	}
 
 	var res model.PollQRCodeResponse
-	if err := resp.Into(&res); err != nil {
+	if err = resp.Into(&res); err != nil {
 		b.logger.Errorf("failed to decode bilibili qrcode poll response: %v", err)
 		return model.PollQRCodeData{}, errors.New("解析二维码状态响应失败")
 	}
@@ -127,7 +122,6 @@ func (b *BiliBili) IsLoggedIn() bool {
 
 // getCookies 获取已登录的 cookies
 func (b *BiliBili) getCookies() (string, error) {
-
 	var cookie string
 	err := b.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(bilibiliCookieKey))
@@ -206,24 +200,21 @@ func (b *BiliBili) Refresh() (model.RefreshData, error) {
 	if err != nil {
 		return model.RefreshData{}, err
 	}
-	resp, err := b.client.R().
+	var response model.RefreshResponse
+	if err = b.client.
+		Get("https://passport.bilibili.com/x/passport-login/web/cookie/info").
 		SetQueryParam(webLocation, "333.1387").
 		SetQueryParam("csrf", csrf).
 		SetHeaders(publicHeaders()).
 		SetHeader(Cookie, cookies).
-		Get("https://passport.bilibili.com/x/passport-login/web/cookie/info")
-	if err != nil {
-		b.logger.Errorf("Check if cookies need to be refreshed errors: %e", err)
-		return model.RefreshData{}, errors.New("检查Cookie是否需要刷新错误")
-	}
-	var response model.RefreshResponse
-	if err := resp.Into(&response); err != nil {
-		b.logger.Errorf("failed to decode refresh response: %v", err)
-		return model.RefreshData{}, errors.New("解析刷新响应失败")
+		Do().
+		Into(&response); err != nil {
+		b.logger.Errorf("check if cookies need to be refreshed error: %v", err)
+		return model.RefreshData{}, errors.New("检查Cookie是否需要刷新失败")
 	}
 	if response.Code != model.SuccessCode {
 		b.logger.Errorf("refresh request failed: code=%d message=%s", response.Code, response.Message)
-		return model.RefreshData{}, errors.New("请求Cookie是否需要刷新的接口失败")
+		return model.RefreshData{}, errors.New("检查Cookie是否需要刷新失败")
 	}
 
 	return response.Data, nil
@@ -243,8 +234,9 @@ func (b *BiliBili) LogOut() (model.LogOut, error) {
 	if err != nil {
 		return model.LogOut{}, err
 	}
-	resp, err := b.client.
-		R().
+	var response model.LogOut
+	if err = b.client.
+		Post("https://passport.bilibili.com/login/exit/v2").
 		SetQueryParam("biliCSRF", csrf).
 		SetQueryParam("gourl", BiliBiliUrl).
 		SetHeader(Cookie, cookies).
@@ -253,23 +245,17 @@ func (b *BiliBili) LogOut() (model.LogOut, error) {
 		SetHeader("Cache-Control", "no-cache").
 		SetHeader("Pragma", "no-cache").
 		SetHeaders(publicHeaders()).
-		Post("https://passport.bilibili.com/login/exit/v2")
-	if err != nil {
+		Do().
+		Into(&response); err != nil {
 		b.logger.Errorf("logout request failed: %v", err)
-		return model.LogOut{}, errors.New("请求退出登录失败")
+		return model.LogOut{}, errors.New("退出登录失败")
 	}
-	var response model.LogOut
-	if err := resp.Into(&response); err != nil {
-		b.logger.Errorf("failed to decode logout response: %v", err)
-		return model.LogOut{}, errors.New("解析登出响应失败")
+	if response.Code == 2202 {
+		return model.LogOut{}, errors.New("CSRF请求非法，可能是因为登录状态无效或已过期")
 	}
 	if response.Code != model.SuccessCode {
 		b.logger.Errorf("logout request failed: code=%d", response.Code)
-		return model.LogOut{}, errors.New("请求退出登录失败")
-	}
-
-	if response.Code == 2202 {
-		return model.LogOut{}, errors.New("CSRF请求非法，可能是因为登录状态无效或已过期")
+		return model.LogOut{}, errors.New("退出登录失败")
 	}
 
 	return response, nil
