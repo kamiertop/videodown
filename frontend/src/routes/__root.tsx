@@ -9,10 +9,10 @@ export const Route = createRootRoute({
 
 function RootComponent(): JSXElement {
     return (
-        <div class="h-screen bg-base-200 flex flex-col overflow-hidden">
+        <div class="h-screen bg-base-200 flex flex-col">
             <HomeHeader/>
 
-            <div class="flex-1 min-h-0 overflow-hidden">
+            <div class="flex-1 min-h-0 ">
                 <Outlet/>
             </div>
 

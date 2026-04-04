@@ -1,5 +1,270 @@
 export namespace model {
 	
+	export class FavoriteMediaUgc {
+	    first_cid: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FavoriteMediaUgc(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.first_cid = source["first_cid"];
+	    }
+	}
+	export class FavoriteMediaCntInfo {
+	    collect: number;
+	    play: number;
+	    danmaku: number;
+	    vt: number;
+	    play_switch: number;
+	    reply: number;
+	    view_text_1: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FavoriteMediaCntInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.collect = source["collect"];
+	        this.play = source["play"];
+	        this.danmaku = source["danmaku"];
+	        this.vt = source["vt"];
+	        this.play_switch = source["play_switch"];
+	        this.reply = source["reply"];
+	        this.view_text_1 = source["view_text_1"];
+	    }
+	}
+	export class FavoriteMediaUpper {
+	    mid: number;
+	    name: string;
+	    face: string;
+	    jump_link: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FavoriteMediaUpper(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mid = source["mid"];
+	        this.name = source["name"];
+	        this.face = source["face"];
+	        this.jump_link = source["jump_link"];
+	    }
+	}
+	export class FavoriteMedias {
+	    id: number;
+	    type: number;
+	    title: string;
+	    cover: string;
+	    intro: string;
+	    page: number;
+	    duration: number;
+	    upper: FavoriteMediaUpper;
+	    attr: number;
+	    cnt_info: FavoriteMediaCntInfo;
+	    link: string;
+	    ctime: number;
+	    pubtime: number;
+	    fav_time: number;
+	    bv_id: string;
+	    bvid: string;
+	    season: any;
+	    ogv: any;
+	    ugc: FavoriteMediaUgc;
+	    media_list_link: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FavoriteMedias(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.type = source["type"];
+	        this.title = source["title"];
+	        this.cover = source["cover"];
+	        this.intro = source["intro"];
+	        this.page = source["page"];
+	        this.duration = source["duration"];
+	        this.upper = this.convertValues(source["upper"], FavoriteMediaUpper);
+	        this.attr = source["attr"];
+	        this.cnt_info = this.convertValues(source["cnt_info"], FavoriteMediaCntInfo);
+	        this.link = source["link"];
+	        this.ctime = source["ctime"];
+	        this.pubtime = source["pubtime"];
+	        this.fav_time = source["fav_time"];
+	        this.bv_id = source["bv_id"];
+	        this.bvid = source["bvid"];
+	        this.season = source["season"];
+	        this.ogv = source["ogv"];
+	        this.ugc = this.convertValues(source["ugc"], FavoriteMediaUgc);
+	        this.media_list_link = source["media_list_link"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class FavoriteInfoCntInfo {
+	    collect: number;
+	    play: number;
+	    thumb_up: number;
+	    share: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FavoriteInfoCntInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.collect = source["collect"];
+	        this.play = source["play"];
+	        this.thumb_up = source["thumb_up"];
+	        this.share = source["share"];
+	    }
+	}
+	export class FavoriteInfoUpper {
+	    mid: number;
+	    name: string;
+	    face: string;
+	    followed: boolean;
+	    vip_type: number;
+	    vip_statue: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FavoriteInfoUpper(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mid = source["mid"];
+	        this.name = source["name"];
+	        this.face = source["face"];
+	        this.followed = source["followed"];
+	        this.vip_type = source["vip_type"];
+	        this.vip_statue = source["vip_statue"];
+	    }
+	}
+	export class FavoriteInfo {
+	    id: number;
+	    fid: number;
+	    mid: number;
+	    attr: number;
+	    title: string;
+	    cover: string;
+	    upper: FavoriteInfoUpper;
+	    cover_type: number;
+	    cnt_info: FavoriteInfoCntInfo;
+	    type: number;
+	    intro: string;
+	    ctime: number;
+	    mtime: number;
+	    state: number;
+	    fav_state: number;
+	    like_state: number;
+	    media_count: number;
+	    is_top: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new FavoriteInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.fid = source["fid"];
+	        this.mid = source["mid"];
+	        this.attr = source["attr"];
+	        this.title = source["title"];
+	        this.cover = source["cover"];
+	        this.upper = this.convertValues(source["upper"], FavoriteInfoUpper);
+	        this.cover_type = source["cover_type"];
+	        this.cnt_info = this.convertValues(source["cnt_info"], FavoriteInfoCntInfo);
+	        this.type = source["type"];
+	        this.intro = source["intro"];
+	        this.ctime = source["ctime"];
+	        this.mtime = source["mtime"];
+	        this.state = source["state"];
+	        this.fav_state = source["fav_state"];
+	        this.like_state = source["like_state"];
+	        this.media_count = source["media_count"];
+	        this.is_top = source["is_top"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class FavoriteData {
+	    info: FavoriteInfo;
+	    medias: FavoriteMedias[];
+	    has_more: boolean;
+	    ttl: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FavoriteData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.info = this.convertValues(source["info"], FavoriteInfo);
+	        this.medias = this.convertValues(source["medias"], FavoriteMedias);
+	        this.has_more = source["has_more"];
+	        this.ttl = source["ttl"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
 	export class FavoriteItem {
 	    id: number;
 	    fid: number;
@@ -24,6 +289,10 @@ export namespace model {
 	        this.media_count = source["media_count"];
 	    }
 	}
+	
+	
+	
+	
 	export class FavoritesData {
 	    count: number;
 	    list: FavoriteItem[];

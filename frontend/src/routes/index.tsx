@@ -9,8 +9,8 @@ export const Route = createFileRoute('/')({
 
 function HomeComponent(): JSXElement {
     return (
-        <div class={"items-center flex-1 flex"}>
-            <div class="w-full h-full flex gap-6 flex-row items-center justify-center">
+        <div class="flex h-full w-full flex-1 items-center justify-center">
+            <div class="flex w-full flex-row items-center justify-center gap-6">
                 <Link to="/bilibili/profile" preload="intent" class="flex items-center gap-4 px-8 py-6">
                     <img src={bilibili} alt="Bilibili" class="w-64 h-64"/>
                 </Link>
