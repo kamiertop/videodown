@@ -45,3 +45,7 @@ export function QRCode() {
 export function Refresh() {
   return window['go']['api']['BiliBili']['Refresh']();
 }
+
+export function SeasonsSeriesList(arg1, arg2, arg3, arg4) {
+  return window['go']['api']['BiliBili']['SeasonsSeriesList'](arg1, arg2, arg3, arg4);
+}

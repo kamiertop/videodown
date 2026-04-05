@@ -104,11 +104,12 @@ func (b *BiliBili) PollQRCode(qrcodeKey string) (model.PollQRCodeData, error) {
 
 // IsLoggedIn 检测是否已登录, 通过检查数据库中是否存在有效的 cookies 来判断登录状态
 func (b *BiliBili) IsLoggedIn() bool {
-	_, err := b.getCookies()
+	cookies, err := b.getCookies()
 	if err != nil {
 		b.logger.Errorf("failed to get bilibili cookies: %v", err)
 		return false
 	}
+	b.logger.Info(cookies)
 
 	if _, err = b.getCSRF(); err != nil {
 		b.logger.Errorf("failed to get bilibili csrf: %v", err)

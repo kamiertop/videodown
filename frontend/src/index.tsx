@@ -10,6 +10,12 @@ const router = createRouter({
     defaultPreload: 'intent',
 })
 
+declare module '@tanstack/solid-router' {
+    interface Register {
+        router: typeof router
+    }
+}
+
 const root = document.getElementById('root')
 
 render(() => <RouterProvider router={router}/>, root!)

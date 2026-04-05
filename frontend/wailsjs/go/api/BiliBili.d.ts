@@ -23,3 +23,5 @@ export function PollQRCode(arg1:string):Promise<model.PollQRCodeData>;
 export function QRCode():Promise<model.QRCodeData>;
 
 export function Refresh():Promise<model.RefreshData>;
+
+export function SeasonsSeriesList(arg1:string,arg2:string,arg3:number,arg4:number):Promise<model.SeasonsSeriesData>;
