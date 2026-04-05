@@ -652,6 +652,67 @@ export namespace model {
 		    return a;
 		}
 	}
+	export class FollowDataList {
+	    mid: number;
+	    attribute: number;
+	    mtime: number;
+	    tag: any;
+	    special: number;
+	    uname: string;
+	    face: string;
+	    sign: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new FollowDataList(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mid = source["mid"];
+	        this.attribute = source["attribute"];
+	        this.mtime = source["mtime"];
+	        this.tag = source["tag"];
+	        this.special = source["special"];
+	        this.uname = source["uname"];
+	        this.face = source["face"];
+	        this.sign = source["sign"];
+	    }
+	}
+	export class FollowData {
+	    list: FollowDataList[];
+	    re_version: number;
+	    total: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FollowData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.list = this.convertValues(source["list"], FollowDataList);
+	        this.re_version = source["re_version"];
+	        this.total = source["total"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class LogOutData {
 	    redirectUrl: string;
 	

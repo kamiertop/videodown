@@ -18,6 +18,10 @@ export function FavoritesList() {
   return window['go']['api']['BiliBili']['FavoritesList']();
 }
 
+export function FollowList(arg1, arg2) {
+  return window['go']['api']['BiliBili']['FollowList'](arg1, arg2);
+}
+
 export function IsLoggedIn() {
   return window['go']['api']['BiliBili']['IsLoggedIn']();
 }

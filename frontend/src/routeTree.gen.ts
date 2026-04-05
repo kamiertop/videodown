@@ -15,12 +15,13 @@ import { Route as BilibiliRouteRouteImport } from './routes/bilibili/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as BilibiliIndexRouteImport } from './routes/bilibili/index'
-import { Route as BilibiliUpRouteImport } from './routes/bilibili/up'
-import { Route as BilibiliSingleRouteImport } from './routes/bilibili/single'
-import { Route as BilibiliSeriesRouteImport } from './routes/bilibili/series'
 import { Route as BilibiliProfileRouteImport } from './routes/bilibili/profile'
 import { Route as BilibiliHistoryRouteImport } from './routes/bilibili/history'
 import { Route as BilibiliFavoriteRouteImport } from './routes/bilibili/favorite'
+import { Route as BilibiliDownloadRouteImport } from './routes/bilibili/download'
+import { Route as BilibiliUpRouteRouteImport } from './routes/bilibili/up/route'
+import { Route as BilibiliUpIndexRouteImport } from './routes/bilibili/up/index'
+import { Route as BilibiliUpMidRouteImport } from './routes/bilibili/up/$mid'
 
 const DouyinRoute = DouyinRouteImport.update({
   id: '/douyin',
@@ -52,21 +53,6 @@ const BilibiliIndexRoute = BilibiliIndexRouteImport.update({
   path: '/',
   getParentRoute: () => BilibiliRouteRoute,
 } as any)
-const BilibiliUpRoute = BilibiliUpRouteImport.update({
-  id: '/up',
-  path: '/up',
-  getParentRoute: () => BilibiliRouteRoute,
-} as any)
-const BilibiliSingleRoute = BilibiliSingleRouteImport.update({
-  id: '/single',
-  path: '/single',
-  getParentRoute: () => BilibiliRouteRoute,
-} as any)
-const BilibiliSeriesRoute = BilibiliSeriesRouteImport.update({
-  id: '/series',
-  path: '/series',
-  getParentRoute: () => BilibiliRouteRoute,
-} as any)
 const BilibiliProfileRoute = BilibiliProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -82,33 +68,54 @@ const BilibiliFavoriteRoute = BilibiliFavoriteRouteImport.update({
   path: '/favorite',
   getParentRoute: () => BilibiliRouteRoute,
 } as any)
+const BilibiliDownloadRoute = BilibiliDownloadRouteImport.update({
+  id: '/download',
+  path: '/download',
+  getParentRoute: () => BilibiliRouteRoute,
+} as any)
+const BilibiliUpRouteRoute = BilibiliUpRouteRouteImport.update({
+  id: '/up',
+  path: '/up',
+  getParentRoute: () => BilibiliRouteRoute,
+} as any)
+const BilibiliUpIndexRoute = BilibiliUpIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => BilibiliUpRouteRoute,
+} as any)
+const BilibiliUpMidRoute = BilibiliUpMidRouteImport.update({
+  id: '/$mid',
+  path: '/$mid',
+  getParentRoute: () => BilibiliUpRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/bilibili': typeof BilibiliRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/douyin': typeof DouyinRoute
+  '/bilibili/up': typeof BilibiliUpRouteRouteWithChildren
+  '/bilibili/download': typeof BilibiliDownloadRoute
   '/bilibili/favorite': typeof BilibiliFavoriteRoute
   '/bilibili/history': typeof BilibiliHistoryRoute
   '/bilibili/profile': typeof BilibiliProfileRoute
-  '/bilibili/series': typeof BilibiliSeriesRoute
-  '/bilibili/single': typeof BilibiliSingleRoute
-  '/bilibili/up': typeof BilibiliUpRoute
   '/bilibili/': typeof BilibiliIndexRoute
   '/settings/': typeof SettingsIndexRoute
+  '/bilibili/up/$mid': typeof BilibiliUpMidRoute
+  '/bilibili/up/': typeof BilibiliUpIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/douyin': typeof DouyinRoute
+  '/bilibili/download': typeof BilibiliDownloadRoute
   '/bilibili/favorite': typeof BilibiliFavoriteRoute
   '/bilibili/history': typeof BilibiliHistoryRoute
   '/bilibili/profile': typeof BilibiliProfileRoute
-  '/bilibili/series': typeof BilibiliSeriesRoute
-  '/bilibili/single': typeof BilibiliSingleRoute
-  '/bilibili/up': typeof BilibiliUpRoute
   '/bilibili': typeof BilibiliIndexRoute
   '/settings': typeof SettingsIndexRoute
+  '/bilibili/up/$mid': typeof BilibiliUpMidRoute
+  '/bilibili/up': typeof BilibiliUpIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -116,14 +123,15 @@ export interface FileRoutesById {
   '/bilibili': typeof BilibiliRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/douyin': typeof DouyinRoute
+  '/bilibili/up': typeof BilibiliUpRouteRouteWithChildren
+  '/bilibili/download': typeof BilibiliDownloadRoute
   '/bilibili/favorite': typeof BilibiliFavoriteRoute
   '/bilibili/history': typeof BilibiliHistoryRoute
   '/bilibili/profile': typeof BilibiliProfileRoute
-  '/bilibili/series': typeof BilibiliSeriesRoute
-  '/bilibili/single': typeof BilibiliSingleRoute
-  '/bilibili/up': typeof BilibiliUpRoute
   '/bilibili/': typeof BilibiliIndexRoute
   '/settings/': typeof SettingsIndexRoute
+  '/bilibili/up/$mid': typeof BilibiliUpMidRoute
+  '/bilibili/up/': typeof BilibiliUpIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -132,41 +140,43 @@ export interface FileRouteTypes {
     | '/bilibili'
     | '/about'
     | '/douyin'
+    | '/bilibili/up'
+    | '/bilibili/download'
     | '/bilibili/favorite'
     | '/bilibili/history'
     | '/bilibili/profile'
-    | '/bilibili/series'
-    | '/bilibili/single'
-    | '/bilibili/up'
     | '/bilibili/'
     | '/settings/'
+    | '/bilibili/up/$mid'
+    | '/bilibili/up/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
     | '/douyin'
+    | '/bilibili/download'
     | '/bilibili/favorite'
     | '/bilibili/history'
     | '/bilibili/profile'
-    | '/bilibili/series'
-    | '/bilibili/single'
-    | '/bilibili/up'
     | '/bilibili'
     | '/settings'
+    | '/bilibili/up/$mid'
+    | '/bilibili/up'
   id:
     | '__root__'
     | '/'
     | '/bilibili'
     | '/about'
     | '/douyin'
+    | '/bilibili/up'
+    | '/bilibili/download'
     | '/bilibili/favorite'
     | '/bilibili/history'
     | '/bilibili/profile'
-    | '/bilibili/series'
-    | '/bilibili/single'
-    | '/bilibili/up'
     | '/bilibili/'
     | '/settings/'
+    | '/bilibili/up/$mid'
+    | '/bilibili/up/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -221,27 +231,6 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof BilibiliIndexRouteImport
       parentRoute: typeof BilibiliRouteRoute
     }
-    '/bilibili/up': {
-      id: '/bilibili/up'
-      path: '/up'
-      fullPath: '/bilibili/up'
-      preLoaderRoute: typeof BilibiliUpRouteImport
-      parentRoute: typeof BilibiliRouteRoute
-    }
-    '/bilibili/single': {
-      id: '/bilibili/single'
-      path: '/single'
-      fullPath: '/bilibili/single'
-      preLoaderRoute: typeof BilibiliSingleRouteImport
-      parentRoute: typeof BilibiliRouteRoute
-    }
-    '/bilibili/series': {
-      id: '/bilibili/series'
-      path: '/series'
-      fullPath: '/bilibili/series'
-      preLoaderRoute: typeof BilibiliSeriesRouteImport
-      parentRoute: typeof BilibiliRouteRoute
-    }
     '/bilibili/profile': {
       id: '/bilibili/profile'
       path: '/profile'
@@ -263,26 +252,66 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof BilibiliFavoriteRouteImport
       parentRoute: typeof BilibiliRouteRoute
     }
+    '/bilibili/download': {
+      id: '/bilibili/download'
+      path: '/download'
+      fullPath: '/bilibili/download'
+      preLoaderRoute: typeof BilibiliDownloadRouteImport
+      parentRoute: typeof BilibiliRouteRoute
+    }
+    '/bilibili/up': {
+      id: '/bilibili/up'
+      path: '/up'
+      fullPath: '/bilibili/up'
+      preLoaderRoute: typeof BilibiliUpRouteRouteImport
+      parentRoute: typeof BilibiliRouteRoute
+    }
+    '/bilibili/up/': {
+      id: '/bilibili/up/'
+      path: '/'
+      fullPath: '/bilibili/up/'
+      preLoaderRoute: typeof BilibiliUpIndexRouteImport
+      parentRoute: typeof BilibiliUpRouteRoute
+    }
+    '/bilibili/up/$mid': {
+      id: '/bilibili/up/$mid'
+      path: '/$mid'
+      fullPath: '/bilibili/up/$mid'
+      preLoaderRoute: typeof BilibiliUpMidRouteImport
+      parentRoute: typeof BilibiliUpRouteRoute
+    }
   }
 }
 
+interface BilibiliUpRouteRouteChildren {
+  BilibiliUpMidRoute: typeof BilibiliUpMidRoute
+  BilibiliUpIndexRoute: typeof BilibiliUpIndexRoute
+}
+
+const BilibiliUpRouteRouteChildren: BilibiliUpRouteRouteChildren = {
+  BilibiliUpMidRoute: BilibiliUpMidRoute,
+  BilibiliUpIndexRoute: BilibiliUpIndexRoute,
+}
+
+const BilibiliUpRouteRouteWithChildren = BilibiliUpRouteRoute._addFileChildren(
+  BilibiliUpRouteRouteChildren,
+)
+
 interface BilibiliRouteRouteChildren {
+  BilibiliUpRouteRoute: typeof BilibiliUpRouteRouteWithChildren
+  BilibiliDownloadRoute: typeof BilibiliDownloadRoute
   BilibiliFavoriteRoute: typeof BilibiliFavoriteRoute
   BilibiliHistoryRoute: typeof BilibiliHistoryRoute
   BilibiliProfileRoute: typeof BilibiliProfileRoute
-  BilibiliSeriesRoute: typeof BilibiliSeriesRoute
-  BilibiliSingleRoute: typeof BilibiliSingleRoute
-  BilibiliUpRoute: typeof BilibiliUpRoute
   BilibiliIndexRoute: typeof BilibiliIndexRoute
 }
 
 const BilibiliRouteRouteChildren: BilibiliRouteRouteChildren = {
+  BilibiliUpRouteRoute: BilibiliUpRouteRouteWithChildren,
+  BilibiliDownloadRoute: BilibiliDownloadRoute,
   BilibiliFavoriteRoute: BilibiliFavoriteRoute,
   BilibiliHistoryRoute: BilibiliHistoryRoute,
   BilibiliProfileRoute: BilibiliProfileRoute,
-  BilibiliSeriesRoute: BilibiliSeriesRoute,
-  BilibiliSingleRoute: BilibiliSingleRoute,
-  BilibiliUpRoute: BilibiliUpRoute,
   BilibiliIndexRoute: BilibiliIndexRoute,
 }
 

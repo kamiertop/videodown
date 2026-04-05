@@ -10,6 +10,8 @@ export function Favorites(arg1:number,arg2:number,arg3:number):Promise<model.Fav
 
 export function FavoritesList():Promise<model.FavoritesData>;
 
+export function FollowList(arg1:number,arg2:number):Promise<model.FollowData>;
+
 export function IsLoggedIn():Promise<boolean>;
 
 export function LogOut():Promise<model.LogOut>;
