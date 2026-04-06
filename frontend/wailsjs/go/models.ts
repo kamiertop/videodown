@@ -1382,6 +1382,37 @@ export namespace model {
 	
 	
 	
+	
+	export class UserInfoData {
+	    mid: number;
+	    name: string;
+	    sex: string;
+	    face: string;
+	    sign: string;
+	    rank: number;
+	    level: number;
+	    birthday: string;
+	    is_followed: boolean;
+	    is_risk: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new UserInfoData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.mid = source["mid"];
+	        this.name = source["name"];
+	        this.sex = source["sex"];
+	        this.face = source["face"];
+	        this.sign = source["sign"];
+	        this.rank = source["rank"];
+	        this.level = source["level"];
+	        this.birthday = source["birthday"];
+	        this.is_followed = source["is_followed"];
+	        this.is_risk = source["is_risk"];
+	    }
+	}
 
 }
 

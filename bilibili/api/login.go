@@ -6,12 +6,19 @@ import (
 	"strings"
 
 	"github.com/dgraph-io/badger/v4"
+
 	"github.com/kamiertop/videodown/bilibili/model"
 )
 
 // QRCode 获取二维码, 180秒内有效
 func (b *BiliBili) QRCode() (model.QRCodeData, error) {
-	var res model.QRCodeResponse
+	var resp struct {
+		Code    int              `json:"code"`
+		Message string           `json:"message"`
+		TTL     int              `json:"ttl"`
+		Data    model.QRCodeData `json:"data"`
+	}
+
 	if err := b.client.
 		Get("https://passport.bilibili.com/x/passport-login/web/qrcode/generate").
 		SetQueryParams(map[string]string{
@@ -34,16 +41,16 @@ func (b *BiliBili) QRCode() (model.QRCodeData, error) {
 			UserAgent:       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
 		}).
 		Do().
-		Into(&res); err != nil {
+		Into(&resp); err != nil {
 		b.logger.Errorf("failed to get bilibili qrcode: %v", err)
 		return model.QRCodeData{}, errors.New("获取二维码失败")
 	}
-	if res.Code != model.SuccessCode {
-		b.logger.Errorf("bilibili qrcode request failed: code=%d message=%s", res.Code, res.Message)
+	if resp.Code != model.SuccessCode {
+		b.logger.Errorf("bilibili qrcode request failed: code=%d message=%s", resp.Code, resp.Message)
 		return model.QRCodeData{}, errors.New("获取二维码失败")
 	}
 
-	return res.Data, nil
+	return resp.Data, nil
 }
 
 // PollQRCode 轮询二维码状态, 直到扫码成功或二维码过期
@@ -70,13 +77,18 @@ func (b *BiliBili) PollQRCode(qrcodeKey string) (model.PollQRCodeData, error) {
 		return model.PollQRCodeData{}, errors.New("轮询二维码状态失败")
 	}
 
-	var res model.PollQRCodeResponse
+	var res struct {
+		Code    int                  `json:"code"`
+		Message string               `json:"message"`
+		Data    model.PollQRCodeData `json:"data"`
+		TTL     int                  `json:"ttl"`
+	}
 	if err = resp.Into(&res); err != nil {
 		b.logger.Errorf("failed to decode bilibili qrcode poll response: %v", err)
 		return model.PollQRCodeData{}, errors.New("解析二维码状态响应失败")
 	}
 
-	if res.Code != model.SuccessCode || res.Message != "OK" {
+	if res.Code != model.SuccessCode {
 		b.logger.Errorf("bilibili qrcode poll request failed: code=%d message=%s", res.Code, res.Message)
 		return model.PollQRCodeData{}, errors.New("轮询二维码状态失败")
 	}
@@ -177,7 +189,6 @@ func (b *BiliBili) saveCookies(cookies []*http.Cookie) error {
 		b.logger.Error("missing bili_jct in login cookies")
 		return errors.New("保存登录信息失败")
 	}
-
 	if err := b.db.Update(func(txn *badger.Txn) error {
 		if err := txn.Set([]byte(bilibiliCSRFKey), []byte(csrf)); err != nil {
 			b.logger.Errorf("failed to save bilibili cookies with [bili_jct], cookies: %v,err: %e", cookieMap, err)
@@ -192,7 +203,7 @@ func (b *BiliBili) saveCookies(cookies []*http.Cookie) error {
 	return nil
 }
 
-func (b *BiliBili) Refresh() (model.RefreshData, error) {
+func (b *BiliBili) IsRefresh() (model.RefreshData, error) {
 	cookies, err := b.getCookies()
 	if err != nil {
 		return model.RefreshData{}, err

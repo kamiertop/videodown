@@ -32,46 +32,15 @@ func New(logger *logger.Logger, db *badger.DB) *BiliBili {
 	}
 }
 func (b *BiliBili) getCSRF() (string, error) {
-	var csrf string
-	return csrf, b.db.View(func(txn *badger.Txn) error {
-		value, err := txn.Get([]byte(bilibiliCSRFKey))
-		if err != nil {
-			return err
-		}
-		return value.Value(func(val []byte) error {
-			csrf = string(val)
-			return nil
-		})
-	})
+	return b.getKey(bilibiliCSRFKey)
 }
 
 func (b *BiliBili) saveMid(mid uint64) error {
-	return b.db.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte(bilibiliMidKey), []byte(strconv.FormatUint(mid, 10)))
-	})
+	return b.setKey(bilibiliMidKey, strconv.FormatUint(mid, 10))
 }
 
 func (b *BiliBili) getMid() (string, error) {
-	var value string
-	err := b.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(bilibiliMidKey))
-		if err != nil {
-			return err
-		}
-
-		return item.Value(func(val []byte) error {
-			value = string(val)
-			return nil
-		})
-	})
-	if err != nil {
-		if errors.Is(err, badger.ErrKeyNotFound) {
-			return "", errors.New("未找到用户ID")
-		}
-		return "", errors.New("获取用户ID失败")
-	}
-
-	return value, nil
+	return b.getKey(bilibiliMidKey)
 }
 
 func (b *BiliBili) clearAuthState() error {
@@ -112,4 +81,25 @@ func userAgent() string {
 	}
 
 	return "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
+}
+
+func (b *BiliBili) getKey(key string) (string, error) {
+	var value string
+
+	return value, b.db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(key))
+		if err != nil {
+			return err
+		}
+		return item.Value(func(val []byte) error {
+			value = string(val)
+			return nil
+		})
+	})
+}
+
+func (b *BiliBili) setKey(key, value string) error {
+	return b.db.Update(func(txn *badger.Txn) error {
+		return txn.Set([]byte(key), []byte(value))
+	})
 }

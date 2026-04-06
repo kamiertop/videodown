@@ -12,7 +12,11 @@ export function FavoritesList():Promise<model.FavoritesData>;
 
 export function FollowList(arg1:number,arg2:number):Promise<model.FollowData>;
 
+export function Info(arg1:string):Promise<model.UserInfoData>;
+
 export function IsLoggedIn():Promise<boolean>;
+
+export function IsRefresh():Promise<model.RefreshData>;
 
 export function LogOut():Promise<model.LogOut>;
 
@@ -22,6 +26,4 @@ export function PollQRCode(arg1:string):Promise<model.PollQRCodeData>;
 
 export function QRCode():Promise<model.QRCodeData>;
 
-export function Refresh():Promise<model.RefreshData>;
-
-export function SeasonsSeriesList(arg1:string,arg2:string,arg3:number,arg4:number):Promise<model.SeasonsSeriesData>;
+export function SeasonsSeriesList(arg1:string,arg2:number,arg3:number):Promise<model.SeasonsSeriesData>;

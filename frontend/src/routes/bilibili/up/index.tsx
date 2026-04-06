@@ -1,21 +1,10 @@
 import {createFileRoute, useNavigate} from '@tanstack/solid-router'
-import {createSignal, For, Match, onMount, Show, Switch, type JSXElement} from "solid-js";
-import {FollowList} from "../../../../wailsjs/go/api/BiliBili";
+import {createSignal, For, Match, onCleanup, onMount, Show, Switch, type JSXElement} from "solid-js";
+import {FollowList, Info} from "../../../../wailsjs/go/api/BiliBili";
 import {model} from "../../../../wailsjs/go/models";
-import ErrorToast from "../../../components/ErrorToast";
+import UpCommonLayout from "../../../components/UpCommonLayout";
 
-const PAGE_SIZE = 50;
-
-function attributeLabel(attr: number): { text: string; class: string } | null {
-    switch (attr) {
-        case 6:
-            return {text: '互粉', class: 'badge-secondary'};
-        case 128:
-            return {text: '已拉黑', class: 'badge-error'};
-        default:
-            return null;
-    }
-}
+const PAGE_SIZE = 30;
 
 export const Route = createFileRoute('/bilibili/up/')({
     component: UpIndex,
@@ -24,10 +13,24 @@ export const Route = createFileRoute('/bilibili/up/')({
 function UpIndex(): JSXElement {
     const navigate = useNavigate();
     const [loading, setLoading] = createSignal(true);
+    const [parsing, setParsing] = createSignal(false);
     const [followData, setFollowData] = createSignal<model.FollowData | null>(null);
     const [page, setPage] = createSignal(1);
     const [errorText, setErrorText] = createSignal('');
     const [searchInput, setSearchInput] = createSignal('');
+    const [parsedInfo, setParsedInfo] = createSignal<model.UserInfoData | null>(null);
+
+    let errorToastTimer: number | undefined;
+    const showErrorToast = (message: string) => {
+        setErrorText(message);
+        if (errorToastTimer !== undefined) {
+            window.clearTimeout(errorToastTimer);
+        }
+        errorToastTimer = window.setTimeout(() => {
+            setErrorText('');
+            errorToastTimer = undefined;
+        }, 1500)
+    }
 
     const totalPages = () => {
         const total = followData()?.total ?? 0;
@@ -42,7 +45,7 @@ function UpIndex(): JSXElement {
             setFollowData(data);
             setPage(pn);
         } catch (error) {
-            setErrorText(error instanceof Error ? error.message : String(error));
+            showErrorToast(error instanceof Error ? error.message : String(error));
         } finally {
             setLoading(false);
         }
@@ -52,41 +55,45 @@ function UpIndex(): JSXElement {
         void navigate({to: '/bilibili/up/$mid', params: {mid: String(mid)}});
     };
 
-    const handleSearch = () => {
+    const handleSearch = async () => {
         const raw = searchInput().trim();
         if (!raw) return;
 
-        const midMatch = raw.match(/space\.bilibili\.com\/(\d+)/);
-        if (midMatch) {
-            goToUp(Number(midMatch[1]));
-            return;
+        if (parsing()) return;
+        setParsing(true);
+        setErrorText('');
+        setParsedInfo(null);
+        try {
+            const info = await Info(raw);
+            setParsedInfo(info);
+        } catch (error) {
+            showErrorToast(error instanceof Error ? error.message : String(error));
+        } finally {
+            setParsing(false);
         }
-
-        const pureMid = raw.match(/^(\d+)$/);
-        if (pureMid) {
-            goToUp(Number(pureMid[1]));
-            return;
-        }
-
-        setErrorText('请输入有效的 UP主 mid 或空间链接');
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Enter') handleSearch();
+        if (e.key === 'Enter') void handleSearch();
     };
 
     onMount(() => {
         void loadFollows(1);
     });
+    onCleanup(() => {
+        if (errorToastTimer !== undefined) {
+            window.clearTimeout(errorToastTimer);
+        }
+    })
 
     return (
-        <section class="flex h-full min-h-0 flex-col overflow-hidden bg-base-200/40 p-3">
-            {/* 顶部：标题 + 搜索 */}
-            <div class="mb-3 flex shrink-0 flex-wrap items-center gap-3 rounded-xl border border-base-300 bg-base-100 px-4 py-3">
+        <UpCommonLayout
+            headerLeft={
                 <div class="flex items-center gap-2">
                     <h2 class="text-sm font-bold text-base-content">我的关注</h2>
                     <Show when={followData()}>
-                        <span class="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold tabular-nums text-primary">
+                        <span
+                            class="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold tabular-nums text-primary">
                             {followData()!.total}
                         </span>
                     </Show>
@@ -104,22 +111,77 @@ function UpIndex(): JSXElement {
                         </svg>
                     </button>
                 </div>
-
-                <div class="ml-auto flex items-center gap-2">
+            }
+            headerRight={
+                <div class="relative flex items-center gap-2">
+                    <Show when={errorText()}>
+                        <div
+                            class="pointer-events-none absolute right-full top-1/2 z-50 mr-2 -translate-y-1/2"
+                            role="alert"
+                        >
+                            <div
+                                class="w-max min-w-64 max-w-sm whitespace-normal break-words rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-xs font-semibold leading-relaxed text-error shadow-md"
+                            >
+                                {errorText()}
+                            </div>
+                        </div>
+                    </Show>
                     <input
                         type="text"
-                        class="input input-sm input-bordered w-64"
-                        placeholder="输入 UP主 mid 或空间链接"
+                        class="input input-sm input-bordered w-72"
+                        placeholder="输入 UP主 mid / 空间链接（支持不带 https）"
                         value={searchInput()}
                         onInput={(e) => setSearchInput(e.currentTarget.value)}
                         onKeyDown={handleKeyDown}
                     />
-                    <button class="btn btn-primary btn-sm" onClick={handleSearch}>
-                        解析
+                    <button class="btn btn-primary btn-sm" onClick={() => void handleSearch()} disabled={parsing()}>
+                        <Show when={!parsing()} fallback={<span class="loading loading-spinner loading-xs"></span>}>
+                            解析
+                        </Show>
                     </button>
                 </div>
-            </div>
-
+            }
+            headerBelow={
+                parsedInfo() ? (
+                    <div class="rounded-xl border border-base-300 bg-base-100 px-4 py-3">
+                        <div
+                            class="flex flex-wrap items-center gap-3 rounded-xl border border-base-300 bg-base-200/30 p-3">
+                            <div class="h-10 w-10 overflow-hidden rounded-full bg-base-200 ring-2 ring-base-200">
+                                <img
+                                    src={parsedInfo()!.face}
+                                    alt={parsedInfo()!.name}
+                                    referrerPolicy="no-referrer"
+                                    class="h-full w-full object-cover"
+                                />
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span
+                                        class="truncate text-sm font-bold text-base-content">{parsedInfo()!.name}</span>
+                                    <span class="badge badge-outline badge-sm">mid: {parsedInfo()!.mid}</span>
+                                    <span
+                                        class={`badge badge-sm ${parsedInfo()!.is_followed ? 'badge-primary' : 'badge-ghost'}`}>
+                                        {parsedInfo()!.is_followed ? '已关注' : '未关注'}
+                                    </span>
+                                    <span class="badge badge-outline badge-sm">Lv.{parsedInfo()!.level}</span>
+                                </div>
+                                <div class="mt-0.5 line-clamp-1 text-xs text-base-content/60">
+                                    {parsedInfo()!.sign?.trim() ? parsedInfo()!.sign : '这个人很懒，什么也没有写~'}
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button class="btn btn-outline btn-sm" onClick={() => setParsedInfo(null)}>
+                                    清除
+                                </button>
+                                <button class="btn btn-primary btn-sm" onClick={() => goToUp(parsedInfo()!.mid)}>
+                                    进入详情
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                ) : undefined
+            }
+        >
             {/* 关注列表 */}
             <div class="min-h-0 flex-1 overflow-auto rounded-xl border border-base-300 bg-base-100">
                 <Switch>
@@ -137,7 +199,8 @@ function UpIndex(): JSXElement {
                                           d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
                                 </svg>
                                 <p class="mt-3 text-sm font-semibold text-base-content/60">暂无关注</p>
-                                <p class="mt-1 text-xs text-base-content/50">可以通过上方搜索框直接输入 UP主 mid 解析</p>
+                                <p class="mt-1 text-xs text-base-content/50">可以通过上方搜索框直接输入 UP主 mid
+                                    解析</p>
                             </div>
                         </div>
                     </Match>
@@ -146,14 +209,14 @@ function UpIndex(): JSXElement {
                             <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                                 <For each={followData()!.list}>
                                     {(up) => {
-                                        const badge = attributeLabel(up.attribute);
                                         return (
                                             <button
                                                 class="group flex flex-col items-center gap-2 rounded-xl border border-base-300 bg-base-100 p-4 transition-all duration-150 hover:-translate-y-px hover:border-primary/40 hover:shadow-md active:scale-[0.98]"
                                                 onClick={() => goToUp(up.mid)}
                                             >
                                                 <div class="relative">
-                                                    <div class="h-16 w-16 overflow-hidden rounded-full bg-base-200 ring-2 ring-base-200 transition group-hover:ring-primary/30">
+                                                    <div
+                                                        class="h-16 w-16 overflow-hidden rounded-full bg-base-200 ring-2 ring-base-200 transition group-hover:ring-primary/30">
                                                         <img
                                                             src={up.face}
                                                             alt={up.uname}
@@ -162,17 +225,13 @@ function UpIndex(): JSXElement {
                                                             loading="lazy"
                                                         />
                                                     </div>
-                                                    <Show when={badge}>
-                                                        <span
-                                                            class={`badge badge-xs absolute -bottom-1 left-1/2 -translate-x-1/2 ${badge!.class}`}>
-                                                            {badge!.text}
-                                                        </span>
-                                                    </Show>
                                                 </div>
-                                                <span class="max-w-full truncate text-sm font-semibold text-base-content group-hover:text-primary">
+                                                <span
+                                                    class="max-w-full truncate text-sm font-semibold text-base-content group-hover:text-primary">
                                                     {up.uname}
                                                 </span>
-                                                <span class="line-clamp-2 max-w-full text-center text-xs leading-relaxed text-base-content/50">
+                                                <span
+                                                    class="line-clamp-2 max-w-full text-center text-xs leading-relaxed text-base-content/50">
                                                     {up.sign || '这个人很懒，什么也没有写~'}
                                                 </span>
                                             </button>
@@ -208,7 +267,6 @@ function UpIndex(): JSXElement {
                 </Switch>
             </div>
 
-            <ErrorToast message={errorText()}/>
-        </section>
+        </UpCommonLayout>
     );
 }

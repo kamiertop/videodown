@@ -22,8 +22,16 @@ export function FollowList(arg1, arg2) {
   return window['go']['api']['BiliBili']['FollowList'](arg1, arg2);
 }
 
+export function Info(arg1) {
+  return window['go']['api']['BiliBili']['Info'](arg1);
+}
+
 export function IsLoggedIn() {
   return window['go']['api']['BiliBili']['IsLoggedIn']();
+}
+
+export function IsRefresh() {
+  return window['go']['api']['BiliBili']['IsRefresh']();
 }
 
 export function LogOut() {
@@ -42,10 +50,6 @@ export function QRCode() {
   return window['go']['api']['BiliBili']['QRCode']();
 }
 
-export function Refresh() {
-  return window['go']['api']['BiliBili']['Refresh']();
-}
-
-export function SeasonsSeriesList(arg1, arg2, arg3, arg4) {
-  return window['go']['api']['BiliBili']['SeasonsSeriesList'](arg1, arg2, arg3, arg4);
+export function SeasonsSeriesList(arg1, arg2, arg3) {
+  return window['go']['api']['BiliBili']['SeasonsSeriesList'](arg1, arg2, arg3);
 }
