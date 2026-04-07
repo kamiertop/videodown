@@ -3,9 +3,9 @@ import {createSignal, Match, onCleanup, onMount, Switch, type JSXElement} from "
 import {LogOut, MyInfo, PollQRCode} from "../../../wailsjs/go/api/BiliBili";
 import {getLoggedInDeduped} from "../../lib/bilibiliAuth";
 import type {model} from "../../../wailsjs/go/models";
-import BiliBiliQRCode from "../../components/BiliBiliQRCode";
+import QRCode from "../../components/bilibili/QRCode.tsx";
 import ErrorToast from "../../components/ErrorToast";
-import BiliBiliProfileCard from "../../components/BiliBiliProfileCard";
+import ProfileCard from "../../components/bilibili/ProfileCard.tsx";
 import StatusToast from "../../components/StatusToast";
 
 export const Route = createFileRoute('/bilibili/profile')({
@@ -179,7 +179,7 @@ function Profile(): JSXElement {
                 </Match>
 
                 <Match when={loggedIn()}>
-                    <BiliBiliProfileCard
+                    <ProfileCard
                         loading={profileLoading()}
                         loggingOut={logoutLoading()}
                         onLogout={handleLogout}
@@ -194,7 +194,7 @@ function Profile(): JSXElement {
                         </div>
 
                         <div class="space-y-3">
-                            <BiliBiliQRCode
+                            <QRCode
                                 expired={qrExpired()}
                                 onLoad={(data: model.QRCodeData) => {
                                     showStatusToast('二维码已就绪，请使用 B 站 App 扫码。', 'info');

@@ -1,9 +1,9 @@
 import type {JSXElement} from "solid-js";
 import {createSignal, For, onCleanup, onMount} from "solid-js";
 import {Link} from "@tanstack/solid-router";
-import {MyInfo} from "../../wailsjs/go/api/BiliBili";
-import {getLoggedInDeduped} from "../lib/bilibiliAuth";
-import bilibiliAvatarFallback from "../assets/bilibili_256_256.svg";
+import {MyInfo} from "../../../wailsjs/go/api/BiliBili";
+import {getLoggedInDeduped} from "../../lib/bilibiliAuth.ts";
+import bilibiliAvatarFallback from "../../assets/bilibili_256_256.svg";
 
 const menuItems = [
     {
@@ -55,7 +55,7 @@ const menuItems = [
     }
 ]
 
-export default function BiliBiliMenu(): JSXElement {
+export default function Menu(): JSXElement {
     const [avatar, setAvatar] = createSignal(bilibiliAvatarFallback);
     const [avatarLoadFailed, setAvatarLoadFailed] = createSignal(false);
 
@@ -102,7 +102,7 @@ export default function BiliBiliMenu(): JSXElement {
 
     return (
         <div
-            class="flex h-full w-[5.5rem] shrink-0 flex-col gap-1.5 overflow-hidden border-r border-base-300/90 bg-gradient-to-b from-base-100 via-base-100 to-base-200/50 px-2 py-3">
+            class="flex h-full w-22 shrink-0 flex-col gap-1.5 overflow-hidden border-r border-base-300/90 bg-gradient-to-b from-base-100 via-base-100 to-base-200/50 px-2 py-3">
             <p class="mb-0.5 select-none px-0.5 text-center text-[9px] font-semibold uppercase tracking-widest text-base-content/40">
                 B 站
             </p>

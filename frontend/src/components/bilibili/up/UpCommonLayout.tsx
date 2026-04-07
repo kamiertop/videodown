@@ -1,5 +1,15 @@
 import type {JSXElement} from "solid-js";
 
+/**
+ * Bilibili UP 页面通用布局：
+ * - 顶部 header 支持左右区块 + 可选下方扩展区域
+ * - 主体内容区固定滚动容器
+ *
+ * 布局要点：
+ * - 外层 `section` 使用 `flex-col` + `overflow-hidden`，避免页面整体出现双滚动条
+ * - 主内容区 `main` 使用 `min-h-0 flex-1 overflow-auto`，把滚动“收敛”到内容区
+ * - header 左侧用 `min-w-0 flex-1`，保证右侧固定内容不被挤压，左侧超长时自动截断
+ */
 export default function UpCommonLayout(props: {
     headerLeft: JSXElement;
     headerRight?: JSXElement;

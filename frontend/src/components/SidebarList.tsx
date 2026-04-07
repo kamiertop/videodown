@@ -20,7 +20,7 @@ export default function SidebarList<T extends SidebarListItem>(props: {
                     const isSelected = () => props.selectedId() === item.id;
                     return (
                         <button
-                            class={`group my-0.5 flex h-[42px] w-full items-center gap-2.5 rounded-lg px-2.5 text-left transition-all duration-100 ${
+                            class={`group my-0.5 flex h-10.5 w-full items-center gap-2.5 rounded-lg px-2.5 text-left transition-all duration-100 ${
                                 isSelected()
                                     ? 'bg-success/15 ring-1 ring-success/30'
                                     : 'hover:bg-accent/10'

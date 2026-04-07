@@ -1,5 +1,7 @@
 import {For, Show, type JSXElement} from "solid-js";
 import {formatCount, formatDate, formatDuration} from "../lib/format";
+import IconEye from "./icons/IconEye";
+import IconChat from "./icons/IconChat";
 
 export interface MediaCardItem {
     id: number;
@@ -53,23 +55,11 @@ export default function VideoCardGrid(props: {
                                 class="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between bg-linear-to-t from-black/70 to-transparent px-2 pb-1.5 pt-5">
                                 <div class="flex items-center gap-2.5 text-white/90">
                                     <span class="flex items-center gap-0.5 text-xs">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3"
-                                             viewBox="0 0 20 20" fill="currentColor">
-                                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/>
-                                            <path fill-rule="evenodd"
-                                                  d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
-                                                  clip-rule="evenodd"/>
-                                        </svg>
+                                        <IconEye class="h-3 w-3"/>
                                         {formatCount(media.play)}
                                     </span>
                                     <span class="flex items-center gap-0.5 text-xs">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3"
-                                             viewBox="0 0 20 20" fill="currentColor">
-                                            <path
-                                                d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"/>
-                                            <path
-                                                d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z"/>
-                                        </svg>
+                                        <IconChat class="h-3 w-3"/>
                                         {formatCount(media.danmaku)}
                                     </span>
                                 </div>

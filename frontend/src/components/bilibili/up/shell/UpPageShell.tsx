@@ -1,5 +1,9 @@
 import type {JSXElement} from "solid-js";
 
+/**
+ * Bilibili UP 页面“页面壳”组件（header + 可选 headerBelow + 内容区）。
+ * 目前未在路由中使用，保留用于后续拆分更多 UP 子页面。
+ */
 export default function UpPageShell(props: {
     header: JSXElement;
     headerBelow?: JSXElement;

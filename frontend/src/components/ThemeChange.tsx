@@ -1,5 +1,10 @@
 import {createSignal, type JSXElement, onMount} from "solid-js";
 
+
+/**
+ * 主题切换组件，允许用户切换主题
+ */
+
 export default function ThemeChange(): JSXElement {
     const [theme, setTheme] = createSignal<string>('light');
 

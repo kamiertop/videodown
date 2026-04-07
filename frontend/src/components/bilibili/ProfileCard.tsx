@@ -1,6 +1,6 @@
 import {createSignal, Show, type JSXElement} from "solid-js";
-import type {model} from "../../wailsjs/go/models";
-import bilibiliAvatarFallback from "../assets/bilibili_256_256.svg";
+import type {model} from "../../../wailsjs/go/models.ts";
+import bilibiliAvatarFallback from "../../assets/bilibili_256_256.svg";
 
 interface BiliBiliProfileCardProps {
     loading?: boolean;
@@ -9,7 +9,7 @@ interface BiliBiliProfileCardProps {
     profile: model.MyInfoProfile | null;
 }
 
-export default function BiliBiliProfileCard(props: BiliBiliProfileCardProps): JSXElement {
+export default function ProfileCard(props: BiliBiliProfileCardProps): JSXElement {
     const [avatarLoadFailed, setAvatarLoadFailed] = createSignal(false);
 
     const avatar = () => {

@@ -2,7 +2,9 @@ import {createFileRoute, useNavigate} from '@tanstack/solid-router'
 import {createSignal, For, Match, onCleanup, onMount, Show, Switch, type JSXElement} from "solid-js";
 import {FollowList, Info} from "../../../../wailsjs/go/api/BiliBili";
 import {model} from "../../../../wailsjs/go/models";
-import UpCommonLayout from "../../../components/UpCommonLayout";
+import UpCommonLayout from "../../../components/bilibili/up/UpCommonLayout";
+import IconRefresh from "../../../components/icons/IconRefresh";
+import IconUsers from "../../../components/icons/IconUsers";
 
 const PAGE_SIZE = 30;
 
@@ -12,16 +14,18 @@ export const Route = createFileRoute('/bilibili/up/')({
 
 function UpIndex(): JSXElement {
     const navigate = useNavigate();
-    const [loading, setLoading] = createSignal(true);
-    const [parsing, setParsing] = createSignal(false);
+    const [loading, setLoading] = createSignal<boolean>(true);
+    const [parsing, setParsing] = createSignal<boolean>(false);
     const [followData, setFollowData] = createSignal<model.FollowData | null>(null);
-    const [page, setPage] = createSignal(1);
-    const [errorText, setErrorText] = createSignal('');
-    const [searchInput, setSearchInput] = createSignal('');
+    const [page, setPage] = createSignal<number>(1);
+    const [errorText, setErrorText] = createSignal<string>('');
+    const [searchInput, setSearchInput] = createSignal<string>('');
     const [parsedInfo, setParsedInfo] = createSignal<model.UserInfoData | null>(null);
 
     let errorToastTimer: number | undefined;
     const showErrorToast = (message: string) => {
+        // 这里用“可覆盖的 timer”实现轻量 toast：
+        // 连续报错时只保留最后一次提示，避免 UI 堆叠/闪烁。
         setErrorText(message);
         if (errorToastTimer !== undefined) {
             window.clearTimeout(errorToastTimer);
@@ -31,11 +35,11 @@ function UpIndex(): JSXElement {
             errorToastTimer = undefined;
         }, 1500)
     }
-
-    const totalPages = () => {
-        const total = followData()?.total ?? 0;
+    
+    function totalPages(): number {
+        const total: number = followData()?.total ?? 0;
         return Math.max(1, Math.ceil(total / PAGE_SIZE));
-    };
+    }
 
     const loadFollows = async (pn: number) => {
         setLoading(true);
@@ -60,6 +64,7 @@ function UpIndex(): JSXElement {
         if (!raw) return;
 
         if (parsing()) return;
+        // “解析”是一次性动作：避免用户连点导致重复请求与状态抖动。
         setParsing(true);
         setErrorText('');
         setParsedInfo(null);
@@ -103,12 +108,7 @@ function UpIndex(): JSXElement {
                         disabled={loading()}
                         title="刷新"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg"
-                             class={`h-3.5 w-3.5 text-base-content/50 ${loading() ? 'animate-spin' : ''}`}
-                             fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round"
-                                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                        </svg>
+                        <IconRefresh class={`h-3.5 w-3.5 text-base-content/50 ${loading() ? 'animate-spin' : ''}`}/>
                     </button>
                 </div>
             }
@@ -120,7 +120,7 @@ function UpIndex(): JSXElement {
                             role="alert"
                         >
                             <div
-                                class="w-max min-w-64 max-w-sm whitespace-normal break-words rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-xs font-semibold leading-relaxed text-error shadow-md"
+                                class="w-max min-w-64 max-w-sm whitespace-normal wrap-break-word rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-xs font-semibold leading-relaxed text-error shadow-md"
                             >
                                 {errorText()}
                             </div>
@@ -193,11 +193,7 @@ function UpIndex(): JSXElement {
                     <Match when={!followData()?.list?.length}>
                         <div class="flex h-full items-center justify-center text-base-content/40">
                             <div class="text-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-14 w-14" fill="none"
-                                     viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                </svg>
+                                <IconUsers class="mx-auto h-14 w-14"/>
                                 <p class="mt-3 text-sm font-semibold text-base-content/60">暂无关注</p>
                                 <p class="mt-1 text-xs text-base-content/50">可以通过上方搜索框直接输入 UP主 mid
                                     解析</p>

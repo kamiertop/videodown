@@ -1,8 +1,8 @@
 import {createSignal, onCleanup, onMount, Show, type JSXElement} from "solid-js";
-import {QRCode} from "../../wailsjs/go/api/BiliBili";
-import type {model} from "../../wailsjs/go/models";
+import {QRCode as GetQRCode} from "../../../wailsjs/go/api/BiliBili";
+import type {model} from "../../../wailsjs/go/models.ts";
 import QRCodeGenerator from "qrcode";
-import ErrorToast from "./ErrorToast";
+import ErrorToast from "../ErrorToast.tsx";
 
 interface BiliBiliQRCodeProps {
     expired?: boolean;
@@ -14,10 +14,13 @@ interface QRCodeViewData {
     payload: model.QRCodeData;
 }
 
+/**
+ * Bilibili 登录二维码组件：拉取登录二维码并渲染成图片。
+ */
 export default function BiliBiliQRCode(props: BiliBiliQRCodeProps): JSXElement {
     const [loadingQRCode, setLoadingQRCode] = createSignal(false);
     const [qrCode, setQRCode] = createSignal<QRCodeViewData | null>(null);
-    const [errorText, setErrorText] = createSignal('');
+    const [errorText, setErrorText] = createSignal<string>('');
 
     let errorToastTimer: number | undefined;
 
@@ -39,8 +42,12 @@ export default function BiliBiliQRCode(props: BiliBiliQRCodeProps): JSXElement {
         setErrorText('');
 
         try {
-            const payload = await QRCode();
+            const payload = await GetQRCode();
             props.onLoad?.(payload);
+
+            if (!payload?.url?.trim()) {
+                throw new Error('二维码数据为空');
+            }
 
             const image = await QRCodeGenerator.toDataURL(payload.url, {
                 width: 240,
