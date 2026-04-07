@@ -1,6 +1,7 @@
 import {createFileRoute} from '@tanstack/solid-router'
 import {createSignal, Match, onCleanup, onMount, Switch, type JSXElement} from "solid-js";
-import {IsLoggedIn, LogOut, MyInfo, PollQRCode} from "../../../wailsjs/go/api/BiliBili";
+import {LogOut, MyInfo, PollQRCode} from "../../../wailsjs/go/api/BiliBili";
+import {getLoggedInDeduped} from "../../lib/bilibiliAuth";
 import type {model} from "../../../wailsjs/go/models";
 import BiliBiliQRCode from "../../components/BiliBiliQRCode";
 import ErrorToast from "../../components/ErrorToast";
@@ -146,7 +147,7 @@ function Profile(): JSXElement {
 
     onMount(async () => {
         try {
-            const isLoggedIn = await IsLoggedIn();
+            const isLoggedIn = await getLoggedInDeduped();
             setLoggedIn(isLoggedIn);
             if (isLoggedIn) {
                 await loadProfile();

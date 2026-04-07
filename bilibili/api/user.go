@@ -18,10 +18,7 @@ func (b *BiliBili) Info(spaceURLOrMid string) (model.UserInfoData, error) {
 	}
 
 	// 获取 WBI 密钥
-	wbiKeys, err := b.getWbiKeys()
-	if err != nil {
-		return resp.Data, err
-	}
+
 	cookies, err := b.getCookies()
 	if err != nil {
 		return resp.Data, err
@@ -39,7 +36,10 @@ func (b *BiliBili) Info(spaceURLOrMid string) (model.UserInfoData, error) {
 	}
 
 	// 添加 WBI 签名
-	params = encWbiParams(params, wbiKeys.ImgKey, wbiKeys.SubKey)
+	params, err = b.encWbiParams(params)
+	if err != nil {
+		return resp.Data, err
+	}
 
 	// 发起请求
 	err = b.client.

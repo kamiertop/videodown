@@ -26,4 +26,10 @@ export function PollQRCode(arg1:string):Promise<model.PollQRCodeData>;
 
 export function QRCode():Promise<model.QRCodeData>;
 
+export function SeasonsArchivesList(arg1:string,arg2:number,arg3:number,arg4:number):Promise<model.SeasonsArchivesData>;
+
 export function SeasonsSeriesList(arg1:string,arg2:number,arg3:number):Promise<model.SeasonsSeriesData>;
+
+export function SeriesList(arg1:string,arg2:number,arg3:number,arg4:number):Promise<model.SeriesArchivesData>;
+
+export function VideoList(arg1:number,arg2:number,arg3:number):Promise<model.VideoListData>;

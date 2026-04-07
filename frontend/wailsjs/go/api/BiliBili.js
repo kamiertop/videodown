@@ -50,6 +50,18 @@ export function QRCode() {
   return window['go']['api']['BiliBili']['QRCode']();
 }
 
+export function SeasonsArchivesList(arg1, arg2, arg3, arg4) {
+  return window['go']['api']['BiliBili']['SeasonsArchivesList'](arg1, arg2, arg3, arg4);
+}
+
 export function SeasonsSeriesList(arg1, arg2, arg3) {
   return window['go']['api']['BiliBili']['SeasonsSeriesList'](arg1, arg2, arg3);
+}
+
+export function SeriesList(arg1, arg2, arg3, arg4) {
+  return window['go']['api']['BiliBili']['SeriesList'](arg1, arg2, arg3, arg4);
+}
+
+export function VideoList(arg1, arg2, arg3) {
+  return window['go']['api']['BiliBili']['VideoList'](arg1, arg2, arg3);
 }

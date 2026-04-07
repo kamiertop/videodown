@@ -1,7 +1,8 @@
 import type {JSXElement} from "solid-js";
 import {createSignal, For, onCleanup, onMount} from "solid-js";
 import {Link} from "@tanstack/solid-router";
-import {IsLoggedIn, MyInfo} from "../../wailsjs/go/api/BiliBili";
+import {MyInfo} from "../../wailsjs/go/api/BiliBili";
+import {getLoggedInDeduped} from "../lib/bilibiliAuth";
 import bilibiliAvatarFallback from "../assets/bilibili_256_256.svg";
 
 const menuItems = [
@@ -67,7 +68,7 @@ export default function BiliBiliMenu(): JSXElement {
         setAvatarLoadFailed(false);
 
         try {
-            const loggedIn = await IsLoggedIn();
+            const loggedIn = await getLoggedInDeduped();
             if (!loggedIn) {
                 resetAvatar();
                 return;

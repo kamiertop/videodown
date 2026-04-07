@@ -39,3 +39,87 @@ func (b *BiliBili) SeasonsSeriesList(upMid string, pageSize, pageNum int) (model
 
 	return response.Data, nil
 }
+
+// SeasonsArchivesList 获取一个合集的视频列表
+func (b *BiliBili) SeasonsArchivesList(upMid string, pageSize, pageNum, seasonId int) (model.SeasonsArchivesData, error) {
+	cookies, err := b.getCookies()
+	if err != nil {
+		return model.SeasonsArchivesData{}, err
+	}
+	var resp struct {
+		Data    model.SeasonsArchivesData `json:"data"`
+		Code    int                       `json:"code"`
+		Message string                    `json:"message"`
+		TTL     int                       `json:"ttl"`
+	}
+
+	err = b.client.Get("https://api.bilibili.com/x/polymer/web-space/seasons_archives_list").
+		SetQueryParamsAnyType(map[string]any{
+			"mid":           upMid,
+			"season_id":     seasonId,
+			"page_size":     pageSize,
+			"page_num":      pageNum,
+			"sort_reversed": false,
+			webLocation:     "333.1387",
+		}).
+		SetHeaders(publicHeaders()).
+		SetHeader(Cookie, cookies).
+		SetHeader(Referer, fmt.Sprintf("https://space.bilibili.com/%s/lists/%d?type=season", upMid, seasonId)).
+		Do().
+		Into(&resp)
+	if err != nil {
+		b.logger.Errorf("request seasons archives list api error: %v", err)
+		return model.SeasonsArchivesData{}, errors.New("获取合集视频列表失败")
+	}
+	if resp.Code != model.SuccessCode {
+		b.logger.Errorf("get seasons archives list error, code: %d, message: %s", resp.Code, resp.Message)
+		return model.SeasonsArchivesData{}, errors.New("获取合集视频列表失败")
+	}
+
+	return resp.Data, nil
+}
+
+// SeriesList 获取一个系列的视频列表, 这个接口和合集视频列表的接口不一样
+func (b *BiliBili) SeriesList(upMid string, ps, pn, seriesId int) (model.SeriesArchivesData, error) {
+	cookies, err := b.getCookies()
+	if err != nil {
+		return model.SeriesArchivesData{}, err
+	}
+	myMid, err := b.getMid()
+	if err != nil {
+		return model.SeriesArchivesData{}, err
+	}
+	var resp struct {
+		Data    model.SeriesArchivesData `json:"data"`
+		Code    int                      `json:"code"`
+		Message string                   `json:"message"`
+		TTL     int                      `json:"ttl"`
+	}
+
+	err = b.client.
+		Get("https://api.bilibili.com/x/series/archives").
+		SetQueryParamsAnyType(map[string]any{
+			"mid":         upMid,
+			"current_mid": myMid,
+			"series_id":   seriesId,
+			"ps":          ps,
+			"pn":          pn,
+			"sort":        "desc",
+			webLocation:   "333.1387",
+			"only_normal": true,
+		}).SetHeader(Cookie, cookies).
+		SetHeaders(publicHeaders()).
+		SetHeader(Referer, fmt.Sprintf("https://space.bilibili.com/%s/lists/%d?type=series", upMid, seriesId)).
+		Do().
+		Into(&resp)
+	if err != nil {
+		b.logger.Errorf("request series list api error: %v", err)
+		return model.SeriesArchivesData{}, errors.New("获取系列视频列表失败")
+	}
+	if resp.Code != model.SuccessCode {
+		b.logger.Errorf("get series list error, code: %d, message: %s", resp.Code, resp.Message)
+		return model.SeriesArchivesData{}, errors.New("获取系列视频列表失败")
+	}
+
+	return resp.Data, nil
+}

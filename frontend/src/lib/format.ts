@@ -1,3 +1,12 @@
+/** B 站稿件时长字符串 `mm:ss` 或 `hh:mm:ss` → 秒 */
+export function parseBilibiliLengthToSeconds(length: string): number {
+    const parts = length.trim().split(':').map((p) => parseInt(p, 10));
+    if (parts.some((n) => Number.isNaN(n))) return 0;
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    return 0;
+}
+
 export function formatDuration(totalSeconds: number): string {
     const safe = Number.isFinite(totalSeconds) ? Math.max(0, Math.floor(totalSeconds)) : 0;
     const hours = Math.floor(safe / 3600);

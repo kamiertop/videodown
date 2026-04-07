@@ -1,5 +1,5 @@
 import {createFileRoute} from '@tanstack/solid-router'
-import {createSignal, Match, onMount, Show, Switch, type JSXElement} from "solid-js";
+import {createMemo, createSignal, Match, onMount, Show, Switch, type JSXElement} from "solid-js";
 import {Collection, CollectionItem, Favorites, FavoritesList} from "../../../wailsjs/go/api/BiliBili";
 import {model} from "../../../wailsjs/go/models";
 import {BrowserOpenURL, ClipboardSetText} from "../../../wailsjs/runtime";
@@ -154,7 +154,7 @@ function Favorite(): JSXElement {
         return toCollectionMediaCards(collectionDetail()?.medias ?? []);
     };
 
-    const selectedSet = () => new Set(selectedMediaIds());
+    const selectedSet = createMemo(() => new Set(selectedMediaIds()));
 
     const allSelected = () => {
         const cards = currentMediaCards();

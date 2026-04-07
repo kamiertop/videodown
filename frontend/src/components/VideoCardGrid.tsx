@@ -1,4 +1,4 @@
-import {createSignal, For, Show, type JSXElement} from "solid-js";
+import {For, Show, type JSXElement} from "solid-js";
 import {formatCount, formatDate, formatDuration} from "../lib/format";
 
 export interface MediaCardItem {
@@ -45,7 +45,8 @@ export default function VideoCardGrid(props: {
                             >
                                 <img src={media.cover} alt={media.title}
                                      class="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
-                                     loading="lazy"/>
+                                     loading="lazy"
+                                     decoding="async"/>
                             </Show>
 
                             <div
@@ -81,26 +82,12 @@ export default function VideoCardGrid(props: {
 
                         <div class="flex min-h-0 flex-1 cursor-pointer flex-col px-2.5 pb-2.5 pt-2"
                              onClick={() => props.onToggleSelect(media.id)}>
-                            {(() => {
-                                const [clamped, setClamped] = createSignal(false);
-                                let titleRef!: HTMLParagraphElement;
-                                const checkClamped = () => setClamped(titleRef.scrollHeight > titleRef.clientHeight);
-                                return (
-                                    <div class="group/title relative"
-                                         onMouseEnter={checkClamped}>
-                                        <p ref={titleRef}
-                                           class="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-base-content">
-                                            {media.title}
-                                        </p>
-                                        <Show when={clamped()}>
-                                            <div
-                                                class="pointer-events-none absolute inset-x-0 top-full z-50 mt-1 hidden rounded-md border border-base-300 bg-base-100 px-3 py-1.5 text-xs text-base-content shadow-md group-hover/title:block">
-                                                {media.title}
-                                            </div>
-                                        </Show>
-                                    </div>
-                                );
-                            })()}
+                            <p
+                                class="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-base-content"
+                                title={media.title}
+                            >
+                                {media.title}
+                            </p>
                             <div class="mt-1.5 flex items-center justify-between">
                                 <p class="flex min-w-0 flex-1 items-center gap-1 truncate text-xs text-base-content/55">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 shrink-0"

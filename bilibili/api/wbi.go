@@ -46,9 +46,13 @@ func genMixinKey(imgKey, subKey string) string {
 }
 
 // encWbiParams 为参数做 WBI 签名：添加 wts，并计算 w_rid
-func encWbiParams(params map[string]string, imgKey, subKey string) map[string]string {
+func (b *BiliBili) encWbiParams(params map[string]string) (map[string]string, error) {
+	wbiKey, err := b.getWbiKeys()
+	if err != nil {
+		return nil, err
+	}
 	// 1. 生成 mixin_key
-	mixinKey := genMixinKey(imgKey, subKey)
+	mixinKey := genMixinKey(wbiKey.ImgKey, wbiKey.SubKey)
 
 	// 2. 添加 wts（当前秒级时间戳）
 	now := time.Now().Unix()
@@ -88,7 +92,7 @@ func encWbiParams(params map[string]string, imgKey, subKey string) map[string]st
 
 	params["w_rid"] = wRid
 
-	return params
+	return params, nil
 }
 
 // getWbiKeys 从 nav 接口获取 img_key 和 sub_key
