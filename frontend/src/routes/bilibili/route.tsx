@@ -12,7 +12,11 @@ function BiliBiliLayout(): JSXElement {
             <aside class={"h-full shrink-0 contain-[layout_paint_style]"}>
                 <Menu/>
             </aside>
-            <main class={"flex-1 min-w-0 overflow-hidden contain-[layout_paint]"}>
+            <main
+                class={
+                    "flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden contain-[layout_paint]"
+                }
+            >
                 <Outlet/>
             </main>
         </section>

@@ -1,12 +1,5 @@
 package model
 
-type CollectionResponse struct {
-	Code    int            `json:"code"`
-	Message string         `json:"message"`
-	TTL     int            `json:"ttl"`
-	Data    CollectionData `json:"data"`
-}
-
 // CollectionData 合集列表元信息
 type CollectionData struct {
 	Count   int                  `json:"count"`

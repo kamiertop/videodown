@@ -32,4 +32,10 @@ export function SeasonsSeriesList(arg1:string,arg2:number,arg3:number):Promise<m
 
 export function SeriesList(arg1:string,arg2:number,arg3:number,arg4:number):Promise<model.SeriesArchivesData>;
 
+export function VideoDetailConcise(arg1:number):Promise<model.VideoDetailConciseData>;
+
+export function VideoDetailConciseBvid(arg1:string):Promise<model.VideoDetailConciseData>;
+
 export function VideoList(arg1:number,arg2:number,arg3:number):Promise<model.VideoListData>;
+
+export function VideoPlayURL(arg1:number,arg2:string,arg3:number,arg4:number,arg5:number):Promise<model.VideoURLData>;

@@ -1,8 +1,7 @@
-import {createFileRoute} from '@tanstack/solid-router'
+import {createFileRoute, useNavigate} from '@tanstack/solid-router'
 import {createMemo, createSignal, Match, onMount, Show, Switch, type JSXElement} from "solid-js";
 import {Collection, CollectionItem, Favorites, FavoritesList} from "../../../wailsjs/go/api/BiliBili";
 import {model} from "../../../wailsjs/go/models";
-import {BrowserOpenURL, ClipboardSetText} from "../../../wailsjs/runtime";
 import ErrorToast from "../../components/ErrorToast";
 import StatusToast from "../../components/StatusToast";
 import EmptyState from "../../components/EmptyState";
@@ -88,13 +87,8 @@ function toCollectionMediaCards(medias: model.CollectionItemMedias[]): MediaCard
     }));
 }
 
-function resolveURL(media: MediaCardItem): string {
-    if (media.link) return media.link;
-    if (media.bvid) return `https://www.bilibili.com/video/${media.bvid}`;
-    return '';
-}
-
 function Favorite(): JSXElement {
+    const navigate = useNavigate();
     const [activeTab, setActiveTab] = createSignal<SidebarTab>('favorite');
 
     const [favLoading, setFavLoading] = createSignal(true);
@@ -132,19 +126,17 @@ function Favorite(): JSXElement {
 
     // ── 下载 ──
 
-    const downloadMediaList = async (medias: MediaCardItem[], label: string) => {
-        const urls = medias.map(resolveURL).filter(Boolean);
-        if (urls.length === 0) {
-            pushStatus('没有可下载的视频链接', 'warning');
+    const downloadMediaList = (medias: MediaCardItem[], label: string) => {
+        const bvids = [...new Set(medias.map(m => m.bvid?.trim()).filter(Boolean))];
+        if (bvids.length === 0) {
+            pushStatus('没有可下载的视频（缺少 BV 号）', 'warning');
             return;
         }
-        if (urls.length === 1) {
-            BrowserOpenURL(urls[0]);
-            pushStatus(`${label}，已在浏览器打开`, 'success');
-            return;
-        }
-        await ClipboardSetText(urls.join('\n'));
-        pushStatus(`${label}，链接已复制到剪贴板`, 'success');
+        navigate({
+            to: '/bilibili/download',
+            search: {bvids: bvids.join(',')},
+        });
+        pushStatus(`${label}，已打开下载页`, 'success');
     };
 
     const currentMediaCards = (): MediaCardItem[] => {

@@ -8,40 +8,42 @@ import (
 
 // FavoritesList 获取自己的收藏列表，这里不处理他人的收藏列表了
 func (b *BiliBili) FavoritesList() (model.FavoritesData, error) {
+	var resp struct {
+		model.ApiResponse
+		Data model.FavoritesData `json:"data"`
+	}
 	cookie, err := b.getCookies()
 	if err != nil {
-		return model.FavoritesData{}, err
+		return resp.Data, err
 	}
 
 	mid, err := b.getMid()
 	if err != nil {
 		b.logger.Errorf("get mid error: %v", err)
-		return model.FavoritesData{}, err
+		return resp.Data, err
 	}
-
-	var response model.FavoritesResponse
 	if err = b.client.
 		Get("https://api.bilibili.com/x/v3/fav/folder/created/list-all").
 		SetQueryParam("up_mid", mid).SetQueryParam(webLocation, "333.1387").
 		SetHeaders(publicHeaders()).
 		SetHeader(Cookie, cookie).
 		Do().
-		Into(&response); err != nil {
+		Into(&resp); err != nil {
 		b.logger.Errorf("get favorites list error: %v", err)
-		return model.FavoritesData{}, errors.New("获取收藏列表失败")
+		return resp.Data, errors.New("获取收藏列表失败")
 	}
-	switch response.Code {
+	switch resp.Code {
 	case 11010:
-		return model.FavoritesData{}, errors.New("内容不存在")
+		return resp.Data, errors.New("内容不存在")
 	case -403:
-		return model.FavoritesData{}, errors.New("访问权限不足")
+		return resp.Data, errors.New("访问权限不足")
 	case -400:
-		return model.FavoritesData{}, errors.New("请求错误")
+		return resp.Data, errors.New("请求错误")
 	case model.SuccessCode:
-		return response.Data, nil
+		return resp.Data, nil
 	default:
-		b.logger.Errorf("get favorites list failed: code=%d message=%s", response.Code, response.Message)
-		return model.FavoritesData{}, errors.New("获取收藏列表失败")
+		b.logger.Errorf("get favorites list failed: code=%d message=%s", resp.Code, resp.Message)
+		return resp.Data, errors.New("获取收藏列表失败")
 	}
 }
 

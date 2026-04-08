@@ -1,4 +1,4 @@
-import {createFileRoute, Link} from '@tanstack/solid-router'
+import {createFileRoute, Link, useNavigate} from '@tanstack/solid-router'
 import {type JSXElement, onMount} from "solid-js";
 import UpCommonLayout from "../../../components/bilibili/up/UpCommonLayout.tsx";
 import UpDetailHeaderRight from "../../../components/bilibili/up/UpDetailHeaderRight.tsx";
@@ -14,10 +14,11 @@ export const Route = createFileRoute('/bilibili/up/$mid')({
 
 function UpDetail(): JSXElement {
     const params = Route.useParams();
+    const navigate = useNavigate();
     // 说明：路由组件仅负责“装配”页面，不在这里堆积业务逻辑。
     // - 数据请求、状态管理、竞态处理等都在 `-upDetail.logic.ts` 中
     // - 这里把 signals/actions 透传给纯 UI 组件 `UpDetailBody`
-    const logic = createUpDetailLogic(() => params().mid);
+    const logic = createUpDetailLogic(() => params().mid, navigate);
 
     onMount(() => {
         // 首次进入页面时触发初始化加载（Info + 默认视频列表）。

@@ -1,5 +1,111 @@
 export namespace model {
 	
+	export class SegmentBase1 {
+	    initialization: string;
+	    index_range: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SegmentBase1(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.initialization = source["initialization"];
+	        this.index_range = source["index_range"];
+	    }
+	}
+	export class SegmentBase {
+	    Initialization: string;
+	    indexRange: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SegmentBase(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Initialization = source["Initialization"];
+	        this.indexRange = source["indexRange"];
+	    }
+	}
+	export class AudioItem {
+	    id: number;
+	    baseUrl: string;
+	    base_url: string;
+	    backupUrl: string[];
+	    backup_url: string[];
+	    bandwidth: number;
+	    mimeType: string;
+	    mime_type: string;
+	    codecs: string;
+	    width: number;
+	    height: number;
+	    frameRate: string;
+	    frame_rate: string;
+	    sar: string;
+	    startWithSap: number;
+	    start_with_sap: number;
+	    SegmentBase: SegmentBase;
+	    segment_base: SegmentBase1;
+	    codecid: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new AudioItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.baseUrl = source["baseUrl"];
+	        this.base_url = source["base_url"];
+	        this.backupUrl = source["backupUrl"];
+	        this.backup_url = source["backup_url"];
+	        this.bandwidth = source["bandwidth"];
+	        this.mimeType = source["mimeType"];
+	        this.mime_type = source["mime_type"];
+	        this.codecs = source["codecs"];
+	        this.width = source["width"];
+	        this.height = source["height"];
+	        this.frameRate = source["frameRate"];
+	        this.frame_rate = source["frame_rate"];
+	        this.sar = source["sar"];
+	        this.startWithSap = source["startWithSap"];
+	        this.start_with_sap = source["start_with_sap"];
+	        this.SegmentBase = this.convertValues(source["SegmentBase"], SegmentBase);
+	        this.segment_base = this.convertValues(source["segment_base"], SegmentBase1);
+	        this.codecid = source["codecid"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class AutoQnResp {
+	    dyeid: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AutoQnResp(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.dyeid = source["dyeid"];
+	    }
+	}
 	export class CollectionUpper {
 	    mid: number;
 	    name: string;
@@ -324,6 +430,177 @@ export namespace model {
 	
 	
 	
+	
+	export class Flac {
+	    display: boolean;
+	    audio: AudioItem;
+	
+	    static createFrom(source: any = {}) {
+	        return new Flac(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.display = source["display"];
+	        this.audio = this.convertValues(source["audio"], AudioItem);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Dolby {
+	    type: number;
+	    audio: any;
+	
+	    static createFrom(source: any = {}) {
+	        return new Dolby(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.audio = source["audio"];
+	    }
+	}
+	export class VideoItem {
+	    id: number;
+	    baseUrl: string;
+	    base_url: string;
+	    backupUrl: string[];
+	    backup_url: string[];
+	    bandwidth: number;
+	    mimeType: string;
+	    mime_type: string;
+	    codecs: string;
+	    width: number;
+	    height: number;
+	    frameRate: string;
+	    frame_rate: string;
+	    sar: string;
+	    startWithSap: number;
+	    start_with_sap: number;
+	    SegmentBase: SegmentBase;
+	    segment_base: SegmentBase1;
+	    codecid: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new VideoItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.baseUrl = source["baseUrl"];
+	        this.base_url = source["base_url"];
+	        this.backupUrl = source["backupUrl"];
+	        this.backup_url = source["backup_url"];
+	        this.bandwidth = source["bandwidth"];
+	        this.mimeType = source["mimeType"];
+	        this.mime_type = source["mime_type"];
+	        this.codecs = source["codecs"];
+	        this.width = source["width"];
+	        this.height = source["height"];
+	        this.frameRate = source["frameRate"];
+	        this.frame_rate = source["frame_rate"];
+	        this.sar = source["sar"];
+	        this.startWithSap = source["startWithSap"];
+	        this.start_with_sap = source["start_with_sap"];
+	        this.SegmentBase = this.convertValues(source["SegmentBase"], SegmentBase);
+	        this.segment_base = this.convertValues(source["segment_base"], SegmentBase1);
+	        this.codecid = source["codecid"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Dash {
+	    duration: number;
+	    minBufferTime: number;
+	    min_buffer_time: number;
+	    video: VideoItem[];
+	    audio: AudioItem[];
+	    dolby: Dolby;
+	    flac?: Flac;
+	
+	    static createFrom(source: any = {}) {
+	        return new Dash(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.duration = source["duration"];
+	        this.minBufferTime = source["minBufferTime"];
+	        this.min_buffer_time = source["min_buffer_time"];
+	        this.video = this.convertValues(source["video"], VideoItem);
+	        this.audio = this.convertValues(source["audio"], AudioItem);
+	        this.dolby = this.convertValues(source["dolby"], Dolby);
+	        this.flac = this.convertValues(source["flac"], Flac);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Dimension {
+	    width: number;
+	    height: number;
+	    rotate: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Dimension(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.width = source["width"];
+	        this.height = source["height"];
+	        this.rotate = source["rotate"];
+	    }
+	}
 	
 	export class EpisodicButton {
 	    text: string;
@@ -666,6 +943,7 @@ export namespace model {
 		    return a;
 		}
 	}
+	
 	export class FollowDataList {
 	    mid: number;
 	    attribute: number;
@@ -1054,6 +1332,18 @@ export namespace model {
 	
 	
 	
+	export class PlayConf {
+	    is_new_description: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PlayConf(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.is_new_description = source["is_new_description"];
+	    }
+	}
 	export class PollQRCodeData {
 	    url: string;
 	    refresh_token: string;
@@ -1534,6 +1824,8 @@ export namespace model {
 	}
 	
 	
+	
+	
 	export class SeriesArchivesItem {
 	    aid: number;
 	    title: string;
@@ -1646,6 +1938,34 @@ export namespace model {
 	
 	
 	
+	export class SupportFormat {
+	    quality: number;
+	    format: string;
+	    new_description: string;
+	    display_desc: string;
+	    superscript: string;
+	    codecs: string[];
+	    can_watch_qn_reason: number;
+	    limit_watch_reason: number;
+	    report: Record<string, any>;
+	
+	    static createFrom(source: any = {}) {
+	        return new SupportFormat(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.quality = source["quality"];
+	        this.format = source["format"];
+	        this.new_description = source["new_description"];
+	        this.display_desc = source["display_desc"];
+	        this.superscript = source["superscript"];
+	        this.codecs = source["codecs"];
+	        this.can_watch_qn_reason = source["can_watch_qn_reason"];
+	        this.limit_watch_reason = source["limit_watch_reason"];
+	        this.report = source["report"];
+	    }
+	}
 	export class UserInfoData {
 	    mid: number;
 	    name: string;
@@ -1867,6 +2187,131 @@ export namespace model {
 		}
 	}
 	
+	export class VideoViewPageItem {
+	    cid: number;
+	    page: number;
+	    from: string;
+	    part: string;
+	    duration: number;
+	    vid: string;
+	    weblink: string;
+	    dimension: Dimension;
+	    first_frame: string;
+	    ctime: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new VideoViewPageItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.cid = source["cid"];
+	        this.page = source["page"];
+	        this.from = source["from"];
+	        this.part = source["part"];
+	        this.duration = source["duration"];
+	        this.vid = source["vid"];
+	        this.weblink = source["weblink"];
+	        this.dimension = this.convertValues(source["dimension"], Dimension);
+	        this.first_frame = source["first_frame"];
+	        this.ctime = source["ctime"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class VideoView {
+	    bvid: string;
+	    aid: number;
+	    pic: string;
+	    title: string;
+	    pubdate: number;
+	    duration: number;
+	    cid: number;
+	    season_id: number;
+	    pages: VideoViewPageItem[];
+	
+	    static createFrom(source: any = {}) {
+	        return new VideoView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bvid = source["bvid"];
+	        this.aid = source["aid"];
+	        this.pic = source["pic"];
+	        this.title = source["title"];
+	        this.pubdate = source["pubdate"];
+	        this.duration = source["duration"];
+	        this.cid = source["cid"];
+	        this.season_id = source["season_id"];
+	        this.pages = this.convertValues(source["pages"], VideoViewPageItem);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class VideoDetailConciseData {
+	    view: VideoView;
+	
+	    static createFrom(source: any = {}) {
+	        return new VideoDetailConciseData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.view = this.convertValues(source["view"], VideoView);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class VideoList {
 	    slist: any[];
 	    tlist: any;
@@ -1957,6 +2402,144 @@ export namespace model {
 		    return a;
 		}
 	}
+	
+	export class VolumeMultiSceneArgs {
+	    high_dynamic_target_i: string;
+	    normal_target_i: string;
+	    undersized_target_i: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new VolumeMultiSceneArgs(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.high_dynamic_target_i = source["high_dynamic_target_i"];
+	        this.normal_target_i = source["normal_target_i"];
+	        this.undersized_target_i = source["undersized_target_i"];
+	    }
+	}
+	export class Volume {
+	    measured_i: number;
+	    measured_lra: number;
+	    measured_tp: number;
+	    measured_threshold: number;
+	    target_offset: number;
+	    target_i: number;
+	    target_tp: number;
+	    multi_scene_args: VolumeMultiSceneArgs;
+	
+	    static createFrom(source: any = {}) {
+	        return new Volume(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.measured_i = source["measured_i"];
+	        this.measured_lra = source["measured_lra"];
+	        this.measured_tp = source["measured_tp"];
+	        this.measured_threshold = source["measured_threshold"];
+	        this.target_offset = source["target_offset"];
+	        this.target_i = source["target_i"];
+	        this.target_tp = source["target_tp"];
+	        this.multi_scene_args = this.convertValues(source["multi_scene_args"], VolumeMultiSceneArgs);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class VideoURLData {
+	    from: string;
+	    result: string;
+	    message: string;
+	    quality: number;
+	    format: string;
+	    timelength: number;
+	    accept_format: string;
+	    accept_description: string[];
+	    accept_quality: number[];
+	    video_codecid: number;
+	    seek_param: string;
+	    seek_type: string;
+	    dash: Dash;
+	    support_formats: SupportFormat[];
+	    high_format: any;
+	    volume: Volume;
+	    last_play_time: number;
+	    last_play_cid: number;
+	    view_info: any;
+	    play_conf: PlayConf;
+	    cur_language: string;
+	    cur_production_type: number;
+	    auto_qn_resp: AutoQnResp;
+	
+	    static createFrom(source: any = {}) {
+	        return new VideoURLData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.from = source["from"];
+	        this.result = source["result"];
+	        this.message = source["message"];
+	        this.quality = source["quality"];
+	        this.format = source["format"];
+	        this.timelength = source["timelength"];
+	        this.accept_format = source["accept_format"];
+	        this.accept_description = source["accept_description"];
+	        this.accept_quality = source["accept_quality"];
+	        this.video_codecid = source["video_codecid"];
+	        this.seek_param = source["seek_param"];
+	        this.seek_type = source["seek_type"];
+	        this.dash = this.convertValues(source["dash"], Dash);
+	        this.support_formats = this.convertValues(source["support_formats"], SupportFormat);
+	        this.high_format = source["high_format"];
+	        this.volume = this.convertValues(source["volume"], Volume);
+	        this.last_play_time = source["last_play_time"];
+	        this.last_play_cid = source["last_play_cid"];
+	        this.view_info = source["view_info"];
+	        this.play_conf = this.convertValues(source["play_conf"], PlayConf);
+	        this.cur_language = source["cur_language"];
+	        this.cur_production_type = source["cur_production_type"];
+	        this.auto_qn_resp = this.convertValues(source["auto_qn_resp"], AutoQnResp);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	
 	
 
 }

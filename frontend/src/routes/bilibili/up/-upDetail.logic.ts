@@ -1,7 +1,7 @@
 import {createMemo, createSignal, onCleanup} from "solid-js";
+import type {NavigateOptions} from "@tanstack/solid-router";
 import {model} from "../../../../wailsjs/go/models";
 import {Info, SeasonsArchivesList, SeasonsSeriesList, SeriesList, VideoList} from "../../../../wailsjs/go/api/BiliBili";
-import {BrowserOpenURL, ClipboardSetText} from "../../../../wailsjs/runtime";
 import type {MediaCardItem} from "../../../components/VideoCardGrid";
 import type {SidebarListItem} from "../../../components/SidebarList";
 import {parseBilibiliLengthToSeconds} from "../../../lib/format";
@@ -43,12 +43,6 @@ function normalizeBiliCover(url?: string): string {
     return u;
 }
 
-function resolveVideoURL(bvid?: string, link?: string): string {
-    if (link?.trim()) return link.trim();
-    if (bvid?.trim()) return `https://www.bilibili.com/video/${bvid.trim()}`;
-    return '';
-}
-
 type ListKind = 'season' | 'series';
 
 export interface ListsSidebarItem extends SidebarListItem {
@@ -74,7 +68,10 @@ export interface ListsSidebarItem extends SidebarListItem {
  * - Selection：`selectedMediaIds/selectedSet/allSelected`
  * - Toast：`errorText/statusText/statusTone`
  */
-export function createUpDetailLogic(getMid: () => string) {
+export function createUpDetailLogic(
+    getMid: () => string,
+    navigate: (opts: NavigateOptions) => void,
+) {
     const [loading, setLoading] = createSignal<boolean>(true);
     const [errorText, setErrorText] = createSignal<string>('');
     const [statusText, setStatusText] = createSignal<string>('');
@@ -163,19 +160,17 @@ export function createUpDetailLogic(getMid: () => string) {
     };
     const clearSelection = () => setSelectedMediaIds([]);
 
-    const downloadMediaList = async (medias: MediaCardItem[], label: string) => {
-        const urls = medias.map(m => resolveVideoURL(m.bvid, m.link)).filter(Boolean);
-        if (urls.length === 0) {
-            pushStatus('没有可下载的视频链接', 'warning');
+    const downloadMediaList = (medias: MediaCardItem[], label: string) => {
+        const bvids = [...new Set(medias.map(m => m.bvid?.trim()).filter(Boolean))];
+        if (bvids.length === 0) {
+            pushStatus('没有可下载的视频（缺少 BV 号）', 'warning');
             return;
         }
-        if (urls.length === 1) {
-            BrowserOpenURL(urls[0]);
-            pushStatus(`${label}，已在浏览器打开`, 'success');
-            return;
-        }
-        await ClipboardSetText(urls.join('\n'));
-        pushStatus(`${label}，链接已复制到剪贴板`, 'success');
+        navigate({
+            to: '/bilibili/download',
+            search: {bvids: bvids.join(',')},
+        });
+        pushStatus(`${label}，已打开下载页`, 'success');
     };
 
     const downloadSelectedMedia = async () => {

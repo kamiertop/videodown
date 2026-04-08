@@ -62,6 +62,18 @@ export function SeriesList(arg1, arg2, arg3, arg4) {
   return window['go']['api']['BiliBili']['SeriesList'](arg1, arg2, arg3, arg4);
 }
 
+export function VideoDetailConcise(arg1) {
+  return window['go']['api']['BiliBili']['VideoDetailConcise'](arg1);
+}
+
+export function VideoDetailConciseBvid(arg1) {
+  return window['go']['api']['BiliBili']['VideoDetailConciseBvid'](arg1);
+}
+
 export function VideoList(arg1, arg2, arg3) {
   return window['go']['api']['BiliBili']['VideoList'](arg1, arg2, arg3);
+}
+
+export function VideoPlayURL(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['api']['BiliBili']['VideoPlayURL'](arg1, arg2, arg3, arg4, arg5);
 }
