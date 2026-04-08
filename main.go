@@ -7,6 +7,7 @@ import (
 	douyinapi "github.com/kamiertop/videodown/douyin/api"
 	mylogger "github.com/kamiertop/videodown/logger"
 	"github.com/kamiertop/videodown/utils"
+
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/logger"
 	"github.com/wailsapp/wails/v2/pkg/options"

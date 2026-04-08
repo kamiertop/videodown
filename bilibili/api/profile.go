@@ -8,32 +8,35 @@ import (
 
 // MyInfo 个人资料
 func (b *BiliBili) MyInfo() (model.MyInfoProfile, error) {
+	var resp struct {
+		model.ApiResponse
+		Data model.MyInfoData `json:"data"`
+	}
 	cookies, err := b.getCookies()
 	if err != nil {
-		return model.MyInfoProfile{}, err
+		return resp.Data.Profile, err
 	}
-	var response model.MyInfoResponse
 	if err = b.client.
 		Get("https://api.bilibili.com/x/space/v2/myinfo").
 		SetQueryParam("web_location", "333.1007").
 		SetHeaders(publicHeaders()).
 		SetHeader("Cookie", cookies).
 		Do().
-		Into(&response); err != nil {
+		Into(&resp); err != nil {
 		b.logger.Errorf("failed to get my_info: %v", err)
-		return model.MyInfoProfile{}, errors.New("获取个人资料失败")
+		return resp.Data.Profile, errors.New("获取个人资料失败")
 	}
-	if response.Code != model.SuccessCode {
-		b.logger.Errorf("my_info request failed: code=%d message=%s", response.Code, response.Message)
-		return model.MyInfoProfile{}, errors.New("获取个人资料失败")
+	if resp.Code != model.SuccessCode {
+		b.logger.Errorf("my_info request failed: code=%d message=%s", resp.Code, resp.Message)
+		return resp.Data.Profile, errors.New("获取个人资料失败")
 	}
 
-	if response.Data.Profile.Mid != 0 {
-		if err := b.saveMid(response.Data.Profile.Mid); err != nil {
+	if resp.Data.Profile.Mid != 0 {
+		if err := b.saveMid(resp.Data.Profile.Mid); err != nil {
 			b.logger.Errorf("failed to save mid from my_info: %v", err)
-			return model.MyInfoProfile{}, errors.New("保存用户ID失败")
+			return resp.Data.Profile, errors.New("保存用户ID失败")
 		}
 	}
 
-	return response.Data.Profile, nil
+	return resp.Data.Profile, nil
 }

@@ -5,15 +5,19 @@ import (
 )
 
 func (b *BiliBili) FollowList(pn, ps int) (model.FollowData, error) {
+	var resp struct {
+		model.ApiResponse
+		Data model.FollowData `json:"data"`
+	}
+
 	cookies, err := b.getCookies()
 	if err != nil {
-		return model.FollowData{}, err
+		return resp.Data, err
 	}
 	myMid, err := b.getMid()
 	if err != nil {
-		return model.FollowData{}, err
+		return resp.Data, err
 	}
-	var response model.FollowResponse
 	err = b.client.
 		Get("https://api.bilibili.com/x/relation/followings").
 		SetQueryParamsAnyType(map[string]any{
@@ -28,11 +32,14 @@ func (b *BiliBili) FollowList(pn, ps int) (model.FollowData, error) {
 		SetHeaders(publicHeaders()).
 		SetHeader(Cookie, cookies).
 		Do().
-		Into(&response)
+		Into(&resp)
 	if err != nil {
-		b.logger.Errorf("request follow list error: %v", err)
-		return model.FollowData{}, err
+		b.logger.Errorf("request follow list api error: %v", err)
+		return resp.Data, err
+	}
+	if resp.Code != model.SuccessCode {
+		b.logger.Errorf("request follow list error, code: %d, message: %s", resp.Code, resp.Message)
 	}
 
-	return response.Data, nil
+	return resp.Data, nil
 }

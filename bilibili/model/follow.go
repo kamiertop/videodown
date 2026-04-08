@@ -1,13 +1,6 @@
 package model
 
-// FollowResponse 关注列表， 只记录部分重要字段
-type FollowResponse struct {
-	Code    int        `json:"code"`
-	Message string     `json:"message"`
-	TTL     int        `json:"ttl"`
-	Data    FollowData `json:"data"`
-}
-
+// FollowData 关注列表， 只记录部分重要字段
 type FollowData struct {
 	List      []FollowDataList `json:"list"`
 	ReVersion int              `json:"re_version"` // 未知

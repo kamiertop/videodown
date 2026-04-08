@@ -8,6 +8,7 @@ import (
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/imroc/req/v3"
+
 	"github.com/kamiertop/videodown/logger"
 )
 
@@ -26,7 +27,7 @@ type BiliBili struct {
 func New(logger *logger.Logger, db *badger.DB) *BiliBili {
 	logger = logger.WithName("BiliBili")
 	return &BiliBili{
-		logger: logger,
+		logger: logger.WithCaller(2),
 		client: req.C().SetLogger(logger).EnableDebugLog().EnableAutoDecompress(),
 		db:     db,
 	}

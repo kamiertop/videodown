@@ -11,11 +11,14 @@ import (
 // https://api.bilibili.com/x/polymer/web-space/home/seasons_series返回的不全
 // 投稿总量：视频+图文+音频
 func (b *BiliBili) SeasonsSeriesList(upMid string, pageSize, pageNum int) (model.SeasonsSeriesData, error) {
+	var resp struct {
+		model.ApiResponse
+		Data model.SeasonsSeriesData `json:"data"`
+	}
 	cookies, err := b.getCookies()
 	if err != nil {
-		return model.SeasonsSeriesData{}, err
+		return resp.Data, err
 	}
-	var response model.SeasonsSeriesResponse
 	if err := b.client.
 		Get("https://api.bilibili.com/x/polymer/web-space/seasons_series_list").
 		SetQueryParamsAnyType(map[string]any{
@@ -28,29 +31,27 @@ func (b *BiliBili) SeasonsSeriesList(upMid string, pageSize, pageNum int) (model
 		SetHeader(Cookie, cookies).
 		SetHeader(Referer, fmt.Sprintf("https://space.bilibili.com/%s/lists", upMid)).
 		Do().
-		Into(&response); err != nil {
+		Into(&resp); err != nil {
 		b.logger.Errorf("request seasons series list error: %v", err)
-		return model.SeasonsSeriesData{}, errors.New("获取合集|系列列表失败")
+		return resp.Data, errors.New("获取合集|系列列表失败")
 	}
-	if response.Code != model.SuccessCode {
-		b.logger.Errorf("get seasons series list error, code: %d, message: %s", response.Code, response.Message)
-		return model.SeasonsSeriesData{}, errors.New("获取合集|系列列表失败")
+	if resp.Code != model.SuccessCode {
+		b.logger.Errorf("get seasons series list error, code: %d, message: %s", resp.Code, resp.Message)
+		return resp.Data, errors.New("获取合集|系列列表失败")
 	}
 
-	return response.Data, nil
+	return resp.Data, nil
 }
 
 // SeasonsArchivesList 获取一个合集的视频列表
 func (b *BiliBili) SeasonsArchivesList(upMid string, pageSize, pageNum, seasonId int) (model.SeasonsArchivesData, error) {
+	var resp struct {
+		model.ApiResponse
+		Data model.SeasonsArchivesData `json:"data"`
+	}
 	cookies, err := b.getCookies()
 	if err != nil {
-		return model.SeasonsArchivesData{}, err
-	}
-	var resp struct {
-		Data    model.SeasonsArchivesData `json:"data"`
-		Code    int                       `json:"code"`
-		Message string                    `json:"message"`
-		TTL     int                       `json:"ttl"`
+		return resp.Data, err
 	}
 
 	err = b.client.Get("https://api.bilibili.com/x/polymer/web-space/seasons_archives_list").
@@ -69,11 +70,11 @@ func (b *BiliBili) SeasonsArchivesList(upMid string, pageSize, pageNum, seasonId
 		Into(&resp)
 	if err != nil {
 		b.logger.Errorf("request seasons archives list api error: %v", err)
-		return model.SeasonsArchivesData{}, errors.New("获取合集视频列表失败")
+		return resp.Data, errors.New("获取合集视频列表失败")
 	}
 	if resp.Code != model.SuccessCode {
 		b.logger.Errorf("get seasons archives list error, code: %d, message: %s", resp.Code, resp.Message)
-		return model.SeasonsArchivesData{}, errors.New("获取合集视频列表失败")
+		return resp.Data, errors.New("获取合集视频列表失败")
 	}
 
 	return resp.Data, nil
@@ -81,19 +82,17 @@ func (b *BiliBili) SeasonsArchivesList(upMid string, pageSize, pageNum, seasonId
 
 // SeriesList 获取一个系列的视频列表, 这个接口和合集视频列表的接口不一样
 func (b *BiliBili) SeriesList(upMid string, ps, pn, seriesId int) (model.SeriesArchivesData, error) {
+	var resp struct {
+		model.ApiResponse
+		Data model.SeriesArchivesData `json:"data"`
+	}
 	cookies, err := b.getCookies()
 	if err != nil {
-		return model.SeriesArchivesData{}, err
+		return resp.Data, err
 	}
 	myMid, err := b.getMid()
 	if err != nil {
-		return model.SeriesArchivesData{}, err
-	}
-	var resp struct {
-		Data    model.SeriesArchivesData `json:"data"`
-		Code    int                      `json:"code"`
-		Message string                   `json:"message"`
-		TTL     int                      `json:"ttl"`
+		return resp.Data, err
 	}
 
 	err = b.client.
@@ -114,11 +113,11 @@ func (b *BiliBili) SeriesList(upMid string, ps, pn, seriesId int) (model.SeriesA
 		Into(&resp)
 	if err != nil {
 		b.logger.Errorf("request series list api error: %v", err)
-		return model.SeriesArchivesData{}, errors.New("获取系列视频列表失败")
+		return resp.Data, errors.New("获取系列视频列表失败")
 	}
 	if resp.Code != model.SuccessCode {
 		b.logger.Errorf("get series list error, code: %d, message: %s", resp.Code, resp.Message)
-		return model.SeriesArchivesData{}, errors.New("获取系列视频列表失败")
+		return resp.Data, errors.New("获取系列视频列表失败")
 	}
 
 	return resp.Data, nil

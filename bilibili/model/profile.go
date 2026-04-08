@@ -1,12 +1,5 @@
 package model
 
-type MyInfoResponse struct {
-	Code    int32      `json:"code"`
-	Message string     `json:"message"`
-	Ttl     int32      `json:"ttl"`
-	Data    MyInfoData `json:"data"`
-}
-
 // MyInfoData 包含了用户的基本信息和一些统计数据
 type MyInfoData struct {
 	Coins float32 `json:"coins"`
