@@ -1,12 +1,5 @@
 package model
 
-type UserInfoResponse struct {
-	Code    int          `json:"code"`
-	Message string       `json:"message"`
-	TTL     int          `json:"ttl"`
-	Data    UserInfoData `json:"data"`
-}
-
 type UserInfoData struct {
 	Mid        uint64 `json:"mid"`
 	Name       string `json:"name"`

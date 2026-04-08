@@ -8,9 +8,13 @@ import (
 )
 
 func (b *BiliBili) VideoList(mid uint, ps, pn int) (model.VideoListData, error) {
+	var resp struct {
+		model.ApiResponse
+		Data model.VideoListData `json:"data"`
+	}
 	cookies, err := b.getCookies()
 	if err != nil {
-		return model.VideoListData{}, err
+		return resp.Data, err
 	}
 	params := map[string]string{
 		"mid":              strconv.FormatUint(uint64(mid), 10),
@@ -27,11 +31,7 @@ func (b *BiliBili) VideoList(mid uint, ps, pn int) (model.VideoListData, error) 
 
 	params, err = b.encWbiParams(params)
 	if err != nil {
-		return model.VideoListData{}, err
-	}
-	var resp struct {
-		model.ApiResponse
-		Data model.VideoListData `json:"data"`
+		return resp.Data, err
 	}
 	err = b.client.
 		Get("https://api.bilibili.com/x/space/wbi/arc/search").
@@ -41,11 +41,12 @@ func (b *BiliBili) VideoList(mid uint, ps, pn int) (model.VideoListData, error) 
 		Do().
 		Into(&resp)
 	if err != nil {
-		return model.VideoListData{}, err
+		b.logger.Errorf("request video list api error: %v", err)
+		return resp.Data, err
 	}
 	if resp.Code != model.SuccessCode {
 		b.logger.Errorf("request video list error, code: %d, message: %s", resp.Code, resp.Message)
-		return model.VideoListData{}, errors.New("请求视频列表接口错误: " + resp.Message)
+		return resp.Data, errors.New("请求视频列表接口错误: " + resp.Message)
 	}
 
 	return resp.Data, nil

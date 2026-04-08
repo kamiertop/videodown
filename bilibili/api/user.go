@@ -11,7 +11,10 @@ import (
 // 用户空间
 
 func (b *BiliBili) Info(spaceURLOrMid string) (model.UserInfoData, error) {
-	var resp model.UserInfoResponse
+	var resp struct {
+		model.ApiResponse
+		Data model.UserInfoData `json:"data"`
+	}
 	userMid, err := parseMid(spaceURLOrMid)
 	if err != nil {
 		return resp.Data, err

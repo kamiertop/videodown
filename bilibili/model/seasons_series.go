@@ -1,12 +1,5 @@
 package model
 
-type SeasonsSeriesResponse struct {
-	Code    int               `json:"code"`
-	Message string            `json:"message"`
-	Ttl     int               `json:"ttl"`
-	Data    SeasonsSeriesData `json:"data"`
-}
-
 type SeasonsSeriesData struct {
 	ItemsLists SeasonsSeriesItemsLists `json:"items_lists"`
 }

@@ -50,11 +50,14 @@ func (b *BiliBili) FavoritesList() (model.FavoritesData, error) {
 // Favorites 收藏夹详情，包含元数据和视频列表
 // mediaId: model.FavoriteItem 中的id字段; pn: 页码, 默认是1;  ps: 每页数量, 默认40
 func (b *BiliBili) Favorites(mediaId, pn, ps int) (model.FavoriteData, error) {
+	var resp struct {
+		model.ApiResponse
+		Data model.FavoriteData `json:"data"`
+	}
 	cookies, err := b.getCookies()
 	if err != nil {
-		return model.FavoriteData{}, err
+		return resp.Data, err
 	}
-	var response model.FavoriteResponse
 	if err = b.client.
 		Get("https://api.bilibili.com/x/v3/fav/resource/list").
 		SetQueryParamsAnyType(map[string]any{
@@ -71,14 +74,14 @@ func (b *BiliBili) Favorites(mediaId, pn, ps int) (model.FavoriteData, error) {
 		SetHeader("Cookie", cookies).
 		SetHeaders(publicHeaders()).
 		Do().
-		Into(&response); err != nil {
+		Into(&resp); err != nil {
 		b.logger.Errorf("request favorites error: %v", err)
-		return model.FavoriteData{}, errors.New("获取收藏夹详情失败")
+		return resp.Data, errors.New("获取收藏夹详情失败")
 	}
-	if response.Code != model.SuccessCode {
-		b.logger.Errorf("get favorites failed: code=%d message=%s", response.Code, response.Message)
-		return model.FavoriteData{}, errors.New("获取收藏夹详情失败")
+	if resp.Code != model.SuccessCode {
+		b.logger.Errorf("get favorites failed: code=%d message=%s", resp.Code, resp.Message)
+		return resp.Data, errors.New("获取收藏夹详情失败")
 	}
 
-	return response.Data, nil
+	return resp.Data, nil
 }
