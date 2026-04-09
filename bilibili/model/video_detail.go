@@ -37,29 +37,31 @@ type VideoCard struct {
 }
 
 type VideoDetailView struct {
+	Pages                   []VideoPage          `json:"pages"` // 视频分P信息
+	Cid                     int64                `json:"cid"`   // 视频1P cid
 	Bvid                    string               `json:"bvid"`
 	Aid                     int64                `json:"aid"`
+	Duration                int                  `json:"duration"`   // 总时长（所有分P），单位为秒
 	Videos                  int                  `json:"videos"`     // 稿件分P总数
+	UgcSeason               UgcSeason            `json:"ugc_season"` // 视频合集信息，不在合集中的视频无此项
+	Pic                     string               `json:"pic"`        // 视频封面url
+	Title                   string               `json:"title"`      // 视频标题
+	Pubdate                 int                  `json:"pubdate"`    // 发布时间
+	Ctime                   int                  `json:"ctime"`      // 用户投稿时间
 	Tid                     int                  `json:"tid"`        // 分区id
 	TidV2                   int                  `json:"tid_v2"`     // 分区tid（v2）
 	Tname                   string               `json:"tname"`      // 子分区名称
 	TnameV2                 string               `json:"tname_v2"`   // 子分区名称（v2）
 	Copyright               int                  `json:"copyright"`  // 视频类型。1： 原创，2： 转载，3：未填写
-	Pic                     string               `json:"pic"`        // 视频封面url
-	Title                   string               `json:"title"`      // 视频标题
-	Pubdate                 int                  `json:"pubdate"`    // 发布时间
-	Ctime                   int                  `json:"ctime"`      // 用户投稿时间
 	Desc                    string               `json:"desc"`       // 视频简介
 	DescV2                  []VideoDescV2        `json:"desc_v2"`    // 新版视频简介
 	State                   int                  `json:"state"`      // 视频状态
-	Duration                int                  `json:"duration"`   // 总时长（所有分P），单位为秒
 	MissionId               int                  `json:"mission_id"` // 稿件参与的活动id
 	Rights                  VideoViewRights      `json:"rights"`     // 视频属性信息
 	Owner                   VideoOwner           `json:"owner"`      // UP主信息
 	Stat                    VideoViewStat        `json:"stat"`       // 视频状态
 	ArgueInfo               VideoDetailArgueInfo `json:"argue_info"` // 争议/警告信息
 	Dynamic                 string               `json:"dynamic"`    // 视频同步发布的动态文字内容
-	Cid                     int64                `json:"cid"`        // 视频1P cid
 	Dimension               Dimension            `json:"dimension"`  // 视频1P 分辨率
 	SeasonId                int                  `json:"season_id"`  //
 	Premiere                any                  `json:"premiere"`
@@ -73,9 +75,7 @@ type VideoDetailView struct {
 	VtDisplay               string               `json:"vt_display"`
 	IsUpowerExclusiveWithQa bool                 `json:"is_upower_exclusive_with_qa"`
 	NoCache                 bool                 `json:"no_cache"`
-	Pages                   []VideoPage          `json:"pages"` // 视频分P信息
 	Subtitle                VideoSubTitle        `json:"subtitle"`
-	UgcSeason               UgcSeason            `json:"ugc_season"` // 视频合集信息，不在合集中的视频无此项
 	IsSeasonDisplay         bool                 `json:"is_season_display"`
 	UserGarb                UserGarb             `json:"user_garb"` // 用户装扮信息
 	HonorReply              any                  `json:"honor_reply"`
@@ -87,17 +87,17 @@ type VideoDetailView struct {
 }
 
 type VideoViewStat struct {
-	Aid        int64  `json:"aid"`
-	View       int    `json:"view"`
-	Danmaku    int    `json:"danmaku"`
+	Aid        int64  `json:"aid"`     // 视频aid
+	View       int    `json:"view"`    // 视频播放量
+	Danmaku    int    `json:"danmaku"` // 视频弹幕数
 	Reply      int    `json:"reply"`
-	Favorite   int    `json:"favorite"`
-	Coin       int    `json:"coin"`
+	Favorite   int    `json:"favorite"` // 视频收藏数
+	Coin       int    `json:"coin"`     // 视频投币数
 	Share      int    `json:"share"`
 	NowRank    int    `json:"now_rank"`
 	HisRank    int    `json:"his_rank"`
-	Like       int    `json:"like"`
-	Dislike    int    `json:"dislike"`
+	Like       int    `json:"like"`    //	视频点赞数
+	Dislike    int    `json:"dislike"` //	视频点踩数
 	Evaluation string `json:"evaluation"`
 	Vt         int    `json:"vt"`
 }
