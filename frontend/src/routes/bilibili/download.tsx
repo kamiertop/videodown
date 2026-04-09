@@ -26,7 +26,7 @@ export const Route = createFileRoute('/bilibili/download')({
     component: DownLoad,
 })
 
-const BV_RE = /BV1[\w]{9}/i;
+const BV_RE = /BV1\w{9}/i;
 
 type StreamFormat = 'dash' | 'mp4' | 'flv';
 
@@ -36,7 +36,7 @@ interface DownloadItem {
     aid: number;
     title: string;
     pic: string;
-    pages: {cid: number; label: string}[];
+    pages: { cid: number; label: string }[];
     cid: number | null;
     qn: number;
     streamFormat: StreamFormat;
@@ -50,7 +50,7 @@ interface DownloadItem {
     playError: string;
 }
 
-const FORMAT_OPTIONS: {value: StreamFormat; label: string}[] = [
+const FORMAT_OPTIONS: { value: StreamFormat; label: string }[] = [
     {value: 'dash', label: 'DASH（音视频分离）'},
     {value: 'mp4', label: 'MP4（渐进）'},
     {value: 'flv', label: 'FLV'},
@@ -69,7 +69,7 @@ function streamFormatToFnval(f: StreamFormat): number {
     }
 }
 
-function parseVideoInput(raw: string): {kind: 'aid'; aid: number} | {kind: 'bvid'; bvid: string} | null {
+function parseVideoInput(raw: string): { kind: 'aid'; aid: number } | { kind: 'bvid'; bvid: string } | null {
     const s = raw.trim();
     if (!s) return null;
     if (/^\d+$/.test(s)) {
@@ -82,7 +82,7 @@ function parseVideoInput(raw: string): {kind: 'aid'; aid: number} | {kind: 'bvid
     return null;
 }
 
-function pageOptions(view: model.VideoView): {cid: number; label: string}[] {
+function pageOptions(view: model.VideoDetailView): { cid: number; label: string }[] {
     const pages = view.pages;
     if (pages?.length) {
         return pages.map(p => ({
@@ -125,7 +125,7 @@ function splitBvidsParam(s: string): string[] {
     return [...new Set(s.split(',').map(x => x.trim()).filter(Boolean))];
 }
 
-function qualityRows(item: DownloadItem): {q: number; label: string}[] {
+function qualityRows(item: DownloadItem): { q: number; label: string }[] {
     const qs = item.acceptQuality;
     const ds = item.acceptDescription;
     if (qs?.length) {
@@ -172,7 +172,8 @@ function StreamPanel(props: {
                 <span class="badge badge-outline badge-sm">qn {props.play.quality ?? '—'}</span>
             </div>
             <div class="overflow-hidden rounded-lg border border-base-300/80">
-                <div class="grid grid-cols-[minmax(0,1fr)_auto] gap-2 border-b border-base-300/80 bg-base-300/40 px-2 py-1.5 text-[11px] font-medium text-base-content/70">
+                <div
+                    class="grid grid-cols-[minmax(0,1fr)_auto] gap-2 border-b border-base-300/80 bg-base-300/40 px-2 py-1.5 text-[11px] font-medium text-base-content/70">
                     <span>流</span>
                     <span class="w-16 shrink-0 text-right">操作</span>
                 </div>
@@ -185,7 +186,8 @@ function StreamPanel(props: {
                                 : '—';
                             const codec = codecLabel(item.codecid);
                             return (
-                                <div class="grid grid-cols-1 gap-1 px-2 py-2 text-xs sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                                <div
+                                    class="grid grid-cols-1 gap-1 px-2 py-2 text-xs sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                                     <div class="min-w-0 space-y-0.5">
                                         <div class="flex flex-wrap items-center gap-1.5">
                                             <span class="badge badge-primary badge-xs">视频</span>
@@ -200,7 +202,8 @@ function StreamPanel(props: {
                                         </div>
                                     </div>
                                     <div class="flex justify-end">
-                                        <button type="button" class="btn btn-ghost btn-xs" onClick={() => props.onCopy(url)}>
+                                        <button type="button" class="btn btn-ghost btn-xs"
+                                                onClick={() => props.onCopy(url)}>
                                             复制
                                         </button>
                                     </div>
@@ -212,7 +215,8 @@ function StreamPanel(props: {
                         {item => {
                             const url = pickStreamUrl(item);
                             return (
-                                <div class="grid grid-cols-1 gap-1 px-2 py-2 text-xs sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                                <div
+                                    class="grid grid-cols-1 gap-1 px-2 py-2 text-xs sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
                                     <div class="min-w-0 space-y-0.5">
                                         <div class="flex flex-wrap items-center gap-1.5">
                                             <span class="badge badge-secondary badge-xs">音频</span>
@@ -226,7 +230,8 @@ function StreamPanel(props: {
                                         </div>
                                     </div>
                                     <div class="flex justify-end">
-                                        <button type="button" class="btn btn-ghost btn-xs" onClick={() => props.onCopy(url)}>
+                                        <button type="button" class="btn btn-ghost btn-xs"
+                                                onClick={() => props.onCopy(url)}>
                                             复制
                                         </button>
                                     </div>
@@ -237,7 +242,8 @@ function StreamPanel(props: {
                 </div>
             </div>
             <Show when={!sortedVideos().length && !audioList().length}>
-                <p class="text-xs text-base-content/50">当前格式下未返回可拆分的 DASH 音视频流，可尝试更换「格式」后重新获取。</p>
+                <p class="text-xs text-base-content/50">当前格式下未返回可拆分的 DASH
+                    音视频流，可尝试更换「格式」后重新获取。</p>
             </Show>
         </div>
     );
@@ -485,7 +491,8 @@ function DownLoad(): JSXElement {
                                         <h2 class="text-sm font-semibold leading-snug text-base-content line-clamp-2">
                                             {item.detailLoading ? '加载中…' : (item.title || '（无标题）')}
                                         </h2>
-                                        <div class="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-base-content/60">
+                                        <div
+                                            class="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-base-content/60">
                                             <span>BV {item.bvid || '—'}</span>
                                             <span>AID {item.aid || '—'}</span>
                                         </div>
@@ -498,8 +505,9 @@ function DownLoad(): JSXElement {
                                     </div>
 
                                     <div class="flex flex-col gap-2 xl:flex-row xl:flex-wrap xl:items-end">
-                                        <label class="form-control min-w-0 flex-1 sm:max-w-[220px]">
-                                            <span class="label py-0"><span class="label-text text-[11px]">分 P</span></span>
+                                        <label class="form-control min-w-0 flex-1 sm:max-w-55">
+                                            <span class="label py-0"><span
+                                                class="label-text text-[11px]">分 P</span></span>
                                             <select
                                                 class="select select-bordered select-sm"
                                                 disabled={item.detailLoading || !item.pages.length}
@@ -524,7 +532,7 @@ function DownLoad(): JSXElement {
                                             </select>
                                         </label>
 
-                                        <label class="form-control min-w-0 flex-1 sm:max-w-[200px]">
+                                        <label class="form-control min-w-0 flex-1 sm:max-w-50">
                                             <span class="label py-0"><span class="label-text text-[11px]">清晰度</span></span>
                                             <select
                                                 class="select select-bordered select-sm"
@@ -543,8 +551,9 @@ function DownLoad(): JSXElement {
                                             </select>
                                         </label>
 
-                                        <label class="form-control min-w-0 flex-1 sm:max-w-[220px]">
-                                            <span class="label py-0"><span class="label-text text-[11px]">格式</span></span>
+                                        <label class="form-control min-w-0 flex-1 sm:max-w-55">
+                                            <span class="label py-0"><span
+                                                class="label-text text-[11px]">格式</span></span>
                                             <select
                                                 class="select select-bordered select-sm"
                                                 disabled={item.detailLoading || item.cid == null}
