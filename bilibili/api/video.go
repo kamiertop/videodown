@@ -97,10 +97,18 @@ func (b *BiliBili) VideoDetailConciseBvid(bvid string) (model.VideoDetailConcise
 		Data model.VideoDetailConciseData `json:"data"`
 	}
 	params := map[string]string{
-		"bvid":          bvid,
-		"need_view":     "1",
-		"isGaiaAvoided": "false",
-		webLocation:     "1315873",
+		"bvid":                bvid,
+		"platform":            "web",
+		"need_operation_card": "1",
+		"web_rn_repeat":       "1",
+		"need_elec":           "1",
+		"out_referer":         "https://www.bilibili.com/",
+		"page_no":             "1",
+		"p":                   "1",
+		"gaia_source":         "main_web",
+		"need_view":           "1",
+		"isGaiaAvoided":       "false",
+		webLocation:           "1315873",
 	}
 	cookies, err := b.getCookies()
 	if err != nil {

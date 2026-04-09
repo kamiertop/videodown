@@ -69,7 +69,7 @@ type SupportFormat struct {
 	Report           map[string]any `json:"report"`              // 上报信息
 }
 
-// Dash DASH 流信息（Dynamic Adaptive Streaming over HTTP，音视频分离）
+// Dash 流信息（Dynamic Adaptive Streaming over HTTP，音视频分离）
 type Dash struct {
 	Duration       int         `json:"duration"`        // 视频总时长，单位秒
 	MinBufferTime  float64     `json:"minBufferTime"`   // 最小缓冲时间（驼峰命名）

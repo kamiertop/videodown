@@ -59,7 +59,7 @@ export default function Menu(): JSXElement {
     const [avatar, setAvatar] = createSignal(bilibiliAvatarFallback);
     const [avatarLoadFailed, setAvatarLoadFailed] = createSignal(false);
 
-    const resetAvatar = () => {
+    function resetAvatar(): void {
         setAvatarLoadFailed(false);
         setAvatar(bilibiliAvatarFallback);
     }
@@ -102,7 +102,7 @@ export default function Menu(): JSXElement {
 
     return (
         <div
-            class="flex h-full w-22 shrink-0 flex-col gap-1.5 overflow-hidden border-r border-base-300/90 bg-gradient-to-b from-base-100 via-base-100 to-base-200/50 px-2 py-3">
+            class="flex h-full w-22 shrink-0 flex-col gap-1.5 overflow-hidden border-r border-base-300/90 bg-linear-to-b from-base-100 via-base-100 to-base-200/50 px-2 py-3">
             <p class="mb-0.5 select-none px-0.5 text-center text-[9px] font-semibold uppercase tracking-widest text-base-content/40">
                 B 站
             </p>
@@ -119,7 +119,7 @@ export default function Menu(): JSXElement {
                         to={item.link}
                     >
                         <span
-                            class="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-secondary text-[0] text-white shadow-inner transition-transform duration-200 group-hover:scale-[1.04] group-active:scale-[0.98] group-data-[status=active]:brightness-110">
+                            class="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-primary to-secondary text-[0] shadow-inner transition-transform duration-200 group-hover:scale-[1.04] group-active:scale-[0.98] group-data-[status=active]:brightness-110">
                             {item.icon}
                         </span>
                         <span
@@ -157,7 +157,5 @@ export default function Menu(): JSXElement {
                 </Link>
             </div>
         </div>
-
-
     )
 }
