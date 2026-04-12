@@ -6,11 +6,30 @@ interface BiliBiliProfileCardProps {
     loading?: boolean;
     loggingOut?: boolean;
     onLogout?: () => void | Promise<void>;
-    profile: model.MyInfoProfile | null;
+    profile: model.MyInfoProfile | undefined;
 }
 
 export default function ProfileCard(props: BiliBiliProfileCardProps): JSXElement {
     const [avatarLoadFailed, setAvatarLoadFailed] = createSignal(false);
+
+    function isVip(): boolean {
+        // 会员有效，并且会员类型大于0（0是无会员，1是月度会员，2是年度及以上
+        return (props.profile?.vip?.status ?? 0) === 1 && (props.profile?.vip?.type ?? 0) > 0;
+    }
+
+    function vipLabel(): string {
+        if (!isVip()) {
+            return '普通用户';
+        }
+
+        const role: number = props.profile?.vip?.role ?? 0;
+
+        if (role >= 15) return '百年大会员';
+        if (role >= 7) return '十年大会员';
+        if (role >= 3) return '年度大会员';
+
+        return '月度大会员';
+    }
 
     const avatar = () => {
         if (avatarLoadFailed() || !props.profile?.face?.trim()) {
@@ -56,8 +75,11 @@ export default function ProfileCard(props: BiliBiliProfileCardProps): JSXElement
                             </div>
                             <div class="rounded-2xl bg-base-200/70 px-4 py-3">
                                 <p class="text-xs uppercase tracking-wide text-base-content/50">会员状态</p>
-                                <p class="mt-1 text-sm text-base-content/80">
-                                    {props.profile?.vip?.status ? '大会员已开通' : '普通用户'}
+                                <p class="mt-1 text-sm font-medium text-base-content/80">{vipLabel()}</p>
+                                <p class="mt-1 text-xs text-base-content/60">
+                                    {isVip()
+                                        ? '可解锁更高下载清晰度（具体以稿件与账号权限为准）'
+                                        : '当前账号可选清晰度可能受限，开通大会员可解锁更高画质'}
                                 </p>
                             </div>
                             <div class="rounded-2xl bg-base-200/70 px-4 py-3">

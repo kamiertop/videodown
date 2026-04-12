@@ -21,6 +21,10 @@
     - https://github.com/JoeanAmier/TikTokDownloader
     - https://github.com/Evil0ctal/Douyin_TikTok_Download_API
 
+## 使用说明
+
+1. 由于哔哩哔哩返回的是音频流+视频流，所以需要ffmpeg，请自行安装并配置环境变量（自动下载ffmpeg的功能暂未考虑）
+
 ## 说明
 
 - 抖音接口返回的数据太庞大了（难怪要自研[sonic](https://github.com/bytedance/sonic)

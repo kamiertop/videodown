@@ -17,7 +17,7 @@ function Profile(): JSXElement {
     const [loggedIn, setLoggedIn] = createSignal(false);
     const [profileLoading, setProfileLoading] = createSignal(false);
     const [logoutLoading, setLogoutLoading] = createSignal(false);
-    const [profile, setProfile] = createSignal<model.MyInfoProfile | null>(null);
+    const [profile, setProfile] = createSignal<model.MyInfoProfile>();
     const [statusText, setStatusText] = createSignal('');
     const [statusTone, setStatusTone] = createSignal<"info" | "success" | "warning">("info");
     const [errorText, setErrorText] = createSignal('');
@@ -92,7 +92,7 @@ function Profile(): JSXElement {
             await LogOut();
             stopPolling();
             setLoggedIn(false);
-            setProfile(null);
+            setProfile(undefined);
             setQRExpired(false);
             showStatusToast('已退出登录，请重新扫码登录。', 'info');
             emitAuthChanged(false);

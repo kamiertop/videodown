@@ -36,7 +36,7 @@ type MyInfoProfile struct {
 	PinPrompting   int8             `json:"pin_prompting"` // 作用不明确
 	Official       MyInfoOfficial   `json:"official"`
 	NamePlate      MyInfoNamePlate  `json:"nameplate"`
-	Vip            MyInfoProfileVip `json:"vip"`
+	Vip            UserVip          `json:"vip"`
 	IsRipUser      bool             `json:"is_rip_user"` // 是否是风纪委用户
 	IsRegAudit     int8             `json:"is_reg_audit"`
 	CountryCode    string           `json:"country_code"`
@@ -79,7 +79,7 @@ type MyInfoProfession struct {
 	CertificateShow bool   `json:"certificate_show"`
 }
 
-type MyInfoProfileVip struct {
+type UserVip struct {
 	Type            uint8             `json:"type"`     // 会员类型, 0：无会员，1：月度大会员，2：年度及以上大会员
 	Status          uint8             `json:"status"`   // 会员状态, 0：无效，1：有效
 	DueDate         uint64            `json:"due_date"` // 会员过期时间, 单位为毫秒时间戳
@@ -89,6 +89,7 @@ type MyInfoProfileVip struct {
 	NicknameColor   string            `json:"nickname_color"`   //会员昵称颜色
 	OttInfo         MyInfoVipOttInfo  `json:"OttInfo"`
 	SuperVip        MyInfoVipSuperVip `json:"super_vip"`
+	Role            int               `json:"role"` // 1: 月度大会员，3： 年度大会员， 7： 十年大会员， 15： 百年大会员
 }
 
 type MyInfoVipLabel struct {
