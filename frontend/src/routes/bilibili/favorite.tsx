@@ -2,8 +2,8 @@ import {createFileRoute, useNavigate} from '@tanstack/solid-router'
 import {createMemo, createSignal, Match, onMount, Show, Switch, type JSXElement} from "solid-js";
 import {Collection, CollectionItem, Favorites, FavoritesList} from "../../../wailsjs/go/api/BiliBili";
 import {model} from "../../../wailsjs/go/models";
-import ErrorToast from "../../components/ErrorToast";
-import StatusToast from "../../components/StatusToast";
+import Toast from "../../components/Toast";
+import {useToast} from "../../hooks/useToast";
 import EmptyState from "../../components/EmptyState";
 import DetailLoading from "../../components/DetailLoading";
 import DetailError from "../../components/DetailError";
@@ -110,33 +110,26 @@ function Favorite(): JSXElement {
     const [collectionDetail, setCollectionDetail] = createSignal<model.CollectionItemData | null>(null);
 
     const [selectedMediaIds, setSelectedMediaIds] = createSignal<number[]>([]);
-    const [errorText, setErrorText] = createSignal('');
-    const [statusText, setStatusText] = createSignal('');
-    const [statusTone, setStatusTone] = createSignal<"info" | "success" | "warning">("info");
+    const {message, type, showToast} = useToast();
     let favDetailRequestSeq = 0;
     let colDetailRequestSeq = 0;
 
     const favSidebarItems = () => toFavSidebarItems(favorites()?.list ?? EMPTY_FAVORITE_LIST);
     const colSidebarItems = () => toColSidebarItems(collections()?.list ?? EMPTY_COLLECTION_LIST);
 
-    const pushStatus = (message: string, tone: "info" | "success" | "warning" = "info") => {
-        setStatusTone(tone);
-        setStatusText(message);
-    };
-
     // ── 下载 ──
 
     const downloadMediaList = (medias: MediaCardItem[], label: string) => {
         const bvids = [...new Set(medias.map(m => m.bvid?.trim()).filter(Boolean))];
         if (bvids.length === 0) {
-            pushStatus('没有可下载的视频（缺少 BV 号）', 'warning');
+            showToast('没有可下载的视频（缺少 BV 号）', 'warning');
             return;
         }
         navigate({
             to: '/bilibili/download',
             search: {bvids: bvids.join(',')},
         });
-        pushStatus(`${label}，已打开下载页`, 'success');
+        showToast(`${label}，已打开下载页`, 'success');
     };
 
     const currentMediaCards = (): MediaCardItem[] => {
@@ -211,7 +204,7 @@ function Favorite(): JSXElement {
         } catch (error) {
             if (seq !== favDetailRequestSeq) return;
             const msg = error instanceof Error ? error.message : String(error);
-            if (append) pushStatus(`加载更多失败: ${msg}`, 'warning');
+            if (append) showToast(`加载更多失败: ${msg}`, 'warning');
             else { setFavoriteDetail(null); setFavDetailError(msg); }
         } finally {
             if (seq === favDetailRequestSeq) {
@@ -234,7 +227,6 @@ function Favorite(): JSXElement {
 
     const loadFavorites = async () => {
         setFavLoading(true);
-        setErrorText('');
         try {
             const data = await FavoritesList();
             setFavorites(data);
@@ -251,7 +243,7 @@ function Favorite(): JSXElement {
                 setSelectedMediaIds([]);
             }
         } catch (error) {
-            setErrorText(error instanceof Error ? error.message : String(error));
+            showToast(error instanceof Error ? error.message : String(error), 'error');
         } finally {
             setFavLoading(false);
         }
@@ -295,7 +287,7 @@ function Favorite(): JSXElement {
                 void loadCollectionDetail(data.list[0]);
             }
         } catch (error) {
-            setErrorText(error instanceof Error ? error.message : String(error));
+            showToast(error instanceof Error ? error.message : String(error), 'error');
         } finally {
             setColLoading(false);
         }
@@ -473,8 +465,7 @@ function Favorite(): JSXElement {
                 </Show>
             </main>
 
-            <ErrorToast message={errorText()}/>
-            <StatusToast message={statusText()} tone={statusTone()}/>
+            <Toast message={message()} type={type()}/>
         </section>
     );
 }
