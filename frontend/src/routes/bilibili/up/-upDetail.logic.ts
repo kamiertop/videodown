@@ -1,4 +1,4 @@
-import {createMemo, createSignal, onCleanup} from "solid-js";
+import {createMemo, createSignal} from "solid-js";
 import type {NavigateOptions} from "@tanstack/solid-router";
 import {model} from "../../../../wailsjs/go/models";
 import {Info, SeasonsArchivesList, SeasonsSeriesList, SeriesList, VideoList} from "../../../../wailsjs/go/api/BiliBili";
@@ -71,31 +71,12 @@ export interface ListsSidebarItem extends SidebarListItem {
 export function createUpDetailLogic(
     getMid: () => string,
     navigate: (opts: NavigateOptions) => void,
+    showToast: (message: string, type?: "error" | "success" | "info" | "warning") => void,
 ) {
     const [loading, setLoading] = createSignal<boolean>(true);
-    const [errorText, setErrorText] = createSignal<string>('');
-    const [statusText, setStatusText] = createSignal<string>('');
-    const [statusTone, setStatusTone] = createSignal<"info" | "success" | "warning">("info");
     const [info, setInfo] = createSignal<model.UserInfoData | null>(null);
     // 用序号丢弃旧响应：避免路由参数变更/快速切换时旧请求回写新页面状态。
     let infoReqSeq = 0;
-
-    let errorToastTimer: number | undefined;
-    const showErrorToast = (message: string) => {
-        setErrorText(message);
-        if (errorToastTimer !== undefined) {
-            window.clearTimeout(errorToastTimer);
-        }
-        errorToastTimer = window.setTimeout(() => {
-            setErrorText('');
-            errorToastTimer = undefined;
-        }, 3000)
-    }
-
-    const pushStatus = (message: string, tone: "info" | "success" | "warning" = "info") => {
-        setStatusTone(tone);
-        setStatusText(message);
-    };
 
     // ── Tab（只存“当前选中视图”） ──
     const [activeTab, setActiveTab] = createSignal<UpTab>('videos');
@@ -163,14 +144,14 @@ export function createUpDetailLogic(
     const downloadMediaList = (medias: MediaCardItem[], label: string) => {
         const bvids = [...new Set(medias.map(m => m.bvid?.trim()).filter(Boolean))];
         if (bvids.length === 0) {
-            pushStatus('没有可下载的视频（缺少 BV 号）', 'warning');
+            showToast('没有可下载的视频（缺少 BV 号）', 'warning');
             return;
         }
         navigate({
             to: '/bilibili/download',
             search: {bvids: bvids.join(',')},
         });
-        pushStatus(`${label}，已打开下载页`, 'success');
+        showToast(`${label}，已打开下载页`, 'success');
     };
 
     const downloadSelectedMedia = async () => {
@@ -208,7 +189,7 @@ export function createUpDetailLogic(
         } catch (error) {
             if (seq !== videoReqSeq) return;
             const msg = error instanceof Error ? error.message : String(error);
-            if (append) pushStatus(`加载更多失败: ${msg}`, 'warning');
+            if (append) showToast(`加载更多失败: ${msg}`, 'warning');
             else setVideoError(msg);
         } finally {
             if (seq === videoReqSeq) {
@@ -314,7 +295,7 @@ export function createUpDetailLogic(
         } catch (error) {
             if (seq !== listReqSeq) return;
             const msg = error instanceof Error ? error.message : String(error);
-            if (append) pushStatus(`加载更多失败: ${msg}`, 'warning');
+            if (append) showToast(`加载更多失败: ${msg}`, 'warning');
             else setListDetailError(msg);
         } finally {
             if (seq === listReqSeq) {
@@ -410,7 +391,6 @@ export function createUpDetailLogic(
 
     const loadInfo = async (midOrSpaceUrl: string) => {
         setLoading(true);
-        setErrorText('');
         const seq = ++infoReqSeq;
         try {
             const data = await Info(midOrSpaceUrl);
@@ -422,7 +402,7 @@ export function createUpDetailLogic(
             setListCards(prev => prev.map(c => (c.upperName === name ? c : {...c, upperName: name})));
         } catch (error) {
             if (seq !== infoReqSeq) return;
-            showErrorToast(error instanceof Error ? error.message : String(error));
+            showToast(error instanceof Error ? error.message : String(error), 'error');
         } finally {
             if (seq === infoReqSeq) setLoading(false);
         }
@@ -434,21 +414,10 @@ export function createUpDetailLogic(
         void loadVideoList(false);
     };
 
-    onCleanup(() => {
-        if (errorToastTimer !== undefined) {
-            window.clearTimeout(errorToastTimer);
-        }
-    });
-
     return {
         // Header
         loading,
         info,
-
-        // Toast
-        errorText,
-        statusText,
-        statusTone,
 
         // Tab
         activeTab,

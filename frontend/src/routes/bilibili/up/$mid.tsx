@@ -3,8 +3,8 @@ import {type JSXElement, onMount} from "solid-js";
 import UpCommonLayout from "../../../components/bilibili/up/UpCommonLayout.tsx";
 import UpDetailHeaderRight from "../../../components/bilibili/up/UpDetailHeaderRight.tsx";
 import UpDetailBody from "../../../components/bilibili/up/UpDetailBody.tsx";
-import ErrorToast from "../../../components/ErrorToast.tsx";
-import StatusToast from "../../../components/StatusToast.tsx";
+import Toast from "../../../components/Toast";
+import {useToast} from "../../../hooks/useToast";
 import {createUpDetailLogic} from "./-upDetail.logic.ts";
 import IconChevronLeft from "../../../components/icons/IconChevronLeft.tsx";
 
@@ -18,7 +18,8 @@ function UpDetail(): JSXElement {
     // 说明：路由组件仅负责“装配”页面，不在这里堆积业务逻辑。
     // - 数据请求、状态管理、竞态处理等都在 `-upDetail.logic.ts` 中
     // - 这里把 signals/actions 透传给纯 UI 组件 `UpDetailBody`
-    const logic = createUpDetailLogic(() => params().mid, navigate);
+    const {message, type, showToast} = useToast();
+    const logic = createUpDetailLogic(() => params().mid, navigate, showToast);
 
     onMount(() => {
         // 首次进入页面时触发初始化加载（Info + 默认视频列表）。
@@ -90,9 +91,7 @@ function UpDetail(): JSXElement {
                 onRetryListDetail={logic.retryListDetail}
                 onLoadMoreList={logic.handleLoadMoreList}
             />
-
-            <ErrorToast message={logic.errorText()}/>
-            <StatusToast message={logic.statusText()} tone={logic.statusTone()}/>
+            <Toast message={message()} type={type()}/>
         </UpCommonLayout>
     );
 }

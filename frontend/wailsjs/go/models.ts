@@ -293,6 +293,24 @@ export namespace model {
 	        this.dyeid = source["dyeid"];
 	    }
 	}
+	export class Avatar {
+	    height: number;
+	    uri: string;
+	    width: number;
+	    url_list: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Avatar(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.height = source["height"];
+	        this.uri = source["uri"];
+	        this.width = source["width"];
+	        this.url_list = source["url_list"];
+	    }
+	}
 	export class CollectionUpper {
 	    mid: number;
 	    name: string;
@@ -1210,6 +1228,94 @@ export namespace model {
 		}
 	}
 	
+	export class FollowItem {
+	    signature: string;
+	    aweme_count: number;
+	    nickname: string;
+	    sec_uid: string;
+	    uid: string;
+	    unique_id: string;
+	    short_id: string;
+	    cover_url: Avatar;
+	    follower_count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FollowItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.signature = source["signature"];
+	        this.aweme_count = source["aweme_count"];
+	        this.nickname = source["nickname"];
+	        this.sec_uid = source["sec_uid"];
+	        this.uid = source["uid"];
+	        this.unique_id = source["unique_id"];
+	        this.short_id = source["short_id"];
+	        this.cover_url = this.convertValues(source["cover_url"], Avatar);
+	        this.follower_count = source["follower_count"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Follow {
+	    followings: FollowItem[];
+	    has_more: boolean;
+	    status_code: number;
+	    total: number;
+	    mix_count: number;
+	    myself_user_id: string;
+	    offset: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Follow(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.followings = this.convertValues(source["followings"], FollowItem);
+	        this.has_more = source["has_more"];
+	        this.status_code = source["status_code"];
+	        this.total = source["total"];
+	        this.mix_count = source["mix_count"];
+	        this.myself_user_id = source["myself_user_id"];
+	        this.offset = source["offset"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class FollowDataList {
 	    mid: number;
 	    attribute: number;
@@ -1271,6 +1377,7 @@ export namespace model {
 		}
 	}
 	
+	
 	export class LogOutData {
 	    redirectUrl: string;
 	
@@ -1299,6 +1406,85 @@ export namespace model {
 	        this.status = source["status"];
 	        this.ts = source["ts"];
 	        this.data = this.convertValues(source["data"], LogOutData);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class MyInfoData {
+	    nickname: string;
+	    sec_uid: string;
+	    short_id: string;
+	    signature: string;
+	    uid: string;
+	    unique_id: string;
+	    avatar_thumb: Avatar;
+	
+	    static createFrom(source: any = {}) {
+	        return new MyInfoData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.nickname = source["nickname"];
+	        this.sec_uid = source["sec_uid"];
+	        this.short_id = source["short_id"];
+	        this.signature = source["signature"];
+	        this.uid = source["uid"];
+	        this.unique_id = source["unique_id"];
+	        this.avatar_thumb = this.convertValues(source["avatar_thumb"], Avatar);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class MyInfo {
+	    owner_sec_uid: string;
+	    status_code: number;
+	    next_req_count: number;
+	    data: MyInfoData[];
+	
+	    static createFrom(source: any = {}) {
+	        return new MyInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.owner_sec_uid = source["owner_sec_uid"];
+	        this.status_code = source["status_code"];
+	        this.next_req_count = source["next_req_count"];
+	        this.data = this.convertValues(source["data"], MyInfoData);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -2362,6 +2548,94 @@ export namespace model {
 	
 	
 	
+	export class User {
+	    avatar_larger: Avatar;
+	    avatar_medium: Avatar;
+	    avatar_thumb: Avatar;
+	    city: string;
+	    aweme_count: number;
+	    country: string;
+	    follower_count: number;
+	    ip_location: string;
+	    nickname: string;
+	    province: string;
+	    signature: string;
+	    uid: string;
+	    unique_id: string;
+	    sec_uid: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new User(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.avatar_larger = this.convertValues(source["avatar_larger"], Avatar);
+	        this.avatar_medium = this.convertValues(source["avatar_medium"], Avatar);
+	        this.avatar_thumb = this.convertValues(source["avatar_thumb"], Avatar);
+	        this.city = source["city"];
+	        this.aweme_count = source["aweme_count"];
+	        this.country = source["country"];
+	        this.follower_count = source["follower_count"];
+	        this.ip_location = source["ip_location"];
+	        this.nickname = source["nickname"];
+	        this.province = source["province"];
+	        this.signature = source["signature"];
+	        this.uid = source["uid"];
+	        this.unique_id = source["unique_id"];
+	        this.sec_uid = source["sec_uid"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class UserData {
+	    user: User;
+	    status_code: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new UserData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.user = this.convertValues(source["user"], User);
+	        this.status_code = source["status_code"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class UserGarb {
 	    url_image_ani_cut: string;
 	

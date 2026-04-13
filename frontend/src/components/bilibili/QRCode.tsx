@@ -1,8 +1,9 @@
-import {createSignal, onCleanup, onMount, Show, type JSXElement} from "solid-js";
+import {createSignal, onMount, Show, type JSXElement} from "solid-js";
 import {QRCode as GetQRCode} from "../../../wailsjs/go/api/BiliBili";
 import type {model} from "../../../wailsjs/go/models.ts";
 import QRCodeGenerator from "qrcode";
-import ErrorToast from "../ErrorToast.tsx";
+import Toast from "../Toast";
+import {useToast} from "../../hooks/useToast";
 
 interface BiliBiliQRCodeProps {
     expired?: boolean;
@@ -20,33 +21,17 @@ interface QRCodeViewData {
 export default function BiliBiliQRCode(props: BiliBiliQRCodeProps): JSXElement {
     const [loadingQRCode, setLoadingQRCode] = createSignal(false);
     const [qrCode, setQRCode] = createSignal<QRCodeViewData | null>(null);
-    const [errorText, setErrorText] = createSignal<string>('');
-
-    let errorToastTimer: number | undefined;
-
-    const showErrorToast = (message: string) => {
-        setErrorText(message);
-
-        if (errorToastTimer !== undefined) {
-            window.clearTimeout(errorToastTimer);
-        }
-
-        errorToastTimer = window.setTimeout(() => {
-            setErrorText('');
-            errorToastTimer = undefined;
-        }, 3000)
-    }
+    const {message, type, showToast} = useToast();
 
     const loadQRCode = async () => {
         setLoadingQRCode(true);
-        setErrorText('');
 
         try {
             const payload = await GetQRCode();
             props.onLoad?.(payload);
 
             if (!payload?.url?.trim()) {
-                throw new Error('二维码数据为空');
+                showToast('获取二维码失败', 'error');
             }
 
             const image = await QRCodeGenerator.toDataURL(payload.url, {
@@ -57,7 +42,7 @@ export default function BiliBiliQRCode(props: BiliBiliQRCodeProps): JSXElement {
             setQRCode({image, payload});
         } catch (error) {
             setQRCode(null);
-            showErrorToast(error instanceof Error ? error.message : String(error));
+            showToast(error instanceof Error ? error.message : String(error), 'error');
         } finally {
             setLoadingQRCode(false);
         }
@@ -65,12 +50,6 @@ export default function BiliBiliQRCode(props: BiliBiliQRCodeProps): JSXElement {
 
     onMount(() => {
         void loadQRCode();
-    })
-
-    onCleanup(() => {
-        if (errorToastTimer !== undefined) {
-            window.clearTimeout(errorToastTimer);
-        }
     })
 
     return (
@@ -116,7 +95,7 @@ export default function BiliBiliQRCode(props: BiliBiliQRCodeProps): JSXElement {
                     </div>
                 </div>
             </div>
-            <ErrorToast message={errorText()}/>
+            <Toast message={message()} type={type()}/>
         </>
     )
 }
