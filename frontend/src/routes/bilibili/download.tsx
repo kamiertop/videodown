@@ -1,6 +1,6 @@
 import {createFileRoute} from '@tanstack/solid-router'
 import {
-    createSignal,
+    createSignal, For,
     type JSXElement,
 } from "solid-js";
 import {extractBvid} from "../../lib/format";
@@ -9,14 +9,31 @@ import {useToast} from "../../hooks/useToast";
 
 
 export const Route = createFileRoute('/bilibili/download')({
-    validateSearch: (raw: Record<string, unknown>): { bvids?: string } => {
-        const v = raw.bvids;
-        if (typeof v === 'string' && v.trim()) return {bvids: v.trim()};
-        return {};
-    },
     component: DownLoad,
 })
 
+
+interface VideoProps {
+    bvid: string;
+    title: string;
+    cover: string;
+    duration: number; // 视频时长，单位秒
+}
+
+const [videoList, setVideoList] = createSignal<VideoProps[]>([]);
+
+export function addVideo(selectedVideos: VideoProps[]): void {
+    // 向页面中添加下载链接
+    setVideoList([...videoList(), ...selectedVideos]);
+}
+
+// @ts-ignore - Will be used when implementing video removal
+function removeVideo(index: number): void {
+    // 从页面中移除下载链接
+    setVideoList(
+        prev => prev.filter((_, i) => i !== index)
+    );
+}
 
 function DownLoad(): JSXElement {
     const [videoURL, setVideoURL] = createSignal<string>("");
@@ -61,8 +78,17 @@ function DownLoad(): JSXElement {
             </section>
             <section>
                 {/*视频信息展示组件*/}
+                <For each={videoList()}>
+                    {(item) => (
+                        <div>
+                            {item.bvid}
+                        </div>
+                    )}
+                </For>
             </section>
             <Toast message={message()} type={type()}/>
         </div>
     )
 }
+
+
