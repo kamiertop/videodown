@@ -4,9 +4,9 @@ import {LogOut, MyInfo, PollQRCode} from "../../../wailsjs/go/api/BiliBili";
 import {getLoggedInDeduped} from "../../lib/bilibiliAuth";
 import type {model} from "../../../wailsjs/go/models";
 import QRCode from "../../components/bilibili/QRCode.tsx";
-import ErrorToast from "../../components/ErrorToast";
+import Toast from "../../components/Toast";
 import ProfileCard from "../../components/bilibili/ProfileCard.tsx";
-import StatusToast from "../../components/StatusToast";
+import {useToast} from "../../hooks/useToast";
 
 export const Route = createFileRoute('/bilibili/profile')({
     component: Profile,
@@ -18,42 +18,15 @@ function Profile(): JSXElement {
     const [profileLoading, setProfileLoading] = createSignal(false);
     const [logoutLoading, setLogoutLoading] = createSignal(false);
     const [profile, setProfile] = createSignal<model.MyInfoProfile>();
-    const [statusText, setStatusText] = createSignal('');
-    const [statusTone, setStatusTone] = createSignal<"info" | "success" | "warning">("info");
-    const [errorText, setErrorText] = createSignal('');
+    const {message, type, showToast} = useToast();
     const [qrExpired, setQRExpired] = createSignal(false);
 
     let pollTimer: number | undefined;
-    let errorToastTimer: number | undefined;
-    let statusToastTimer: number | undefined;
 
     const emitAuthChanged = (loggedIn: boolean) => {
         window.dispatchEvent(new CustomEvent('bilibili-auth-changed', {
             detail: {loggedIn},
         }));
-    }
-
-    const showErrorToast = (message: string) => {
-        setErrorText(message);
-        if (errorToastTimer !== undefined) {
-            window.clearTimeout(errorToastTimer);
-        }
-        errorToastTimer = window.setTimeout(() => {
-            setErrorText('');
-            errorToastTimer = undefined;
-        }, 3000)
-    }
-
-    const showStatusToast = (message: string, tone: "info" | "success" | "warning" = "info") => {
-        setStatusText(message);
-        setStatusTone(tone);
-        if (statusToastTimer !== undefined) {
-            window.clearTimeout(statusToastTimer);
-        }
-        statusToastTimer = window.setTimeout(() => {
-            setStatusText('');
-            statusToastTimer = undefined;
-        }, 2500)
     }
 
     const stopPolling = () => {
@@ -76,7 +49,7 @@ function Profile(): JSXElement {
             const result = await MyInfo();
             setProfile(result);
         } catch (error) {
-            showErrorToast(error instanceof Error ? error.message : String(error));
+            showToast(error instanceof Error ? error.message : String(error), 'error');
         } finally {
             setProfileLoading(false);
         }
@@ -94,10 +67,10 @@ function Profile(): JSXElement {
             setLoggedIn(false);
             setProfile(undefined);
             setQRExpired(false);
-            showStatusToast('已退出登录，请重新扫码登录。', 'info');
+            showToast('已退出登录，请重新扫码登录。', 'info');
             emitAuthChanged(false);
         } catch (error) {
-            showErrorToast(error instanceof Error ? error.message : String(error));
+            showToast(error instanceof Error ? error.message : String(error), 'error');
         } finally {
             setLogoutLoading(false);
         }
@@ -111,14 +84,14 @@ function Profile(): JSXElement {
                 stopPolling();
                 setLoggedIn(true);
                 setQRExpired(false);
-                showStatusToast('扫码已确认，登录成功。', 'success');
+                showToast('扫码已确认，登录成功。', 'success');
                 await loadProfile();
                 emitAuthChanged(true);
                 return;
             }
 
             if (result.code === 86090) {
-                showStatusToast('已扫码，请在 B 站 App 中确认登录。', 'info');
+                showToast('已扫码，请在 B 站 App 中确认登录。', 'info');
                 schedulePoll(qrcodeKey);
                 return;
             }
@@ -126,22 +99,22 @@ function Profile(): JSXElement {
             if (result.code === 86038) {
                 stopPolling();
                 setQRExpired(true);
-                showStatusToast('二维码已失效，请刷新后重试。', 'warning');
+                showToast('二维码已失效，请刷新后重试。', 'warning');
                 return;
             }
 
             if (result.code === 86101) {
-                showStatusToast('二维码已就绪，请使用 B 站 App 扫码。', 'info');
+                showToast('二维码已就绪，请使用 B 站 App 扫码。', 'info');
                 schedulePoll(qrcodeKey);
                 return;
             }
 
-            showStatusToast(result.message || `登录状态更新中（${result.code}）...`, 'info');
+            showToast(result.message || `登录状态更新中（${result.code}）...`, 'info');
 
             schedulePoll(qrcodeKey);
         } catch (error) {
             stopPolling();
-            showErrorToast(error instanceof Error ? error.message : String(error));
+            showToast(error instanceof Error ? error.message : String(error), 'error');
         }
     }
 
@@ -153,7 +126,7 @@ function Profile(): JSXElement {
                 await loadProfile();
             }
         } catch (error) {
-            showErrorToast(error instanceof Error ? error.message : String(error));
+            showToast(error instanceof Error ? error.message : String(error), 'error');
         } finally {
             setCheckingLogin(false);
         }
@@ -161,12 +134,6 @@ function Profile(): JSXElement {
 
     onCleanup(() => {
         stopPolling();
-        if (errorToastTimer !== undefined) {
-            window.clearTimeout(errorToastTimer);
-        }
-        if (statusToastTimer !== undefined) {
-            window.clearTimeout(statusToastTimer);
-        }
     })
 
     return (
@@ -188,26 +155,24 @@ function Profile(): JSXElement {
                 </Match>
 
                 <Match when={!loggedIn()}>
-                    <div class="mx-auto grid h-full max-w-5xl gap-5 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
-                        <div class="space-y-3">
+                    <div class="flex h-full flex-col items-center justify-center gap-8">
+                        <div class="text-center space-y-3">
                             <h1 class="text-3xl font-black leading-tight text-base-content">先完成扫码登录，再进入下载流程</h1>
+                            <p class="text-sm text-base-content/60">使用 B 站 App 扫描二维码即可登录</p>
                         </div>
 
-                        <div class="space-y-3">
-                            <QRCode
-                                expired={qrExpired()}
-                                onLoad={(data: model.QRCodeData) => {
-                                    showStatusToast('二维码已就绪，请使用 B 站 App 扫码。', 'info');
-                                    setQRExpired(false);
-                                    schedulePoll(data.qrcode_key);
-                                }}
-                            />
-                        </div>
+                        <QRCode
+                            expired={qrExpired()}
+                            onLoad={(data: model.QRCodeData) => {
+                                showToast('二维码已就绪，请使用 B 站 App 扫码。', 'info');
+                                setQRExpired(false);
+                                schedulePoll(data.qrcode_key);
+                            }}
+                        />
                     </div>
                 </Match>
             </Switch>
-            <StatusToast message={statusText()} tone={statusTone()}/>
-            <ErrorToast message={errorText()}/>
+            <Toast message={message()} type={type()}/>
         </section>
     )
 }

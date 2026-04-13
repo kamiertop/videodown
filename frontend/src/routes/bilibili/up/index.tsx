@@ -1,10 +1,12 @@
 import {createFileRoute, useNavigate} from '@tanstack/solid-router'
-import {createSignal, For, Match, onCleanup, onMount, Show, Switch, type JSXElement} from "solid-js";
+import {createSignal, For, Match, onMount, Show, Switch, type JSXElement} from "solid-js";
 import {FollowList, Info} from "../../../../wailsjs/go/api/BiliBili";
 import {model} from "../../../../wailsjs/go/models";
 import UpCommonLayout from "../../../components/bilibili/up/UpCommonLayout";
 import IconRefresh from "../../../components/icons/IconRefresh";
 import IconUsers from "../../../components/icons/IconUsers";
+import Toast from "../../../components/Toast";
+import {useToast} from "../../../hooks/useToast";
 
 const PAGE_SIZE = 30;
 
@@ -18,23 +20,9 @@ function UpIndex(): JSXElement {
     const [parsing, setParsing] = createSignal<boolean>(false);
     const [followData, setFollowData] = createSignal<model.FollowData | null>(null);
     const [page, setPage] = createSignal<number>(1);
-    const [errorText, setErrorText] = createSignal<string>('');
+    const {message, type, showToast} = useToast();
     const [searchInput, setSearchInput] = createSignal<string>('');
     const [parsedInfo, setParsedInfo] = createSignal<model.UserInfoData | null>(null);
-
-    let errorToastTimer: number | undefined;
-    const showErrorToast = (message: string) => {
-        // 这里用“可覆盖的 timer”实现轻量 toast：
-        // 连续报错时只保留最后一次提示，避免 UI 堆叠/闪烁。
-        setErrorText(message);
-        if (errorToastTimer !== undefined) {
-            window.clearTimeout(errorToastTimer);
-        }
-        errorToastTimer = window.setTimeout(() => {
-            setErrorText('');
-            errorToastTimer = undefined;
-        }, 1500)
-    }
     
     function totalPages(): number {
         const total: number = followData()?.total ?? 0;
@@ -43,13 +31,12 @@ function UpIndex(): JSXElement {
 
     const loadFollows = async (pn: number) => {
         setLoading(true);
-        setErrorText('');
         try {
             const data = await FollowList(pn, PAGE_SIZE);
             setFollowData(data);
             setPage(pn);
         } catch (error) {
-            showErrorToast(error instanceof Error ? error.message : String(error));
+            showToast(error instanceof Error ? error.message : String(error), 'error');
         } finally {
             setLoading(false);
         }
@@ -66,13 +53,12 @@ function UpIndex(): JSXElement {
         if (parsing()) return;
         // “解析”是一次性动作：避免用户连点导致重复请求与状态抖动。
         setParsing(true);
-        setErrorText('');
         setParsedInfo(null);
         try {
             const info = await Info(raw);
             setParsedInfo(info);
         } catch (error) {
-            showErrorToast(error instanceof Error ? error.message : String(error));
+            showToast(error instanceof Error ? error.message : String(error), 'error');
         } finally {
             setParsing(false);
         }
@@ -85,11 +71,6 @@ function UpIndex(): JSXElement {
     onMount(() => {
         void loadFollows(1);
     });
-    onCleanup(() => {
-        if (errorToastTimer !== undefined) {
-            window.clearTimeout(errorToastTimer);
-        }
-    })
 
     return (
         <UpCommonLayout
@@ -113,19 +94,7 @@ function UpIndex(): JSXElement {
                 </div>
             }
             headerRight={
-                <div class="relative flex items-center gap-2">
-                    <Show when={errorText()}>
-                        <div
-                            class="pointer-events-none absolute right-full top-1/2 z-50 mr-2 -translate-y-1/2"
-                            role="alert"
-                        >
-                            <div
-                                class="w-max min-w-64 max-w-sm whitespace-normal wrap-break-word rounded-lg border border-error/30 bg-error/10 px-3 py-2 text-xs font-semibold leading-relaxed text-error shadow-md"
-                            >
-                                {errorText()}
-                            </div>
-                        </div>
-                    </Show>
+                <div class="flex items-center gap-2">
                     <input
                         type="text"
                         class="input input-sm input-bordered w-72"
@@ -262,7 +231,7 @@ function UpIndex(): JSXElement {
                     </Match>
                 </Switch>
             </div>
-
+            <Toast message={message()} type={type()}/>
         </UpCommonLayout>
     );
 }

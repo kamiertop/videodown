@@ -6,5 +6,5 @@ export const Route = createFileRoute('/bilibili/history')({
 })
 
 function History(): JSXElement {
-    return <div>Hello "/bilibili/history"!</div>
+    return <div></div>
 }
