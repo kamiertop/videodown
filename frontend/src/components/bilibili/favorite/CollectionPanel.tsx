@@ -3,8 +3,8 @@ import {Collection, CollectionItem} from "../../../../wailsjs/go/api/BiliBili";
 import {model} from "../../../../wailsjs/go/models";
 import {StackIcon} from "../../icons/IconStack";
 import FavoriteCollectionView from "./FavoriteCollectionView";
-import {type MediaCardItem} from "../../VideoCardGrid";
 import {type SidebarListItem} from "../../SidebarList";
+import type {MediaCardItem} from "../../../lib/model.ts";
 
 const COLLECTION_PAGE = 1;
 const COLLECTION_PAGE_SIZE = 20;
@@ -40,8 +40,6 @@ function toCollectionMediaCards(medias: model.CollectionItemMedias[]): MediaCard
 
 export default function CollectionPanel(props: {
     active: boolean;
-    onCountChange: (count: number) => void;
-    onDownloadMediaList: (medias: MediaCardItem[], label: string) => Promise<void>;
     showToast: (message: string, type?: "success" | "error" | "warning" | "info") => void;
 }): JSXElement {
     const [loading, setLoading] = createSignal(false);
@@ -84,7 +82,6 @@ export default function CollectionPanel(props: {
             const data = await Collection(COLLECTION_PAGE, COLLECTION_PAGE_SIZE);
             setCollections(data);
             setLoadedOnce(true);
-            props.onCountChange(data.count ?? 0);
 
             const current = selectedItem()?.id;
             const nextItem = data.list?.find(item => item.id === current) ?? data.list?.[0];
@@ -112,8 +109,6 @@ export default function CollectionPanel(props: {
     return (
         <div class={props.active ? "flex h-full min-h-0 flex-1" : "hidden"}>
             <FavoriteCollectionView
-                emptySidebarTitle="暂无合集"
-                emptyContentTitle="选择一个合集查看内容"
                 sidebarItems={sidebarItems}
                 selectedSidebarId={() => selectedItem()?.id ?? null}
                 onSelectSidebar={(item) => {
@@ -121,7 +116,7 @@ export default function CollectionPanel(props: {
                     void loadCollectionDetail(item.raw);
                 }}
                 sidebarIcon={StackIcon}
-                sidebarLabel={() => '合集'}
+                sidebarLabel={'合集'}
                 sidebarCount={() => collections()?.count ?? sidebarItems().length}
                 sidebarLoading={loading}
                 onRefresh={() => void loadCollections()}
@@ -136,7 +131,7 @@ export default function CollectionPanel(props: {
                 detailMediaCount={() => detail()?.info?.media_count ?? selectedItem()?.media_count ?? 0}
                 mediaCards={mediaCards}
                 detailVersion={detailVersion}
-                onDownloadMediaList={props.onDownloadMediaList}
+                showToast={props.showToast}
             />
         </div>
     );

@@ -1,21 +1,24 @@
-import {createEffect, createMemo, createSignal, Match, Show, Switch, type JSXElement} from "solid-js";
+import {useNavigate} from "@tanstack/solid-router";
+import {createEffect, createMemo, createSignal, type JSXElement, Match, Show, Switch} from "solid-js";
+import {addVideo} from "../../../routes/bilibili/download";
 import EmptyState from "../../EmptyState";
 import DetailLoading from "../../DetailLoading";
 import DetailError from "../../DetailError";
 import DetailToolbar from "../../DetailToolbar";
-import VideoCardGrid, {type MediaCardItem} from "../../VideoCardGrid";
+import VideoCardGrid from "../../VideoCardGrid";
 import SidebarList, {type SidebarListItem} from "../../SidebarList";
 import IconRefresh from "../../icons/IconRefresh";
+import type {MediaCardItem} from "../../../lib/model.ts";
+
+export type sidebarLabelType = "收藏夹" | "合集";
 
 export default function FavoriteCollectionView<T extends SidebarListItem>(props: {
-    emptySidebarTitle: string;
-    emptyContentTitle: string;
     sidebarItems: () => readonly T[];
     selectedSidebarId: () => number | null;
     onSelectSidebar: (item: T) => void;
     sidebarIcon: () => JSXElement;
     /** 侧栏左上角标题，如「收藏夹」「合集」 */
-    sidebarLabel: () => string;
+    sidebarLabel: sidebarLabelType;
     /** 对应列表数量（与顶栏 tab 数字同源） */
     sidebarCount: () => number;
     sidebarLoading: () => boolean;
@@ -31,10 +34,29 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
     hasMore?: () => boolean;
     loadingMore?: () => boolean;
     onLoadMore?: () => void;
-    onDownloadMediaList: (medias: MediaCardItem[], label: string) => Promise<void>;
+    showToast: (message: string, type?: "success" | "error" | "warning" | "info") => void;
 }): JSXElement {
+    const navigate = useNavigate();
     const [selectedMediaIds, setSelectedMediaIds] = createSignal<number[]>([]);
     const selectedSet = createMemo(() => new Set(selectedMediaIds()));
+
+    function emptySidebarTitle(): string {
+        switch (props.sidebarLabel) {
+            case "合集":
+                return "暂无合集";
+            case "收藏夹":
+                return "暂无收藏夹";
+        }
+    }
+
+    function emptyContentTitle(): string {
+        switch (props.sidebarLabel) {
+            case "合集":
+                return "暂无合集内容";
+            case "收藏夹":
+                return "暂无收藏夹内容";
+        }
+    }
 
     createEffect(() => {
         props.selectedSidebarId();
@@ -63,13 +85,19 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
         setSelectedMediaIds(allSelected() ? [] : cards.map(card => card.id));
     };
 
+    const downloadMediaList = async (medias: MediaCardItem[], label: string) => {
+        addVideo(medias);
+        await navigate({to: "/bilibili/download"});
+        props.showToast(`${label}，已打开下载页`, "success");
+    };
+
     const downloadSelectedMedia = () => {
         const selected = selectedSet();
         const medias = props.mediaCards().filter(media => selected.has(media.id));
-        return props.onDownloadMediaList(medias, `已选择 ${medias.length} 个视频`);
+        return downloadMediaList(medias, `已选择 ${medias.length} 个视频`);
     };
 
-    const downloadAllMedia = () => props.onDownloadMediaList(props.mediaCards(), '全部视频');
+    const downloadAllMedia = () => downloadMediaList(props.mediaCards(), "全部视频");
 
     return (
         <div class="flex h-full min-h-0 gap-3 overflow-hidden">
@@ -79,7 +107,7 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
                 >
                     <div class="flex min-w-0 items-center gap-1.5">
                         <span class="select-none truncate text-xs font-bold tracking-wide text-base-content/70">
-                            {props.sidebarLabel()}
+                            {props.sidebarLabel}
                         </span>
                         <span
                             class="shrink-0 rounded-full bg-success/10 px-2 py-0.5 text-xs font-bold tabular-nums text-success"
@@ -116,7 +144,7 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
                         />
                     </Match>
                     <Match when={true}>
-                        <EmptyState title={props.emptySidebarTitle} compact/>
+                        <EmptyState title={emptySidebarTitle()} compact/>
                     </Match>
                 </Switch>
             </aside>
@@ -126,7 +154,7 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
                     when={props.hasSelection()}
                     fallback={
                         <EmptyState
-                            title={props.emptyContentTitle}
+                            title={emptyContentTitle()}
                             description="右侧将展示视频列表"
                         />
                     }
@@ -142,6 +170,7 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
                             <EmptyState title="暂无视频" description="可以切换到其他项查看"/>
                         </Match>
                         <Match when={true}>
+                            {/*展示标题，数量，全选，下载全选等按钮*/}
                             <DetailToolbar
                                 title={props.detailTitle()}
                                 mediaCount={props.detailMediaCount()}
@@ -157,7 +186,7 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
                                     medias={props.mediaCards()}
                                     selectedSet={selectedSet}
                                     onToggleSelect={toggleSelectMedia}
-                                    onDownloadOne={(media) => void props.onDownloadMediaList([media], `视频 ${media.title}`)}
+                                    onDownloadOne={(media) => void downloadMediaList([media], `视频 ${media.title}`)}
                                 />
                                 <Show when={props.hasMore?.()}>
                                     <div class="mt-4 flex justify-center pb-2">
