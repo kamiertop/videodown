@@ -2,10 +2,10 @@ import {createMemo, createSignal} from "solid-js";
 import type {NavigateOptions} from "@tanstack/solid-router";
 import {model} from "../../../../wailsjs/go/models";
 import {Info, SeasonsArchivesList, SeasonsSeriesList, SeriesList, VideoList} from "../../../../wailsjs/go/api/BiliBili";
-import type {MediaCardItem} from "../../../components/VideoCardGrid";
 import type {SidebarListItem} from "../../../components/SidebarList";
 import {parseBilibiliLengthToSeconds} from "../../../lib/format";
 import type {UpTab} from "../../../components/bilibili/up/UpDetailBody";
+import type {MediaCardItem} from "../../../lib/model.ts";
 
 type VideoListResp = {
     list?: {

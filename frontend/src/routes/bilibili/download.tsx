@@ -6,6 +6,7 @@ import {
 import {extractBvid} from "../../lib/format";
 import Toast from "../../components/Toast";
 import {useToast} from "../../hooks/useToast";
+import type {MediaCardItem} from "../../lib/model.ts";
 
 
 export const Route = createFileRoute('/bilibili/download')({
@@ -13,16 +14,9 @@ export const Route = createFileRoute('/bilibili/download')({
 })
 
 
-interface VideoProps {
-    bvid: string;
-    title: string;
-    cover: string;
-    duration: number; // 视频时长，单位秒
-}
+const [videoList, setVideoList] = createSignal<MediaCardItem[]>([]);
 
-const [videoList, setVideoList] = createSignal<VideoProps[]>([]);
-
-export function addVideo(selectedVideos: VideoProps[]): void {
+export function addVideo(selectedVideos: MediaCardItem[]): void {
     // 向页面中添加下载链接
     setVideoList([...videoList(), ...selectedVideos]);
 }

@@ -2,19 +2,7 @@ import {For, type JSXElement, Show} from "solid-js";
 import {formatCount, formatDate, formatDuration} from "../lib/format";
 import IconEye from "./icons/IconEye";
 import IconChat from "./icons/IconChat";
-
-export interface MediaCardItem {
-    id: number;
-    title: string;
-    cover: string;
-    duration: number;
-    bvid: string;
-    link?: string;
-    upperName: string;
-    play?: number;
-    danmaku?: number;
-    pubtime?: number;
-}
+import type {MediaCardItem} from "../lib/model.ts";
 
 export default function VideoCardGrid(props: {
     medias: MediaCardItem[];

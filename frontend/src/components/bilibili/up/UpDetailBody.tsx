@@ -1,5 +1,4 @@
 import {Match, Show, Switch, type JSXElement} from "solid-js";
-import type {MediaCardItem} from "../../VideoCardGrid";
 import DetailError from "../../DetailError";
 import DetailLoading from "../../DetailLoading";
 import DetailToolbar from "../../DetailToolbar";
@@ -8,6 +7,7 @@ import SidebarList from "../../SidebarList";
 import VideoCardGrid from "../../VideoCardGrid";
 import IconRefresh from "../../icons/IconRefresh";
 import IconBook from "../../icons/IconBook";
+import type {MediaCardItem} from "../../../lib/model.ts";
 
 export type UpTab = 'videos' | 'lists';
 
@@ -57,7 +57,7 @@ export default function UpDetailBody(props: {
     listTotal: () => number;
     listLoadingMore: () => boolean;
     hasMoreListVideos: () => boolean;
-    selectedListItem: () => {subtitle: string; title: string; count?: number} | null;
+    selectedListItem: () => { subtitle: string; title: string; count?: number } | null;
     onEnsureLoadSeasonsSeries: () => void;
     onRefreshSeasonsSeries: () => void;
     onSelectListItem: (item: any) => void;
@@ -150,8 +150,10 @@ export default function UpDetailBody(props: {
                     <Match when={props.activeTab() === 'lists'}>
                         <div class="flex min-h-0 flex-1 overflow-hidden">
                             {/* 左侧 sidebar（合集/系列列表） */}
-                            <aside class="flex w-64 shrink-0 flex-col overflow-hidden border-r border-base-300 bg-base-100">
-                                <div class="flex shrink-0 items-center justify-between border-b border-base-200 px-3 py-2">
+                            <aside
+                                class="flex w-64 shrink-0 flex-col overflow-hidden border-r border-base-300 bg-base-100">
+                                <div
+                                    class="flex shrink-0 items-center justify-between border-b border-base-200 px-3 py-2">
                                     <span class="text-xs font-bold text-base-content/70">列表</span>
                                     <button
                                         class="flex h-7 w-7 shrink-0 items-center justify-center rounded transition-colors hover:bg-base-200 disabled:cursor-not-allowed"
@@ -172,7 +174,8 @@ export default function UpDetailBody(props: {
                                     </Match>
                                     <Match when={!!props.ssError()}>
                                         <div class="p-3">
-                                            <DetailError message={props.ssError()} onRetry={props.onRefreshSeasonsSeries}/>
+                                            <DetailError message={props.ssError()}
+                                                         onRetry={props.onRefreshSeasonsSeries}/>
                                         </div>
                                     </Match>
                                     <Match when={props.listSidebarItems().length === 0}>
@@ -195,17 +198,20 @@ export default function UpDetailBody(props: {
                             <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
                                 <Show
                                     when={!!props.selectedListItem()}
-                                    fallback={<EmptyState title="选择一个合集/系列查看内容" description="右侧将展示视频列表"/>}
+                                    fallback={<EmptyState title="选择一个合集/系列查看内容"
+                                                          description="右侧将展示视频列表"/>}
                                 >
                                     <Switch>
                                         <Match when={props.listDetailLoading()}>
                                             <DetailLoading/>
                                         </Match>
                                         <Match when={!!props.listDetailError()}>
-                                            <DetailError message={props.listDetailError()} onRetry={props.onRetryListDetail}/>
+                                            <DetailError message={props.listDetailError()}
+                                                         onRetry={props.onRetryListDetail}/>
                                         </Match>
                                         <Match when={!props.listDetailLoading() && props.listCards().length === 0}>
-                                            <EmptyState title="暂无视频" description="该合集/系列暂无可用视频或接口返回为空"/>
+                                            <EmptyState title="暂无视频"
+                                                        description="该合集/系列暂无可用视频或接口返回为空"/>
                                         </Match>
                                         <Match when={true}>
                                             <DetailToolbar
