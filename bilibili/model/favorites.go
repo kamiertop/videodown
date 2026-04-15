@@ -1,13 +1,6 @@
 package model
 
-// FavoritesResponse 收藏夹列表，包含了用户的所有收藏夹信息，但不包含收藏夹内的视频列表等详细信息
-type FavoritesResponse struct {
-	Code    int64         `json:"code"`
-	Message string        `json:"message"`
-	TTL     int64         `json:"ttl"`
-	Data    FavoritesData `json:"data"`
-}
-
+// FavoritesData 收藏夹列表，包含了用户的所有收藏夹信息，但不包含收藏夹内的视频列表等详细信息
 type FavoritesData struct {
 	Count  int64          `json:"count"`
 	List   []FavoriteItem `json:"list"`
@@ -75,12 +68,14 @@ type FavoriteInfo struct {
 	MediaCount int                 `json:"media_count"` // 内容数量
 	IsTop      bool                `json:"is_top"`
 }
+
 type FavoriteMediaUpper struct {
 	Mid      int64  `json:"mid"`
 	Name     string `json:"name"`
 	Face     string `json:"face"`
 	JumpLink string `json:"jump_link"`
 }
+
 type FavoriteMediaCntInfo struct {
 	Collect    int    `json:"collect"` // 收藏数
 	Play       int    `json:"play"`    // 播放数

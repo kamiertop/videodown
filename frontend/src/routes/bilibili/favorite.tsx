@@ -9,10 +9,8 @@ export const Route = createFileRoute('/bilibili/favorite')({
     component: Favorite,
 })
 
-type SidebarTab = 'favorite' | 'collection';
-
 function Favorite(): JSXElement {
-    const [activeTab, setActiveTab] = createSignal<SidebarTab>('favorite');
+    const [activeTab, setActiveTab] = createSignal<'favorite' | 'collection'>('favorite');
     const {message, type, showToast} = useToast();
 
     // 方向键切换标签页：收藏夹 ←，合集 →

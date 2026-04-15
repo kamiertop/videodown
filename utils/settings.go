@@ -1,11 +1,13 @@
 package utils
 
 import (
+	"context"
 	"errors"
-	"fmt"
 	"os"
 
 	"github.com/dgraph-io/badger/v4"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+
 	"github.com/kamiertop/videodown/logger"
 )
 
@@ -120,33 +122,19 @@ func (s *Settings) GetStorage() (string, error) {
 	return path, nil
 }
 
-func (s *Settings) SetStorage(path string) error {
-	info, err := os.Stat(path)
-
-	if err != nil {
-		s.logger.Errorf("Failed to set new storage path [%s], err: %v", path, err)
-
-		if errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("存储目录 [%s] 不存在", path)
-		}
-		if errors.Is(err, os.ErrPermission) {
-			return fmt.Errorf("存储目录 [%s] 无法访问", path)
-		}
-
-		return errors.New("访问存储目录失败")
-	}
-
-	if !info.IsDir() {
-		return fmt.Errorf("存储目录 [%s] 不是文件夹", path)
-	}
+// SetStorage 前端不能使用这个，依赖App的ctx
+func (s *Settings) SetStorage(ctx context.Context) (string, error) {
+	dir, err := runtime.OpenDirectoryDialog(ctx, runtime.OpenDialogOptions{
+		Title: "选择下载目录",
+	})
 
 	if err = s.DB.Update(func(txn *badger.Txn) error {
-		return txn.Set(storageKey, []byte(path))
+		return txn.Set(storageKey, []byte(dir))
 	}); err != nil {
-		s.logger.Errorf("Failed to set new storage path [%s], err: %v", path, err)
-		return errors.New("设置存储目录失败")
+		s.logger.Errorf("Failed to set new storage path [%s], err: %v", dir, err)
+		return "", errors.New("设置存储目录失败")
 	}
-	s.logger.Infof("Storage path set to: %s", path)
+	s.logger.Infof("Storage path set to: %s", dir)
 
-	return nil
+	return dir, nil
 }

@@ -23,9 +23,9 @@ var assets embed.FS
 var icon []byte
 
 func main() {
-	app := NewApp()
 	log := mylogger.New()
 	settings := utils.NewSettings(log)
+	app := NewApp(settings)
 	// Create application with options
 	err := wails.Run(&options.App{
 		Title:             "videodown",

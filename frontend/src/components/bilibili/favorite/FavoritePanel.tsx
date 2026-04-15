@@ -168,7 +168,7 @@ export default function FavoritePanel(props: {
                     if (selectedItem()?.id === item.raw.id && detail() && !detailLoading()) return;
                     void loadFavoriteDetail(item.raw);
                 }}
-                sidebarIcon={StarIcon}
+                sidebarIcon={StarIcon()}
                 sidebarLabel={'收藏夹'}
                 sidebarCount={() => favorites()?.count ?? sidebarItems().length}
                 sidebarLoading={loading}
@@ -192,7 +192,6 @@ export default function FavoritePanel(props: {
                     if (!item || !detailHasMore() || loadingMore()) return;
                     void loadFavoriteDetail(item, true);
                 }}
-                showToast={props.showToast}
             />
         </div>
     );
