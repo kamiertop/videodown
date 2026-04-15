@@ -1,11 +1,11 @@
 import {Show, type JSXElement} from "solid-js";
 
 /**
- * 收藏夹|合集视频卡片展示页面上面的小组件，显示选中数量和下载按钮等
+ * 视频列表顶栏：标题、数量、全选与下载（收藏 / 合集 / UP 详情等共用）。
  */
 
 export default function DetailToolbar(props: {
-    title: string;  // 收藏夹|合集名称
+    title: string;
     mediaCount: number; // 媒体数量
     selectedCount: number;  // 已选数量
     allSelected: boolean;   // 是否全选

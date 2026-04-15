@@ -4,6 +4,10 @@ import IconEye from "./icons/IconEye";
 import IconChat from "./icons/IconChat";
 import type {MediaCardItem} from "../lib/model.ts";
 
+/**
+ * 视频卡片网格组件
+ */
+
 export default function VideoCardGrid(props: {
     medias: MediaCardItem[];
     selectedSet: () => Set<number>;

@@ -11,7 +11,7 @@ export default function SidebarList<T extends SidebarListItem>(props: {
     list: () => readonly T[];
     selectedId: () => number | null;
     onSelect: (item: T) => void;
-    icon: () => JSXElement;
+    icon: JSXElement;
 }): JSXElement {
     return (
         <div class="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-2 py-1">
@@ -33,7 +33,7 @@ export default function SidebarList<T extends SidebarListItem>(props: {
                                         ? 'border-success/40 bg-success/20 text-success'
                                         : 'border-base-300 bg-base-200/50 text-accent group-hover:border-accent/50 group-hover:bg-accent/10'
                                 }`}>
-                                {props.icon()}
+                                {props.icon}
                             </div>
                             <div class="min-w-0 flex-1">
                                 <span class={`block truncate text-sm font-semibold ${

@@ -7,6 +7,7 @@ import {type SidebarListItem} from "../../SidebarList";
 import type {MediaCardItem} from "../../../lib/model.ts";
 
 const COLLECTION_PAGE = 1;
+// 合集列表分页大小
 const COLLECTION_PAGE_SIZE = 20;
 const EMPTY_COLLECTION_LIST: readonly model.CollectionDataList[] = [];
 
@@ -115,12 +116,12 @@ export default function CollectionPanel(props: {
                     if (selectedItem()?.id === item.raw.id && detail() && !detailLoading()) return;
                     void loadCollectionDetail(item.raw);
                 }}
-                sidebarIcon={StackIcon}
+                sidebarIcon={StackIcon()}
                 sidebarLabel={'合集'}
                 sidebarCount={() => collections()?.count ?? sidebarItems().length}
                 sidebarLoading={loading}
                 onRefresh={() => void loadCollections()}
-                hasSelection={() => !!selectedItem()}
+                hasSelection={() => selectedItem() !== null}
                 detailLoading={detailLoading}
                 detailError={detailError}
                 onRetryDetail={() => {
@@ -131,7 +132,6 @@ export default function CollectionPanel(props: {
                 detailMediaCount={() => detail()?.info?.media_count ?? selectedItem()?.media_count ?? 0}
                 mediaCards={mediaCards}
                 detailVersion={detailVersion}
-                showToast={props.showToast}
             />
         </div>
     );

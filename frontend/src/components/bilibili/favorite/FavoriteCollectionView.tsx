@@ -1,14 +1,11 @@
-import {useNavigate} from "@tanstack/solid-router";
-import {createEffect, createMemo, createSignal, type JSXElement, Match, Show, Switch} from "solid-js";
-import {addVideo} from "../../../routes/bilibili/download";
-import EmptyState from "../../EmptyState";
-import DetailLoading from "../../DetailLoading";
-import DetailError from "../../DetailError";
-import DetailToolbar from "../../DetailToolbar";
-import VideoCardGrid from "../../VideoCardGrid";
-import SidebarList, {type SidebarListItem} from "../../SidebarList";
-import IconRefresh from "../../icons/IconRefresh";
+import {type JSXElement, Match, Show, Switch} from "solid-js";
 import type {MediaCardItem} from "../../../lib/model.ts";
+import DetailError from "../../DetailError";
+import DetailLoading from "../../DetailLoading";
+import EmptyState from "../../EmptyState";
+import IconRefresh from "../../icons/IconRefresh";
+import SidebarList, {type SidebarListItem} from "../../SidebarList";
+import VideoListSection from "../../VideoListSection";
 
 export type sidebarLabelType = "收藏夹" | "合集";
 
@@ -16,10 +13,10 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
     sidebarItems: () => readonly T[];
     selectedSidebarId: () => number | null;
     onSelectSidebar: (item: T) => void;
-    sidebarIcon: () => JSXElement;
+    sidebarIcon: JSXElement;
     /** 侧栏左上角标题，如「收藏夹」「合集」 */
     sidebarLabel: sidebarLabelType;
-    /** 对应列表数量（与顶栏 tab 数字同源） */
+    /** 对应列表数量 */
     sidebarCount: () => number;
     sidebarLoading: () => boolean;
     onRefresh: () => void;
@@ -34,12 +31,7 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
     hasMore?: () => boolean;
     loadingMore?: () => boolean;
     onLoadMore?: () => void;
-    showToast: (message: string, type?: "success" | "error" | "warning" | "info") => void;
 }): JSXElement {
-    const navigate = useNavigate();
-    const [selectedMediaIds, setSelectedMediaIds] = createSignal<number[]>([]);
-    const selectedSet = createMemo(() => new Set(selectedMediaIds()));
-
     function emptySidebarTitle(): string {
         switch (props.sidebarLabel) {
             case "合集":
@@ -57,47 +49,6 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
                 return "暂无收藏夹内容";
         }
     }
-
-    createEffect(() => {
-        props.selectedSidebarId();
-        props.detailVersion();
-        setSelectedMediaIds([]);
-    });
-
-    const allSelected = () => {
-        const cards = props.mediaCards();
-        if (cards.length === 0) return false;
-        const selected = selectedSet();
-        return cards.every(card => selected.has(card.id));
-    };
-
-    const toggleSelectMedia = (id: number) => {
-        setSelectedMediaIds(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return Array.from(next);
-        });
-    };
-
-    const toggleSelectAllMedia = () => {
-        const cards = props.mediaCards();
-        setSelectedMediaIds(allSelected() ? [] : cards.map(card => card.id));
-    };
-
-    const downloadMediaList = async (medias: MediaCardItem[], label: string) => {
-        addVideo(medias);
-        await navigate({to: "/bilibili/download"});
-        props.showToast(`${label}，已打开下载页`, "success");
-    };
-
-    const downloadSelectedMedia = () => {
-        const selected = selectedSet();
-        const medias = props.mediaCards().filter(media => selected.has(media.id));
-        return downloadMediaList(medias, `已选择 ${medias.length} 个视频`);
-    };
-
-    const downloadAllMedia = () => downloadMediaList(props.mediaCards(), "全部视频");
 
     return (
         <div class="flex h-full min-h-0 gap-3 overflow-hidden">
@@ -170,36 +121,15 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
                             <EmptyState title="暂无视频" description="可以切换到其他项查看"/>
                         </Match>
                         <Match when={true}>
-                            {/*展示标题，数量，全选，下载全选等按钮*/}
-                            <DetailToolbar
+                            <VideoListSection
                                 title={props.detailTitle()}
                                 mediaCount={props.detailMediaCount()}
-                                selectedCount={selectedMediaIds().length}
-                                allSelected={allSelected()}
-                                onToggleSelectAll={toggleSelectAllMedia}
-                                onClearSelection={() => setSelectedMediaIds([])}
-                                onDownloadSelected={() => void downloadSelectedMedia()}
-                                onDownloadAll={() => void downloadAllMedia()}
+                                medias={props.mediaCards}
+                                selectionResetKey={() => `${props.selectedSidebarId() ?? ""}-${props.detailVersion()}`}
+                                hasMore={props.hasMore}
+                                loadingMore={props.loadingMore}
+                                onLoadMore={props.onLoadMore}
                             />
-                            <div class="min-h-0 flex-1 overflow-auto p-4">
-                                <VideoCardGrid
-                                    medias={props.mediaCards()}
-                                    selectedSet={selectedSet}
-                                    onToggleSelect={toggleSelectMedia}
-                                    onDownloadOne={(media) => void downloadMediaList([media], `视频 ${media.title}`)}
-                                />
-                                <Show when={props.hasMore?.()}>
-                                    <div class="mt-4 flex justify-center pb-2">
-                                        <button
-                                            class="btn btn-outline btn-sm"
-                                            onClick={props.onLoadMore}
-                                            disabled={props.loadingMore?.()}
-                                        >
-                                            {props.loadingMore?.() ? '加载中...' : '加载剩余视频'}
-                                        </button>
-                                    </div>
-                                </Show>
-                            </div>
                         </Match>
                     </Switch>
                 </Show>
