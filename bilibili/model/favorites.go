@@ -17,13 +17,7 @@ type FavoriteItem struct {
 	MediaCount int64  `json:"media_count"`
 }
 
-// FavoriteResponse 收藏夹详情，包含了收藏夹内的视频列表等信息
-type FavoriteResponse struct {
-	Code    int          `json:"code"`
-	Message string       `json:"message"`
-	TTL     int          `json:"ttl"`
-	Data    FavoriteData `json:"data"`
-}
+// FavoriteData 收藏夹详情，包含了收藏夹内的视频列表等信息
 type FavoriteData struct {
 	Info    FavoriteInfo     `json:"info"`
 	Medias  []FavoriteMedias `json:"medias"`

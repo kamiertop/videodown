@@ -2,6 +2,7 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/kamiertop/videodown/bilibili/model"
@@ -77,6 +78,9 @@ func (b *BiliBili) VideoDetailConcise(aid int) (model.VideoDetailConciseData, er
 		SetQueryParams(params).
 		SetHeader(Cookie, cookies).
 		SetHeaders(publicHeaders()).
+		SetHeader(Origin, BiliBiliUrl).
+		SetHeader(Accept, "application/json, text/plain, */*").
+		SetHeader(Referer, fmt.Sprintf("https://www.bilibili.com/video/av%d", aid)).
 		Do().
 		Into(&resp)
 	if err != nil {
@@ -124,6 +128,9 @@ func (b *BiliBili) VideoDetailConciseBvid(bvid string) (model.VideoDetailConcise
 		SetQueryParams(params).
 		SetHeader(Cookie, cookies).
 		SetHeaders(publicHeaders()).
+		SetHeader(Origin, BiliBiliUrl).
+		SetHeader(Accept, "application/json, text/plain, */*").
+		SetHeader(Referer, fmt.Sprintf("https://www.bilibili.com/video/%s", bvid)).
 		Do().
 		Into(&resp)
 	if err != nil {
@@ -138,7 +145,7 @@ func (b *BiliBili) VideoDetailConciseBvid(bvid string) (model.VideoDetailConcise
 }
 
 // VideoPlayURL 获取播放地址。qn 为清晰度代码（如 80=1080P）；fnval 为流格式掩码（如 4048=DASH，0=FLV，80=MP4 等）。qn≤0 时默认 80，fnval<0 时默认 4048（0 表示 FLV 合法，不可再用负数表示默认）。
-func (b *BiliBili) VideoPlayURL(avid int64, bvid string, cid int64, qn int, fnval int) (model.VideoURLData, error) {
+func (b *BiliBili) VideoPlayURL(avid int64, bvid string, cid int64, qn int) (model.VideoURLData, error) {
 	var resp struct {
 		model.ApiResponse
 		Data model.VideoURLData `json:"data"`
@@ -150,17 +157,17 @@ func (b *BiliBili) VideoPlayURL(avid int64, bvid string, cid int64, qn int, fnva
 	if qn <= 0 {
 		qn = 80
 	}
-	if fnval < 0 {
-		fnval = 4048
-	}
+	// TODO
+	// vip   -> qn=127
+	// 非vip -> qn=80
 	params := map[string]string{
 		"avid":          strconv.FormatInt(avid, 10),
 		"bvid":          bvid,
 		"cid":           strconv.FormatInt(cid, 10),
-		"qn":            strconv.Itoa(qn),    // 视频清晰度选择
-		"fnval":         strconv.Itoa(fnval), // 视频流格式标识
-		"fnver":         "0",                 // 0
-		"fourk":         "1",                 // 是否允许4k视频，这里默认就是允许
+		"qn":            strconv.Itoa(qn), // 视频清晰度选择
+		"fnval":         "4048",           // 视频流格式标识, 默认4048，获取所有可用的DASH流，交给用户选择
+		"fnver":         "0",              // 0
+		"fourk":         "1",              // 是否允许4k视频，这里默认就是允许
 		"voice_balance": "1",
 		"gaia_source":   "pre-load",
 		"isGaiaAvoided": "true",
@@ -170,11 +177,15 @@ func (b *BiliBili) VideoPlayURL(avid int64, bvid string, cid int64, qn int, fnva
 	if err != nil {
 		return resp.Data, err
 	}
+
 	err = b.client.
 		Get("https://api.bilibili.com/x/player/wbi/playurl").
 		SetQueryParams(params).
 		SetHeaders(publicHeaders()).
 		SetHeader(Cookie, cookies).
+		SetHeader(Origin, BiliBiliUrl).
+		SetHeader(Accept, "application/json, text/plain, */*").
+		SetHeader(Referer, fmt.Sprintf("https://www.bilibili.com/video/%s", bvid)).
 		Do().
 		Into(&resp)
 	if err != nil {

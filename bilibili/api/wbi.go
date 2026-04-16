@@ -20,8 +20,9 @@ var mixinKeyEncTab = []int{
 
 // wbiKeys 存储从 nav 接口获取的 wbi 密钥
 type wbiKeys struct {
-	ImgKey string
-	SubKey string
+	ImgKey   string
+	SubKey   string
+	LastTime time.Time
 }
 
 // genMixinKey 根据 img_key + sub_key 生成 mixin_key
@@ -95,20 +96,28 @@ func (b *BiliBili) encWbiParams(params map[string]string) (map[string]string, er
 	return params, nil
 }
 
+type WbiImg struct {
+	imgKey   string
+	subkey   string
+	LastTime time.Time
+}
+
 // getWbiKeys 从 nav 接口获取 img_key 和 sub_key
 func (b *BiliBili) getWbiKeys() (*wbiKeys, error) {
-
-	type NavData struct {
-		WbiImg struct {
-			ImgURL string `json:"img_url"`
-			SubURL string `json:"sub_url"`
-		} `json:"wbi_img"`
+	if b.wbiKey != nil {
+		if time.Since(b.wbiKey.LastTime) < 12*time.Hour {
+			return b.wbiKey, nil
+		}
 	}
-
 	var resp struct {
-		Code    int     `json:"code"`
-		Message string  `json:"message"`
-		Data    NavData `json:"data"`
+		Code    int    `json:"code"`
+		Message string `json:"message"`
+		Data    struct {
+			WbiImg struct {
+				ImgURL string `json:"img_url"`
+				SubURL string `json:"sub_url"`
+			} `json:"wbi_img"`
+		} `json:"data"`
 	}
 	cookie, err := b.getCookies()
 	if err != nil {
@@ -136,11 +145,13 @@ func (b *BiliBili) getWbiKeys() (*wbiKeys, error) {
 	if imgKey == "" || subKey == "" {
 		return nil, fmt.Errorf("提取wbi密钥失败")
 	}
+	b.wbiKey = &wbiKeys{
+		ImgKey:   imgKey,
+		SubKey:   subKey,
+		LastTime: time.Now(),
+	}
 
-	return &wbiKeys{
-		ImgKey: imgKey,
-		SubKey: subKey,
-	}, nil
+	return b.wbiKey, nil
 }
 
 // extractKeyFromURL 从 wbi 图片 URL 中提取 key（去掉路径和后缀）

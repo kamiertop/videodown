@@ -3,7 +3,7 @@ package model
 type MyInfo struct {
 	OwnerSecUid  string       `json:"owner_sec_uid"`
 	StatusCode   int          `json:"status_code"`
-	NextReqCount int          `json:"next_req_count"` // 0
+	NextReqCount int          `json:"next_req_count"`
 	Data         []MyInfoData `json:"data"`
 }
 

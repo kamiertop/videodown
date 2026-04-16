@@ -136,7 +136,7 @@ func (b *BiliBili) IsLoggedIn() bool {
 // getCookies 获取已登录的 cookies
 func (b *BiliBili) getCookies() (string, error) {
 	var cookie string
-	err := b.db.View(func(txn *badger.Txn) error {
+	err := b.settings.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(bilibiliCookieKey))
 		if err != nil {
 			return err
@@ -189,7 +189,7 @@ func (b *BiliBili) saveCookies(cookies []*http.Cookie) error {
 		b.logger.Error("missing bili_jct in login cookies")
 		return errors.New("保存登录信息失败")
 	}
-	if err := b.db.Update(func(txn *badger.Txn) error {
+	if err := b.settings.Update(func(txn *badger.Txn) error {
 		if err := txn.Set([]byte(bilibiliCSRFKey), []byte(csrf)); err != nil {
 			b.logger.Errorf("failed to save bilibili cookies with [bili_jct], cookies: %v,err: %e", cookieMap, err)
 			return err
