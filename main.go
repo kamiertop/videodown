@@ -54,8 +54,8 @@ func main() {
 		WindowStartState: options.Normal,
 		Bind: []interface{}{
 			app,
-			bilibiliapi.New(log, settings.DB),
-			douyinapi.New(log, settings.DB),
+			bilibiliapi.New(log, settings),
+			douyinapi.New(log, settings),
 			settings,
 		},
 		// Windows platform specific options

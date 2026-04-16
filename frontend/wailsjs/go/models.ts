@@ -1,3 +1,262 @@
+export namespace badger {
+	
+	export class KVLoader {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new KVLoader(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+	export class LevelInfo {
+	    Level: number;
+	    NumTables: number;
+	    Size: number;
+	    TargetSize: number;
+	    TargetFileSize: number;
+	    IsBaseLevel: boolean;
+	    Score: number;
+	    Adjusted: number;
+	    StaleDatSize: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new LevelInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Level = source["Level"];
+	        this.NumTables = source["NumTables"];
+	        this.Size = source["Size"];
+	        this.TargetSize = source["TargetSize"];
+	        this.TargetFileSize = source["TargetFileSize"];
+	        this.IsBaseLevel = source["IsBaseLevel"];
+	        this.Score = source["Score"];
+	        this.Adjusted = source["Adjusted"];
+	        this.StaleDatSize = source["StaleDatSize"];
+	    }
+	}
+	export class MergeOperator {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new MergeOperator(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+	export class Options {
+	    Dir: string;
+	    ValueDir: string;
+	    SyncWrites: boolean;
+	    NumVersionsToKeep: number;
+	    ReadOnly: boolean;
+	    Logger: any;
+	    Compression: number;
+	    InMemory: boolean;
+	    MetricsEnabled: boolean;
+	    NumGoroutines: number;
+	    MemTableSize: number;
+	    BaseTableSize: number;
+	    BaseLevelSize: number;
+	    LevelSizeMultiplier: number;
+	    TableSizeMultiplier: number;
+	    MaxLevels: number;
+	    VLogPercentile: number;
+	    ValueThreshold: number;
+	    NumMemtables: number;
+	    BlockSize: number;
+	    BloomFalsePositive: number;
+	    BlockCacheSize: number;
+	    IndexCacheSize: number;
+	    NumLevelZeroTables: number;
+	    NumLevelZeroTablesStall: number;
+	    ValueLogFileSize: number;
+	    ValueLogMaxEntries: number;
+	    NumCompactors: number;
+	    CompactL0OnClose: boolean;
+	    LmaxCompaction: boolean;
+	    ZSTDCompressionLevel: number;
+	    VerifyValueChecksum: boolean;
+	    EncryptionKey: number[];
+	    EncryptionKeyRotationDuration: number;
+	    BypassLockGuard: boolean;
+	    ChecksumVerificationMode: number;
+	    DetectConflicts: boolean;
+	    NamespaceOffset: number;
+	    ExternalMagicVersion: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Options(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Dir = source["Dir"];
+	        this.ValueDir = source["ValueDir"];
+	        this.SyncWrites = source["SyncWrites"];
+	        this.NumVersionsToKeep = source["NumVersionsToKeep"];
+	        this.ReadOnly = source["ReadOnly"];
+	        this.Logger = source["Logger"];
+	        this.Compression = source["Compression"];
+	        this.InMemory = source["InMemory"];
+	        this.MetricsEnabled = source["MetricsEnabled"];
+	        this.NumGoroutines = source["NumGoroutines"];
+	        this.MemTableSize = source["MemTableSize"];
+	        this.BaseTableSize = source["BaseTableSize"];
+	        this.BaseLevelSize = source["BaseLevelSize"];
+	        this.LevelSizeMultiplier = source["LevelSizeMultiplier"];
+	        this.TableSizeMultiplier = source["TableSizeMultiplier"];
+	        this.MaxLevels = source["MaxLevels"];
+	        this.VLogPercentile = source["VLogPercentile"];
+	        this.ValueThreshold = source["ValueThreshold"];
+	        this.NumMemtables = source["NumMemtables"];
+	        this.BlockSize = source["BlockSize"];
+	        this.BloomFalsePositive = source["BloomFalsePositive"];
+	        this.BlockCacheSize = source["BlockCacheSize"];
+	        this.IndexCacheSize = source["IndexCacheSize"];
+	        this.NumLevelZeroTables = source["NumLevelZeroTables"];
+	        this.NumLevelZeroTablesStall = source["NumLevelZeroTablesStall"];
+	        this.ValueLogFileSize = source["ValueLogFileSize"];
+	        this.ValueLogMaxEntries = source["ValueLogMaxEntries"];
+	        this.NumCompactors = source["NumCompactors"];
+	        this.CompactL0OnClose = source["CompactL0OnClose"];
+	        this.LmaxCompaction = source["LmaxCompaction"];
+	        this.ZSTDCompressionLevel = source["ZSTDCompressionLevel"];
+	        this.VerifyValueChecksum = source["VerifyValueChecksum"];
+	        this.EncryptionKey = source["EncryptionKey"];
+	        this.EncryptionKeyRotationDuration = source["EncryptionKeyRotationDuration"];
+	        this.BypassLockGuard = source["BypassLockGuard"];
+	        this.ChecksumVerificationMode = source["ChecksumVerificationMode"];
+	        this.DetectConflicts = source["DetectConflicts"];
+	        this.NamespaceOffset = source["NamespaceOffset"];
+	        this.ExternalMagicVersion = source["ExternalMagicVersion"];
+	    }
+	}
+	export class Sequence {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new Sequence(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+	export class Stream {
+	    Prefix: number[];
+	    NumGo: number;
+	    LogPrefix: string;
+	    MaxSize: number;
+	    UseKeyToListWithThreadId: boolean;
+	    SinceTs: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Stream(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Prefix = source["Prefix"];
+	        this.NumGo = source["NumGo"];
+	        this.LogPrefix = source["LogPrefix"];
+	        this.MaxSize = source["MaxSize"];
+	        this.UseKeyToListWithThreadId = source["UseKeyToListWithThreadId"];
+	        this.SinceTs = source["SinceTs"];
+	    }
+	}
+	export class StreamWriter {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new StreamWriter(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+	export class TableInfo {
+	    ID: number;
+	    Level: number;
+	    Left: number[];
+	    Right: number[];
+	    KeyCount: number;
+	    OnDiskSize: number;
+	    StaleDataSize: number;
+	    UncompressedSize: number;
+	    MaxVersion: number;
+	    IndexSz: number;
+	    BloomFilterSize: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new TableInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.Level = source["Level"];
+	        this.Left = source["Left"];
+	        this.Right = source["Right"];
+	        this.KeyCount = source["KeyCount"];
+	        this.OnDiskSize = source["OnDiskSize"];
+	        this.StaleDataSize = source["StaleDataSize"];
+	        this.UncompressedSize = source["UncompressedSize"];
+	        this.MaxVersion = source["MaxVersion"];
+	        this.IndexSz = source["IndexSz"];
+	        this.BloomFilterSize = source["BloomFilterSize"];
+	    }
+	}
+	export class Txn {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new Txn(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+	export class WriteBatch {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new WriteBatch(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+	export class keyRange {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new keyRange(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+
+}
+
 export namespace model {
 	
 	export class Dimension {
@@ -3453,6 +3712,42 @@ export namespace model {
 	
 	
 	
+
+}
+
+export namespace pb {
+	
+	export class Match {
+	    prefix?: number[];
+	    ignore_bytes?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Match(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.prefix = source["prefix"];
+	        this.ignore_bytes = source["ignore_bytes"];
+	    }
+	}
+
+}
+
+export namespace ristretto {
+	
+	export class Metrics {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new Metrics(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
 
 }
 

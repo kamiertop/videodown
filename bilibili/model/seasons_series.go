@@ -25,13 +25,13 @@ type SeasonsItem struct {
 
 type SeasonsItemMeta struct {
 	Category    int    `json:"category"`
-	Cover       string `json:"cover"`
-	Description string `json:"description"`
+	Cover       string `json:"cover"`       // 合集封面
+	Description string `json:"description"` // 合集描述
 	Mid         int    `json:"mid"`
 	Name        string `json:"name"`
 	Ptime       int    `json:"ptime"`
 	SeasonId    int    `json:"season_id"`
-	Total       int    `json:"total"`
+	Total       int    `json:"total"` // 合集总量
 	Title       string `json:"title"`
 }
 
