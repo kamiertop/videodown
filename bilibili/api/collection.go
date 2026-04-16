@@ -32,6 +32,7 @@ func (b *BiliBili) Collection(pn, ps int) (model.CollectionData, error) {
 			"platform":  "web",
 		}).
 		SetHeaders(publicHeaders()).
+		SetHeader(Origin, "https://space.bilibili.com").
 		SetHeader(Cookie, cookies).
 		Do().
 		Into(&resp); err != nil {
