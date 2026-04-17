@@ -10,6 +10,18 @@ export function CollectionItem(arg1, arg2, arg3) {
   return window['go']['api']['BiliBili']['CollectionItem'](arg1, arg2, arg3);
 }
 
+export function DownloadHistory() {
+  return window['go']['api']['BiliBili']['DownloadHistory']();
+}
+
+export function DownloadVideoByDash(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['api']['BiliBili']['DownloadVideoByDash'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function DownloadVideosByDash(arg1) {
+  return window['go']['api']['BiliBili']['DownloadVideosByDash'](arg1);
+}
+
 export function Favorites(arg1, arg2, arg3) {
   return window['go']['api']['BiliBili']['Favorites'](arg1, arg2, arg3);
 }
@@ -74,6 +86,6 @@ export function VideoList(arg1, arg2, arg3) {
   return window['go']['api']['BiliBili']['VideoList'](arg1, arg2, arg3);
 }
 
-export function VideoPlayURL(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['api']['BiliBili']['VideoPlayURL'](arg1, arg2, arg3, arg4, arg5);
+export function VideoPlayURL(arg1, arg2, arg3, arg4) {
+  return window['go']['api']['BiliBili']['VideoPlayURL'](arg1, arg2, arg3, arg4);
 }
