@@ -2,6 +2,7 @@ package utils
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,7 +13,62 @@ type FFmpeg struct {
 	path string
 }
 
-func (f *FFmpeg) Merge() error {
+func NewFFmpeg() *FFmpeg {
+	return &FFmpeg{}
+}
+
+func (f *FFmpeg) ensurePath() error {
+	if f.path != "" {
+		return nil
+	}
+	return f.searchFFmpeg()
+}
+
+func (f *FFmpeg) Merge(videoPath, audioPath, outputPath string) error {
+	if err := f.ensurePath(); err != nil {
+		return err
+	}
+	if videoPath == "" || audioPath == "" || outputPath == "" {
+		return errors.New("video/audio/output path is empty")
+	}
+
+	cmd := exec.Command(
+		f.path,
+		"-y",
+		"-loglevel", "error",
+		"-nostdin",
+		"-i", videoPath,
+		"-i", audioPath,
+		"-c", "copy",
+		outputPath,
+	)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("ffmpeg merge failed: %w: %s", err, string(out))
+	}
+
+	return nil
+}
+
+func (f *FFmpeg) Remux(inputPath, outputPath string) error {
+	if err := f.ensurePath(); err != nil {
+		return err
+	}
+	if inputPath == "" || outputPath == "" {
+		return errors.New("input/output path is empty")
+	}
+
+	cmd := exec.Command(
+		f.path,
+		"-y",
+		"-loglevel", "error",
+		"-nostdin",
+		"-i", inputPath,
+		"-c", "copy",
+		outputPath,
+	)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("ffmpeg remux failed: %w: %s", err, string(out))
+	}
 
 	return nil
 }

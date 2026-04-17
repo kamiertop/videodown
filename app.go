@@ -2,16 +2,21 @@ package main
 
 import (
 	"context"
+
+	"github.com/kamiertop/videodown/utils"
 )
 
 // App struct
 type App struct {
-	ctx context.Context
+	ctx      context.Context
+	settings *utils.Settings
 }
 
 // NewApp creates a new App application struct
-func NewApp() *App {
-	return &App{}
+func NewApp(settings *utils.Settings) *App {
+	return &App{
+		settings: settings,
+	}
 }
 
 // startup is called at application startup
@@ -20,7 +25,7 @@ func (a *App) startup(ctx context.Context) {
 }
 
 // domReady is called after front-end resources have been loaded
-func (a App) domReady(ctx context.Context) {
+func (a *App) domReady(ctx context.Context) {
 	// Add your action here
 }
 
@@ -34,4 +39,8 @@ func (a *App) beforeClose(ctx context.Context) (prevent bool) {
 // shutdown is called at application termination
 func (a *App) shutdown(ctx context.Context) {
 	// Perform your teardown here
+}
+
+func (a *App) SetStorage() (string, error) {
+	return a.settings.SetStorage(a.ctx)
 }

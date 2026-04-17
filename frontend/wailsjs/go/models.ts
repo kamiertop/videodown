@@ -1,3 +1,388 @@
+export namespace api {
+	
+	export class DashDownloadResult {
+	    bvid: string;
+	    title: string;
+	    path: string;
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DashDownloadResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bvid = source["bvid"];
+	        this.title = source["title"];
+	        this.path = source["path"];
+	        this.error = source["error"];
+	    }
+	}
+	export class DashDownloadBatchResult {
+	    results: DashDownloadResult[];
+	    success: number;
+	    failed: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DashDownloadBatchResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.results = this.convertValues(source["results"], DashDownloadResult);
+	        this.success = source["success"];
+	        this.failed = source["failed"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class DashDownloadTask {
+	    sourceName: string;
+	    sourceKind: string;
+	    upperName: string;
+	    bvid: string;
+	    title: string;
+	    cover: string;
+	    duration: number;
+	    play: number;
+	    danmaku: number;
+	    pubtime: number;
+	    videoURL: string;
+	    audioURL: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DashDownloadTask(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sourceName = source["sourceName"];
+	        this.sourceKind = source["sourceKind"];
+	        this.upperName = source["upperName"];
+	        this.bvid = source["bvid"];
+	        this.title = source["title"];
+	        this.cover = source["cover"];
+	        this.duration = source["duration"];
+	        this.play = source["play"];
+	        this.danmaku = source["danmaku"];
+	        this.pubtime = source["pubtime"];
+	        this.videoURL = source["videoURL"];
+	        this.audioURL = source["audioURL"];
+	    }
+	}
+	export class DownloadHistoryItem {
+	    bvid: string;
+	    title: string;
+	    cover: string;
+	    duration: number;
+	    upperName: string;
+	    play: number;
+	    danmaku: number;
+	    pubtime: number;
+	    sourceName: string;
+	    sourceKind: string;
+	    path: string;
+	    downloaded: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DownloadHistoryItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bvid = source["bvid"];
+	        this.title = source["title"];
+	        this.cover = source["cover"];
+	        this.duration = source["duration"];
+	        this.upperName = source["upperName"];
+	        this.play = source["play"];
+	        this.danmaku = source["danmaku"];
+	        this.pubtime = source["pubtime"];
+	        this.sourceName = source["sourceName"];
+	        this.sourceKind = source["sourceKind"];
+	        this.path = source["path"];
+	        this.downloaded = source["downloaded"];
+	    }
+	}
+
+}
+
+export namespace badger {
+	
+	export class KVLoader {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new KVLoader(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+	export class LevelInfo {
+	    Level: number;
+	    NumTables: number;
+	    Size: number;
+	    TargetSize: number;
+	    TargetFileSize: number;
+	    IsBaseLevel: boolean;
+	    Score: number;
+	    Adjusted: number;
+	    StaleDatSize: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new LevelInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Level = source["Level"];
+	        this.NumTables = source["NumTables"];
+	        this.Size = source["Size"];
+	        this.TargetSize = source["TargetSize"];
+	        this.TargetFileSize = source["TargetFileSize"];
+	        this.IsBaseLevel = source["IsBaseLevel"];
+	        this.Score = source["Score"];
+	        this.Adjusted = source["Adjusted"];
+	        this.StaleDatSize = source["StaleDatSize"];
+	    }
+	}
+	export class MergeOperator {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new MergeOperator(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+	export class Options {
+	    Dir: string;
+	    ValueDir: string;
+	    SyncWrites: boolean;
+	    NumVersionsToKeep: number;
+	    ReadOnly: boolean;
+	    Logger: any;
+	    Compression: number;
+	    InMemory: boolean;
+	    MetricsEnabled: boolean;
+	    NumGoroutines: number;
+	    MemTableSize: number;
+	    BaseTableSize: number;
+	    BaseLevelSize: number;
+	    LevelSizeMultiplier: number;
+	    TableSizeMultiplier: number;
+	    MaxLevels: number;
+	    VLogPercentile: number;
+	    ValueThreshold: number;
+	    NumMemtables: number;
+	    BlockSize: number;
+	    BloomFalsePositive: number;
+	    BlockCacheSize: number;
+	    IndexCacheSize: number;
+	    NumLevelZeroTables: number;
+	    NumLevelZeroTablesStall: number;
+	    ValueLogFileSize: number;
+	    ValueLogMaxEntries: number;
+	    NumCompactors: number;
+	    CompactL0OnClose: boolean;
+	    LmaxCompaction: boolean;
+	    ZSTDCompressionLevel: number;
+	    VerifyValueChecksum: boolean;
+	    EncryptionKey: number[];
+	    EncryptionKeyRotationDuration: number;
+	    BypassLockGuard: boolean;
+	    ChecksumVerificationMode: number;
+	    DetectConflicts: boolean;
+	    NamespaceOffset: number;
+	    ExternalMagicVersion: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Options(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Dir = source["Dir"];
+	        this.ValueDir = source["ValueDir"];
+	        this.SyncWrites = source["SyncWrites"];
+	        this.NumVersionsToKeep = source["NumVersionsToKeep"];
+	        this.ReadOnly = source["ReadOnly"];
+	        this.Logger = source["Logger"];
+	        this.Compression = source["Compression"];
+	        this.InMemory = source["InMemory"];
+	        this.MetricsEnabled = source["MetricsEnabled"];
+	        this.NumGoroutines = source["NumGoroutines"];
+	        this.MemTableSize = source["MemTableSize"];
+	        this.BaseTableSize = source["BaseTableSize"];
+	        this.BaseLevelSize = source["BaseLevelSize"];
+	        this.LevelSizeMultiplier = source["LevelSizeMultiplier"];
+	        this.TableSizeMultiplier = source["TableSizeMultiplier"];
+	        this.MaxLevels = source["MaxLevels"];
+	        this.VLogPercentile = source["VLogPercentile"];
+	        this.ValueThreshold = source["ValueThreshold"];
+	        this.NumMemtables = source["NumMemtables"];
+	        this.BlockSize = source["BlockSize"];
+	        this.BloomFalsePositive = source["BloomFalsePositive"];
+	        this.BlockCacheSize = source["BlockCacheSize"];
+	        this.IndexCacheSize = source["IndexCacheSize"];
+	        this.NumLevelZeroTables = source["NumLevelZeroTables"];
+	        this.NumLevelZeroTablesStall = source["NumLevelZeroTablesStall"];
+	        this.ValueLogFileSize = source["ValueLogFileSize"];
+	        this.ValueLogMaxEntries = source["ValueLogMaxEntries"];
+	        this.NumCompactors = source["NumCompactors"];
+	        this.CompactL0OnClose = source["CompactL0OnClose"];
+	        this.LmaxCompaction = source["LmaxCompaction"];
+	        this.ZSTDCompressionLevel = source["ZSTDCompressionLevel"];
+	        this.VerifyValueChecksum = source["VerifyValueChecksum"];
+	        this.EncryptionKey = source["EncryptionKey"];
+	        this.EncryptionKeyRotationDuration = source["EncryptionKeyRotationDuration"];
+	        this.BypassLockGuard = source["BypassLockGuard"];
+	        this.ChecksumVerificationMode = source["ChecksumVerificationMode"];
+	        this.DetectConflicts = source["DetectConflicts"];
+	        this.NamespaceOffset = source["NamespaceOffset"];
+	        this.ExternalMagicVersion = source["ExternalMagicVersion"];
+	    }
+	}
+	export class Sequence {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new Sequence(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+	export class Stream {
+	    Prefix: number[];
+	    NumGo: number;
+	    LogPrefix: string;
+	    MaxSize: number;
+	    UseKeyToListWithThreadId: boolean;
+	    SinceTs: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Stream(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.Prefix = source["Prefix"];
+	        this.NumGo = source["NumGo"];
+	        this.LogPrefix = source["LogPrefix"];
+	        this.MaxSize = source["MaxSize"];
+	        this.UseKeyToListWithThreadId = source["UseKeyToListWithThreadId"];
+	        this.SinceTs = source["SinceTs"];
+	    }
+	}
+	export class StreamWriter {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new StreamWriter(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+	export class TableInfo {
+	    ID: number;
+	    Level: number;
+	    Left: number[];
+	    Right: number[];
+	    KeyCount: number;
+	    OnDiskSize: number;
+	    StaleDataSize: number;
+	    UncompressedSize: number;
+	    MaxVersion: number;
+	    IndexSz: number;
+	    BloomFilterSize: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new TableInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ID = source["ID"];
+	        this.Level = source["Level"];
+	        this.Left = source["Left"];
+	        this.Right = source["Right"];
+	        this.KeyCount = source["KeyCount"];
+	        this.OnDiskSize = source["OnDiskSize"];
+	        this.StaleDataSize = source["StaleDataSize"];
+	        this.UncompressedSize = source["UncompressedSize"];
+	        this.MaxVersion = source["MaxVersion"];
+	        this.IndexSz = source["IndexSz"];
+	        this.BloomFilterSize = source["BloomFilterSize"];
+	    }
+	}
+	export class Txn {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new Txn(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+	export class WriteBatch {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new WriteBatch(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+	export class keyRange {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new keyRange(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
+
+}
+
 export namespace model {
 	
 	export class Dimension {
@@ -291,6 +676,24 @@ export namespace model {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.dyeid = source["dyeid"];
+	    }
+	}
+	export class Avatar {
+	    height: number;
+	    uri: string;
+	    width: number;
+	    url_list: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Avatar(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.height = source["height"];
+	        this.uri = source["uri"];
+	        this.width = source["width"];
+	        this.url_list = source["url_list"];
 	    }
 	}
 	export class CollectionUpper {
@@ -1210,6 +1613,94 @@ export namespace model {
 		}
 	}
 	
+	export class FollowItem {
+	    signature: string;
+	    aweme_count: number;
+	    nickname: string;
+	    sec_uid: string;
+	    uid: string;
+	    unique_id: string;
+	    short_id: string;
+	    cover_url: Avatar;
+	    follower_count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FollowItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.signature = source["signature"];
+	        this.aweme_count = source["aweme_count"];
+	        this.nickname = source["nickname"];
+	        this.sec_uid = source["sec_uid"];
+	        this.uid = source["uid"];
+	        this.unique_id = source["unique_id"];
+	        this.short_id = source["short_id"];
+	        this.cover_url = this.convertValues(source["cover_url"], Avatar);
+	        this.follower_count = source["follower_count"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class Follow {
+	    followings: FollowItem[];
+	    has_more: boolean;
+	    status_code: number;
+	    total: number;
+	    mix_count: number;
+	    myself_user_id: string;
+	    offset: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Follow(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.followings = this.convertValues(source["followings"], FollowItem);
+	        this.has_more = source["has_more"];
+	        this.status_code = source["status_code"];
+	        this.total = source["total"];
+	        this.mix_count = source["mix_count"];
+	        this.myself_user_id = source["myself_user_id"];
+	        this.offset = source["offset"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class FollowDataList {
 	    mid: number;
 	    attribute: number;
@@ -1271,6 +1762,7 @@ export namespace model {
 		}
 	}
 	
+	
 	export class LogOutData {
 	    redirectUrl: string;
 	
@@ -1299,6 +1791,85 @@ export namespace model {
 	        this.status = source["status"];
 	        this.ts = source["ts"];
 	        this.data = this.convertValues(source["data"], LogOutData);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class MyInfoData {
+	    nickname: string;
+	    sec_uid: string;
+	    short_id: string;
+	    signature: string;
+	    uid: string;
+	    unique_id: string;
+	    avatar_thumb: Avatar;
+	
+	    static createFrom(source: any = {}) {
+	        return new MyInfoData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.nickname = source["nickname"];
+	        this.sec_uid = source["sec_uid"];
+	        this.short_id = source["short_id"];
+	        this.signature = source["signature"];
+	        this.uid = source["uid"];
+	        this.unique_id = source["unique_id"];
+	        this.avatar_thumb = this.convertValues(source["avatar_thumb"], Avatar);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class MyInfo {
+	    owner_sec_uid: string;
+	    status_code: number;
+	    next_req_count: number;
+	    data: MyInfoData[];
+	
+	    static createFrom(source: any = {}) {
+	        return new MyInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.owner_sec_uid = source["owner_sec_uid"];
+	        this.status_code = source["status_code"];
+	        this.next_req_count = source["next_req_count"];
+	        this.data = this.convertValues(source["data"], MyInfoData);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -2362,6 +2933,94 @@ export namespace model {
 	
 	
 	
+	export class User {
+	    avatar_larger: Avatar;
+	    avatar_medium: Avatar;
+	    avatar_thumb: Avatar;
+	    city: string;
+	    aweme_count: number;
+	    country: string;
+	    follower_count: number;
+	    ip_location: string;
+	    nickname: string;
+	    province: string;
+	    signature: string;
+	    uid: string;
+	    unique_id: string;
+	    sec_uid: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new User(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.avatar_larger = this.convertValues(source["avatar_larger"], Avatar);
+	        this.avatar_medium = this.convertValues(source["avatar_medium"], Avatar);
+	        this.avatar_thumb = this.convertValues(source["avatar_thumb"], Avatar);
+	        this.city = source["city"];
+	        this.aweme_count = source["aweme_count"];
+	        this.country = source["country"];
+	        this.follower_count = source["follower_count"];
+	        this.ip_location = source["ip_location"];
+	        this.nickname = source["nickname"];
+	        this.province = source["province"];
+	        this.signature = source["signature"];
+	        this.uid = source["uid"];
+	        this.unique_id = source["unique_id"];
+	        this.sec_uid = source["sec_uid"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class UserData {
+	    user: User;
+	    status_code: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new UserData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.user = this.convertValues(source["user"], User);
+	        this.status_code = source["status_code"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class UserGarb {
 	    url_image_ani_cut: string;
 	
@@ -3179,6 +3838,42 @@ export namespace model {
 	
 	
 	
+
+}
+
+export namespace pb {
+	
+	export class Match {
+	    prefix?: number[];
+	    ignore_bytes?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Match(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.prefix = source["prefix"];
+	        this.ignore_bytes = source["ignore_bytes"];
+	    }
+	}
+
+}
+
+export namespace ristretto {
+	
+	export class Metrics {
+	
+	
+	    static createFrom(source: any = {}) {
+	        return new Metrics(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	
+	    }
+	}
 
 }
 

@@ -1,45 +1,57 @@
 package utils
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"os"
+	"strconv"
 
 	"github.com/dgraph-io/badger/v4"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
+
 	"github.com/kamiertop/videodown/logger"
 )
 
 type Settings struct {
-	DB     *badger.DB
+	*badger.DB
 	logger *logger.Logger
 }
 
 func (s *Settings) init() error {
 	return s.DB.Update(func(txn *badger.Txn) error {
-		if _, err := txn.Get(themeKey); errors.Is(err, badger.ErrKeyNotFound) {
-			s.logger.Info("No theme found, setting to default: light")
-			return txn.Set([]byte("theme"), []byte("light"))
+		defaultValue := map[string]string{
+			themeKey:            "light",
+			storageKey:          "./downloads",
+			allowGroupOnSaveKey: "true",
+			sleepTimeKey:        "60",
+			// 其他设置项的默认值
 		}
-		if _, err := txn.Get(storageKey); errors.Is(err, badger.ErrKeyNotFound) {
-			s.logger.Info("No storage path found, setting to default: ./downloads")
-			if err := os.Mkdir("./downloads", 0755); err != nil {
-				s.logger.Errorf("failed to create default storage path [./downloads]: %v", err)
-				return errors.New("创建默认存储目录失败")
+		var errList error
+		for key, value := range defaultValue {
+			if _, err := txn.Get([]byte(key)); errors.Is(err, badger.ErrKeyNotFound) {
+				s.logger.Infof("No %s found, setting to default: %s", key, value)
+				// 只有在 key 不存在时才设置默认值，避免覆盖用户已修改的设置。
+				if err := txn.Set([]byte(key), []byte(value)); err != nil {
+					errList = errors.Join(errList, fmt.Errorf("failed to set key: [%s], value: [%s], err: %w", key, value, err))
+				}
 			}
-
-			return txn.Set(storageKey, []byte("./downloads"))
 		}
-		return nil
+
+		return errList
 	})
 }
 
-var themeKey = []byte("theme")
-var storageKey = []byte("storage")
+const (
+	themeKey            = "theme"
+	storageKey          = "storage"
+	sleepTimeKey        = "sleepTime"
+	allowGroupOnSaveKey = "allowGroupOnSave"
+)
 
-func (s *Settings) getValue(key []byte) (string, error) {
+func (s *Settings) GetKey(key string) (string, error) {
 	var result string
 	err := s.DB.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(key)
+		item, err := txn.Get([]byte(key))
 		if err != nil {
 			return err
 		}
@@ -50,7 +62,7 @@ func (s *Settings) getValue(key []byte) (string, error) {
 		if err != nil {
 			return err
 		}
-		s.logger.Infof("Get %s: %s", string(key), result)
+		s.logger.Infof("Get %s: %s", key, result)
 		return nil
 	})
 
@@ -73,6 +85,7 @@ func NewSettingsWithMemory(logger *logger.Logger) *Settings {
 
 	return s
 }
+
 func NewSettings(logger *logger.Logger) *Settings {
 	db, err := badger.Open(badger.DefaultOptions("videodown.db").WithLogger(logger).WithLoggingLevel(badger.ERROR))
 	if err != nil {
@@ -89,7 +102,7 @@ func NewSettings(logger *logger.Logger) *Settings {
 }
 
 func (s *Settings) GetTheme() (string, error) {
-	theme, err := s.getValue(themeKey)
+	theme, err := s.GetKey(themeKey)
 	if err != nil {
 		s.logger.Errorf("failed to get theme: %v", err)
 		return "", errors.New("获取主题设置失败")
@@ -100,7 +113,7 @@ func (s *Settings) GetTheme() (string, error) {
 
 func (s *Settings) SetTheme(theme string) error {
 	if err := s.DB.Update(func(txn *badger.Txn) error {
-		return txn.Set(themeKey, []byte(theme))
+		return txn.Set([]byte(themeKey), []byte(theme))
 	}); err != nil {
 		s.logger.Errorf("Failed to set new theme [%s], err: %v", theme, err)
 		return errors.New("设置主题失败")
@@ -111,7 +124,7 @@ func (s *Settings) SetTheme(theme string) error {
 }
 
 func (s *Settings) GetStorage() (string, error) {
-	path, err := s.getValue(storageKey)
+	path, err := s.GetKey(storageKey)
 	if err != nil {
 		s.logger.Errorf("failed to get storage path: %v", err)
 		return "", errors.New("获取存储目录失败")
@@ -120,33 +133,70 @@ func (s *Settings) GetStorage() (string, error) {
 	return path, nil
 }
 
-func (s *Settings) SetStorage(path string) error {
-	info, err := os.Stat(path)
-
-	if err != nil {
-		s.logger.Errorf("Failed to set new storage path [%s], err: %v", path, err)
-
-		if errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("存储目录 [%s] 不存在", path)
-		}
-		if errors.Is(err, os.ErrPermission) {
-			return fmt.Errorf("存储目录 [%s] 无法访问", path)
-		}
-
-		return errors.New("访问存储目录失败")
-	}
-
-	if !info.IsDir() {
-		return fmt.Errorf("存储目录 [%s] 不是文件夹", path)
-	}
+// SetStorage 前端不能使用这个，依赖App的ctx
+func (s *Settings) SetStorage(ctx context.Context) (string, error) {
+	dir, err := runtime.OpenDirectoryDialog(ctx, runtime.OpenDialogOptions{
+		Title: "选择下载目录",
+	})
 
 	if err = s.DB.Update(func(txn *badger.Txn) error {
-		return txn.Set(storageKey, []byte(path))
+		return txn.Set([]byte(storageKey), []byte(dir))
 	}); err != nil {
-		s.logger.Errorf("Failed to set new storage path [%s], err: %v", path, err)
-		return errors.New("设置存储目录失败")
+		s.logger.Errorf("Failed to set new storage path [%s], err: %v", dir, err)
+		return "", errors.New("设置存储目录失败")
 	}
-	s.logger.Infof("Storage path set to: %s", path)
+	s.logger.Infof("Storage path set to: %s", dir)
 
-	return nil
+	return dir, nil
+}
+
+func (s *Settings) SetKey(key, value string) error {
+	return s.DB.Update(func(txn *badger.Txn) error {
+		return txn.Set([]byte(key), []byte(value))
+	})
+}
+
+// GetSleepTime 下载完一个视频之后的休眠时间；配置值按“秒”保存，避免把默认值 60 误解释成 60 纳秒。
+func (s *Settings) GetSleepTime() (int64, error) {
+	value, err := s.GetKey(sleepTimeKey)
+	if err != nil {
+		s.logger.Errorf("failed to get sleep time: %v", err)
+		return 0, errors.New("获取休眠时间失败")
+	}
+	val, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		s.logger.Errorf("failed to parse sleep time: %v", err)
+		return 60, nil
+	}
+
+	return val, nil
+}
+
+// SetSleepTime 保存休眠秒数；前端传入 time.Duration 时统一落库为秒，便于用户理解和配置。
+func (s *Settings) SetSleepTime(d int64) error {
+	return s.SetKey(sleepTimeKey, strconv.FormatInt(d, 10))
+}
+
+func (s *Settings) GetSavePreference() (bool, error) {
+	key, err := s.GetKey(allowGroupOnSaveKey)
+	if err != nil {
+		return true, err
+	}
+	if key == "true" {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// SetSavePreference 保存时是否自动分组
+func (s *Settings) SetSavePreference(allowGroup bool) error {
+	var b string
+	if allowGroup {
+		b = "true"
+	} else {
+		b = "false"
+	}
+
+	return s.SetKey(allowGroupOnSaveKey, b)
 }

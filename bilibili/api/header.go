@@ -3,6 +3,7 @@ package api
 const (
 	BiliBiliUrl    = "https://www.bilibili.com/"
 	BiliBiliOrigin = "https://space.bilibili.com"
+	SpaceOrigin    = "https://space.bilibili.com"
 )
 
 const (
