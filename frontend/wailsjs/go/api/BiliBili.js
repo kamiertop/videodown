@@ -10,8 +10,16 @@ export function CollectionItem(arg1, arg2, arg3) {
   return window['go']['api']['BiliBili']['CollectionItem'](arg1, arg2, arg3);
 }
 
+export function DownloadHistory() {
+  return window['go']['api']['BiliBili']['DownloadHistory']();
+}
+
 export function DownloadVideoByDash(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['api']['BiliBili']['DownloadVideoByDash'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function DownloadVideosByDash(arg1) {
+  return window['go']['api']['BiliBili']['DownloadVideosByDash'](arg1);
 }
 
 export function Favorites(arg1, arg2, arg3) {

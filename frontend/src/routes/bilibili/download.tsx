@@ -1,499 +1,270 @@
-import {createFileRoute} from '@tanstack/solid-router'
-import {createEffect, createMemo, createSignal, For, type JSXElement, Show,} from "solid-js";
-import {DownloadVideoByDash} from "../../../wailsjs/go/api/BiliBili";
-import {model} from "../../../wailsjs/go/models";
-import IconChat from "../../components/icons/IconChat.tsx";
-import IconEye from "../../components/icons/IconEye.tsx";
+import {createFileRoute} from "@tanstack/solid-router";
+import {createMemo, createSignal, For, Show, type JSXElement} from "solid-js";
+import {VideoDetailConciseBvid} from "../../../wailsjs/go/api/BiliBili";
+import DownloadInputBar from "../../components/bilibili/downloadPage/DownloadInputBar.tsx";
+import DownloadSummaryBar from "../../components/bilibili/downloadPage/DownloadSummaryBar.tsx";
+import DownloadVideoCard from "../../components/bilibili/downloadPage/DownloadVideoCard.tsx";
 import Toast from "../../components/Toast";
 import {useToast} from "../../hooks/useToast";
-import {
-  audioDetailTitle,
-  audioSelectLabel,
-  bvidCacheKey,
-  refetchBilibiliPlayAtQn,
-  resolveBilibiliPlayUrl,
-  type ResolvedPlayInfo,
-  sortedAudioTracks,
-  sortedSupportFormats,
-  supportFormatDetailTitle,
-  supportFormatSelectLabel,
-  switchResolvedAudio,
-  switchResolvedPlayAtQn,
-} from "../../lib/bilibiliPlayResolve.ts";
-import {removeVideo, videoList} from "../../lib/bilibiliStore.ts";
-import {extractBvid, formatCount, formatDate, formatDuration} from "../../lib/format";
+import {useBilibiliDownloadQueue} from "../../lib/bilibiliDownloadQueue.ts";
+import {addVideos, removeVideo, videoList} from "../../lib/bilibiliStore.ts";
+import {extractBvid} from "../../lib/format";
 import type {MediaCardItem} from "../../lib/model.ts";
 
-/** 同一 BV 仅一条解析任务在飞，避免 createEffect 重复触发 */
-const playResolveInFlight = new Set<string>();
+type VideoDetailView = Awaited<ReturnType<typeof VideoDetailConciseBvid>>["view"];
 
-type PlayResolveEntry =
-  | { status: "loading" }
-  | { status: "done"; data: ResolvedPlayInfo }
-  | { status: "error"; message: string };
-
-function streamBaseUrl(v: { baseUrl?: string; base_url?: string }): string {
-  return (v.baseUrl || v.base_url || "").trim();
+interface ParsedVideoGroup {
+    kind: "合集" | "系列";
+    title: string;
+    current: MediaCardItem;
+    items: MediaCardItem[];
 }
 
-function SupportFormatsForItem(props: {
-  entry: () => PlayResolveEntry | undefined;
-  busy: () => boolean;
-  onPickQn: (qn: number) => void;
-}): JSXElement {
-  const done = createMemo(() => {
-    const e = props.entry();
-    return e?.status === "done" ? e.data : null;
-  });
-  const rows = createMemo<model.SupportFormat[]>(() => {
-    const data = done();
-    if (!data) return [];
-    return sortedSupportFormats(data.play.support_formats ?? []);
-  });
-
-  return (
-    <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-      <Show when={done()}>
-        {(data) => (
-          <label class="flex flex-col gap-1">
-            <div class="flex max-w-full items-center gap-2 sm:max-w-md">
-              <Show
-                when={rows().length > 0}
-                fallback={
-                  <p class="text-sm text-base-content/70">暂无可用档位数据</p>
-                }
-              >
-                <div>
-                  画质：
-                </div>
-                <select
-                  class="select select-info max-w-30 flex-1 bg-base-100 font-medium text-base-content"
-                  value={String(data().selectedQn)}
-                  disabled={props.busy()}
-                  onChange={(ev) => {
-                    const qn = Number(ev.currentTarget.value);
-                    if (Number.isFinite(qn)) props.onPickQn(qn);
-                  }}
-                >
-                  <For each={rows()}>
-                    {(fmt) => (
-                      <option value={String(fmt.quality)} title={supportFormatDetailTitle(fmt)}>
-                        {supportFormatSelectLabel(fmt)}
-                      </option>
-                    )}
-                  </For>
-                </select>
-              </Show>
-              <Show when={props.busy()}>
-                <span class="loading loading-spinner loading-md shrink-0 text-primary"/>
-              </Show>
-            </div>
-          </label>
-        )}
-      </Show>
-    </div>
-  );
+function normalizeBiliCover(url: string | undefined): string {
+    if (!url) return "";
+    if (url.startsWith("//")) return `https:${url}`;
+    return url;
 }
 
-function AudioTracksForItem(props: {
-  entry: () => PlayResolveEntry | undefined;
-  onPickAudio: (audioId: number) => void;
-}): JSXElement {
-  const done = createMemo(() => {
-    const e = props.entry();
-    return e?.status === "done" ? e.data : null;
-  });
-  const tracks = createMemo(() => {
-    const data = done();
-    if (!data) return [];
-    return sortedAudioTracks(data.play.dash?.audio);
-  });
-
-  return (
-    <div class="flex min-w-0 flex-1 flex-col gap-1.5">
-      <Show when={done()}>
-        {(data) => (
-          <Show when={tracks().length > 0}>
-            <label class="flex flex-col gap-1">
-              <div class="flex max-w-full items-center gap-2 sm:max-w-md">
-                <div>
-                  音质：
-                </div>
-                <select
-                  class="select select-info max-w-35 flex-1 bg-base-100 font-medium text-base-content"
-                  value={String(data().bestAudio?.id ?? "")}
-                  onChange={(ev) => {
-                    const id = Number(ev.currentTarget.value);
-                    if (Number.isFinite(id)) props.onPickAudio(id);
-                  }}
-                >
-                  <For each={tracks()}>
-                    {(a) => (
-                      <option value={String(a.id)} title={audioDetailTitle(a)}>
-                        {audioSelectLabel(a)}
-                      </option>
-                    )}
-                  </For>
-                </select>
-              </div>
-            </label>
-          </Show>
-        )}
-      </Show>
-    </div>
-  );
+function detailToMediaCard(view: VideoDetailView): MediaCardItem {
+    return {
+        id: Number(view.aid) || Date.now(),
+        title: view.title ?? "",
+        cover: normalizeBiliCover(view.pic),
+        duration: Number(view.duration) || 0,
+        bvid: view.bvid ?? "",
+        link: view.bvid ? `https://www.bilibili.com/video/${view.bvid}` : undefined,
+        upperName: view.owner?.name || "未知",
+        play: view.stat?.view,
+        danmaku: view.stat?.danmaku,
+        pubtime: view.pubdate,
+        sourceListName: "手动解析",
+        sourceListKind: "解析结果",
+    };
 }
 
-function formatListSource(item: MediaCardItem): string {
-  const kind = item.sourceListKind;
-  let name = item.sourceListName;
-  if (kind === "全部投稿") {
-    return kind;
-  }
-
-  return `${kind}「${name}」`;
+function uniqueMediaCards(items: MediaCardItem[]): MediaCardItem[] {
+    const seen = new Set<string>();
+    return items.filter((item) => {
+        const key = item.bvid?.trim() || String(item.id);
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
 }
 
-export const Route = createFileRoute('/bilibili/download')({
-  component: DownLoad,
-})
+function ugcSeasonToCards(view: VideoDetailView, current: MediaCardItem): MediaCardItem[] {
+    const season = view.ugc_season;
+    const listName = season?.title?.trim() || current.sourceListName;
+    const episodes = season?.sections?.flatMap((section) => section.episodes ?? []) ?? [];
 
+    return uniqueMediaCards(episodes.map((episode) => ({
+        id: Number(episode.aid) || Number(episode.id) || Date.now(),
+        title: episode.arc?.title || episode.title || "",
+        cover: normalizeBiliCover(episode.arc?.pic || season?.cover || current.cover),
+        duration: Number(episode.arc?.duration || episode.page?.duration || 0),
+        bvid: episode.bvid ?? "",
+        link: episode.bvid ? `https://www.bilibili.com/video/${episode.bvid}` : undefined,
+        upperName: episode.arc?.author?.name || current.upperName,
+        play: episode.arc?.stat?.view,
+        danmaku: episode.arc?.stat?.danmaku,
+        pubtime: episode.arc?.pubdate,
+        sourceListName: listName,
+        sourceListKind: "合集",
+    })));
+}
+
+function findGroupForParsedVideo(view: VideoDetailView, current: MediaCardItem): ParsedVideoGroup | null {
+    const seasonCards = ugcSeasonToCards(view, current);
+    if (seasonCards.length > 1) {
+        return {
+            kind: "合集",
+            title: view.ugc_season?.title?.trim() || "未命名合集",
+            current,
+            items: seasonCards,
+        };
+    }
+
+    return null;
+}
+
+export const Route = createFileRoute("/bilibili/download")({
+    component: DownLoad,
+});
 
 function DownLoad(): JSXElement {
-  const [videoURL, setVideoURL] = createSignal<string>("");
-  const [playResolveByBvid, setPlayResolveByBvid] = createSignal<Record<string, PlayResolveEntry>>({});
-  const [qnLoadingByBvid, setQnLoadingByBvid] = createSignal<Record<string, boolean>>({});
-  const [downloading, setDownloading] = createSignal<boolean>(false);
-  const {message, type, showToast} = useToast();
+    const [videoURL, setVideoURL] = createSignal<string>("");
+    const [parsing, setParsing] = createSignal(false);
+    const [parsedGroup, setParsedGroup] = createSignal<ParsedVideoGroup | null>(null);
+    const [selectedGroupIds, setSelectedGroupIds] = createSignal<number[]>([]);
+    const {message, type, showToast} = useToast();
+    const queue = useBilibiliDownloadQueue(showToast);
+    const selectedGroupSet = createMemo(() => new Set(selectedGroupIds()));
 
-  const listSourceSummary = createMemo(() => {
-    const list = videoList();
-    const labels = [...new Set(list.map(i => formatListSource(i)).filter((s): s is string => !!s))];
-    if (labels.length === 0) return "";
-    if (labels.length === 1) return `来源：${labels[0]}`;
-    return `来源：${labels.join("、")}`;
-  });
+    const allGroupSelected = createMemo(() => {
+        const group = parsedGroup();
+        if (!group || group.items.length === 0) return false;
+        const selected = selectedGroupSet();
+        return group.items.every((item) => selected.has(item.id));
+    });
 
-  createEffect(() => {
-    const list = videoList();
-    const bvSet = new Set(
-      list.map((i) => bvidCacheKey(i.bvid)).filter((k): k is string => !!k),
-    );
+    function addParsedVideos(items: MediaCardItem[], successMessage: string): void {
+        addVideos(items);
+        setParsedGroup(null);
+        setSelectedGroupIds([]);
+        setVideoURL("");
+        showToast(successMessage, "success");
+    }
 
-    setPlayResolveByBvid((prev) => {
-      const next: Record<string, PlayResolveEntry> = {...prev};
-      for (const k of Object.keys(next)) {
-        if (!bvSet.has(k)) {
-          playResolveInFlight.delete(k);
-          delete next[k];
+    function toggleGroupVideo(id: number): void {
+        setSelectedGroupIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return [...next];
+        });
+    }
+
+    function toggleAllGroupVideos(): void {
+        const group = parsedGroup();
+        if (!group) return;
+        setSelectedGroupIds(allGroupSelected() ? [] : group.items.map((item) => item.id));
+    }
+
+    async function parseVideo(): Promise<void> {
+        if (parsing()) return;
+
+        const bvid = extractBvid(videoURL());
+        if (bvid === null) {
+            showToast("请输入有效的 B 站视频链接或 BV 号", "error");
+            return;
         }
-      }
-      return next;
-    });
 
-    setQnLoadingByBvid((prev) => {
-      const next: Record<string, boolean> = {...prev};
-      for (const k of Object.keys(next)) {
-        if (!bvSet.has(k)) delete next[k];
-      }
-      return next;
-    });
-
-    const map = playResolveByBvid();
-
-    for (const item of list) {
-      const key = bvidCacheKey(item.bvid);
-      if (!key) continue;
-      if (playResolveInFlight.has(key)) continue;
-
-      const cur = map[key];
-      if (cur?.status === "loading" || cur?.status === "done" || cur?.status === "error") {
-        continue;
-      }
-
-      playResolveInFlight.add(key);
-      setPlayResolveByBvid((p) => ({...p, [key]: {status: "loading"}}));
-
-      void (async () => {
+        setParsing(true);
         try {
-          const data = await resolveBilibiliPlayUrl(item.bvid);
-          if (!videoList().some((v) => bvidCacheKey(v.bvid) === key)) return;
-          setPlayResolveByBvid((p) => ({...p, [key]: {status: "done", data}}));
+            const detail = await VideoDetailConciseBvid(bvid);
+            const card = detailToMediaCard(detail.view);
+            if (!card.bvid) {
+                showToast("解析成功，但详情中没有 BV 号", "error");
+                return;
+            }
+
+            const group = findGroupForParsedVideo(detail.view, card);
+            if (group) {
+                setParsedGroup(group);
+                setSelectedGroupIds(group.items.map((item) => item.id));
+                showToast(`发现${group.kind}「${group.title}」`, "info");
+                return;
+            }
+
+            addParsedVideos([card], `已添加：${card.title || card.bvid}`);
         } catch (e) {
-          if (!videoList().some((v) => bvidCacheKey(v.bvid) === key)) return;
-          const message = e instanceof Error ? e.message : String(e);
-          setPlayResolveByBvid((p) => ({...p, [key]: {status: "error", message}}));
+            showToast(e instanceof Error ? e.message : String(e), "error");
         } finally {
-          playResolveInFlight.delete(key);
+            setParsing(false);
         }
-      })();
-    }
-  });
-
-  async function handlePickQn(key: string, qn: number): Promise<void> {
-    const cur = playResolveByBvid()[key];
-    if (cur?.status !== "done" || qn === cur.data.selectedQn) return;
-
-    const local = switchResolvedPlayAtQn(cur.data, qn);
-    if (local) {
-      setPlayResolveByBvid((p) => ({...p, [key]: {status: "done", data: local}}));
-      return;
     }
 
-    setQnLoadingByBvid((p) => ({...p, [key]: true}));
-    try {
-      const next = await refetchBilibiliPlayAtQn({
-        aid: cur.data.aid,
-        cid: cur.data.cid,
-        bvid: cur.data.bvid,
-        partCount: cur.data.partCount,
-        qn,
-        preferredAudioId: cur.data.bestAudio?.id,
-      });
-      if (!videoList().some((v) => bvidCacheKey(v.bvid) === key)) return;
-      setPlayResolveByBvid((p) => ({...p, [key]: {status: "done", data: next}}));
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), "error");
-    } finally {
-      setQnLoadingByBvid((p) => ({...p, [key]: false}));
-    }
-  }
-
-  function handlePickAudio(key: string, audioId: number): void {
-    const cur = playResolveByBvid()[key];
-    if (cur?.status !== "done") return;
-    if (cur.data.bestAudio?.id === audioId) return;
-    const next = switchResolvedAudio(cur.data, audioId);
-    if (next) {
-      setPlayResolveByBvid((p) => ({...p, [key]: {status: "done", data: next}}));
-    }
-  }
-
-  function parseVideo() {
-    const bvid = extractBvid(videoURL());
-    if (bvid === null) {
-      showToast('请输入有效的 B 站视频链接或 BV 号', 'error');
-      return;
-    }
-
-    showToast(`成功解析 BV 号: ${bvid}`, 'success');
-  }
-
-  async function startDownload(): Promise<void> {
-    if (downloading()) return;
-    const items = videoList();
-    if (items.length === 0) {
-      showToast("暂无可下载视频", "warning");
-      return;
-    }
-
-    const tasks = items
-      .map((item) => {
-        const key = bvidCacheKey(item.bvid);
-        if (!key) return null;
-        const entry = playResolveByBvid()[key];
-        if (entry?.status !== "done") return null;
-
-        const videoURL = streamBaseUrl(entry.data.bestVideo);
-        if (!videoURL) return null;
-
-        const audioURL = entry.data.bestAudio ? streamBaseUrl(entry.data.bestAudio) : "";
-        return {item, videoURL, audioURL};
-      })
-      .filter((v): v is { item: MediaCardItem; videoURL: string; audioURL: string } => v !== null);
-
-    if (tasks.length === 0) {
-      showToast("暂无可用流地址，请稍候重试", "warning");
-      return;
-    }
-
-    setDownloading(true);
-    let success = 0;
-    let failed = 0;
-    try {
-      for (const task of tasks) {
-        try {
-          let dirName = "";
-          if (task.item.sourceListKind === "全部投稿") {
-            dirName = task.item.upperName;
-          } else {
-            dirName = task.item.sourceListName ?? "";
-          }
-          await DownloadVideoByDash(dirName, task.item.bvid, task.item.title, task.videoURL, task.audioURL);
-          // 成功之后删除
-          removeVideo(task.item.id);
-          success += 1;
-        } catch (e) {
-          failed += 1;
-          const msg = e instanceof Error ? e.message : String(e);
-          showToast(`下载失败：${task.item.title}，${msg}`, "error");
-        }
-      }
-    } finally {
-      setDownloading(false);
-    }
-
-    if (failed === 0) {
-      showToast(`下载完成：成功 ${success} 个`, "success");
-      return;
-    }
-    showToast(`下载完成：成功 ${success} 个，失败 ${failed} 个`, "warning");
-  }
-
-  return (
-    <div class={"flex flex-col pt-4 pl-4 pr-4 pb-4 h-full"}>
-      <section>
-        <div class={"flex flex-row join gap-2"}>
-          <input type="text" placeholder="请输入视频链接, 支持BV号、AV号、视频URL等格式, 可按回车直接解析"
-                 value={videoURL()}
-                 onInput={(e) => setVideoURL(e.currentTarget.value)}
-                 onkeydown={(e) => {
-                   if (e.key === "Enter") {
-                     parseVideo();
-                   }
-                 }}
-                 class="input input-success w-full"/>
-          <div class={"btn btn-outline btn-secondary"}
-               onClick={parseVideo}
-          >
-            解析
-          </div>
-          <div class={"btn btn-outline btn-info"}
-               onClick={() => setVideoURL("")}
-          >
-            清空
-          </div>
-        </div>
-      </section>
-      <Show when={videoList().length > 0}>
-        <section
-          class="mt-2 rounded-lg p-3 flex flex-row justify-between items-center shadow-sm">
-          <div class="flex min-w-0 flex-1 flex-col gap-1">
-            <div class="flex items-center gap-2">
-              <div class="badge badge-primary">{videoList().length}</div>
-              <span class="text-xs">个视频待下载</span>
-            </div>
-            <Show when={listSourceSummary()}>
-              <p class="truncate text-sm text-base-content/80">
-                {listSourceSummary()}
-              </p>
+    return (
+        <div class="flex flex-col pt-4 pl-4 pr-4 pb-4 h-full">
+            <DownloadInputBar
+                value={videoURL()}
+                onInput={setVideoURL}
+                onParse={() => void parseVideo()}
+                onClear={() => setVideoURL("")}
+            />
+            <Show when={parsedGroup()}>
+                {(group) => (
+                    <section class="mt-3 rounded-lg border border-base-300 bg-base-100 p-3">
+                        <div class="flex items-center gap-2">
+                            <div class="min-w-0 flex-1">
+                                <p class="truncate text-sm font-semibold">
+                                    发现{group().kind}：{group().title}
+                                </p>
+                                <p class="text-xs text-base-content/60">
+                                    可以添加全部，也可以只添加勾选的视频。
+                                </p>
+                            </div>
+                            <button class="btn btn-ghost btn-xs" type="button" onClick={toggleAllGroupVideos}>
+                                {allGroupSelected() ? "取消全选" : "全选"}
+                            </button>
+                            <button
+                                class="btn btn-outline btn-primary btn-xs"
+                                type="button"
+                                disabled={selectedGroupIds().length === 0}
+                                onClick={() => {
+                                    const selected = group().items.filter((item) => selectedGroupSet().has(item.id));
+                                    addParsedVideos(selected, `已添加 ${selected.length} 个视频`);
+                                }}
+                            >
+                                添加已选 ({selectedGroupIds().length})
+                            </button>
+                            <button
+                                class="btn btn-primary btn-xs"
+                                type="button"
+                                onClick={() => addParsedVideos(group().items, `已添加全部 ${group().items.length} 个视频`)}
+                            >
+                                添加全部
+                            </button>
+                            <button
+                                class="btn btn-ghost btn-xs"
+                                type="button"
+                                onClick={() => addParsedVideos([group().current], `已添加：${group().current.title || group().current.bvid}`)}
+                            >
+                                只添加当前
+                            </button>
+                        </div>
+                        <div class="mt-3 max-h-64 overflow-y-auto rounded border border-base-200">
+                            <For each={group().items}>
+                                {(item) => (
+                                    <label class="flex cursor-pointer items-center gap-3 border-b border-base-200 px-3 py-2 last:border-b-0">
+                                        <input
+                                            class="checkbox checkbox-primary checkbox-sm"
+                                            type="checkbox"
+                                            checked={selectedGroupSet().has(item.id)}
+                                            onChange={() => toggleGroupVideo(item.id)}
+                                        />
+                                        <img
+                                            class="h-12 w-20 rounded object-cover"
+                                            src={item.cover}
+                                            alt={item.title}
+                                            referrerPolicy="no-referrer"
+                                        />
+                                        <div class="min-w-0 flex-1">
+                                            <p class="truncate text-sm font-medium">{item.title}</p>
+                                            <p class="text-xs text-base-content/55">{item.bvid}</p>
+                                        </div>
+                                    </label>
+                                )}
+                            </For>
+                        </div>
+                    </section>
+                )}
             </Show>
-          </div>
-          <button class="btn btn-success btn-xs gap-1.5" onClick={() => void startDownload()}
-                  disabled={downloading()}>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24"
-                 stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-            </svg>
-            {downloading() ? "下载中..." : "开始下载"}
-          </button>
-        </section>
-      </Show>
-      <section class="mt-3 flex flex-1 flex-col gap-3 overflow-y-auto pr-4">
-        <For each={videoList()}>
-          {(item): JSXElement => {
-            const listSrc = formatListSource(item);
-            return (
-              // 水平布局，左侧图片+弹幕量+播放量+时长
-              <article class="flex flex-row gap-3">
-                <div class="relative w-40 aspect-video object-cover"
-                >
-                  <img
-                    class="h-full w-full object-cover"
-                    src={item.cover}
-                    alt={item.title}
-                    referrerPolicy="no-referrer"
-                  />
-                  <div
-                    class="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between bg-linear-to-t from-black/75 to-transparent px-2 pb-1.5 pt-6"
-                  >
-                    <div class="flex items-center gap-2 text-white/90">
-                        <span class="flex items-center gap-0.5 text-[11px]">
-                            <IconEye class="h-3 w-3"/>{formatCount(item.play)}
-                        </span>
-                      <span class="flex items-center gap-0.5 text-[11px]">
-                          <IconChat class="h-3 w-3"/> {item.danmaku}
-                      </span>
-                    </div>
-                    <span class="rounded bg-black/65 px-1 py-0.5 text-[11px] tabular-nums text-white/95">
-                        {formatDuration(item.duration)}
-                    </span>
-                  </div>
-                </div>
-                {/*  右侧上下布局，上边是title*/}
-                <div class="flex min-w-0 flex-1 flex-col gap-2">
-                  <h3 class="text-base font-semibold leading-snug text-base-content line-clamp-2">
-                    {item.title}
-                  </h3>
-                  {/*  下边水平布局*/}
-                  <div class="flex flex-row gap-3 justify-between">
-                    <div class="mt-4 w-64">
-                      <Show when={listSrc}>
-                        <p class="text-sm font-medium text-primary">{listSrc}</p>
-                      </Show>
-                      <div class="flex mt-6 items-center gap-x-2 gap-y-0.5 text-sm text-base-content/75">
-                        <span class="inline-flex items-center gap-1">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          class="h-3 w-3 shrink-0"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                              <path
-                                fill-rule="evenodd"
-                                d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                                clip-rule="evenodd"
-                              />
-                          </svg>
-                          {item.upperName}
-                    </span>
-                        <span class="text-base-content/35">|</span>
-                        <span>{formatDate(item.pubtime)}</span>
-                      </div>
-                    </div>
-                    <div class="flex flex-row gap-1 mt-4 flex-1">
-                      <SupportFormatsForItem
-                        entry={() => {
-                          const k = bvidCacheKey(item.bvid);
-                          return k ? playResolveByBvid()[k] : undefined;
-                        }}
-                        busy={() => {
-                          const k = bvidCacheKey(item.bvid);
-                          return k ? qnLoadingByBvid()[k] : false;
-                        }}
-                        onPickQn={(qn) => {
-                          const k = bvidCacheKey(item.bvid);
-                          if (k) void handlePickQn(k, qn);
-                        }}
-                      />
-                      <AudioTracksForItem
-                        entry={() => {
-                          const k = bvidCacheKey(item.bvid);
-                          return k ? playResolveByBvid()[k] : undefined;
-                        }}
-                        onPickAudio={(audioId) => {
-                          const k = bvidCacheKey(item.bvid);
-                          if (k) handlePickAudio(k, audioId);
-                        }}
-                      />
-                    </div>
-                    <div class="flex flex-col gap-2">
-                      <div class="btn btn-warning btn-sm" onClick={() => removeVideo(item.id)}>
-                        移除
-                      </div>
-                      <div class="btn btn-info btn-sm">
-                        下载
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </article>
-            );
-          }}
-        </For>
-      </section>
-      <Toast message={message()} type={type()}/>
-    </div>
-  )
+            <DownloadSummaryBar
+                count={videoList().length}
+                sourceSummary={queue.listSourceSummary()}
+                downloading={queue.downloading()}
+                onDownload={() => void queue.startDownload()}
+            />
+            <section class="mt-3 flex flex-1 flex-col gap-3 overflow-y-auto pr-4">
+                <For each={videoList()}>
+                    {(item) => (
+                        <DownloadVideoCard
+                            canDownload={queue.canDownload(item) && (!queue.downloading() || queue.isDownloading(item))}
+                            downloading={queue.isDownloading(item)}
+                            item={item}
+                            entry={queue.entryForBvid(item.bvid)}
+                            progress={queue.progressFor(item)}
+                            onPickQn={(qn) => queue.handlePickQn(item.bvid, qn)}
+                            onPickAudio={(audioId) => queue.handlePickAudio(item.bvid, audioId)}
+                            onRemove={() => removeVideo(item.id)}
+                            onDownload={() => void queue.downloadOne(item)}
+                        />
+                    )}
+                </For>
+            </section>
+            <Toast message={message()} type={type()}/>
+        </div>
+    );
 }

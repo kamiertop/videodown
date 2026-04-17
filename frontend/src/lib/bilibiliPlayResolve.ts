@@ -7,7 +7,7 @@ export function bvidCacheKey(bvid: string | undefined): string | null {
     return t.toUpperCase();
 }
 
-function streamBaseUrl(v: { baseUrl?: string; base_url?: string }): string {
+export function streamBaseUrl(v: { baseUrl?: string; base_url?: string }): string {
     return (v.baseUrl || v.base_url || "").trim();
 }
 
@@ -82,12 +82,6 @@ function qualityDescription(play: model.VideoURLData, qn: number): string {
     return hit?.display_desc?.trim() || hit?.new_description?.trim() || `qn ${qn}`;
 }
 
-/** 展示用：按 qn 从高到低排列 support_formats */
-export function sortedSupportFormats(formats: model.SupportFormat[] | undefined): model.SupportFormat[] {
-    if (!formats?.length) return [];
-    return [...formats].sort((a, b) => b.quality - a.quality);
-}
-
 /** 下拉选项一行文案：标题 · 封装 · 角标 */
 export function supportFormatSelectLabel(fmt: model.SupportFormat): string {
     const main = fmt.display_desc?.trim() || fmt.new_description?.trim() || `qn ${fmt.quality}`;
@@ -109,18 +103,124 @@ export function supportFormatDetailTitle(fmt: model.SupportFormat): string {
     return lines.join("\n");
 }
 
+export interface VideoQualityOption {
+    qn: number;
+    label: string;
+    title: string;
+}
+
+export interface VideoAccessInfo {
+    isChargeableSeason: boolean;
+    isUpowerExclusive: boolean;
+    isUpowerPlay: boolean;
+    isUpowerPreview: boolean;
+    isUpowerExclusiveWithQa: boolean;
+    isPaid: boolean;
+    labels: string[];
+}
+
+export class BilibiliPlayResolveError extends Error {
+    accessInfo: VideoAccessInfo | undefined;
+
+    constructor(message: string, accessInfo?: VideoAccessInfo) {
+        super(message);
+        this.name = "BilibiliPlayResolveError";
+        this.accessInfo = accessInfo;
+    }
+}
+
+function videoAccessInfoFromView(view: model.VideoDetailView): VideoAccessInfo {
+    const isPaid =
+        (view.rights?.pay ?? 0) > 0 ||
+        (view.rights?.ugc_pay ?? 0) > 0 ||
+        (view.rights?.arc_pay ?? 0) > 0;
+    const labels: string[] = [];
+
+    if (view.is_upower_exclusive) labels.push("充电专属");
+    if (view.is_upower_play) labels.push("支持试看");
+    if (view.is_upower_preview) labels.push("试看内容");
+    if (view.is_upower_exclusive_with_qa) labels.push("充电专属问答");
+    if (view.is_chargeable_season) labels.push("充电合集");
+    if (isPaid) labels.push("付费内容");
+
+    return {
+        isChargeableSeason: !!view.is_chargeable_season,
+        isUpowerExclusive: !!view.is_upower_exclusive,
+        isUpowerPlay: !!view.is_upower_play,
+        isUpowerPreview: !!view.is_upower_preview,
+        isUpowerExclusiveWithQa: !!view.is_upower_exclusive_with_qa,
+        isPaid,
+        labels,
+    };
+}
+
+function shouldSkipPlayUrl(accessInfo: VideoAccessInfo): boolean {
+    // 充电专属且当前账号没有播放/试看权限时，playurl 通常不会返回可下载 DASH 流。
+    // 在详情阶段直接标记失败，避免用户选中多个视频时多打无效的播放地址请求。
+    return accessInfo.isUpowerExclusive && !accessInfo.isUpowerPlay && !accessInfo.isUpowerPreview;
+}
+
+function errorMessage(e: unknown): string {
+    return e instanceof Error ? e.message : String(e);
+}
+
+function supportFormatForQn(play: model.VideoURLData, qn: number): model.SupportFormat | undefined {
+    return play.support_formats?.find((s: model.SupportFormat) => s.quality === qn);
+}
+
+function dashVideoQualityTitle(play: model.VideoURLData, qn: number): string {
+    const lines: string[] = [];
+    const fmt = supportFormatForQn(play, qn);
+    if (fmt) {
+        lines.push(supportFormatDetailTitle(fmt));
+    } else {
+        lines.push(`quality (qn): ${qn}`);
+    }
+
+    const videos = (play.dash?.video ?? []).filter((v) => v.id === qn && streamBaseUrl(v));
+    if (videos.length > 0) {
+        const codecs = [...new Set(videos.map((v) => codecLabel(v.codecid)))];
+        lines.push(`dash streams: ${videos.length}`);
+        lines.push(`codecs: ${codecs.join(", ")}`);
+    }
+
+    return lines.join("\n");
+}
+
+/** 展示用：只列出当前 play.dash.video 中实际带流地址的画质，切换时无需重拉 playurl。 */
+export function sortedDashVideoQualities(play: model.VideoURLData): VideoQualityOption[] {
+    const qns = new Set<number>();
+    for (const video of play.dash?.video ?? []) {
+        if (Number.isFinite(video.id) && streamBaseUrl(video)) {
+            qns.add(video.id);
+        }
+    }
+
+    return [...qns]
+        .sort((a, b) => b - a)
+        .map((qn) => {
+            const fmt = supportFormatForQn(play, qn);
+            return {
+                qn,
+                label: fmt ? supportFormatSelectLabel(fmt) : qualityDescription(play, qn),
+                title: dashVideoQualityTitle(play, qn),
+            };
+        });
+}
+
 export interface ResolvedPlayInfo {
     aid: number;
     cid: number;
     bvid: string;
     partCount: number;
-    /** 当前档位（与 play.quality 一致），由用户点击 support_formats 或默认最高档 */
+    /** 当前档位：初始来自 play.quality，后续只在当前 play.dash.video 内切换 */
     selectedQn: number;
     play: model.VideoURLData;
     bestVideo: model.VideoItem;
     bestAudio: model.AudioItem | undefined;
     apiQualityLabel: string;
     summaryLine: string;
+    accessInfo: VideoAccessInfo;
 }
 
 function buildSummaryLine(
@@ -145,6 +245,7 @@ function buildSummaryLine(
 function buildResolvedPlayInfo(
     ctx: {aid: number; cid: number; bvid: string; partCount: number},
     play: model.VideoURLData,
+    accessInfo: VideoAccessInfo,
     opts?: {preferredAudioId?: number},
 ): ResolvedPlayInfo {
     // 有些响应会返回多编码同档位，这里优先用 play.quality 对应档位内的“最佳视频流”。
@@ -160,8 +261,9 @@ function buildResolvedPlayInfo(
         const pref = pickAudioById(play.dash?.audio, prefId);
         if (pref) bestAudio = pref;
     }
-    const selectedQn = play.quality;
-    const apiQualityLabel = qualityDescription(play, play.quality);
+    // 如果接口降级了 play.quality，但 dash.video 已经带了实际可用流，用真实选中的流档位作为初始值。
+    const selectedQn = Number.isFinite(bestVideo.id) ? bestVideo.id : play.quality;
+    const apiQualityLabel = qualityDescription(play, selectedQn);
     const summaryLine = buildSummaryLine(play, bestVideo, bestAudio, ctx.partCount, selectedQn);
 
     return {
@@ -175,6 +277,7 @@ function buildResolvedPlayInfo(
         bestAudio,
         apiQualityLabel,
         summaryLine,
+        accessInfo,
     };
 }
 
@@ -216,15 +319,8 @@ export function switchResolvedAudio(current: ResolvedPlayInfo, audioId: number):
     };
 }
 
-function defaultQnFromProbe(probe: model.VideoURLData): number {
-    if (probe.accept_quality?.length) {
-        return Math.max(...probe.accept_quality);
-    }
-    return probe.quality;
-}
-
 /**
- * 详情 + 探测 + 默认最高可用档位 playurl；档位与编码仅通过 support_formats 展示与点击切换。
+ * 详情 + 一次 playurl；画质与音质切换只复用返回的 dash 字段，不重新请求。
  */
 export async function resolveBilibiliPlayUrl(bvidRaw: string): Promise<ResolvedPlayInfo> {
     const trimmed = bvidRaw.trim();
@@ -234,42 +330,23 @@ export async function resolveBilibiliPlayUrl(bvidRaw: string): Promise<ResolvedP
 
     const detail = await VideoDetailConciseBvid(trimmed);
     const view = detail.view;
+    const accessInfo = videoAccessInfoFromView(view);
     const aid = Number(view.aid);
     const cid = Number(view.cid);
     if (!Number.isFinite(aid) || !Number.isFinite(cid)) {
-        throw new Error("稿件 aid/cid 无效");
+        throw new BilibiliPlayResolveError("稿件 aid/cid 无效", accessInfo);
     }
     const bvid = view.bvid?.trim() || trimmed;
     const partCount = Math.max(1, Number(view.videos || view.pages?.length || 1));
 
-    // 先探测可用档位，再拉默认最高可用档位，避免直接请求不可用 qn。
-    const probe = await VideoPlayURL(aid, bvid, cid, 80);
-    const defaultQn = defaultQnFromProbe(probe);
+    if (shouldSkipPlayUrl(accessInfo)) {
+        throw new BilibiliPlayResolveError("充电专属视频，当前账号不可直接下载", accessInfo);
+    }
 
-    const play = await VideoPlayURL(aid, bvid, cid, defaultQn);
-    return buildResolvedPlayInfo({aid, cid, bvid, partCount}, play);
-}
-
-/** 用户点击某条 support_formats 后按对应 qn 重新拉取 playurl */
-export async function refetchBilibiliPlayAtQn(input: {
-    aid: number;
-    cid: number;
-    bvid: string;
-    partCount: number;
-    qn: number;
-    /** 若新响应里仍有同 id 音轨则沿用 */
-    preferredAudioId?: number;
-}): Promise<ResolvedPlayInfo> {
-    // 真正重拉 playurl 的入口：仅在本地切换失败或需要强制刷新时调用。
-    const play = await VideoPlayURL(input.aid, input.bvid, input.cid, input.qn);
-    return buildResolvedPlayInfo(
-        {
-            aid: input.aid,
-            cid: input.cid,
-            bvid: input.bvid,
-            partCount: input.partCount,
-        },
-        play,
-        input.preferredAudioId != null ? {preferredAudioId: input.preferredAudioId} : undefined,
-    );
+    try {
+        const play = await VideoPlayURL(aid, bvid, cid, 80);
+        return buildResolvedPlayInfo({aid, cid, bvid, partCount}, play, accessInfo);
+    } catch (e) {
+        throw new BilibiliPlayResolveError(errorMessage(e), accessInfo);
+    }
 }
