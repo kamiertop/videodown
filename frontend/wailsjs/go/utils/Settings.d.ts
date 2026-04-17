@@ -31,6 +31,8 @@ export function GetKey(arg1:string):Promise<string>;
 
 export function GetMergeOperator(arg1:Array<number>,arg2:badger.MergeFunc,arg3:time.Duration):Promise<badger.MergeOperator>;
 
+export function GetSavePreference():Promise<boolean>;
+
 export function GetSequence(arg1:Array<number>,arg2:number):Promise<badger.Sequence>;
 
 export function GetSleepTime():Promise<time.Duration>;
@@ -84,6 +86,8 @@ export function RunValueLogGC(arg1:number):Promise<void>;
 export function SetDiscardTs(arg1:number):Promise<void>;
 
 export function SetKey(arg1:string,arg2:string):Promise<void>;
+
+export function SetSavePreference(arg1:boolean):Promise<void>;
 
 export function SetStorage(arg1:context.Context):Promise<string>;
 

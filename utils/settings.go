@@ -3,7 +3,8 @@ package utils
 import (
 	"context"
 	"errors"
-	"os"
+	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
@@ -19,27 +20,32 @@ type Settings struct {
 
 func (s *Settings) init() error {
 	return s.DB.Update(func(txn *badger.Txn) error {
-		if _, err := txn.Get([]byte(themeKey)); errors.Is(err, badger.ErrKeyNotFound) {
-			s.logger.Info("No theme found, setting to default: light")
-			return txn.Set([]byte("theme"), []byte("light"))
+		defaultValue := map[string]string{
+			themeKey:            "light",
+			storageKey:          "./downloads",
+			allowGroupOnSaveKey: "true",
+			sleepTimeKey:        "0",
+			// 其他设置项的默认值
 		}
-		if _, err := txn.Get([]byte(storageKey)); errors.Is(err, badger.ErrKeyNotFound) {
-			s.logger.Info("No storage path found, setting to default: ./downloads")
-			if err := os.Mkdir("./downloads", 0755); err != nil {
-				s.logger.Errorf("failed to create default storage path [./downloads]: %v", err)
-				return errors.New("创建默认存储目录失败")
+		var errList error
+		for key, value := range defaultValue {
+			if _, err := txn.Get([]byte(key)); errors.Is(err, badger.ErrKeyNotFound) {
+				s.logger.Infof("No %s found, setting to default: %s", key, value)
 			}
-
-			return txn.Set([]byte(storageKey), []byte("./downloads"))
+			if err := txn.Set([]byte(key), []byte(value)); err != nil {
+				errList = errors.Join(errList, fmt.Errorf("failed to set key: [%s], value: [%s], err: %w", key, value, err))
+			}
 		}
-		return nil
+
+		return errList
 	})
 }
 
 const (
-	themeKey   = "theme"
-	storageKey = "storage"
-	sleepTime  = time.Minute
+	themeKey            = "theme"
+	storageKey          = "storage"
+	sleepTimeKey        = "sleepTime"
+	allowGroupOnSaveKey = "allowGroupOnSave"
 )
 
 func (s *Settings) GetKey(key string) (string, error) {
@@ -150,6 +156,36 @@ func (s *Settings) SetKey(key, value string) error {
 	})
 }
 
-func (s *Settings) GetSleepTime() time.Duration {
-	return sleepTime
+// GetSleepTime 下载完一个视频之后的休眠时间，感觉用一个随机值比较好，这里获取一个值，然后在上下一分钟之内取随机值
+func (s *Settings) GetSleepTime() (time.Duration, error) {
+
+	return 0, nil
+}
+
+func (s *Settings) SetSleepTime(d time.Duration) error {
+	return s.SetKey(sleepTimeKey, strconv.FormatInt(int64(d), 10))
+}
+
+func (s *Settings) GetSavePreference() (bool, error) {
+	key, err := s.GetKey(allowGroupOnSaveKey)
+	if err != nil {
+		return true, err
+	}
+	if key == "true" {
+		return true, nil
+	}
+
+	return false, nil
+}
+
+// SetSavePreference 保存时是否自动分组
+func (s *Settings) SetSavePreference(allowGroup bool) error {
+	var b string
+	if allowGroup {
+		b = "true"
+	} else {
+		b = "false"
+	}
+
+	return s.SetKey(allowGroupOnSaveKey, b)
 }

@@ -50,6 +50,10 @@ export function GetMergeOperator(arg1, arg2, arg3) {
   return window['go']['utils']['Settings']['GetMergeOperator'](arg1, arg2, arg3);
 }
 
+export function GetSavePreference() {
+  return window['go']['utils']['Settings']['GetSavePreference']();
+}
+
 export function GetSequence(arg1, arg2) {
   return window['go']['utils']['Settings']['GetSequence'](arg1, arg2);
 }
@@ -156,6 +160,10 @@ export function SetDiscardTs(arg1) {
 
 export function SetKey(arg1, arg2) {
   return window['go']['utils']['Settings']['SetKey'](arg1, arg2);
+}
+
+export function SetSavePreference(arg1) {
+  return window['go']['utils']['Settings']['SetSavePreference'](arg1);
 }
 
 export function SetStorage(arg1) {
