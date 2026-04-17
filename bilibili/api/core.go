@@ -1,15 +1,18 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"runtime"
 	"strconv"
+	"sync"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/imroc/req/v3"
 
 	"github.com/kamiertop/videodown/logger"
+	"github.com/kamiertop/videodown/utils"
 )
 
 const (
@@ -19,35 +22,53 @@ const (
 )
 
 type BiliBili struct {
-	logger *logger.Logger
-	client *req.Client
-	db     *badger.DB
+	ctxProvider    func() context.Context
+	logger         *logger.Logger
+	client         *req.Client
+	settings       *utils.Settings
+	wbiKey         *wbiKeys // lazy init
+	progressMu     sync.Mutex
+	progressByBvid map[string]float64
 }
 
-func New(logger *logger.Logger, db *badger.DB) *BiliBili {
+func New(logger *logger.Logger, db *utils.Settings, ctxProvider ...func() context.Context) *BiliBili {
 	logger = logger.WithName("BiliBili")
+	var provider func() context.Context
+	if len(ctxProvider) > 0 {
+		provider = ctxProvider[0]
+	}
 	return &BiliBili{
-		logger: logger.WithCaller(2),
-		client: req.C().SetLogger(logger).EnableDebugLog().EnableAutoDecompress(),
-		db:     db,
+		ctxProvider:    provider,
+		logger:         logger.WithCaller(2),
+		client:         req.C().SetLogger(logger).EnableDebugLog().EnableAutoDecompress(),
+		settings:       db,
+		progressByBvid: make(map[string]float64),
 	}
 }
+
+func (b *BiliBili) context() context.Context {
+	if b.ctxProvider == nil {
+		return nil
+	}
+	return b.ctxProvider()
+}
+
 func (b *BiliBili) getCSRF() (string, error) {
-	return b.getKey(bilibiliCSRFKey)
+	return b.settings.GetKey(bilibiliCSRFKey)
 }
 
 func (b *BiliBili) saveMid(mid uint64) error {
-	return b.setKey(bilibiliMidKey, strconv.FormatUint(mid, 10))
+	return b.settings.SetKey(bilibiliMidKey, strconv.FormatUint(mid, 10))
 }
 
 func (b *BiliBili) getMid() (string, error) {
-	return b.getKey(bilibiliMidKey)
+	return b.settings.GetKey(bilibiliMidKey)
 }
 
 func (b *BiliBili) clearAuthState() error {
 	keys := []string{bilibiliCookieKey, bilibiliCSRFKey, bilibiliMidKey}
 
-	return b.db.Update(func(txn *badger.Txn) error {
+	return b.settings.Update(func(txn *badger.Txn) error {
 		for _, key := range keys {
 			err := txn.Delete([]byte(key))
 			if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
@@ -65,7 +86,6 @@ func publicHeaders() map[string]string {
 		AcceptLanguage:  "zh-CN,zh;q=0.9",
 		Accept:          "*/*",
 		SecCHUAMobile:   "?0",
-		Origin:          BiliBiliOrigin,
 		Priority:        "u=1, i",
 		SecCHUA:         `"Chromium";v="146", "Not-A.Brand";v="24", "Google Chrome";v="146"`,
 		SecCHUAPlatform: fmt.Sprintf(`"%s"`, runtime.GOOS),
@@ -82,25 +102,4 @@ func userAgent() string {
 	}
 
 	return "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
-}
-
-func (b *BiliBili) getKey(key string) (string, error) {
-	var value string
-
-	return value, b.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(key))
-		if err != nil {
-			return err
-		}
-		return item.Value(func(val []byte) error {
-			value = string(val)
-			return nil
-		})
-	})
-}
-
-func (b *BiliBili) setKey(key, value string) error {
-	return b.db.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte(key), []byte(value))
-	})
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"embed"
 
 	bilibiliapi "github.com/kamiertop/videodown/bilibili/api"
@@ -23,9 +24,12 @@ var assets embed.FS
 var icon []byte
 
 func main() {
-	app := NewApp()
 	log := mylogger.New()
 	settings := utils.NewSettings(log)
+	app := NewApp(settings)
+	bilibili := bilibiliapi.New(log, settings, func() context.Context {
+		return app.ctx
+	})
 	// Create application with options
 	err := wails.Run(&options.App{
 		Title:             "videodown",
@@ -54,8 +58,8 @@ func main() {
 		WindowStartState: options.Normal,
 		Bind: []interface{}{
 			app,
-			bilibiliapi.New(log, settings.DB),
-			douyinapi.New(log, settings.DB),
+			bilibili,
+			douyinapi.New(log, settings),
 			settings,
 		},
 		// Windows platform specific options

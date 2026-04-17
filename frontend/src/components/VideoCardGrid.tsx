@@ -1,20 +1,12 @@
-import {For, Show, type JSXElement} from "solid-js";
+import {For, type JSXElement, Show} from "solid-js";
 import {formatCount, formatDate, formatDuration} from "../lib/format";
 import IconEye from "./icons/IconEye";
 import IconChat from "./icons/IconChat";
+import type {MediaCardItem} from "../lib/model.ts";
 
-export interface MediaCardItem {
-    id: number;
-    title: string;
-    cover: string;
-    duration: number;
-    bvid: string;
-    link?: string;
-    upperName: string;
-    play?: number;
-    danmaku?: number;
-    pubtime?: number;
-}
+/**
+ * 视频卡片网格组件
+ */
 
 export default function VideoCardGrid(props: {
     medias: MediaCardItem[];
@@ -37,7 +29,7 @@ export default function VideoCardGrid(props: {
                             class="relative aspect-video w-full cursor-pointer overflow-hidden rounded-t-lg bg-base-200"
                             onClick={() => props.onToggleSelect(media.id)}>
                             <Show
-                                when={media.cover}
+                                when={media.cover !== ""}
                                 fallback={
                                     <div
                                         class="flex h-full w-full items-center justify-center text-xs text-base-content/40">
@@ -48,6 +40,7 @@ export default function VideoCardGrid(props: {
                                 <img src={media.cover} alt={media.title}
                                      class="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
                                      loading="lazy"
+                                     referrerPolicy="no-referrer"
                                      decoding="async"/>
                             </Show>
 
