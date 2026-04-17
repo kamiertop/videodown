@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -24,16 +23,17 @@ func (s *Settings) init() error {
 			themeKey:            "light",
 			storageKey:          "./downloads",
 			allowGroupOnSaveKey: "true",
-			sleepTimeKey:        "0",
+			sleepTimeKey:        "60",
 			// 其他设置项的默认值
 		}
 		var errList error
 		for key, value := range defaultValue {
 			if _, err := txn.Get([]byte(key)); errors.Is(err, badger.ErrKeyNotFound) {
 				s.logger.Infof("No %s found, setting to default: %s", key, value)
-			}
-			if err := txn.Set([]byte(key), []byte(value)); err != nil {
-				errList = errors.Join(errList, fmt.Errorf("failed to set key: [%s], value: [%s], err: %w", key, value, err))
+				// 只有在 key 不存在时才设置默认值，避免覆盖用户已修改的设置。
+				if err := txn.Set([]byte(key), []byte(value)); err != nil {
+					errList = errors.Join(errList, fmt.Errorf("failed to set key: [%s], value: [%s], err: %w", key, value, err))
+				}
 			}
 		}
 
@@ -156,14 +156,25 @@ func (s *Settings) SetKey(key, value string) error {
 	})
 }
 
-// GetSleepTime 下载完一个视频之后的休眠时间，感觉用一个随机值比较好，这里获取一个值，然后在上下一分钟之内取随机值
-func (s *Settings) GetSleepTime() (time.Duration, error) {
+// GetSleepTime 下载完一个视频之后的休眠时间；配置值按“秒”保存，避免把默认值 60 误解释成 60 纳秒。
+func (s *Settings) GetSleepTime() (int64, error) {
+	value, err := s.GetKey(sleepTimeKey)
+	if err != nil {
+		s.logger.Errorf("failed to get sleep time: %v", err)
+		return 0, errors.New("获取休眠时间失败")
+	}
+	val, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		s.logger.Errorf("failed to parse sleep time: %v", err)
+		return 60, nil
+	}
 
-	return 0, nil
+	return val, nil
 }
 
-func (s *Settings) SetSleepTime(d time.Duration) error {
-	return s.SetKey(sleepTimeKey, strconv.FormatInt(int64(d), 10))
+// SetSleepTime 保存休眠秒数；前端传入 time.Duration 时统一落库为秒，便于用户理解和配置。
+func (s *Settings) SetSleepTime(d int64) error {
+	return s.SetKey(sleepTimeKey, strconv.FormatInt(d, 10))
 }
 
 func (s *Settings) GetSavePreference() (bool, error) {

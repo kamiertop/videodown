@@ -1,3 +1,129 @@
+export namespace api {
+	
+	export class DashDownloadResult {
+	    bvid: string;
+	    title: string;
+	    path: string;
+	    error: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DashDownloadResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bvid = source["bvid"];
+	        this.title = source["title"];
+	        this.path = source["path"];
+	        this.error = source["error"];
+	    }
+	}
+	export class DashDownloadBatchResult {
+	    results: DashDownloadResult[];
+	    success: number;
+	    failed: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DashDownloadBatchResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.results = this.convertValues(source["results"], DashDownloadResult);
+	        this.success = source["success"];
+	        this.failed = source["failed"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	export class DashDownloadTask {
+	    sourceName: string;
+	    sourceKind: string;
+	    upperName: string;
+	    bvid: string;
+	    title: string;
+	    cover: string;
+	    duration: number;
+	    play: number;
+	    danmaku: number;
+	    pubtime: number;
+	    videoURL: string;
+	    audioURL: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DashDownloadTask(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.sourceName = source["sourceName"];
+	        this.sourceKind = source["sourceKind"];
+	        this.upperName = source["upperName"];
+	        this.bvid = source["bvid"];
+	        this.title = source["title"];
+	        this.cover = source["cover"];
+	        this.duration = source["duration"];
+	        this.play = source["play"];
+	        this.danmaku = source["danmaku"];
+	        this.pubtime = source["pubtime"];
+	        this.videoURL = source["videoURL"];
+	        this.audioURL = source["audioURL"];
+	    }
+	}
+	export class DownloadHistoryItem {
+	    bvid: string;
+	    title: string;
+	    cover: string;
+	    duration: number;
+	    upperName: string;
+	    play: number;
+	    danmaku: number;
+	    pubtime: number;
+	    sourceName: string;
+	    sourceKind: string;
+	    path: string;
+	    downloaded: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DownloadHistoryItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bvid = source["bvid"];
+	        this.title = source["title"];
+	        this.cover = source["cover"];
+	        this.duration = source["duration"];
+	        this.upperName = source["upperName"];
+	        this.play = source["play"];
+	        this.danmaku = source["danmaku"];
+	        this.pubtime = source["pubtime"];
+	        this.sourceName = source["sourceName"];
+	        this.sourceKind = source["sourceKind"];
+	        this.path = source["path"];
+	        this.downloaded = source["downloaded"];
+	    }
+	}
+
+}
+
 export namespace badger {
 	
 	export class KVLoader {

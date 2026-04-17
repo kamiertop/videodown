@@ -1,10 +1,12 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"runtime"
 	"strconv"
+	"sync"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/imroc/req/v3"
@@ -20,19 +22,35 @@ const (
 )
 
 type BiliBili struct {
-	logger   *logger.Logger
-	client   *req.Client
-	settings *utils.Settings
-	wbiKey   *wbiKeys // lazy init
+	ctxProvider    func() context.Context
+	logger         *logger.Logger
+	client         *req.Client
+	settings       *utils.Settings
+	wbiKey         *wbiKeys // lazy init
+	progressMu     sync.Mutex
+	progressByBvid map[string]float64
 }
 
-func New(logger *logger.Logger, db *utils.Settings) *BiliBili {
+func New(logger *logger.Logger, db *utils.Settings, ctxProvider ...func() context.Context) *BiliBili {
 	logger = logger.WithName("BiliBili")
-	return &BiliBili{
-		logger:   logger.WithCaller(2),
-		client:   req.C().SetLogger(logger).EnableDebugLog().EnableAutoDecompress(),
-		settings: db,
+	var provider func() context.Context
+	if len(ctxProvider) > 0 {
+		provider = ctxProvider[0]
 	}
+	return &BiliBili{
+		ctxProvider:    provider,
+		logger:         logger.WithCaller(2),
+		client:         req.C().SetLogger(logger).EnableDebugLog().EnableAutoDecompress(),
+		settings:       db,
+		progressByBvid: make(map[string]float64),
+	}
+}
+
+func (b *BiliBili) context() context.Context {
+	if b.ctxProvider == nil {
+		return nil
+	}
+	return b.ctxProvider()
 }
 
 func (b *BiliBili) getCSRF() (string, error) {

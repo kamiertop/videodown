@@ -166,6 +166,10 @@ export function SetSavePreference(arg1) {
   return window['go']['utils']['Settings']['SetSavePreference'](arg1);
 }
 
+export function SetSleepTime(arg1) {
+  return window['go']['utils']['Settings']['SetSleepTime'](arg1);
+}
+
 export function SetStorage(arg1) {
   return window['go']['utils']['Settings']['SetStorage'](arg1);
 }
