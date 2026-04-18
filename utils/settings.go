@@ -24,6 +24,7 @@ func (s *Settings) init() error {
 			storageKey:          "./downloads",
 			allowGroupOnSaveKey: "true",
 			sleepTimeKey:        "60",
+			concurrencyNumKey:   "1",
 			// 其他设置项的默认值
 		}
 		var errList error
@@ -46,6 +47,7 @@ const (
 	storageKey          = "storage"
 	sleepTimeKey        = "sleepTime"
 	allowGroupOnSaveKey = "allowGroupOnSave"
+	concurrencyNumKey   = "concurrencyNum"
 )
 
 func (s *Settings) GetKey(key string) (string, error) {
@@ -174,6 +176,8 @@ func (s *Settings) GetSleepTime() (int64, error) {
 
 // SetSleepTime 保存休眠秒数；前端传入 time.Duration 时统一落库为秒，便于用户理解和配置。
 func (s *Settings) SetSleepTime(d int64) error {
+	s.logger.Infof("setting sleep time: %d", d)
+
 	return s.SetKey(sleepTimeKey, strconv.FormatInt(d, 10))
 }
 
@@ -197,6 +201,25 @@ func (s *Settings) SetSavePreference(allowGroup bool) error {
 	} else {
 		b = "false"
 	}
+	s.logger.Infof("Setting save preference to: %s", b)
 
 	return s.SetKey(allowGroupOnSaveKey, b)
+}
+
+func (s *Settings) GetConcurrencyNum() (int, error) {
+	val, err := s.GetKey(concurrencyNumKey)
+	if err != nil {
+		return 1, err
+	}
+	num, err := strconv.Atoi(val)
+	if err != nil {
+		return 1, err
+	}
+
+	return num, nil
+}
+
+func (s *Settings) SetConcurrencyNum(num int) error {
+	s.logger.Infof("Setting concurrency num to %d", num)
+	return s.SetKey(concurrencyNumKey, strconv.Itoa(num))
 }

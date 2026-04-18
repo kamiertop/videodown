@@ -27,6 +27,8 @@ export function EstimateSize(arg1:Array<number>):Promise<number|number>;
 
 export function Flatten(arg1:number):Promise<void>;
 
+export function GetConcurrencyNum():Promise<number>;
+
 export function GetKey(arg1:string):Promise<string>;
 
 export function GetMergeOperator(arg1:Array<number>,arg2:badger.MergeFunc,arg3:time.Duration):Promise<badger.MergeOperator>;
@@ -82,6 +84,8 @@ export function PrintHistogram(arg1:Array<number>):Promise<void>;
 export function Ranges(arg1:Array<number>,arg2:number):Promise<Array<badger.keyRange>>;
 
 export function RunValueLogGC(arg1:number):Promise<void>;
+
+export function SetConcurrencyNum(arg1:number):Promise<void>;
 
 export function SetDiscardTs(arg1:number):Promise<void>;
 

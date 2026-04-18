@@ -7,6 +7,7 @@ interface DownloadInputBarProps {
     onClear: () => void;
 }
 
+// 手动解析输入区。这里只收集输入和触发事件，具体怎么解析 BV/AV/URL 放在下载页里处理。
 export default function DownloadInputBar(props: DownloadInputBarProps): JSXElement {
     return (
         <section>

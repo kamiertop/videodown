@@ -13,6 +13,8 @@ interface QualitySelectorsProps {
     onPickQn: (qn: number) => void;
 }
 
+// 画质/音质选择器只展示已经解析好的 DASH 数据。
+// 选择画质或音质时不会重新请求后端，只把当前卡片选中的 bestVideo/bestAudio 换成 dash 里已有的流。
 export default function QualitySelectors(props: QualitySelectorsProps): JSXElement {
     const done = createMemo(() => {
         const e = props.entry;
@@ -20,10 +22,12 @@ export default function QualitySelectors(props: QualitySelectorsProps): JSXEleme
     });
     const qualities = createMemo(() => {
         const data = done();
+        // 这里只列出 dash.video 中实际有 baseUrl/base_url 的画质，support_formats 只用来补展示文案。
         return data ? sortedDashVideoQualities(data.play) : [];
     });
     const tracks = createMemo(() => {
         const data = done();
+        // 音频同理：按 dash.audio 里的真实音轨展示，不额外请求。
         return data ? sortedAudioTracks(data.play.dash?.audio) : [];
     });
 

@@ -7,6 +7,7 @@ interface DownloadSummaryBarProps {
     onDownload: () => void;
 }
 
+// 下载列表顶部的汇总栏：显示待下载数量、来源摘要，并触发“下载全部”。
 export default function DownloadSummaryBar(props: DownloadSummaryBarProps): JSXElement {
     return (
         <Show when={props.count > 0}>

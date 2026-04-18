@@ -1,13 +1,20 @@
 import {createFileRoute} from '@tanstack/solid-router'
 import {createSignal, For, type JSXElement, onCleanup, onMount} from "solid-js";
-import {SetStorage} from "../../../wailsjs/go/main/App";
-import {GetSavePreference, GetSleepTime, GetStorage, SetSleepTime} from "../../../wailsjs/go/utils/Settings";
-import ThemeChange from "../../components/ThemeChange.tsx";
-import Toast from "../../components/Toast";
-import {useToast} from "../../hooks/useToast";
+import {SetStorage} from "../../wailsjs/go/main/App";
+import {
+  GetConcurrencyNum,
+  GetSavePreference,
+  GetSleepTime,
+  GetStorage,
+  SetConcurrencyNum,
+  SetSleepTime
+} from "../../wailsjs/go/utils/Settings";
+import ThemeChange from "../components/ThemeChange.tsx";
+import Toast from "../components/Toast";
+import {useToast} from "../hooks/useToast";
 
 // @ts-ignore
-export const Route = createFileRoute('/settings/')({
+export const Route = createFileRoute('/settings')({
   component: SettingsComponent,
 })
 
@@ -166,38 +173,7 @@ function SettingsComponent(): JSXElement {
           </div>
         </div>
       </div>
-
-      {/* 并发控制 */}
-      <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-          <h2 class="card-title mb-4">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-accent" fill="none"
-                 viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M13 10V3L4 14h7v7l9-11h-7z"/>
-            </svg>
-            下载控制
-          </h2>
-
-          <div class="w-full max-w-xs">
-            <input type="range" min={1} max="5" value="3" class="range range-secondary" step="1"/>
-            <div class="flex justify-between px-2.5 mt-2 text-xs">
-              <span>|</span>
-              <span>|</span>
-              <span>|</span>
-              <span>|</span>
-              <span>|</span>
-            </div>
-            <div class="flex justify-between px-2.5 mt-2 text-xs">
-              <span>1</span>
-              <span>2</span>
-              <span>3</span>
-              <span>4</span>
-              <span>5</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ConcurrencyNum/>
       <SleepAfterDownLoad/>
       <SavePreferences/>
       <ThemeChange/>
@@ -225,7 +201,7 @@ function SleepAfterDownLoad(): JSXElement {
     scheduleSave(next);
   }
 
-  
+
   function scheduleSave(next: number): void {
     if (saveTimer !== undefined) {
       window.clearTimeout(saveTimer);
@@ -327,5 +303,68 @@ function SleepAfterDownLoad(): JSXElement {
       </div>
       <Toast message={message()} type={type()}/>
     </>
+  )
+}
+
+function ConcurrencyNum(): JSXElement {
+  const [num, setNum] = createSignal<number>(0);
+  const {message, type, showToast} = useToast();
+
+  onMount(async () => {
+    try {
+      const config: number = await GetConcurrencyNum();
+      setNum(config);
+    } catch (error) {
+      showToast("获取并发下载数量配置失败" + error, 'error');
+    }
+  })
+
+  async function saveNum(e: Event) {
+    setNum(Number((e.currentTarget as HTMLInputElement).value));
+    try {
+      await SetConcurrencyNum(num());
+      showToast(`并发下载数量设置成功: ${num()}`, 'success');
+    } catch (error) {
+      showToast("保存并发下载数量配置失败" + error, 'error');
+    }
+  }
+
+  return (
+    <div class="card bg-base-100 shadow-xl">
+      <div class="card-body">
+        <h2 class="card-title mb-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-accent" fill="none"
+               viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+          下载控制
+        </h2>
+        <span>
+          同时下载视频的数量（被封了不关我事🤣）
+        </span>
+
+        <div class="w-full max-w-xs">
+          <input type="range" min={1} max="5" value={num()}
+                 onInput={(e) => saveNum(e)}
+                 class="range range-secondary" step="1"/>
+          <div class="flex justify-between px-2.5 mt-2 text-xs">
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+            <span>|</span>
+          </div>
+          <div class="flex justify-between px-2.5 mt-2 text-xs">
+            <span>1</span>
+            <span>2</span>
+            <span>3</span>
+            <span>4</span>
+            <span>5</span>
+          </div>
+        </div>
+      </div>
+      <Toast message={message()} type={type()}/>
+    </div>
   )
 }
