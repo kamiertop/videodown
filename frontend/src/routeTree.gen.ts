@@ -9,11 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as DouyinRouteImport } from './routes/douyin'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as BilibiliRouteRouteImport } from './routes/bilibili/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as BilibiliIndexRouteImport } from './routes/bilibili/index'
 import { Route as BilibiliProfileRouteImport } from './routes/bilibili/profile'
 import { Route as BilibiliHistoryRouteImport } from './routes/bilibili/history'
@@ -23,14 +22,14 @@ import { Route as BilibiliUpRouteRouteImport } from './routes/bilibili/up/route'
 import { Route as BilibiliUpIndexRouteImport } from './routes/bilibili/up/index'
 import { Route as BilibiliUpMidRouteImport } from './routes/bilibili/up/$mid'
 
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DouyinRoute = DouyinRouteImport.update({
   id: '/douyin',
   path: '/douyin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AboutRoute = AboutRouteImport.update({
-  id: '/about',
-  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BilibiliRouteRoute = BilibiliRouteRouteImport.update({
@@ -41,11 +40,6 @@ const BilibiliRouteRoute = BilibiliRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SettingsIndexRoute = SettingsIndexRouteImport.update({
-  id: '/settings/',
-  path: '/settings/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BilibiliIndexRoute = BilibiliIndexRouteImport.update({
@@ -92,28 +86,26 @@ const BilibiliUpMidRoute = BilibiliUpMidRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/bilibili': typeof BilibiliRouteRouteWithChildren
-  '/about': typeof AboutRoute
   '/douyin': typeof DouyinRoute
+  '/settings': typeof SettingsRoute
   '/bilibili/up': typeof BilibiliUpRouteRouteWithChildren
   '/bilibili/download': typeof BilibiliDownloadRoute
   '/bilibili/favorite': typeof BilibiliFavoriteRoute
   '/bilibili/history': typeof BilibiliHistoryRoute
   '/bilibili/profile': typeof BilibiliProfileRoute
   '/bilibili/': typeof BilibiliIndexRoute
-  '/settings/': typeof SettingsIndexRoute
   '/bilibili/up/$mid': typeof BilibiliUpMidRoute
   '/bilibili/up/': typeof BilibiliUpIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
   '/douyin': typeof DouyinRoute
+  '/settings': typeof SettingsRoute
   '/bilibili/download': typeof BilibiliDownloadRoute
   '/bilibili/favorite': typeof BilibiliFavoriteRoute
   '/bilibili/history': typeof BilibiliHistoryRoute
   '/bilibili/profile': typeof BilibiliProfileRoute
   '/bilibili': typeof BilibiliIndexRoute
-  '/settings': typeof SettingsIndexRoute
   '/bilibili/up/$mid': typeof BilibiliUpMidRoute
   '/bilibili/up': typeof BilibiliUpIndexRoute
 }
@@ -121,15 +113,14 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/bilibili': typeof BilibiliRouteRouteWithChildren
-  '/about': typeof AboutRoute
   '/douyin': typeof DouyinRoute
+  '/settings': typeof SettingsRoute
   '/bilibili/up': typeof BilibiliUpRouteRouteWithChildren
   '/bilibili/download': typeof BilibiliDownloadRoute
   '/bilibili/favorite': typeof BilibiliFavoriteRoute
   '/bilibili/history': typeof BilibiliHistoryRoute
   '/bilibili/profile': typeof BilibiliProfileRoute
   '/bilibili/': typeof BilibiliIndexRoute
-  '/settings/': typeof SettingsIndexRoute
   '/bilibili/up/$mid': typeof BilibiliUpMidRoute
   '/bilibili/up/': typeof BilibiliUpIndexRoute
 }
@@ -138,43 +129,40 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/bilibili'
-    | '/about'
     | '/douyin'
+    | '/settings'
     | '/bilibili/up'
     | '/bilibili/download'
     | '/bilibili/favorite'
     | '/bilibili/history'
     | '/bilibili/profile'
     | '/bilibili/'
-    | '/settings/'
     | '/bilibili/up/$mid'
     | '/bilibili/up/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/about'
     | '/douyin'
+    | '/settings'
     | '/bilibili/download'
     | '/bilibili/favorite'
     | '/bilibili/history'
     | '/bilibili/profile'
     | '/bilibili'
-    | '/settings'
     | '/bilibili/up/$mid'
     | '/bilibili/up'
   id:
     | '__root__'
     | '/'
     | '/bilibili'
-    | '/about'
     | '/douyin'
+    | '/settings'
     | '/bilibili/up'
     | '/bilibili/download'
     | '/bilibili/favorite'
     | '/bilibili/history'
     | '/bilibili/profile'
     | '/bilibili/'
-    | '/settings/'
     | '/bilibili/up/$mid'
     | '/bilibili/up/'
   fileRoutesById: FileRoutesById
@@ -182,25 +170,24 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BilibiliRouteRoute: typeof BilibiliRouteRouteWithChildren
-  AboutRoute: typeof AboutRoute
   DouyinRoute: typeof DouyinRoute
-  SettingsIndexRoute: typeof SettingsIndexRoute
+  SettingsRoute: typeof SettingsRoute
 }
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/douyin': {
       id: '/douyin'
       path: '/douyin'
       fullPath: '/douyin'
       preLoaderRoute: typeof DouyinRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bilibili': {
@@ -215,13 +202,6 @@ declare module '@tanstack/solid-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/settings/': {
-      id: '/settings/'
-      path: '/settings'
-      fullPath: '/settings/'
-      preLoaderRoute: typeof SettingsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bilibili/': {
@@ -322,9 +302,8 @@ const BilibiliRouteRouteWithChildren = BilibiliRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BilibiliRouteRoute: BilibiliRouteRouteWithChildren,
-  AboutRoute: AboutRoute,
   DouyinRoute: DouyinRoute,
-  SettingsIndexRoute: SettingsIndexRoute,
+  SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

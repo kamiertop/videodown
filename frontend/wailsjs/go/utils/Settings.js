@@ -42,6 +42,10 @@ export function Flatten(arg1) {
   return window['go']['utils']['Settings']['Flatten'](arg1);
 }
 
+export function GetConcurrencyNum() {
+  return window['go']['utils']['Settings']['GetConcurrencyNum']();
+}
+
 export function GetKey(arg1) {
   return window['go']['utils']['Settings']['GetKey'](arg1);
 }
@@ -152,6 +156,10 @@ export function Ranges(arg1, arg2) {
 
 export function RunValueLogGC(arg1) {
   return window['go']['utils']['Settings']['RunValueLogGC'](arg1);
+}
+
+export function SetConcurrencyNum(arg1) {
+  return window['go']['utils']['Settings']['SetConcurrencyNum'](arg1);
 }
 
 export function SetDiscardTs(arg1) {
