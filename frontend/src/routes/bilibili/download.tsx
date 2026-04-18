@@ -13,6 +13,8 @@ import type {MediaCardItem} from "../../lib/model.ts";
 
 type VideoDetailView = Awaited<ReturnType<typeof VideoDetailConciseBvid>>["view"];
 
+// 手动输入一个 BV 后，如果详情里带 ugc_season，就先暂存在这里。
+// 页面会展示这个分组，让用户决定“添加全部 / 添加部分 / 只添加当前视频”。
 interface ParsedVideoGroup {
     kind: "合集" | "系列";
     title: string;
@@ -22,10 +24,13 @@ interface ParsedVideoGroup {
 
 function normalizeBiliCover(url: string | undefined): string {
     if (!url) return "";
+    // B 站图片经常返回 //i0.hdslb.com/...，img 标签里统一补成完整 https 地址。
     if (url.startsWith("//")) return `https:${url}`;
     return url;
 }
 
+// 后端视频详情结构很大，下载列表只需要统一的 MediaCardItem。
+// 手动解析进来的条目 sourceListKind 固定为“解析结果”，后端据此不会再按来源创建子目录。
 function detailToMediaCard(view: VideoDetailView): MediaCardItem {
     return {
         id: Number(view.aid) || Date.now(),
@@ -46,6 +51,7 @@ function detailToMediaCard(view: VideoDetailView): MediaCardItem {
 function uniqueMediaCards(items: MediaCardItem[]): MediaCardItem[] {
     const seen = new Set<string>();
     return items.filter((item) => {
+        // 合集条目优先按 BV 去重；极端情况下没有 BV 才退回 id。
         const key = item.bvid?.trim() || String(item.id);
         if (!key || seen.has(key)) return false;
         seen.add(key);
@@ -58,23 +64,27 @@ function ugcSeasonToCards(view: VideoDetailView, current: MediaCardItem): MediaC
     const listName = season?.title?.trim() || current.sourceListName;
     const episodes = season?.sections?.flatMap((section) => section.episodes ?? []) ?? [];
 
-    return uniqueMediaCards(episodes.map((episode) => ({
-        id: Number(episode.aid) || Number(episode.id) || Date.now(),
-        title: episode.arc?.title || episode.title || "",
-        cover: normalizeBiliCover(episode.arc?.pic || season?.cover || current.cover),
-        duration: Number(episode.arc?.duration || episode.page?.duration || 0),
-        bvid: episode.bvid ?? "",
-        link: episode.bvid ? `https://www.bilibili.com/video/${episode.bvid}` : undefined,
-        upperName: episode.arc?.author?.name || current.upperName,
-        play: episode.arc?.stat?.view,
-        danmaku: episode.arc?.stat?.danmaku,
-        pubtime: episode.arc?.pubdate,
-        sourceListName: listName,
-        sourceListKind: "合集",
-    })));
+    return uniqueMediaCards(
+        episodes.map((episode) => ({
+            id: Number(episode.aid) || Number(episode.id) || Date.now(),
+            title: episode.arc?.title || episode.title || "",
+            cover: normalizeBiliCover(episode.arc?.pic || season?.cover || current.cover),
+            duration: Number(episode.arc?.duration || episode.page?.duration || 0),
+            bvid: episode.bvid ?? "",
+            link: episode.bvid ? `https://www.bilibili.com/video/${episode.bvid}` : undefined,
+            upperName: episode.arc?.author?.name || current.upperName,
+            play: episode.arc?.stat?.view,
+            danmaku: episode.arc?.stat?.danmaku,
+            pubtime: episode.arc?.pubdate,
+            sourceListName: listName,
+            sourceListKind: "合集",
+        })),
+    );
 }
 
 function findGroupForParsedVideo(view: VideoDetailView, current: MediaCardItem): ParsedVideoGroup | null {
+    // 只使用视频详情里已经返回的 ugc_season。
+    // 如果没有 ugc_season，就当作普通单视频，不额外请求 UP 主页面或系列接口。
     const seasonCards = ugcSeasonToCards(view, current);
     if (seasonCards.length > 1) {
         return {
@@ -93,11 +103,14 @@ export const Route = createFileRoute("/bilibili/download")({
 });
 
 function DownLoad(): JSXElement {
+    // 输入框状态：只服务手动解析，不影响来自 UP/收藏/合集页面加入的 videoList。
     const [videoURL, setVideoURL] = createSignal<string>("");
     const [parsing, setParsing] = createSignal(false);
+    // parsedGroup 表示“已解析到合集但还没真正加入下载列表”。
     const [parsedGroup, setParsedGroup] = createSignal<ParsedVideoGroup | null>(null);
     const [selectedGroupIds, setSelectedGroupIds] = createSignal<number[]>([]);
     const {message, type, showToast} = useToast();
+    // 下载相关的副作用（监听 videoList、解析 DASH、接收进度事件）都集中在这个 hook 里。
     const queue = useBilibiliDownloadQueue(showToast);
     const selectedGroupSet = createMemo(() => new Set(selectedGroupIds()));
 
@@ -109,6 +122,7 @@ function DownLoad(): JSXElement {
     });
 
     function addParsedVideos(items: MediaCardItem[], successMessage: string): void {
+        // 真正加入全局下载列表后，清掉“合集选择”临时状态，避免下次解析混用旧数据。
         addVideos(items);
         setParsedGroup(null);
         setSelectedGroupIds([]);
@@ -142,6 +156,7 @@ function DownLoad(): JSXElement {
 
         setParsing(true);
         try {
+            // 手动解析只负责拿详情和判断是否为合集；播放地址由 useBilibiliDownloadQueue 监听 videoList 后解析。
             const detail = await VideoDetailConciseBvid(bvid);
             const card = detailToMediaCard(detail.view);
             if (!card.bvid) {
@@ -151,6 +166,7 @@ function DownLoad(): JSXElement {
 
             const group = findGroupForParsedVideo(detail.view, card);
             if (group) {
+                // 合集默认全选，但不立刻加入列表；让用户先删掉不想下载的条目。
                 setParsedGroup(group);
                 setSelectedGroupIds(group.items.map((item) => item.id));
                 showToast(`发现${group.kind}「${group.title}」`, "info");
@@ -175,6 +191,7 @@ function DownLoad(): JSXElement {
             />
             <Show when={parsedGroup()}>
                 {(group) => (
+                    // 这里展示的是“待确认的合集”，不是已进入下载队列的视频列表。
                     <section class="mt-3 rounded-lg border border-base-300 bg-base-100 p-3">
                         <div class="flex items-center gap-2">
                             <div class="min-w-0 flex-1">
@@ -250,6 +267,7 @@ function DownLoad(): JSXElement {
             <section class="mt-3 flex flex-1 flex-col gap-3 overflow-y-auto pr-4">
                 <For each={videoList()}>
                     {(item) => (
+                        // 每张卡片通过 bvid 到 queue 里取解析状态、画质音质和下载进度。
                         <DownloadVideoCard
                             canDownload={queue.canDownload(item) && (!queue.downloading() || queue.isDownloading(item))}
                             downloading={queue.isDownloading(item)}

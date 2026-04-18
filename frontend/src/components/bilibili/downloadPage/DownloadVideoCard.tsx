@@ -20,15 +20,19 @@ interface DownloadVideoCardProps {
     onRemove: () => void;
 }
 
+// 下载列表里的单张视频卡片。
+// 它只负责展示和把用户操作抛给父层；解析状态、画质切换、下载进度都由 useBilibiliDownloadQueue 管。
 export default function DownloadVideoCard(props: DownloadVideoCardProps): JSXElement {
     const listSrc = () => formatListSource(props.item);
     const accessLabels = () => {
+        // 充电专属、试看、付费等标签来自视频详情；即使解析失败也尽量展示原因。
         const entry = props.entry;
         if (entry?.status === "done") return entry.data.accessInfo.labels;
         if (entry?.status === "error") return entry.accessInfo?.labels ?? [];
         return [];
     };
     const progressText = () => {
+        // 后端把视频、音频、合并阶段映射成同一条 0-100 的进度。
         const progress = props.progress;
         if (!progress) return "";
         if (progress.phase === "video") return `视频下载 ${Math.round(progress.percent)}%`;

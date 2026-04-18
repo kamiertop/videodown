@@ -24,8 +24,7 @@ import (
 var invalidFilenameChars = regexp.MustCompile(`[<>:"/\\|?*\x00-\x1f]`)
 
 const (
-	defaultBatchDownloadConcurrency = 2
-	downloadedVideoCachePrefix      = "bilibili:downloaded:"
+	downloadedVideoCachePrefix = "bilibili:downloaded:"
 )
 
 // DashDownloadTask 是前端提交给后端的最小下载任务；流地址已经由前端按用户选择的画质/音质确定。
@@ -548,7 +547,10 @@ func (b *BiliBili) DownloadVideosByDash(tasks []DashDownloadTask) (DashDownloadB
 		return result, errors.New("下载列表为空")
 	}
 
-	workerCount := defaultBatchDownloadConcurrency
+	workerCount, err := b.settings.GetConcurrencyNum()
+	if err != nil {
+		return result, err
+	}
 	if len(tasks) < workerCount {
 		workerCount = len(tasks)
 	}
@@ -558,9 +560,7 @@ func (b *BiliBili) DownloadVideosByDash(tasks []DashDownloadTask) (DashDownloadB
 	var wg sync.WaitGroup
 
 	for i := 0; i < workerCount; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			for task := range jobs {
 				path, err := b.downloadDashTask(task)
 				item := DashDownloadResult{Bvid: task.Bvid, Title: task.Title, Path: path}
@@ -570,7 +570,7 @@ func (b *BiliBili) DownloadVideosByDash(tasks []DashDownloadTask) (DashDownloadB
 				results <- item
 				b.sleepAfterTask()
 			}
-		}()
+		})
 	}
 
 	for _, task := range tasks {
