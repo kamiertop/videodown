@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -33,19 +34,22 @@ type DashDownloadTask struct {
 	SourceKind string `json:"sourceKind"`
 	UpperName  string `json:"upperName"`
 	Bvid       string `json:"bvid"`
-	Title      string `json:"title"`
-	Cover      string `json:"cover"`
-	Duration   int    `json:"duration"`
-	Play       int    `json:"play"`
-	Danmaku    int    `json:"danmaku"`
-	Pubtime    int    `json:"pubtime"`
-	VideoURL   string `json:"videoURL"`
-	AudioURL   string `json:"audioURL"`
+	// Cid 为分 P 稿件某一 P 的 cid；单 P 或未填时为 0，行为与旧版一致。
+	Cid      int64  `json:"cid"`
+	Title    string `json:"title"`
+	Cover    string `json:"cover"`
+	Duration int    `json:"duration"`
+	Play     int    `json:"play"`
+	Danmaku  int    `json:"danmaku"`
+	Pubtime  int    `json:"pubtime"`
+	VideoURL string `json:"videoURL"`
+	AudioURL string `json:"audioURL"`
 }
 
 // DashDownloadResult 记录单个任务的结果，前端据此移除已完成的视频并保留失败项。
 type DashDownloadResult struct {
 	Bvid  string `json:"bvid"`
+	Cid   int64  `json:"cid"`
 	Title string `json:"title"`
 	Path  string `json:"path"`
 	Error string `json:"error"`
@@ -78,10 +82,13 @@ func streamBaseURL(v string) string {
 	return strings.TrimSpace(v)
 }
 
-func downloadCacheKey(bvid string) string {
+func downloadCacheKey(bvid string, cid int64) string {
 	t := strings.ToUpper(strings.TrimSpace(bvid))
 	if t == "" {
 		return ""
+	}
+	if cid > 0 {
+		return downloadedVideoCachePrefix + t + ":c:" + strconv.FormatInt(cid, 10)
 	}
 	return downloadedVideoCachePrefix + t
 }
@@ -124,8 +131,8 @@ func uniqueFilePath(path string) string {
 }
 
 // downloadedCachePath 返回已下载缓存中的文件路径；缓存只在后端使用，不增加前端协议字段。
-func (b *BiliBili) downloadedCachePath(bvid string) (string, bool) {
-	key := downloadCacheKey(bvid)
+func (b *BiliBili) downloadedCachePath(bvid string, cid int64) (string, bool) {
+	key := downloadCacheKey(bvid, cid)
 	if key == "" {
 		return "", false
 	}
@@ -144,7 +151,7 @@ func (b *BiliBili) downloadedCachePath(bvid string) (string, bool) {
 
 // markDownloaded 写入下载成功缓存；写缓存失败不影响已经完成的文件保存。
 func (b *BiliBili) markDownloaded(task DashDownloadTask, path string) {
-	key := downloadCacheKey(task.Bvid)
+	key := downloadCacheKey(task.Bvid, task.Cid)
 	if key == "" {
 		return
 	}
@@ -231,8 +238,8 @@ func (b *BiliBili) resolveTargetDir(storagePath string, task DashDownloadTask) (
 		return storagePath, nil
 	}
 
-	// 合集需要更深一层分组：存储目录 / UP 主名 / 合集名。
-	if task.SourceKind == "合集" {
+	// 合集、分 P 列表需要更深一层分组：存储目录 / UP 主名 / 列表标题。
+	if task.SourceKind == "合集" || task.SourceKind == "分P" {
 		if upperName := sanitizeDirName(task.UpperName); upperName != "" {
 			return filepath.Join(storagePath, upperName, sourceName), nil
 		}
@@ -243,6 +250,7 @@ func (b *BiliBili) resolveTargetDir(storagePath string, task DashDownloadTask) (
 
 type downloadProgress struct {
 	Bvid       string  `json:"bvid"`
+	Cid        int64   `json:"cid"`
 	Title      string  `json:"title"`
 	Phase      string  `json:"phase"`
 	Downloaded int64   `json:"downloaded"`
@@ -250,8 +258,15 @@ type downloadProgress struct {
 	Percent    float64 `json:"percent"`
 }
 
-func progressKey(bvid string) string {
-	return strings.ToUpper(strings.TrimSpace(bvid))
+func progressKey(bvid string, cid int64) string {
+	bv := strings.ToUpper(strings.TrimSpace(bvid))
+	if bv == "" {
+		return ""
+	}
+	if cid > 0 {
+		return bv + ":" + strconv.FormatInt(cid, 10)
+	}
+	return bv
 }
 
 func clampPercent(percent float64) float64 {
@@ -264,8 +279,8 @@ func clampPercent(percent float64) float64 {
 	return percent
 }
 
-func (b *BiliBili) resetDownloadProgress(bvid string) {
-	key := progressKey(bvid)
+func (b *BiliBili) resetDownloadProgress(bvid string, cid int64) {
+	key := progressKey(bvid, cid)
 	if key == "" {
 		return
 	}
@@ -280,7 +295,7 @@ func (b *BiliBili) emitDownloadProgress(p downloadProgress) {
 	if ctx == nil {
 		return
 	}
-	key := progressKey(p.Bvid)
+	key := progressKey(p.Bvid, p.Cid)
 	if key != "" {
 		p.Percent = clampPercent(p.Percent)
 
@@ -324,7 +339,7 @@ func weightedPercent(start, weight float64, downloaded, total int64) float64 {
 }
 
 // downloadToFile 使用项目封装的 req client 流式读取响应体；手动 Read/Write 才能拿到实时字节进度。
-func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title, phase, cookies string, start, weight float64) error {
+func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title string, cid int64, phase, cookies string, start, weight float64) error {
 	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
 		return errors.New("流地址无效")
 	}
@@ -361,6 +376,7 @@ func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title, phase, cookie
 	lastEmit := time.Time{}
 	b.emitDownloadProgress(downloadProgress{
 		Bvid:    bvid,
+		Cid:     cid,
 		Title:   title,
 		Phase:   phase,
 		Total:   total,
@@ -379,6 +395,7 @@ func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title, phase, cookie
 			if now.Sub(lastEmit) >= 200*time.Millisecond || (total > 0 && downloaded >= total) {
 				b.emitDownloadProgress(downloadProgress{
 					Bvid:       bvid,
+					Cid:        cid,
 					Title:      title,
 					Phase:      phase,
 					Downloaded: downloaded,
@@ -398,6 +415,7 @@ func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title, phase, cookie
 
 	b.emitDownloadProgress(downloadProgress{
 		Bvid:       bvid,
+		Cid:        cid,
 		Title:      title,
 		Phase:      phase,
 		Downloaded: downloaded,
@@ -409,9 +427,9 @@ func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title, phase, cookie
 
 // downloadDashTask 下载一个 DASH 任务，供单个下载和批量下载复用。
 func (b *BiliBili) downloadDashTask(task DashDownloadTask) (string, error) {
-	b.resetDownloadProgress(task.Bvid)
-	if path, ok := b.downloadedCachePath(task.Bvid); ok {
-		b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Title: task.Title, Phase: "done", Percent: 100})
+	b.resetDownloadProgress(task.Bvid, task.Cid)
+	if path, ok := b.downloadedCachePath(task.Bvid, task.Cid); ok {
+		b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
 		return path, nil
 	}
 
@@ -460,36 +478,36 @@ func (b *BiliBili) downloadDashTask(task DashDownloadTask) (string, error) {
 	if task.AudioURL == "" {
 		videoWeight = 90.0
 	}
-	if err = b.downloadToFile(task.VideoURL, videoTmp, task.Bvid, task.Title, "video", cookies, 0, videoWeight); err != nil {
-		b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Title: task.Title, Phase: "error"})
+	if err = b.downloadToFile(task.VideoURL, videoTmp, task.Bvid, task.Title, task.Cid, "video", cookies, 0, videoWeight); err != nil {
+		b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "error"})
 		return "", err
 	}
 
 	ff := utils.NewFFmpeg()
 	if task.AudioURL == "" {
-		b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Title: task.Title, Phase: "merge", Percent: 95})
+		b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "merge", Percent: 95})
 		if err = ff.Remux(videoTmp, outPath); err != nil {
-			b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Title: task.Title, Phase: "error"})
+			b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "error"})
 			return "", err
 		}
 		b.markDownloaded(task, outPath)
-		b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Title: task.Title, Phase: "done", Percent: 100})
+		b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
 		return outPath, nil
 	}
 
 	audioTmp := filepath.Join(tmpDir, "audio.m4s")
-	if err = b.downloadToFile(task.AudioURL, audioTmp, task.Bvid, task.Title, "audio", cookies, 60, 30); err != nil {
-		b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Title: task.Title, Phase: "error"})
+	if err = b.downloadToFile(task.AudioURL, audioTmp, task.Bvid, task.Title, task.Cid, "audio", cookies, 60, 30); err != nil {
+		b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "error"})
 		return "", err
 	}
-	b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Title: task.Title, Phase: "merge", Percent: 95})
+	b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "merge", Percent: 95})
 	if err = ff.Merge(videoTmp, audioTmp, outPath); err != nil {
-		b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Title: task.Title, Phase: "error"})
+		b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "error"})
 		return "", err
 	}
 
 	b.markDownloaded(task, outPath)
-	b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Title: task.Title, Phase: "done", Percent: 100})
+	b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
 	return outPath, nil
 }
 
@@ -520,18 +538,29 @@ func (b *BiliBili) sleepAfterTask() {
 	time.Sleep(time.Duration(sleepTime) * time.Second)
 }
 
+func dashDownloadDedupKey(task DashDownloadTask) string {
+	bv := strings.ToUpper(strings.TrimSpace(task.Bvid))
+	if bv == "" {
+		return ""
+	}
+	if task.Cid > 0 {
+		return bv + ":" + strconv.FormatInt(task.Cid, 10)
+	}
+	return bv
+}
+
 func uniqueDashDownloadTasks(tasks []DashDownloadTask) []DashDownloadTask {
 	seen := make(map[string]struct{}, len(tasks))
 	unique := make([]DashDownloadTask, 0, len(tasks))
 	for _, task := range tasks {
-		key := strings.ToUpper(strings.TrimSpace(task.Bvid))
+		key := dashDownloadDedupKey(task)
 		if key != "" {
 			if _, ok := seen[key]; ok {
 				continue
 			}
 			seen[key] = struct{}{}
 		}
-		// 同一个 BV 只允许进入一个下载任务，避免并发任务向同一个前端进度条交替推送。
+		// 同一 BV 在单 P 时只保留一个任务；多 P 时按 cid 区分，避免进度事件互相覆盖。
 		unique = append(unique, task)
 	}
 	return unique
@@ -563,7 +592,7 @@ func (b *BiliBili) DownloadVideosByDash(tasks []DashDownloadTask) (DashDownloadB
 		wg.Go(func() {
 			for task := range jobs {
 				path, err := b.downloadDashTask(task)
-				item := DashDownloadResult{Bvid: task.Bvid, Title: task.Title, Path: path}
+				item := DashDownloadResult{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Path: path}
 				if err != nil {
 					item.Error = err.Error()
 				}

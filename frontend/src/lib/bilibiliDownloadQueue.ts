@@ -4,7 +4,7 @@ import {api} from "../../wailsjs/go/models";
 import {EventsOn} from "../../wailsjs/runtime";
 import {
   BilibiliPlayResolveError,
-  bvidCacheKey,
+  bilibiliPlayResolveKey,
   resolveBilibiliPlayUrl,
   type ResolvedPlayInfo,
   streamBaseUrl,
@@ -12,7 +12,7 @@ import {
   switchResolvedPlayAtQn,
   type VideoAccessInfo,
 } from "./bilibiliPlayResolve.ts";
-import {removeVideosByBvid, videoList} from "./bilibiliStore.ts";
+import {removeVideoAfterDownloadSuccess, videoList} from "./bilibiliStore.ts";
 import type {MediaCardItem} from "./model.ts";
 
 type ToastType = "error" | "success" | "info" | "warning";
@@ -27,6 +27,7 @@ export type DownloadPhase = "video" | "audio" | "merge" | "done" | "error";
 
 export interface DownloadProgress {
   bvid: string;
+  cid?: number;
   title: string;
   phase: DownloadPhase;
   downloaded: number;
@@ -45,8 +46,8 @@ type DashDownloadTask = api.DashDownloadTask;
 // 解析播放地址是异步副作用。这个 Set 防止 Solid effect 重跑时对同一个 BV 重复发起解析请求。
 const playResolveInFlight = new Set<string>();
 
-function containsBvid(key: string): boolean {
-    return videoList().some((v) => bvidCacheKey(v.bvid) === key);
+function containsPlayKey(key: string): boolean {
+  return videoList().some((v) => bilibiliPlayResolveKey(v) === key);
 }
 
 // 下载目录名的生成规则：
@@ -59,7 +60,7 @@ function downloadDirName(item: MediaCardItem): string {
   if (item.sourceListKind === "解析结果") {
     return "";
   }
-  
+
   return item.sourceListName ?? "";
 }
 
@@ -68,6 +69,9 @@ export function formatListSource(item: MediaCardItem): string {
   const name = item.sourceListName;
   if (kind === "全部投稿") {
     return kind;
+  }
+  if (kind === "分P") {
+    return `分P「${name}」`;
   }
 
   return `${kind}「${name}」`;
@@ -93,7 +97,7 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
     // 只要全局 videoList 变化，就自动清理已移除视频的解析状态，并为新增视频解析 DASH。
     const list = videoList();
     const bvSet = new Set(
-      list.map((i) => bvidCacheKey(i.bvid)).filter((k): k is string => !!k),
+      list.map((i) => bilibiliPlayResolveKey(i)).filter((k): k is string => !!k),
     );
 
     setPlayResolveByBvid((prev) => {
@@ -111,7 +115,7 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
     const map = playResolveByBvid();
 
     for (const item of list) {
-      const key = bvidCacheKey(item.bvid);
+      const key = bilibiliPlayResolveKey(item);
       if (!key || playResolveInFlight.has(key)) continue;
 
       const cur = map[key];
@@ -126,11 +130,11 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
       void (async () => {
         try {
           // resolveBilibiliPlayUrl 内部只请求一次 playurl；画质/音质切换复用返回的 dash 字段。
-          const data = await resolveBilibiliPlayUrl(item.bvid);
-          if (!containsBvid(key)) return;
+          const data = await resolveBilibiliPlayUrl(item.bvid, {cid: item.cid});
+          if (!containsPlayKey(key)) return;
           setPlayResolveByBvid((p) => ({...p, [key]: {status: "done", data}}));
         } catch (e) {
-          if (!containsBvid(key)) return;
+          if (!containsPlayKey(key)) return;
           const message = e instanceof Error ? e.message : String(e);
           const accessInfo = e instanceof BilibiliPlayResolveError ? e.accessInfo : undefined;
           setPlayResolveByBvid((p) => ({...p, [key]: {status: "error", message, accessInfo}}));
@@ -143,7 +147,7 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
 
   // 后端批量下载期间会持续推送事件；这里按 BV 归档，供每张卡片独立渲染进度条。
   const offProgress = EventsOn("bilibili-download-progress", (payload: DownloadProgress) => {
-    const key = bvidCacheKey(payload?.bvid);
+    const key = bilibiliPlayResolveKey({bvid: payload?.bvid, cid: payload?.cid});
     if (!key) return;
 
     setProgressByBvid((p) => ({
@@ -157,13 +161,13 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
   onCleanup(offProgress);
 
   // 后续 UI 操作都只通过 BV 读写解析状态，避免同一个视频在不同来源列表里 id 不一致。
-  function entryForBvid(bvid: string): PlayResolveEntry | undefined {
-    const key = bvidCacheKey(bvid);
+  function entryForItem(item: MediaCardItem): PlayResolveEntry | undefined {
+    const key = bilibiliPlayResolveKey(item);
     return key ? playResolveByBvid()[key] : undefined;
   }
 
-  function handlePickQn(bvid: string, qn: number): void {
-    const key = bvidCacheKey(bvid);
+  function handlePickQn(item: MediaCardItem, qn: number): void {
+    const key = bilibiliPlayResolveKey(item);
     if (!key) return;
 
     const cur = playResolveByBvid()[key];
@@ -179,8 +183,8 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
     setPlayResolveByBvid((p) => ({...p, [key]: {status: "done", data: next}}));
   }
 
-  function handlePickAudio(bvid: string, audioId: number): void {
-    const key = bvidCacheKey(bvid);
+  function handlePickAudio(item: MediaCardItem, audioId: number): void {
+    const key = bilibiliPlayResolveKey(item);
     if (!key) return;
 
     const cur = playResolveByBvid()[key];
@@ -196,18 +200,17 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
   }
 
   function buildDownloadTasks(items: MediaCardItem[]): DownloadTask[] {
-    const seenBvids = new Set<string>();
+    const seenKeys = new Set<string>();
     return items
       .map((item) => {
-        // 前端传给后端的是“下载任务列表”，同一个 BV 没必要重复提交。
-        // 后端也会再做一次去重，这里主要避免用户界面出现重复下载状态。
-        const key = bvidCacheKey(item.bvid);
+        // 同一解析键（BV 或 BV+cid）不重复提交；后端也会去重。
+        const key = bilibiliPlayResolveKey(item);
         if (key) {
-          if (seenBvids.has(key)) return null;
-          seenBvids.add(key);
+          if (seenKeys.has(key)) return null;
+          seenKeys.add(key);
         }
 
-        const entry = entryForBvid(item.bvid);
+        const entry = entryForItem(item);
         if (entry?.status !== "done") return null;
 
         // 这里已经是用户最终选择的视频/音频流地址；后端不再重新解析画质。
@@ -227,6 +230,7 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
       sourceKind: task.item.sourceListKind ?? "",
       upperName: task.item.upperName ?? "",
       bvid: task.item.bvid,
+      cid: task.item.cid ?? 0,
       title: task.item.title,
       cover: task.item.cover ?? "",
       duration: task.item.duration ?? 0,
@@ -241,7 +245,7 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
   async function runDownloadTasks(tasks: DownloadTask[]): Promise<{ success: number; failed: number }> {
     // 所有待提交任务先置为下载中；真实字节进度由后端事件逐条刷新。
     for (const task of tasks) {
-      const key = bvidCacheKey(task.item.bvid);
+      const key = bilibiliPlayResolveKey(task.item);
       if (key) {
         setDownloadingByBvid((p) => ({...p, [key]: true}));
       }
@@ -250,19 +254,18 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
     try {
       // 真正的并发下载、休眠控制、缓存判断都在后端完成；前端只提交任务列表并等待最终结果。
       const batch = await DownloadVideosByDash(tasks.map(toBackendTask));
-      const byBvid = new Map(tasks.map((task) => [bvidCacheKey(task.item.bvid), task.item]));
+      const byKey = new Map(tasks.map((task) => [bilibiliPlayResolveKey(task.item), task.item]));
 
       // 后端返回每条任务的最终结果，前端只移除成功项，失败项保留给用户重试。
       for (const item of batch.results ?? []) {
-        const key = bvidCacheKey(item.bvid);
-        const media = key ? byBvid.get(key) : undefined;
+        const key = bilibiliPlayResolveKey({bvid: item.bvid, cid: item.cid});
+        const media = key ? byKey.get(key) : undefined;
         if (!media) continue;
 
         if (item.error) {
           showToast(`下载失败：${media.title}，${item.error}`, "error");
         } else {
-          // 下载缓存以 BV 为 key，成功后同 BV 的卡片都可以移除。
-          removeVideosByBvid(media.bvid);
+          removeVideoAfterDownloadSuccess(media.bvid, item.cid);
         }
       }
 
@@ -273,7 +276,7 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
     } finally {
       // 批量调用结束后清理按钮态；失败项仍留在列表，但进度条回到待下载状态。
       for (const task of tasks) {
-        const key = bvidCacheKey(task.item.bvid);
+        const key = bilibiliPlayResolveKey(task.item);
         if (!key) continue;
         setDownloadingByBvid((p) => ({...p, [key]: false}));
         setProgressByBvid((p) => {
@@ -311,10 +314,10 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
   }
 
   async function downloadOne(item: MediaCardItem): Promise<void> {
-    const key = bvidCacheKey(item.bvid);
+    const key = bilibiliPlayResolveKey(item);
     if (downloading() || (key && downloadingByBvid()[key])) return;
 
-    const entry = entryForBvid(item.bvid);
+    const entry = entryForItem(item);
     if (entry?.status === "loading") {
       showToast("视频还在解析中，请稍候", "warning");
       return;
@@ -338,16 +341,16 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
   }
 
   function canDownload(item: MediaCardItem): boolean {
-    return entryForBvid(item.bvid)?.status === "done";
+    return entryForItem(item)?.status === "done";
   }
 
   function isDownloading(item: MediaCardItem): boolean {
-    const key = bvidCacheKey(item.bvid);
-    return key ? !!downloadingByBvid()[key] : false;
+    const key = bilibiliPlayResolveKey(item);
+    return key ? downloadingByBvid()[key] : false;
   }
 
   function progressFor(item: MediaCardItem): DownloadProgress | undefined {
-    const key = bvidCacheKey(item.bvid);
+    const key = bilibiliPlayResolveKey(item);
     return key ? progressByBvid()[key] : undefined;
   }
 
@@ -355,7 +358,7 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
     canDownload,
     downloadOne,
     downloading,
-    entryForBvid,
+    entryForItem,
     handlePickAudio,
     handlePickQn,
     isDownloading,

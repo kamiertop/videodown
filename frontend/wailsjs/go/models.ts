@@ -2,6 +2,7 @@ export namespace api {
 	
 	export class DashDownloadResult {
 	    bvid: string;
+	    cid: number;
 	    title: string;
 	    path: string;
 	    error: string;
@@ -13,6 +14,7 @@ export namespace api {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.bvid = source["bvid"];
+	        this.cid = source["cid"];
 	        this.title = source["title"];
 	        this.path = source["path"];
 	        this.error = source["error"];
@@ -58,6 +60,7 @@ export namespace api {
 	    sourceKind: string;
 	    upperName: string;
 	    bvid: string;
+	    cid: number;
 	    title: string;
 	    cover: string;
 	    duration: number;
@@ -77,6 +80,7 @@ export namespace api {
 	        this.sourceKind = source["sourceKind"];
 	        this.upperName = source["upperName"];
 	        this.bvid = source["bvid"];
+	        this.cid = source["cid"];
 	        this.title = source["title"];
 	        this.cover = source["cover"];
 	        this.duration = source["duration"];
