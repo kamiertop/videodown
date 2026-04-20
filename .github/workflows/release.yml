@@ -1,0 +1,121 @@
+name: Build and Release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  APP_NAME: videodown
+  WAILS_VERSION: v2.12.0
+  NODE_OPTIONS: --max-old-space-size=4096
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-amd64
+            os: ubuntu-latest
+            platform: linux/amd64
+            archive: videodown-linux-amd64.tar.gz
+            build_tags: webkit2_41
+          - name: windows-amd64
+            os: windows-latest
+            platform: windows/amd64
+            archive: videodown-windows-amd64.zip
+            build_tags: ""
+          - name: macos-universal
+            os: macos-latest
+            platform: darwin/universal
+            archive: videodown-macos-universal.zip
+            build_tags: ""
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25"
+          go-version-file: 'go.mod'
+          token: ${{ github.token }}
+          cache: true
+          cache-dependency-path: 'go.sum'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          check-latest: false
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev
+
+      - name: Add Go bin to PATH
+        shell: bash
+        run: echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Install Wails CLI
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      - name: Build Wails app
+        shell: bash
+        run: |
+          if [ -n "${{ matrix.build_tags }}" ]; then
+            wails build --clean --platform "${{ matrix.platform }}" -tags "${{ matrix.build_tags }}"
+          else
+            wails build --clean --platform "${{ matrix.platform }}"
+          fi
+
+      - name: Package Linux artifact
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          mkdir -p dist
+          tar -czf "dist/${{ matrix.archive }}" -C build/bin "${{ env.APP_NAME }}"
+
+      - name: Package Windows artifact
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path "build/bin/${{ env.APP_NAME }}.exe" -DestinationPath "dist/${{ matrix.archive }}" -Force
+
+      - name: Package macOS artifact
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent "build/bin/${{ env.APP_NAME }}.app" "dist/${{ matrix.archive }}"
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.name }}
+          path: dist/${{ matrix.archive }}
+          if-no-files-found: error
+
+      - name: Upload asset to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
+            gh release create "${{ github.ref_name }}" --title "${{ github.ref_name }}" --generate-notes || true
+          fi
+          gh release upload "${{ github.ref_name }}" "dist/${{ matrix.archive }}" --clobber

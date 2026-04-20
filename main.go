@@ -21,7 +21,7 @@ import (
 var assets embed.FS
 
 //go:embed build/appicon.png
-var icon []byte
+var macIcon []byte
 
 func main() {
 	log := mylogger.New()
@@ -87,7 +87,7 @@ func main() {
 			About: &mac.AboutInfo{
 				Title:   "videodown",
 				Message: "",
-				Icon:    icon,
+				Icon:    macIcon,
 			},
 		},
 	})

@@ -8,7 +8,7 @@ import Toast from "../../components/Toast";
 import {useToast} from "../../hooks/useToast";
 import {useBilibiliDownloadQueue} from "../../lib/bilibiliDownloadQueue.ts";
 import {addVideos, removeVideo, videoList} from "../../lib/bilibiliStore.ts";
-import {extractBvid} from "../../lib/format";
+import {extractBilibiliPartIndex, extractBvid} from "../../lib/format";
 import type {MediaCardItem} from "../../lib/model.ts";
 
 type VideoDetailView = Awaited<ReturnType<typeof VideoDetailConciseBvid>>["view"];
@@ -16,7 +16,7 @@ type VideoDetailView = Awaited<ReturnType<typeof VideoDetailConciseBvid>>["view"
 // 手动输入一个 BV 后，如果详情里带 ugc_season，就先暂存在这里。
 // 页面会展示这个分组，让用户决定“添加全部 / 添加部分 / 只添加当前视频”。
 interface ParsedVideoGroup {
-    kind: "合集" | "系列";
+    kind: "合集" | "系列" | "分P";
     title: string;
     current: MediaCardItem;
     items: MediaCardItem[];
@@ -51,8 +51,11 @@ function detailToMediaCard(view: VideoDetailView): MediaCardItem {
 function uniqueMediaCards(items: MediaCardItem[]): MediaCardItem[] {
     const seen = new Set<string>();
     return items.filter((item) => {
-        // 合集条目优先按 BV 去重；极端情况下没有 BV 才退回 id。
-        const key = item.bvid?.trim() || String(item.id);
+        const cid = item.cid;
+        const key =
+            cid != null && cid > 0
+                ? `cid:${cid}`
+                : item.bvid?.trim().toUpperCase() || String(item.id);
         if (!key || seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -82,7 +85,40 @@ function ugcSeasonToCards(view: VideoDetailView, current: MediaCardItem): MediaC
     );
 }
 
-function findGroupForParsedVideo(view: VideoDetailView, current: MediaCardItem): ParsedVideoGroup | null {
+function partListTitle(mainTitle: string, partName: string, pageIndex: number): string {
+    const part = partName?.trim();
+    if (part) return `${mainTitle} · P${pageIndex} ${part}`;
+    return `${mainTitle} · P${pageIndex}`;
+}
+
+function pagesToMediaCards(view: VideoDetailView, upperName: string): MediaCardItem[] {
+    const pages = view.pages ?? [];
+    const bvid = view.bvid ?? "";
+    const mainTitle = view.title?.trim() || "未命名稿件";
+    return uniqueMediaCards(
+        pages.map((p) => ({
+            id: Number(p.cid) || p.page || Date.now(),
+            title: partListTitle(mainTitle, p.part, p.page),
+            cover: normalizeBiliCover(p.first_frame || view.pic),
+            duration: Number(p.duration) || 0,
+            bvid,
+            cid: Number(p.cid) || undefined,
+            link: bvid ? `https://www.bilibili.com/video/${bvid}?p=${p.page}` : undefined,
+            upperName,
+            play: view.stat?.view,
+            danmaku: view.stat?.danmaku,
+            pubtime: view.pubdate,
+            sourceListName: mainTitle,
+            sourceListKind: "分P",
+        })),
+    );
+}
+
+function findGroupForParsedVideo(
+    view: VideoDetailView,
+    current: MediaCardItem,
+    rawInput: string,
+): ParsedVideoGroup | null {
     // 只使用视频详情里已经返回的 ugc_season。
     // 如果没有 ugc_season，就当作普通单视频，不额外请求 UP 主页面或系列接口。
     const seasonCards = ugcSeasonToCards(view, current);
@@ -92,6 +128,23 @@ function findGroupForParsedVideo(view: VideoDetailView, current: MediaCardItem):
             title: view.ugc_season?.title?.trim() || "未命名合集",
             current,
             items: seasonCards,
+        };
+    }
+
+    const pageCards = pagesToMediaCards(view, current.upperName);
+    if (pageCards.length > 1) {
+        const wantP = extractBilibiliPartIndex(rawInput);
+        const pages = view.pages ?? [];
+        const hit =
+            pages.find((p) => p.page === wantP) ??
+            pages[0];
+        const currentPart =
+            pageCards.find((c) => c.cid === Number(hit?.cid)) ?? pageCards[0] ?? current;
+        return {
+            kind: "分P",
+            title: view.title?.trim() || "多P 视频",
+            current: currentPart,
+            items: pageCards,
         };
     }
 
@@ -164,7 +217,7 @@ function DownLoad(): JSXElement {
                 return;
             }
 
-            const group = findGroupForParsedVideo(detail.view, card);
+            const group = findGroupForParsedVideo(detail.view, card, videoURL());
             if (group) {
                 // 合集默认全选，但不立刻加入列表；让用户先删掉不想下载的条目。
                 setParsedGroup(group);
@@ -272,10 +325,10 @@ function DownLoad(): JSXElement {
                             canDownload={queue.canDownload(item) && (!queue.downloading() || queue.isDownloading(item))}
                             downloading={queue.isDownloading(item)}
                             item={item}
-                            entry={queue.entryForBvid(item.bvid)}
+                            entry={queue.entryForItem(item)}
                             progress={queue.progressFor(item)}
-                            onPickQn={(qn) => queue.handlePickQn(item.bvid, qn)}
-                            onPickAudio={(audioId) => queue.handlePickAudio(item.bvid, audioId)}
+                            onPickQn={(qn) => queue.handlePickQn(item, qn)}
+                            onPickAudio={(audioId) => queue.handlePickAudio(item, audioId)}
                             onRemove={() => removeVideo(item.id)}
                             onDownload={() => void queue.downloadOne(item)}
                         />
