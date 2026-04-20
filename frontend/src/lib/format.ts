@@ -67,3 +67,15 @@ export function extractBvid(input: string): string | null {
 
     return null;
 }
+
+/**
+ * 从 B 站视频链接中解析分 P 序号（`?p=` / `&p=`，或 `page=`），缺省为 1。
+ */
+export function extractBilibiliPartIndex(input: string): number {
+    const s = input.trim();
+    const m = /(?:^|[?&])p=(\d+)/i.exec(s) || /(?:^|[?&])page=(\d+)/i.exec(s);
+    if (!m) return 1;
+    const n = parseInt(m[1], 10);
+    if (!Number.isFinite(n) || n < 1) return 1;
+    return n;
+}
