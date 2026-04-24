@@ -7,6 +7,7 @@ require (
 	github.com/imroc/req/v3 v3.57.0
 	github.com/rs/zerolog v1.35.0
 	github.com/wailsapp/wails/v2 v2.12.0
+	github.com/wudi/jsonx v0.0.0-20260424033438-ddaecf3aaee0
 )
 
 require (
@@ -27,6 +28,7 @@ require (
 	github.com/icholy/digest v1.1.0 // indirect
 	github.com/jchv/go-winloader v0.0.0-20210711035445-715c2860da7e // indirect
 	github.com/klauspost/compress v1.18.2 // indirect
+	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/labstack/echo/v4 v4.13.3 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/leaanthony/go-ansi-parser v1.6.1 // indirect

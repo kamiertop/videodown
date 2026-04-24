@@ -3,8 +3,6 @@ package api
 import (
 	"context"
 	"errors"
-	"fmt"
-	"runtime"
 	"strconv"
 	"sync"
 
@@ -78,28 +76,4 @@ func (b *BiliBili) clearAuthState() error {
 
 		return nil
 	})
-}
-
-func publicHeaders() map[string]string {
-	return map[string]string{
-		AcceptEncoding:  "gzip, deflate, br, zstd",
-		AcceptLanguage:  "zh-CN,zh;q=0.9",
-		Accept:          "*/*",
-		SecCHUAMobile:   "?0",
-		Priority:        "u=1, i",
-		SecCHUA:         `"Chromium";v="146", "Not-A.Brand";v="24", "Google Chrome";v="146"`,
-		SecCHUAPlatform: fmt.Sprintf(`"%s"`, runtime.GOOS),
-		SecFetchMode:    "cors",
-		SecFetchDest:    "empty",
-		SecFetchSite:    "same-site",
-		UserAgent:       userAgent(),
-	}
-}
-
-func userAgent() string {
-	if runtime.GOOS == "windows" {
-		return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
-	}
-
-	return "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
 }

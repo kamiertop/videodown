@@ -37,7 +37,7 @@ func (b *BiliBili) QRCode() (model.QRCodeData, error) {
 			SecFetchDest:    "empty",
 			SecFetchMode:    "cors",
 			SecFetchSite:    "same-site",
-			Referer:         BiliBiliUrl,
+			Referer:         biliBiliUrl,
 			UserAgent:       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
 		}).
 		Do().
@@ -64,7 +64,7 @@ func (b *BiliBili) PollQRCode(qrcodeKey string) (model.PollQRCodeData, error) {
 			"x-bili-locale-json": `{"c_locale":{"language":"zh","region":"CN"},"always_translate":true}`,
 		}).
 		SetHeaders(map[string]string{
-			Referer:         BiliBiliUrl,
+			Referer:         biliBiliUrl,
 			SecCHUA:         `"Not:A-Brand";v="99", "Google Chrome";v="145", "Chromium";v="145"`,
 			SecCHUAMobile:   "?0",
 			SecCHUAPlatform: `"Windows"`,
@@ -250,9 +250,9 @@ func (b *BiliBili) LogOut() (model.LogOut, error) {
 	if err = b.client.
 		Post("https://passport.bilibili.com/login/exit/v2").
 		SetQueryParam("biliCSRF", csrf).
-		SetQueryParam("gourl", BiliBiliUrl).
+		SetQueryParam("gourl", biliBiliUrl).
 		SetHeader(Cookie, cookies).
-		SetHeader(Referer, BiliBiliOrigin).
+		SetHeader(Referer, spaceOrigin).
 		SetHeader("Content-Type", "application/x-www-form-urlencoded").
 		SetHeader("Cache-Control", "no-cache").
 		SetHeader("Pragma", "no-cache").

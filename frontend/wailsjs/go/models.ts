@@ -670,6 +670,73 @@ export namespace model {
 		    return a;
 		}
 	}
+	export class AudioMetaUrlList {
+	    backup_url: string;
+	    fallback_url: string;
+	    main_url: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AudioMetaUrlList(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.backup_url = source["backup_url"];
+	        this.fallback_url = source["fallback_url"];
+	        this.main_url = source["main_url"];
+	    }
+	}
+	export class AudioMeta {
+	    bitrate: number;
+	    codec_type: string;
+	    encoded_type: string;
+	    file_hash: string;
+	    file_cs: string;
+	    format: string;
+	    fps: number;
+	    size: number;
+	    media_type: string;
+	    quality: string;
+	    url_list: AudioMetaUrlList;
+	
+	    static createFrom(source: any = {}) {
+	        return new AudioMeta(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bitrate = source["bitrate"];
+	        this.codec_type = source["codec_type"];
+	        this.encoded_type = source["encoded_type"];
+	        this.file_hash = source["file_hash"];
+	        this.file_cs = source["file_cs"];
+	        this.format = source["format"];
+	        this.fps = source["fps"];
+	        this.size = source["size"];
+	        this.media_type = source["media_type"];
+	        this.quality = source["quality"];
+	        this.url_list = this.convertValues(source["url_list"], AudioMetaUrlList);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
 	export class AutoQnResp {
 	    dyeid: string;
 	
@@ -684,8 +751,8 @@ export namespace model {
 	}
 	export class Avatar {
 	    height: number;
-	    uri: string;
 	    width: number;
+	    uri: string;
 	    url_list: string[];
 	
 	    static createFrom(source: any = {}) {
@@ -695,10 +762,450 @@ export namespace model {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.height = source["height"];
-	        this.uri = source["uri"];
 	        this.width = source["width"];
+	        this.uri = source["uri"];
 	        this.url_list = source["url_list"];
 	    }
+	}
+	export class AwemeAuthor {
+	    cover_url: Avatar[];
+	    avatar_thumb: Avatar;
+	    follow_status: number;
+	    follower_status: number;
+	    nickname: string;
+	    uid: string;
+	    sec_uid: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AwemeAuthor(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.cover_url = this.convertValues(source["cover_url"], Avatar);
+	        this.avatar_thumb = this.convertValues(source["avatar_thumb"], Avatar);
+	        this.follow_status = source["follow_status"];
+	        this.follower_status = source["follower_status"];
+	        this.nickname = source["nickname"];
+	        this.uid = source["uid"];
+	        this.sec_uid = source["sec_uid"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class BitRateAudioItem {
+	    audio_extra: string;
+	    audio_meta: AudioMeta;
+	    audio_quality: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new BitRateAudioItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.audio_extra = source["audio_extra"];
+	        this.audio_meta = this.convertValues(source["audio_meta"], AudioMeta);
+	        this.audio_quality = source["audio_quality"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class BitRateItem {
+	    FPS: number;
+	    HDR_bit: string;
+	    HDR_type: string;
+	    bit_rate: number;
+	    format: string;
+	    gear_name: string;
+	    is_bytevc1: number;
+	    is_h265: number;
+	    play_addr: PlayInfo;
+	    quality_type: number;
+	    video_extra: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new BitRateItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.FPS = source["FPS"];
+	        this.HDR_bit = source["HDR_bit"];
+	        this.HDR_type = source["HDR_type"];
+	        this.bit_rate = source["bit_rate"];
+	        this.format = source["format"];
+	        this.gear_name = source["gear_name"];
+	        this.is_bytevc1 = source["is_bytevc1"];
+	        this.is_h265 = source["is_h265"];
+	        this.play_addr = this.convertValues(source["play_addr"], PlayInfo);
+	        this.quality_type = source["quality_type"];
+	        this.video_extra = source["video_extra"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class PlayInfo {
+	    data_size: number;
+	    file_cs: string;
+	    file_hash: string;
+	    height: number;
+	    width: number;
+	    uri: string;
+	    url_key: string;
+	    url_list: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new PlayInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.data_size = source["data_size"];
+	        this.file_cs = source["file_cs"];
+	        this.file_hash = source["file_hash"];
+	        this.height = source["height"];
+	        this.width = source["width"];
+	        this.uri = source["uri"];
+	        this.url_key = source["url_key"];
+	        this.url_list = source["url_list"];
+	    }
+	}
+	export class Cover {
+	    uri: string;
+	    url_list: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Cover(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.uri = source["uri"];
+	        this.url_list = source["url_list"];
+	    }
+	}
+	export class Video {
+	    cover: Cover;
+	    duration: number;
+	    format: string;
+	    height: number;
+	    width: number;
+	    play_addr_h264: PlayInfo;
+	    play_addr_265: PlayInfo;
+	    play_addr: PlayInfo;
+	    origin_cover: Cover;
+	    gaussian_cover: Cover;
+	    bit_rate: BitRateItem[];
+	    bit_rate_audio: BitRateAudioItem[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Video(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.cover = this.convertValues(source["cover"], Cover);
+	        this.duration = source["duration"];
+	        this.format = source["format"];
+	        this.height = source["height"];
+	        this.width = source["width"];
+	        this.play_addr_h264 = this.convertValues(source["play_addr_h264"], PlayInfo);
+	        this.play_addr_265 = this.convertValues(source["play_addr_265"], PlayInfo);
+	        this.play_addr = this.convertValues(source["play_addr"], PlayInfo);
+	        this.origin_cover = this.convertValues(source["origin_cover"], Cover);
+	        this.gaussian_cover = this.convertValues(source["gaussian_cover"], Cover);
+	        this.bit_rate = this.convertValues(source["bit_rate"], BitRateItem);
+	        this.bit_rate_audio = this.convertValues(source["bit_rate_audio"], BitRateAudioItem);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class VideoStatistics {
+	    collect_count: number;
+	    comment_count: number;
+	    digg_count: number;
+	    recommend_count: number;
+	    share_count: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new VideoStatistics(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.collect_count = source["collect_count"];
+	        this.comment_count = source["comment_count"];
+	        this.digg_count = source["digg_count"];
+	        this.recommend_count = source["recommend_count"];
+	        this.share_count = source["share_count"];
+	    }
+	}
+	export class AwemeItem {
+	    authentication_token: string;
+	    author: AwemeAuthor;
+	    author_user_id: number;
+	    caption: string;
+	    desc: string;
+	    item_title: string;
+	    sec_item_id: string;
+	    aweme_id: string;
+	    group_id: string;
+	    media_type: number;
+	    create_time: number;
+	    statistics: VideoStatistics;
+	    video: Video;
+	
+	    static createFrom(source: any = {}) {
+	        return new AwemeItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.authentication_token = source["authentication_token"];
+	        this.author = this.convertValues(source["author"], AwemeAuthor);
+	        this.author_user_id = source["author_user_id"];
+	        this.caption = source["caption"];
+	        this.desc = source["desc"];
+	        this.item_title = source["item_title"];
+	        this.sec_item_id = source["sec_item_id"];
+	        this.aweme_id = source["aweme_id"];
+	        this.group_id = source["group_id"];
+	        this.media_type = source["media_type"];
+	        this.create_time = source["create_time"];
+	        this.statistics = this.convertValues(source["statistics"], VideoStatistics);
+	        this.video = this.convertValues(source["video"], Video);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	
+	
+	export class UserInfo {
+	    avatar_larger: Avatar;
+	    avatar_medium: Avatar;
+	    avatar_thumb: Avatar;
+	    nickname: string;
+	    uid: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UserInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.avatar_larger = this.convertValues(source["avatar_larger"], Avatar);
+	        this.avatar_medium = this.convertValues(source["avatar_medium"], Avatar);
+	        this.avatar_thumb = this.convertValues(source["avatar_thumb"], Avatar);
+	        this.nickname = source["nickname"];
+	        this.uid = source["uid"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CollectsList {
+	    app_id: number;
+	    collects_cover: Cover;
+	    collects_id: number;
+	    collects_id_str: string;
+	    collects_name: string;
+	    create_time: number;
+	    follow_status: number;
+	    followed_count: number;
+	    is_default_cover: boolean;
+	    is_normal_status: boolean;
+	    item_type: number;
+	    last_collect_time: number;
+	    play_count: number;
+	    sicily_collects_cover_list: any;
+	    states: number;
+	    status: number;
+	    system_type: number;
+	    total_number: number;
+	    user_id: number;
+	    user_id_str: string;
+	    user_info: UserInfo;
+	
+	    static createFrom(source: any = {}) {
+	        return new CollectsList(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.app_id = source["app_id"];
+	        this.collects_cover = this.convertValues(source["collects_cover"], Cover);
+	        this.collects_id = source["collects_id"];
+	        this.collects_id_str = source["collects_id_str"];
+	        this.collects_name = source["collects_name"];
+	        this.create_time = source["create_time"];
+	        this.follow_status = source["follow_status"];
+	        this.followed_count = source["followed_count"];
+	        this.is_default_cover = source["is_default_cover"];
+	        this.is_normal_status = source["is_normal_status"];
+	        this.item_type = source["item_type"];
+	        this.last_collect_time = source["last_collect_time"];
+	        this.play_count = source["play_count"];
+	        this.sicily_collects_cover_list = source["sicily_collects_cover_list"];
+	        this.states = source["states"];
+	        this.status = source["status"];
+	        this.system_type = source["system_type"];
+	        this.total_number = source["total_number"];
+	        this.user_id = source["user_id"];
+	        this.user_id_str = source["user_id_str"];
+	        this.user_info = this.convertValues(source["user_info"], UserInfo);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class CollectListResponse {
+	    cursor: number;
+	    total_number: number;
+	    status_code: number;
+	    has_more: boolean;
+	    collects_list: CollectsList[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CollectListResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.cursor = source["cursor"];
+	        this.total_number = source["total_number"];
+	        this.status_code = source["status_code"];
+	        this.has_more = source["has_more"];
+	        this.collects_list = this.convertValues(source["collects_list"], CollectsList);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class CollectionUpper {
 	    mid: number;
@@ -1019,6 +1526,8 @@ export namespace model {
 		    return a;
 		}
 	}
+	
+	
 	
 	
 	
@@ -1582,6 +2091,46 @@ export namespace model {
 	
 	
 	
+	export class FavoriteVideoResponse {
+	    cursor: number;
+	    has_more: number;
+	    status_code: number;
+	    uid: string;
+	    sec_uid: string;
+	    aweme_list: AwemeItem[];
+	
+	    static createFrom(source: any = {}) {
+	        return new FavoriteVideoResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.cursor = source["cursor"];
+	        this.has_more = source["has_more"];
+	        this.status_code = source["status_code"];
+	        this.uid = source["uid"];
+	        this.sec_uid = source["sec_uid"];
+	        this.aweme_list = this.convertValues(source["aweme_list"], AwemeItem);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class FavoritesData {
 	    count: number;
 	    list: FavoriteItem[];
@@ -1617,94 +2166,6 @@ export namespace model {
 		}
 	}
 	
-	export class FollowItem {
-	    signature: string;
-	    aweme_count: number;
-	    nickname: string;
-	    sec_uid: string;
-	    uid: string;
-	    unique_id: string;
-	    short_id: string;
-	    cover_url: Avatar;
-	    follower_count: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new FollowItem(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.signature = source["signature"];
-	        this.aweme_count = source["aweme_count"];
-	        this.nickname = source["nickname"];
-	        this.sec_uid = source["sec_uid"];
-	        this.uid = source["uid"];
-	        this.unique_id = source["unique_id"];
-	        this.short_id = source["short_id"];
-	        this.cover_url = this.convertValues(source["cover_url"], Avatar);
-	        this.follower_count = source["follower_count"];
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class Follow {
-	    followings: FollowItem[];
-	    has_more: boolean;
-	    status_code: number;
-	    total: number;
-	    mix_count: number;
-	    myself_user_id: string;
-	    offset: number;
-	
-	    static createFrom(source: any = {}) {
-	        return new Follow(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.followings = this.convertValues(source["followings"], FollowItem);
-	        this.has_more = source["has_more"];
-	        this.status_code = source["status_code"];
-	        this.total = source["total"];
-	        this.mix_count = source["mix_count"];
-	        this.myself_user_id = source["myself_user_id"];
-	        this.offset = source["offset"];
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
 	export class FollowDataList {
 	    mid: number;
 	    attribute: number;
@@ -1766,7 +2227,98 @@ export namespace model {
 		}
 	}
 	
+	export class FollowItem {
+	    signature: string;
+	    aweme_count: number;
+	    nickname: string;
+	    sec_uid: string;
+	    uid: string;
+	    unique_id: string;
+	    short_id: string;
+	    avatar_larger: Avatar;
+	    avatar_medium: Avatar;
+	    avatar_thumb: Avatar;
+	    follower_count: number;
 	
+	    static createFrom(source: any = {}) {
+	        return new FollowItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.signature = source["signature"];
+	        this.aweme_count = source["aweme_count"];
+	        this.nickname = source["nickname"];
+	        this.sec_uid = source["sec_uid"];
+	        this.uid = source["uid"];
+	        this.unique_id = source["unique_id"];
+	        this.short_id = source["short_id"];
+	        this.avatar_larger = this.convertValues(source["avatar_larger"], Avatar);
+	        this.avatar_medium = this.convertValues(source["avatar_medium"], Avatar);
+	        this.avatar_thumb = this.convertValues(source["avatar_thumb"], Avatar);
+	        this.follower_count = source["follower_count"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class FollowResponse {
+	    followings: FollowItem[];
+	    has_more: boolean;
+	    status_code: number;
+	    total: number;
+	    mix_count: number;
+	    myself_user_id: string;
+	    offset: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new FollowResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.followings = this.convertValues(source["followings"], FollowItem);
+	        this.has_more = source["has_more"];
+	        this.status_code = source["status_code"];
+	        this.total = source["total"];
+	        this.mix_count = source["mix_count"];
+	        this.myself_user_id = source["myself_user_id"];
+	        this.offset = source["offset"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class LogOutData {
 	    redirectUrl: string;
 	
@@ -1862,7 +2414,7 @@ export namespace model {
 	    owner_sec_uid: string;
 	    status_code: number;
 	    next_req_count: number;
-	    data: MyInfoData[];
+	    followings: MyInfoData[];
 	
 	    static createFrom(source: any = {}) {
 	        return new MyInfo(source);
@@ -1873,7 +2425,7 @@ export namespace model {
 	        this.owner_sec_uid = source["owner_sec_uid"];
 	        this.status_code = source["status_code"];
 	        this.next_req_count = source["next_req_count"];
-	        this.data = this.convertValues(source["data"], MyInfoData);
+	        this.followings = this.convertValues(source["followings"], MyInfoData);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -2186,6 +2738,7 @@ export namespace model {
 	        this.is_new_description = source["is_new_description"];
 	    }
 	}
+	
 	export class PollQRCodeData {
 	    url: string;
 	    refresh_token: string;
@@ -3037,6 +3590,7 @@ export namespace model {
 	        this.url_image_ani_cut = source["url_image_ani_cut"];
 	    }
 	}
+	
 	export class UserInfoData {
 	    mid: number;
 	    name: string;
@@ -3278,6 +3832,7 @@ export namespace model {
 		    return a;
 		}
 	}
+	
 	
 	export class VideoDescV2 {
 	    raw_text: string;
@@ -3699,6 +4254,7 @@ export namespace model {
 		    return a;
 		}
 	}
+	
 	
 	
 	

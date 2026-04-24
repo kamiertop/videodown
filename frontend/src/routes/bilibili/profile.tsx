@@ -1,5 +1,5 @@
 import {createFileRoute} from '@tanstack/solid-router'
-import {createSignal, Match, onCleanup, onMount, Switch, type JSXElement} from "solid-js";
+import {createResource, createSignal, Match, onCleanup, onMount, Switch, type JSXElement} from "solid-js";
 import {LogOut, MyInfo, PollQRCode} from "../../../wailsjs/go/api/BiliBili";
 import {getLoggedInDeduped} from "../../lib/bilibiliAuth";
 import type {model} from "../../../wailsjs/go/models";
@@ -15,11 +15,24 @@ export const Route = createFileRoute('/bilibili/profile')({
 function Profile(): JSXElement {
     const [checkingLogin, setCheckingLogin] = createSignal(true);
     const [loggedIn, setLoggedIn] = createSignal(false);
-    const [profileLoading, setProfileLoading] = createSignal(false);
     const [logoutLoading, setLogoutLoading] = createSignal(false);
-    const [profile, setProfile] = createSignal<model.MyInfoProfile>();
     const {message, type, showToast} = useToast();
     const [qrExpired, setQRExpired] = createSignal(false);
+    const [profile, {mutate: mutateProfile}] = createResource(
+        () => loggedIn(),
+        async (isLoggedIn) => {
+            if (!isLoggedIn) {
+                return undefined;
+            }
+
+            try {
+                return await MyInfo();
+            } catch (error) {
+                showToast(error instanceof Error ? error.message : String(error), 'error');
+                return undefined;
+            }
+        },
+    );
 
     let pollTimer: number | undefined;
 
@@ -43,18 +56,6 @@ function Profile(): JSXElement {
         }, 1200)
     }
 
-    const loadProfile = async () => {
-        setProfileLoading(true);
-        try {
-            const result = await MyInfo();
-            setProfile(result);
-        } catch (error) {
-            showToast(error instanceof Error ? error.message : String(error), 'error');
-        } finally {
-            setProfileLoading(false);
-        }
-    }
-
     const handleLogout = async () => {
         if (logoutLoading()) {
             return;
@@ -65,7 +66,7 @@ function Profile(): JSXElement {
             await LogOut();
             stopPolling();
             setLoggedIn(false);
-            setProfile(undefined);
+            mutateProfile(undefined);
             setQRExpired(false);
             showToast('已退出登录，请重新扫码登录。', 'info');
             emitAuthChanged(false);
@@ -85,7 +86,6 @@ function Profile(): JSXElement {
                 setLoggedIn(true);
                 setQRExpired(false);
                 showToast('扫码已确认，登录成功。', 'success');
-                await loadProfile();
                 emitAuthChanged(true);
                 return;
             }
@@ -122,9 +122,6 @@ function Profile(): JSXElement {
         try {
             const isLoggedIn = await getLoggedInDeduped();
             setLoggedIn(isLoggedIn);
-            if (isLoggedIn) {
-                await loadProfile();
-            }
         } catch (error) {
             showToast(error instanceof Error ? error.message : String(error), 'error');
         } finally {
@@ -147,7 +144,7 @@ function Profile(): JSXElement {
 
                 <Match when={loggedIn()}>
                     <ProfileCard
-                        loading={profileLoading()}
+                        loading={profile.loading}
                         loggingOut={logoutLoading()}
                         onLogout={handleLogout}
                         profile={profile()}

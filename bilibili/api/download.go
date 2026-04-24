@@ -348,7 +348,7 @@ func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title string, cid in
 		DisableAutoReadResponse().
 		SetHeader(UserAgent, userAgent()).
 		SetHeader(Referer, fmt.Sprintf("https://www.bilibili.com/video/%s", strings.TrimSpace(bvid))).
-		SetHeader(Origin, BiliBiliUrl).
+		SetHeader(Origin, biliBiliUrl).
 		SetHeader(Cookie, cookies).
 		Get(rawURL)
 	if err != nil {

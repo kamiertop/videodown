@@ -1,7 +1,7 @@
 import {Link, useLocation} from "@tanstack/solid-router";
 import type {JSXElement} from "solid-js";
 import {createMemo, For} from "solid-js";
-import {BrowserOpenURL} from "../../wailsjs/runtime/runtime";
+import {BrowserOpenURL} from "../../wailsjs/runtime";
 import app from "../assets/app.png";
 
 // Simple, data-driven Header: desktop-only, flat nav with emojis

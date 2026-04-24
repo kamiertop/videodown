@@ -28,6 +28,7 @@ func (b *BiliBili) SeasonsSeriesList(upMid string, pageSize, pageNum int) (model
 			webLocation: "333.1387",
 		}).
 		SetHeaders(publicHeaders()).
+		SetHeader(Origin, spaceOrigin).
 		SetHeader(Cookie, cookies).
 		SetHeader(Referer, fmt.Sprintf("https://space.bilibili.com/%s/lists", upMid)).
 		Do().

@@ -78,7 +78,7 @@ func (b *BiliBili) VideoDetailConcise(aid int) (model.VideoDetailConciseData, er
 		SetQueryParams(params).
 		SetHeader(Cookie, cookies).
 		SetHeaders(publicHeaders()).
-		SetHeader(Origin, BiliBiliUrl).
+		SetHeader(Origin, biliBiliUrl).
 		SetHeader(Accept, "application/json, text/plain, */*").
 		SetHeader(Referer, fmt.Sprintf("https://www.bilibili.com/video/av%d", aid)).
 		Do().
@@ -128,7 +128,7 @@ func (b *BiliBili) VideoDetailConciseBvid(bvid string) (model.VideoDetailConcise
 		SetQueryParams(params).
 		SetHeader(Cookie, cookies).
 		SetHeaders(publicHeaders()).
-		SetHeader(Origin, BiliBiliUrl).
+		SetHeader(Origin, biliBiliUrl).
 		SetHeader(Accept, "application/json, text/plain, */*").
 		SetHeader(Referer, fmt.Sprintf("https://www.bilibili.com/video/%s", bvid)).
 		Do().
@@ -183,7 +183,7 @@ func (b *BiliBili) VideoPlayURL(avid int64, bvid string, cid int64, qn int) (mod
 		SetQueryParams(params).
 		SetHeaders(publicHeaders()).
 		SetHeader(Cookie, cookies).
-		SetHeader(Origin, BiliBiliUrl).
+		SetHeader(Origin, biliBiliUrl).
 		SetHeader(Accept, "application/json, text/plain, */*").
 		SetHeader(Referer, fmt.Sprintf("https://www.bilibili.com/video/%s", bvid)).
 		Do().

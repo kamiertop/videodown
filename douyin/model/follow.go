@@ -1,7 +1,7 @@
 package model
 
-// Follow 关注列表
-type Follow struct {
+// FollowResponse 关注列表
+type FollowResponse struct {
 	Followings   []FollowItem `json:"followings"`
 	HasMore      bool         `json:"has_more"`    // 是否还有更多数据
 	StatusCode   int          `json:"status_code"` // 成功是0
@@ -19,13 +19,15 @@ type FollowItem struct {
 	Uid           string `json:"uid"`
 	UniqueId      string `json:"unique_id"`
 	ShortId       string `json:"short_id"` // 和unique_id一样
-	CoverURL      Avatar `json:"cover_url"`
+	AvatarLarger  Avatar `json:"avatar_larger"`
+	AvatarMedium  Avatar `json:"avatar_medium"`
+	AvatarThumb   Avatar `json:"avatar_thumb"`
 	FollowerCount int    `json:"follower_count"` // 粉丝数量
 }
 
 type Avatar struct {
 	Height  int      `json:"height"`
-	Uri     string   `json:"uri"`
 	Width   int      `json:"width"`
+	Uri     string   `json:"uri"`
 	UrlList []string `json:"url_list"`
 }
