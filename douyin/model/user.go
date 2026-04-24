@@ -860,6 +860,3 @@ type UserVideoList struct {
 	PostSerial         int `json:"post_serial"`
 	ReplaceSeriesCover int `json:"replace_series_cover"`
 }
-
-type AwemeItem struct {
-}

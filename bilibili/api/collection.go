@@ -67,6 +67,7 @@ func (b *BiliBili) CollectionItem(seasonId string, pn, ps int) (model.Collection
 			"ps":        ps,
 		}).
 		SetHeader(Cookie, cookies).
+		SetHeader(Origin, spaceOrigin).
 		SetHeaders(publicHeaders()).
 		Do().
 		Into(&resp); err != nil {

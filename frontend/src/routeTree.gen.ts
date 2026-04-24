@@ -10,10 +10,15 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as DouyinRouteImport } from './routes/douyin'
+import { Route as DouyinRouteRouteImport } from './routes/douyin/route'
 import { Route as BilibiliRouteRouteImport } from './routes/bilibili/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DouyinIndexRouteImport } from './routes/douyin/index'
 import { Route as BilibiliIndexRouteImport } from './routes/bilibili/index'
+import { Route as DouyinProfileRouteImport } from './routes/douyin/profile'
+import { Route as DouyinFollowRouteImport } from './routes/douyin/follow'
+import { Route as DouyinFavoriteRouteImport } from './routes/douyin/favorite'
+import { Route as DouyinDownloadRouteImport } from './routes/douyin/download'
 import { Route as BilibiliProfileRouteImport } from './routes/bilibili/profile'
 import { Route as BilibiliHistoryRouteImport } from './routes/bilibili/history'
 import { Route as BilibiliFavoriteRouteImport } from './routes/bilibili/favorite'
@@ -27,7 +32,7 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DouyinRoute = DouyinRouteImport.update({
+const DouyinRouteRoute = DouyinRouteRouteImport.update({
   id: '/douyin',
   path: '/douyin',
   getParentRoute: () => rootRouteImport,
@@ -42,10 +47,35 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DouyinIndexRoute = DouyinIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DouyinRouteRoute,
+} as any)
 const BilibiliIndexRoute = BilibiliIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => BilibiliRouteRoute,
+} as any)
+const DouyinProfileRoute = DouyinProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => DouyinRouteRoute,
+} as any)
+const DouyinFollowRoute = DouyinFollowRouteImport.update({
+  id: '/follow',
+  path: '/follow',
+  getParentRoute: () => DouyinRouteRoute,
+} as any)
+const DouyinFavoriteRoute = DouyinFavoriteRouteImport.update({
+  id: '/favorite',
+  path: '/favorite',
+  getParentRoute: () => DouyinRouteRoute,
+} as any)
+const DouyinDownloadRoute = DouyinDownloadRouteImport.update({
+  id: '/download',
+  path: '/download',
+  getParentRoute: () => DouyinRouteRoute,
 } as any)
 const BilibiliProfileRoute = BilibiliProfileRouteImport.update({
   id: '/profile',
@@ -86,26 +116,35 @@ const BilibiliUpMidRoute = BilibiliUpMidRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/bilibili': typeof BilibiliRouteRouteWithChildren
-  '/douyin': typeof DouyinRoute
+  '/douyin': typeof DouyinRouteRouteWithChildren
   '/settings': typeof SettingsRoute
   '/bilibili/up': typeof BilibiliUpRouteRouteWithChildren
   '/bilibili/download': typeof BilibiliDownloadRoute
   '/bilibili/favorite': typeof BilibiliFavoriteRoute
   '/bilibili/history': typeof BilibiliHistoryRoute
   '/bilibili/profile': typeof BilibiliProfileRoute
+  '/douyin/download': typeof DouyinDownloadRoute
+  '/douyin/favorite': typeof DouyinFavoriteRoute
+  '/douyin/follow': typeof DouyinFollowRoute
+  '/douyin/profile': typeof DouyinProfileRoute
   '/bilibili/': typeof BilibiliIndexRoute
+  '/douyin/': typeof DouyinIndexRoute
   '/bilibili/up/$mid': typeof BilibiliUpMidRoute
   '/bilibili/up/': typeof BilibiliUpIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/douyin': typeof DouyinRoute
   '/settings': typeof SettingsRoute
   '/bilibili/download': typeof BilibiliDownloadRoute
   '/bilibili/favorite': typeof BilibiliFavoriteRoute
   '/bilibili/history': typeof BilibiliHistoryRoute
   '/bilibili/profile': typeof BilibiliProfileRoute
+  '/douyin/download': typeof DouyinDownloadRoute
+  '/douyin/favorite': typeof DouyinFavoriteRoute
+  '/douyin/follow': typeof DouyinFollowRoute
+  '/douyin/profile': typeof DouyinProfileRoute
   '/bilibili': typeof BilibiliIndexRoute
+  '/douyin': typeof DouyinIndexRoute
   '/bilibili/up/$mid': typeof BilibiliUpMidRoute
   '/bilibili/up': typeof BilibiliUpIndexRoute
 }
@@ -113,14 +152,19 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/bilibili': typeof BilibiliRouteRouteWithChildren
-  '/douyin': typeof DouyinRoute
+  '/douyin': typeof DouyinRouteRouteWithChildren
   '/settings': typeof SettingsRoute
   '/bilibili/up': typeof BilibiliUpRouteRouteWithChildren
   '/bilibili/download': typeof BilibiliDownloadRoute
   '/bilibili/favorite': typeof BilibiliFavoriteRoute
   '/bilibili/history': typeof BilibiliHistoryRoute
   '/bilibili/profile': typeof BilibiliProfileRoute
+  '/douyin/download': typeof DouyinDownloadRoute
+  '/douyin/favorite': typeof DouyinFavoriteRoute
+  '/douyin/follow': typeof DouyinFollowRoute
+  '/douyin/profile': typeof DouyinProfileRoute
   '/bilibili/': typeof BilibiliIndexRoute
+  '/douyin/': typeof DouyinIndexRoute
   '/bilibili/up/$mid': typeof BilibiliUpMidRoute
   '/bilibili/up/': typeof BilibiliUpIndexRoute
 }
@@ -136,19 +180,28 @@ export interface FileRouteTypes {
     | '/bilibili/favorite'
     | '/bilibili/history'
     | '/bilibili/profile'
+    | '/douyin/download'
+    | '/douyin/favorite'
+    | '/douyin/follow'
+    | '/douyin/profile'
     | '/bilibili/'
+    | '/douyin/'
     | '/bilibili/up/$mid'
     | '/bilibili/up/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/douyin'
     | '/settings'
     | '/bilibili/download'
     | '/bilibili/favorite'
     | '/bilibili/history'
     | '/bilibili/profile'
+    | '/douyin/download'
+    | '/douyin/favorite'
+    | '/douyin/follow'
+    | '/douyin/profile'
     | '/bilibili'
+    | '/douyin'
     | '/bilibili/up/$mid'
     | '/bilibili/up'
   id:
@@ -162,7 +215,12 @@ export interface FileRouteTypes {
     | '/bilibili/favorite'
     | '/bilibili/history'
     | '/bilibili/profile'
+    | '/douyin/download'
+    | '/douyin/favorite'
+    | '/douyin/follow'
+    | '/douyin/profile'
     | '/bilibili/'
+    | '/douyin/'
     | '/bilibili/up/$mid'
     | '/bilibili/up/'
   fileRoutesById: FileRoutesById
@@ -170,7 +228,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BilibiliRouteRoute: typeof BilibiliRouteRouteWithChildren
-  DouyinRoute: typeof DouyinRoute
+  DouyinRouteRoute: typeof DouyinRouteRouteWithChildren
   SettingsRoute: typeof SettingsRoute
 }
 
@@ -187,7 +245,7 @@ declare module '@tanstack/solid-router' {
       id: '/douyin'
       path: '/douyin'
       fullPath: '/douyin'
-      preLoaderRoute: typeof DouyinRouteImport
+      preLoaderRoute: typeof DouyinRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bilibili': {
@@ -204,12 +262,47 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/douyin/': {
+      id: '/douyin/'
+      path: '/'
+      fullPath: '/douyin/'
+      preLoaderRoute: typeof DouyinIndexRouteImport
+      parentRoute: typeof DouyinRouteRoute
+    }
     '/bilibili/': {
       id: '/bilibili/'
       path: '/'
       fullPath: '/bilibili/'
       preLoaderRoute: typeof BilibiliIndexRouteImport
       parentRoute: typeof BilibiliRouteRoute
+    }
+    '/douyin/profile': {
+      id: '/douyin/profile'
+      path: '/profile'
+      fullPath: '/douyin/profile'
+      preLoaderRoute: typeof DouyinProfileRouteImport
+      parentRoute: typeof DouyinRouteRoute
+    }
+    '/douyin/follow': {
+      id: '/douyin/follow'
+      path: '/follow'
+      fullPath: '/douyin/follow'
+      preLoaderRoute: typeof DouyinFollowRouteImport
+      parentRoute: typeof DouyinRouteRoute
+    }
+    '/douyin/favorite': {
+      id: '/douyin/favorite'
+      path: '/favorite'
+      fullPath: '/douyin/favorite'
+      preLoaderRoute: typeof DouyinFavoriteRouteImport
+      parentRoute: typeof DouyinRouteRoute
+    }
+    '/douyin/download': {
+      id: '/douyin/download'
+      path: '/download'
+      fullPath: '/douyin/download'
+      preLoaderRoute: typeof DouyinDownloadRouteImport
+      parentRoute: typeof DouyinRouteRoute
     }
     '/bilibili/profile': {
       id: '/bilibili/profile'
@@ -299,10 +392,30 @@ const BilibiliRouteRouteWithChildren = BilibiliRouteRoute._addFileChildren(
   BilibiliRouteRouteChildren,
 )
 
+interface DouyinRouteRouteChildren {
+  DouyinDownloadRoute: typeof DouyinDownloadRoute
+  DouyinFavoriteRoute: typeof DouyinFavoriteRoute
+  DouyinFollowRoute: typeof DouyinFollowRoute
+  DouyinProfileRoute: typeof DouyinProfileRoute
+  DouyinIndexRoute: typeof DouyinIndexRoute
+}
+
+const DouyinRouteRouteChildren: DouyinRouteRouteChildren = {
+  DouyinDownloadRoute: DouyinDownloadRoute,
+  DouyinFavoriteRoute: DouyinFavoriteRoute,
+  DouyinFollowRoute: DouyinFollowRoute,
+  DouyinProfileRoute: DouyinProfileRoute,
+  DouyinIndexRoute: DouyinIndexRoute,
+}
+
+const DouyinRouteRouteWithChildren = DouyinRouteRoute._addFileChildren(
+  DouyinRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BilibiliRouteRoute: BilibiliRouteRouteWithChildren,
-  DouyinRoute: DouyinRoute,
+  DouyinRouteRoute: DouyinRouteRouteWithChildren,
   SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport

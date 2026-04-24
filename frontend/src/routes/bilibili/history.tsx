@@ -1,11 +1,9 @@
 import {createFileRoute} from '@tanstack/solid-router'
-import {createSignal, For, Match, onMount, Show, Switch, type JSXElement} from "solid-js";
+import {createResource, For, Match, Show, Switch, type JSXElement} from "solid-js";
 import {DownloadHistory} from "../../../wailsjs/go/api/BiliBili";
-import {api} from "../../../wailsjs/go/models";
+import DetailError from "../../components/DetailError.tsx";
 import IconChat from "../../components/icons/IconChat";
 import IconEye from "../../components/icons/IconEye";
-import Toast from "../../components/Toast";
-import {useToast} from "../../hooks/useToast";
 import {formatCount, formatDate, formatDuration} from "../../lib/format";
 
 export const Route = createFileRoute('/bilibili/history')({
@@ -26,25 +24,12 @@ function formatDownloadedAt(value: any): string {
 }
 
 function History(): JSXElement {
-    const [items, setItems] = createSignal<api.DownloadHistoryItem[]>([]);
-    const [loading, setLoading] = createSignal(true);
-    const {message, type, showToast} = useToast();
-
-    async function loadHistory(): Promise<void> {
-        setLoading(true);
-        try {
-            const data = await DownloadHistory();
-            setItems(data ?? []);
-        } catch (error) {
-            showToast(error instanceof Error ? error.message : String(error), "error");
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    onMount(() => {
-        void loadHistory();
+    const [items, {refetch}] = createResource(async () => {
+        const data = await DownloadHistory();
+        return data ?? [];
     });
+
+    const historyItems = () => items() ?? [];
 
     return (
         <div class="flex h-full flex-col p-4">
@@ -52,29 +37,32 @@ function History(): JSXElement {
                 <div>
                     <h2 class="text-base font-bold">下载历史</h2>
                     <p class="text-sm text-base-content/60">
-                        已记录 {items().length} 个视频
+                        已记录 {historyItems().length} 个视频
                     </p>
                 </div>
-                <button class="btn btn-outline btn-sm" type="button" onClick={() => void loadHistory()} disabled={loading()}>
-                    {loading() ? "刷新中..." : "刷新"}
+                <button class="btn btn-outline btn-sm" type="button" onClick={() => void refetch()} disabled={items.loading}>
+                    {items.loading ? "刷新中..." : "刷新"}
                 </button>
             </section>
 
             <section class="min-h-0 flex-1 overflow-y-auto rounded-lg border border-base-300 bg-base-100">
                 <Switch>
-                    <Match when={loading()}>
+                    <Match when={items.loading}>
                         <div class="flex h-full items-center justify-center">
                             <span class="loading loading-spinner loading-md text-primary"/>
                         </div>
                     </Match>
-                    <Match when={items().length === 0}>
+                    <Match when={items.error}>
+                        <DetailError message={String(items.error)} onRetry={() => void refetch()}/>
+                    </Match>
+                    <Match when={historyItems().length === 0}>
                         <div class="flex h-full items-center justify-center text-sm text-base-content/50">
                             暂无下载历史
                         </div>
                     </Match>
-                    <Match when={items().length > 0}>
+                    <Match when={historyItems().length > 0}>
                         <div class="divide-y divide-base-200">
-                            <For each={items()}>
+                            <For each={historyItems()}>
                                 {(item) => (
                                     <article class="flex gap-3 p-3">
                                         <div class="relative aspect-video w-44 shrink-0 overflow-hidden rounded bg-base-200">
@@ -135,7 +123,6 @@ function History(): JSXElement {
                     </Match>
                 </Switch>
             </section>
-            <Toast message={message()} type={type()}/>
         </div>
     )
 }

@@ -119,7 +119,7 @@ export default function CollectionPanel(props: {
           if (selectedItem()?.id === item.raw.id && detail() && !detailLoading()) return;
           void loadCollectionDetail(item.raw);
         }}
-        sidebarIcon={StackIcon()}
+        sidebarIcon={<StackIcon />}
         sidebarLabel={'合集'}
         sidebarCount={() => collections()?.count ?? sidebarItems().length}
         sidebarLoading={loading}

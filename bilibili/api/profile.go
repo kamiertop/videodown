@@ -20,6 +20,7 @@ func (b *BiliBili) MyInfo() (model.MyInfoProfile, error) {
 		Get("https://api.bilibili.com/x/space/v2/myinfo").
 		SetQueryParam("web_location", "333.1007").
 		SetHeaders(publicHeaders()).
+		SetHeader(Origin, spaceOrigin).
 		SetHeader("Cookie", cookies).
 		Do().
 		Into(&resp); err != nil {

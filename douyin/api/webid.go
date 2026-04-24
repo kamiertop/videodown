@@ -7,14 +7,6 @@ import (
 	"time"
 )
 
-func userAgent() string {
-	if runtime.GOOS == "windows" {
-		return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36"
-	}
-
-	return "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36"
-}
-
 func (d *Douyin) getWebId() (string, error) {
 	// TODO: 校验是否需要刷新
 	var resp struct {
@@ -25,7 +17,7 @@ func (d *Douyin) getWebId() (string, error) {
 		Post("https://mcs.zijieapi.com/webid").
 		SetBodyJsonMarshal(map[string]any{
 			"app_id":         6383,
-			"referer":        "https://www.douyin.com/",
+			"referer":        originURL,
 			"url":            "https://so-landing.douyin.com/search_ai_mobile/pc?aid=6383&theme=dark&enter_from=ai_search",
 			"user_agent":     userAgent(),
 			"user_unique_id": "",
@@ -56,6 +48,6 @@ func (d *Douyin) getWebId() (string, error) {
 	}
 	d.webId.value = resp.WebId
 	d.webId.lastUpdated = time.Now()
-
+	d.logger.Infof("request web_id api success: %s", resp.WebId)
 	return resp.WebId, nil
 }

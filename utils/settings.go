@@ -64,7 +64,6 @@ func (s *Settings) GetKey(key string) (string, error) {
 		if err != nil {
 			return err
 		}
-		s.logger.Infof("Get %s: %s", key, result)
 		return nil
 	})
 
