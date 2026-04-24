@@ -1,6 +1,8 @@
 package api
 
 import (
+	"fmt"
+
 	"github.com/kamiertop/videodown/bilibili/model"
 )
 
@@ -30,6 +32,8 @@ func (b *BiliBili) FollowList(pn, ps int) (model.FollowData, error) {
 			webLocation:   "333.1387",
 		}).
 		SetHeaders(publicHeaders()).
+		SetHeader(Origin, spaceOrigin).
+		SetHeader(Referer, fmt.Sprintf("https://space.bilibili.com/%s/relation/follow", myMid)).
 		SetHeader(Cookie, cookies).
 		Do().
 		Into(&resp)

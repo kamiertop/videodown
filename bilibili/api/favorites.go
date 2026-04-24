@@ -73,6 +73,7 @@ func (b *BiliBili) Favorites(mediaId, pn, ps int) (model.FavoriteData, error) {
 		}).
 		SetHeader("Cookie", cookies).
 		SetHeaders(publicHeaders()).
+		SetHeader(Origin, spaceOrigin).
 		Do().
 		Into(&resp); err != nil {
 		b.logger.Errorf("request favorites error: %v", err)

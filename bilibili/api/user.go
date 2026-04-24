@@ -2,13 +2,13 @@ package api
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/kamiertop/videodown/bilibili/model"
 	"github.com/kamiertop/videodown/utils"
 )
 
-// 用户空间
-
+// Info 用户空间
 func (b *BiliBili) Info(spaceURLOrMid string) (model.UserInfoData, error) {
 	var resp struct {
 		model.ApiResponse
@@ -48,6 +48,8 @@ func (b *BiliBili) Info(spaceURLOrMid string) (model.UserInfoData, error) {
 		Get("https://api.bilibili.com/x/space/wbi/acc/info").
 		SetQueryParams(params).
 		SetHeader(Cookie, cookies).
+		SetHeader(Origin, spaceOrigin).
+		SetHeader(Referer, fmt.Sprintf("https://space.bilibili.com/%s", userMid)).
 		SetHeaders(publicHeaders()).
 		Do().Into(&resp)
 	if err != nil {

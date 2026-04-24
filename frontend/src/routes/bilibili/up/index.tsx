@@ -1,5 +1,5 @@
 import {createFileRoute, useNavigate} from '@tanstack/solid-router'
-import {createSignal, For, Match, onMount, Show, Switch, type JSXElement} from "solid-js";
+import {createResource, createSignal, For, Match, Show, Switch, type JSXElement} from "solid-js";
 import {FollowList, Info} from "../../../../wailsjs/go/api/BiliBili";
 import {model} from "../../../../wailsjs/go/models";
 import UpCommonLayout from "../../../components/bilibili/up/UpCommonLayout";
@@ -7,6 +7,7 @@ import IconRefresh from "../../../components/icons/IconRefresh";
 import IconUsers from "../../../components/icons/IconUsers";
 import Toast from "../../../components/Toast";
 import {useToast} from "../../../hooks/useToast";
+import DetailError from "../../../components/DetailError.tsx";
 
 const PAGE_SIZE = 30;
 
@@ -16,31 +17,20 @@ export const Route = createFileRoute('/bilibili/up/')({
 
 function UpIndex(): JSXElement {
     const navigate = useNavigate();
-    const [loading, setLoading] = createSignal<boolean>(true);
     const [parsing, setParsing] = createSignal<boolean>(false);
-    const [followData, setFollowData] = createSignal<model.FollowData | null>(null);
     const [page, setPage] = createSignal<number>(1);
     const {message, type, showToast} = useToast();
     const [searchInput, setSearchInput] = createSignal<string>('');
     const [parsedInfo, setParsedInfo] = createSignal<model.UserInfoData | null>(null);
+    const [followData, {refetch}] = createResource(
+        page,
+        async (pn) => await FollowList(pn, PAGE_SIZE),
+    );
     
     function totalPages(): number {
         const total: number = followData()?.total ?? 0;
         return Math.max(1, Math.ceil(total / PAGE_SIZE));
     }
-
-    const loadFollows = async (pn: number) => {
-        setLoading(true);
-        try {
-            const data = await FollowList(pn, PAGE_SIZE);
-            setFollowData(data);
-            setPage(pn);
-        } catch (error) {
-            showToast(error instanceof Error ? error.message : String(error), 'error');
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const goToUp = (mid: number) => {
         void navigate({to: '/bilibili/up/$mid', params: {mid: String(mid)}});
@@ -68,10 +58,6 @@ function UpIndex(): JSXElement {
         if (e.key === 'Enter') void handleSearch();
     };
 
-    onMount(() => {
-        void loadFollows(1);
-    });
-
     return (
         <UpCommonLayout
             headerLeft={
@@ -85,11 +71,11 @@ function UpIndex(): JSXElement {
                     </Show>
                     <button
                         class="flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-base-200 disabled:cursor-not-allowed"
-                        onClick={() => void loadFollows(page())}
-                        disabled={loading()}
+                        onClick={() => void refetch()}
+                        disabled={followData.loading}
                         title="刷新"
                     >
-                        <IconRefresh class={`h-3.5 w-3.5 text-base-content/50 ${loading() ? 'animate-spin' : ''}`}/>
+                        <IconRefresh class={`h-3.5 w-3.5 text-base-content/50 ${followData.loading ? 'animate-spin' : ''}`}/>
                     </button>
                 </div>
             }
@@ -154,10 +140,13 @@ function UpIndex(): JSXElement {
             {/* 关注列表 */}
             <div class="min-h-0 flex-1 overflow-auto rounded-xl border border-base-300 bg-base-100">
                 <Switch>
-                    <Match when={loading()}>
+                    <Match when={followData.loading}>
                         <div class="flex h-full items-center justify-center">
                             <span class="loading loading-spinner loading-md text-primary"></span>
                         </div>
+                    </Match>
+                    <Match when={followData.error}>
+                        <DetailError message={String(followData.error)} onRetry={() => void refetch()}/>
                     </Match>
                     <Match when={!followData()?.list?.length}>
                         <div class="flex h-full items-center justify-center text-base-content/40">
@@ -211,7 +200,7 @@ function UpIndex(): JSXElement {
                                     <button
                                         class="btn btn-outline btn-sm"
                                         disabled={page() <= 1}
-                                        onClick={() => void loadFollows(page() - 1)}
+                                        onClick={() => setPage(page() - 1)}
                                     >
                                         上一页
                                     </button>
@@ -221,7 +210,7 @@ function UpIndex(): JSXElement {
                                     <button
                                         class="btn btn-outline btn-sm"
                                         disabled={page() >= totalPages()}
-                                        onClick={() => void loadFollows(page() + 1)}
+                                        onClick={() => setPage(page() + 1)}
                                     >
                                         下一页
                                     </button>

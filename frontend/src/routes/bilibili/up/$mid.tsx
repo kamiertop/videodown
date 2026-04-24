@@ -1,5 +1,5 @@
 import {createFileRoute, Link} from '@tanstack/solid-router'
-import {createMemo, createSignal, type JSXElement, Match, onMount, Show, Switch} from "solid-js";
+import {createEffect, createMemo, createResource, createSignal, type JSXElement, Match, onMount, Show, Switch} from "solid-js";
 import {Info, SeasonsArchivesList, SeasonsSeriesList, SeriesList, VideoList} from "../../../../wailsjs/go/api/BiliBili";
 import {model} from "../../../../wailsjs/go/models";
 import UpCommonLayout from "../../../components/bilibili/up/UpCommonLayout.tsx";
@@ -50,13 +50,13 @@ function UpDetail(): JSXElement {
       }
       headerRight={
         <Switch>
-          <Match when={logic.loading()}>
+          <Match when={logic.infoLoading()}>
             <div class="flex items-center gap-2">
               <span class="loading loading-spinner loading-xs text-primary"></span>
               <span class="text-xs text-base-content/50">获取UP主信息...</span>
             </div>
           </Match>
-          <Match when={!logic.loading() && logic.info()}>
+          <Match when={!logic.infoLoading() && logic.info()}>
             <div class="flex min-w-0 items-center gap-2">
               <div class="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-base-200 ring-2 ring-base-200">
                 <img
@@ -280,9 +280,17 @@ function createUpDetailLogic(
   getMid: () => string,
   showToast: (message: string, type?: "error" | "success" | "info" | "warning") => void,
 ) {
-  const [loading, setLoading] = createSignal<boolean>(true);
-  const [info, setInfo] = createSignal<model.UserInfoData | null>(null);
-  let infoReqSeq = 0;
+  const [info] = createResource(
+    getMid,
+    async (mid): Promise<model.UserInfoData | null> => {
+      try {
+        return await Info(mid);
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : String(error), 'error');
+        return null;
+      }
+    },
+  );
 
   const [activeTab, setActiveTab] = createSignal<UpTab>('videos');
 
@@ -306,6 +314,17 @@ function createUpDetailLogic(
   function currentUpperName(): string {
     return info()?.name ?? '未知';
   }
+
+  createEffect(() => {
+    const data = info();
+    if (!data?.name) {
+      return;
+    }
+
+    const upperName = data.name;
+    setVideoCards(prev => prev.map(c => (c.upperName === upperName ? c : {...c, upperName})));
+    setListCards(prev => prev.map(c => (c.upperName === upperName ? c : {...c, upperName})));
+  });
 
   const mapVlistToCards = (vlist: VideoListResp["list"] extends { vlist?: infer V } ? V : any): MediaCardItem[] => {
     const upperName = currentUpperName();
@@ -560,33 +579,13 @@ function createUpDetailLogic(
     }
   };
 
-  const loadInfo = async (midOrSpaceUrl: string) => {
-    setLoading(true);
-    const seq = ++infoReqSeq;
-    try {
-      const data = await Info(midOrSpaceUrl);
-      if (seq !== infoReqSeq) return;
-      setInfo(data);
-      const name = data?.name || '未知';
-      setVideoCards(prev => prev.map(c => (c.upperName === name ? c : {...c, upperName: name})));
-      setListCards(prev => prev.map(c => (c.upperName === name ? c : {...c, upperName: name})));
-    } catch (error) {
-      if (seq !== infoReqSeq) return;
-      showToast(error instanceof Error ? error.message : String(error), 'error');
-    } finally {
-      if (seq === infoReqSeq) setLoading(false);
-    }
-  };
-
   const init = () => {
-    const mid = getMid();
-    void loadInfo(mid);
     void loadVideoList(false);
   };
 
   return {
-    loading,
     info,
+    infoLoading: () => info.loading,
     activeTab,
     setActiveTab,
     videoLoading,

@@ -13,7 +13,7 @@ func (d *Douyin) User(secUserId string) (model.UserData, error) {
 	if err != nil {
 		return resp, fmt.Errorf("获取 webId 失败: %w", err)
 	}
-	cookie, err := d.getCookie()
+	cookie, err := d.GetCookie()
 	if err != nil {
 		return resp, fmt.Errorf("获取 cookie 失败: %w", err)
 	}
