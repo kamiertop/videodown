@@ -96,7 +96,7 @@ export default function VideoListSection(props: {
                     onToggleSelect={toggleSelectMedia}
                     onDownloadOne={(m) => void enqueueAndGoDownload([m])}
                 />
-                <Show when={() => !!props.hasMore?.()}>
+                <Show when={!!props.hasMore?.()}>
                     <div class="mt-4 flex justify-center pb-2">
                         <button
                             type="button"

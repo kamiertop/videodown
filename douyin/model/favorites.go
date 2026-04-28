@@ -44,6 +44,8 @@ type UserInfo struct {
 type Cover struct {
 	URI     string   `json:"uri"`
 	UrlList []string `json:"url_list"`
+	Width   int      `json:"width"`
+	Height  int      `json:"height"`
 }
 
 // FavoriteVideoResponse 收藏视频列表响应
@@ -56,24 +58,11 @@ type FavoriteVideoResponse struct {
 	AwemeList  []AwemeItem `json:"aweme_list"`  // 收藏视频列表
 }
 
-type AwemeItem struct {
-	AuthenticationToken string          `json:"authentication_token"` // 视频的认证token
-	Author              AwemeAuthor     `json:"author"`               // 视频作者信息
-	AuthorUserId        uint            `json:"author_user_id"`       // 视频作者的用户ID
-	Caption             string          `json:"caption"`              // 视频标签、可能很长、有各种字符，不一定可以直接用来做文件名
-	Desc                string          `json:"desc"`                 // 视频标题，带标签
-	ItemTitle           string          `json:"item_title"`           // 视频标题，不带标签
-	SecItemId           string          `json:"sec_item_id"`          // 视频ID的字符串形式
-	AwemeID             string          `json:"aweme_id"`             // 视频ID
-	GroupID             string          `json:"group_id"`
-	MediaType           int             `json:"media_type"`  // 视频类型，不清楚
-	CreateTime          int64           `json:"create_time"` // 视频创建时间
-	Statistics          VideoStatistics `json:"statistics"`  // 视频统计信息
-	Video               Video           `json:"video"`       // 视频信息
-}
-
 type Video struct {
 	Cover         Cover              `json:"cover"`          // 视频封面
+	BitRate       []BitRateItem      `json:"bit_rate"`       // 视频不同质量的播放地址信息列表
+	BitRateAudio  []BitRateAudioItem `json:"bit_rate_audio"` // 音频信息
+	BigThumbs     []BigThumbItem     `json:"big_thumbs"`     // 大图信息列表
 	Duration      int64              `json:"duration"`       // 视频时长, 单位为秒
 	Format        string             `json:"format"`         // 视频格式, 例如 "dash"
 	Height        uint32             `json:"height"`         // 视频高度
@@ -83,8 +72,6 @@ type Video struct {
 	PlayAddr      PlayInfo           `json:"play_addr"`      // 视频播放地址信息
 	OriginCover   Cover              `json:"origin_cover"`   // 视频原始封面
 	GaussianCover Cover              `json:"gaussian_cover"` // 视频高斯模糊封面
-	BitRate       []BitRateItem      `json:"bit_rate"`       // 视频不同质量的播放地址信息列表
-	BitRateAudio  []BitRateAudioItem `json:"bit_rate_audio"` // 音频信息
 }
 
 type BitRateItem struct {
@@ -92,7 +79,7 @@ type BitRateItem struct {
 	HDRBit      string   `json:"HDR_bit"`
 	HDRType     string   `json:"HDR_type"`
 	BitRate     int      `json:"bit_rate"`
-	Format      string   `json:"format"`
+	Format      string   `json:"format"` // 视频格式, 例如 "dash","mp4"
 	GearName    string   `json:"gear_name"`
 	IsBytevc1   int      `json:"is_bytevc1"`
 	IsH265      int      `json:"is_h265"`
@@ -106,17 +93,35 @@ type BitRateAudioItem struct {
 	AudioQuality int       `json:"audio_quality"` // 音频质量
 }
 
+type BigThumbItem struct {
+	Duration float64  `json:"duration"` // 视频时长, 单位为秒
+	Fext     string   `json:"fext"`     // 视频封面图片格式, 例如 "jpg"
+	ImgNum   uint     `json:"img_num"`
+	ImgUrl   string   `json:"img_url"`
+	ImgUrlS  []string `json:"img_urls"`
+	ImgXLen  uint     `json:"img_x_len"`
+	ImgYLen  uint     `json:"img_y_len"`
+	ImgXSize uint     `json:"img_x_size"`
+	ImgYSize uint     `json:"img_y_size"`
+	Interval float64  `json:"interval"`
+	Uri      string   `json:"uri"`
+	UriS     []string `json:"uris"`
+}
+
 type AudioMeta struct {
 	BitRate     int              `json:"bitrate"`      // 音频比特率
 	CodecType   string           `json:"codec_type"`   // 音频编码类型，比如：bytevc1
 	EncodedType string           `json:"encoded_type"` // normal等
 	FileHash    string           `json:"file_hash"`    // 音频文件的Hash值, 用于校验文件完整性
-	FileCS      string           `json:"file_cs"`      // 音频文件的CS值, 用于校验文件完整性
 	Format      string           `json:"format"`       // 音频格式, 例如 "dash"
+	FileID      string           `json:"file_id"`      // 音频文件ID
 	FPS         int              `json:"fps"`          // 音频帧率
-	Size        uint             `json:"size"`         // 音频数据大小, 单位为字节
+	LogoType    string           `json:"logo_type"`    // 音频logo类型, 例如 "normal"
 	MediaType   string           `json:"media_type"`   // audio
+	Size        uint             `json:"size"`         // 音频数据大小, 单位为字节
 	Quality     string           `json:"quality"`      // 音频质量描述，比如：normal
+	QualityDesc string           `json:"quality_desc"` // 音频质量描述，比如：普通
+	SubInfo     string           `json:"sub_info"`     // 音频额外信息
 	UrlList     AudioMetaUrlList `json:"url_list"`     // 音频URL列表
 }
 
@@ -145,9 +150,10 @@ type VideoStatistics struct {
 	ShareCount     uint `json:"share_count"`     // 分享数
 }
 
-type AwemeAuthor struct {
+type Author struct {
 	CoverURL       []Avatar `json:"cover_url"`       // 作者头像列表
 	AvatarThumb    Avatar   `json:"avatar_thumb"`    // 作者头像
+	AvatarLarger   Avatar   `json:"avatar_larger"`   // 作者头像
 	FollowStatus   int      `json:"follow_status"`   // 关注状态
 	FollowerStatus int      `json:"follower_status"` // 粉丝状态
 	Nickname       string   `json:"nickname"`        // 作者昵称

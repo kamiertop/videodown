@@ -47,7 +47,7 @@ type FavoriteInfo struct {
 	Fid        int                 `json:"fid"`   // 收藏夹原始id
 	Mid        int                 `json:"mid"`   // 创建者mid
 	Attr       int                 `json:"attr"`  // 0：正常，1： 失效
-	Title      string              `json:"title"` // 收藏夹名称
+	Title      string              `json:"title"` // 收藏夹名称，如果失效会显示：已失效视频
 	Cover      string              `json:"cover"` // 封面图片
 	Upper      FavoriteInfoUpper   `json:"upper"` // 收藏夹用户信息
 	CoverType  int                 `json:"cover_type"`

@@ -19,8 +19,21 @@ export default function Menu(): JSXElement {
       ),
     },
     {
-      name: "关注",
-      link: "/douyin/follow",
+      name: "历史",
+      link: "/douyin/history",
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 8V12L14.5 14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round"/>
+          <path d="M4 4V9H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M4.6 13A8 8 0 1 0 6.34 6.34L4 8.68" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      ),
+    },
+    {
+      name: "用户",
+      link: "/douyin/user",
       icon: <IconUsers class="h-4.5 w-4.5"/>,
     },
     {
