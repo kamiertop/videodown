@@ -18,7 +18,7 @@
 ### 抖音
 
 - 使用Cookie登录（下面2个项目都推荐使用Cookie，使用扫码登录可能会导致抖音账号被风控。没尝试过，但听劝）
-    - https://github.com/JoeanAmier/TikTokDownloader
+    - https://github.com/JoeanAmier/TikTokDownloader（Codex+GPT-5.5参照此项目生成了a_bogus代码）
     - https://github.com/Evil0ctal/Douyin_TikTok_Download_API
 
 ## 使用说明

@@ -3,6 +3,7 @@ package api
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/imroc/req/v3"
@@ -45,25 +46,15 @@ func (d *Douyin) ParseVideo(link string) (string, error) {
 
 func (d *Douyin) VideoDetail(awemeID string) (model.VideoDetailResponse, error) {
 	var resp model.VideoDetailResponse
-	queryParams, err := d.publicQueryParams()
-	if err != nil {
-		return resp, fmt.Errorf("获取公共查询参数失败: %w", err)
-	}
-
 	headers, err := d.publicHeaders()
 	if err != nil {
 		return resp, fmt.Errorf("获取公共请求头失败: %w", err)
 	}
+	params := detailParams(awemeID)
+	aBogus := GenerateABogus(params)
 	err = d.client.
-		Get("https://www-hj.douyin.com/aweme/v1/web/aweme/detail/").
-		SetQueryParamsAnyType(queryParams).
-		SetQueryParamsAnyType(map[string]any{
-			"aweme_id":       awemeID,
-			"origin_type":    "video_page",
-			"request_source": 600,
-		}).
+		Get(fmt.Sprintf("https://www-hj.douyin.com/aweme/v1/web/aweme/detail/?%s&a_bogus=%s", params, url.QueryEscape(aBogus))).
 		SetHeaders(headers).
-		SetHeader("Uifid", queryParams["uifid"].(string)).
 		Do().
 		Into(&resp)
 	if err != nil {
