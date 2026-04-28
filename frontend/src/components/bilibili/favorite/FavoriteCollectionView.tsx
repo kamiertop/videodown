@@ -20,6 +20,9 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
     sidebarCount: () => number;
     sidebarLoading: () => boolean;
     onRefresh: () => void;
+    sidebarHasMore?: () => boolean;
+    sidebarLoadingMore?: () => boolean;
+    onLoadMoreSidebar?: () => void;
     hasSelection: () => boolean;
     detailLoading: () => boolean;
     detailError: () => string;
@@ -87,12 +90,26 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
                         </div>
                     </Match>
                     <Match when={props.sidebarItems().length > 0}>
-                        <SidebarList
-                            list={props.sidebarItems}
-                            selectedId={props.selectedSidebarId}
-                            onSelect={props.onSelectSidebar}
-                            icon={props.sidebarIcon}
-                        />
+                        <div class="flex min-h-0 flex-1 flex-col">
+                            <SidebarList
+                                list={props.sidebarItems}
+                                selectedId={props.selectedSidebarId}
+                                onSelect={props.onSelectSidebar}
+                                icon={props.sidebarIcon}
+                            />
+                            <Show when={!!props.sidebarHasMore?.()}>
+                                <div class="shrink-0 border-t border-base-200 px-2 py-2">
+                                    <button
+                                        type="button"
+                                        class="btn btn-outline btn-xs w-full"
+                                        onClick={props.onLoadMoreSidebar}
+                                        disabled={props.sidebarLoadingMore?.()}
+                                    >
+                                        {props.sidebarLoadingMore?.() ? "加载中..." : "加载更多"}
+                                    </button>
+                                </div>
+                            </Show>
+                        </div>
                     </Match>
                     <Match when={true}>
                         <EmptyState title={emptySidebarTitle()} compact/>

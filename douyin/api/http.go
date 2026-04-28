@@ -77,7 +77,7 @@ func (d *Douyin) publicQueryParams() (map[string]any, error) {
 		"screen_width":        2560,
 		"screen_height":       1440,
 		"browser_language":    "zh-CN",
-		"browser_platform":    "Linux x86_64", // TODO
+		"browser_platform":    browserPlatform(),
 		"browser_name":        "Chrome",
 		"browser_version":     "147.0.0.0",
 		"os_name":             osName(),
@@ -99,15 +99,21 @@ func (d *Douyin) publicQueryParams() (map[string]any, error) {
 	}, nil
 }
 
+func browserPlatform() string {
+	switch runtime.GOOS {
+	case "linux":
+		return "Linux x86_64"
+	case "windows":
+		return "Win32"
+	default:
+		return "Windows NT 10.0"
+	}
+}
 func (d *Douyin) publicHeaders() (map[string]string, error) {
 	cookie, err := d.GetCookie()
 	if err != nil {
 		return nil, fmt.Errorf("获取 cookie 失败: %w", err)
 	}
-	//p, err := d.CookieQuery()
-	//if err != nil {
-	//	return nil, fmt.Errorf("获取 cookie 参数失败: %w", err)
-	//}
 	return map[string]string{
 		"Accept":             "application/json, text/plain, */*",
 		"Accept-Language":    "zh-CN,zh;q=0.9",
@@ -124,8 +130,7 @@ func (d *Douyin) publicHeaders() (map[string]string, error) {
 		"Sec-Fetch-Mode":     "cors",
 		"Sec-Fetch-Site":     "same-site",
 		"User-Agent":         userAgent(),
-		//"Uifid":              p.uifid,
-		Cookie: cookie,
+		Cookie:               cookie,
 	}, nil
 
 }

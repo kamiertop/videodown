@@ -1,8 +1,10 @@
 package api
 
 import (
+	"context"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/imroc/req/v3"
@@ -17,10 +19,13 @@ const (
 )
 
 type Douyin struct {
-	logger   *logger.Logger
-	client   *req.Client
-	settings *utils.Settings
-	webId    struct {
+	ctxProvider  func() context.Context
+	logger       *logger.Logger
+	client       *req.Client
+	settings     *utils.Settings
+	progressMu   sync.Mutex
+	progressByID map[string]float64
+	webId        struct {
 		value       string
 		lastUpdated time.Time
 	}
@@ -32,10 +37,15 @@ type Douyin struct {
 	userID    string
 }
 
-func New(logger *logger.Logger, settings *utils.Settings) *Douyin {
+func New(logger *logger.Logger, settings *utils.Settings, ctxProvider ...func() context.Context) *Douyin {
 	logger = logger.WithName("Douyin")
+	var provider func() context.Context
+	if len(ctxProvider) > 0 {
+		provider = ctxProvider[0]
+	}
 	return &Douyin{
-		logger: logger.WithName("Douyin"),
+		ctxProvider: provider,
+		logger:      logger.WithName("Douyin"),
 		client: req.
 			C().
 			SetLogger(logger).
@@ -43,8 +53,16 @@ func New(logger *logger.Logger, settings *utils.Settings) *Douyin {
 			EnableAutoDecompress().
 			SetJsonUnmarshal(jsonx.Unmarshal).
 			SetJsonMarshal(jsonx.Marshal),
-		settings: settings,
+		settings:     settings,
+		progressByID: make(map[string]float64),
 	}
+}
+
+func (d *Douyin) context() context.Context {
+	if d.ctxProvider == nil {
+		return nil
+	}
+	return d.ctxProvider()
 }
 
 type cookieParams struct {

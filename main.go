@@ -59,7 +59,9 @@ func main() {
 		Bind: []interface{}{
 			app,
 			bilibili,
-			douyinapi.New(log, settings),
+			douyinapi.New(log, settings, func() context.Context {
+				return app.ctx
+			}),
 			settings,
 		},
 		// Windows platform specific options

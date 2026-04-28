@@ -6,6 +6,30 @@ export function CollectList(arg1) {
   return window['go']['api']['Douyin']['CollectList'](arg1);
 }
 
+export function Collection(arg1, arg2) {
+  return window['go']['api']['Douyin']['Collection'](arg1, arg2);
+}
+
+export function CollectionList(arg1, arg2, arg3, arg4) {
+  return window['go']['api']['Douyin']['CollectionList'](arg1, arg2, arg3, arg4);
+}
+
+export function DeleteDownloadHistory(arg1) {
+  return window['go']['api']['Douyin']['DeleteDownloadHistory'](arg1);
+}
+
+export function Download(arg1) {
+  return window['go']['api']['Douyin']['Download'](arg1);
+}
+
+export function DownloadHistory() {
+  return window['go']['api']['Douyin']['DownloadHistory']();
+}
+
+export function DownloadVideos(arg1) {
+  return window['go']['api']['Douyin']['DownloadVideos'](arg1);
+}
+
 export function FavoriteVideo(arg1, arg2) {
   return window['go']['api']['Douyin']['FavoriteVideo'](arg1, arg2);
 }
@@ -18,6 +42,10 @@ export function GetCookie() {
   return window['go']['api']['Douyin']['GetCookie']();
 }
 
+export function ParseSecUserID(arg1) {
+  return window['go']['api']['Douyin']['ParseSecUserID'](arg1);
+}
+
 export function Profile() {
   return window['go']['api']['Douyin']['Profile']();
 }
@@ -28,4 +56,12 @@ export function SetCookie(arg1) {
 
 export function User(arg1) {
   return window['go']['api']['Douyin']['User'](arg1);
+}
+
+export function UserSeries(arg1, arg2, arg3) {
+  return window['go']['api']['Douyin']['UserSeries'](arg1, arg2, arg3);
+}
+
+export function UserVideoList(arg1, arg2, arg3) {
+  return window['go']['api']['Douyin']['UserVideoList'](arg1, arg2, arg3);
 }
