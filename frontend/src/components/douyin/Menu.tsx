@@ -1,11 +1,45 @@
 import {Link} from "@tanstack/solid-router";
 import type {JSXElement} from "solid-js";
-import {For} from "solid-js";
+import {createSignal, For, onCleanup, onMount} from "solid-js";
 import douyinAvatarFallback from "../../assets/douyin_256_256.svg";
 import {StarIcon} from "../icons/IconStar.tsx";
 import IconUsers from "../icons/IconUsers.tsx";
 
+const DOUYIN_ACCOUNT_SUMMARY_KEY = "douyin-account-summary";
+
+interface DouyinAccountSummary {
+  nickname?: string;
+  avatar?: string;
+}
+
 export default function Menu(): JSXElement {
+  const [account, setAccount] = createSignal<DouyinAccountSummary | null>(null);
+  const accountAvatar = () => account()?.avatar || douyinAvatarFallback;
+  const accountTitle = () => account()?.nickname ? `账号：${account()?.nickname}` : "账号";
+
+  onMount(() => {
+    const cached = localStorage.getItem(DOUYIN_ACCOUNT_SUMMARY_KEY);
+    if (cached) {
+      try {
+        setAccount(JSON.parse(cached) as DouyinAccountSummary);
+      } catch {
+        localStorage.removeItem(DOUYIN_ACCOUNT_SUMMARY_KEY);
+      }
+    }
+
+    const updateAvatar = (event: Event) => {
+      const detail = (event as CustomEvent<DouyinAccountSummary | null>).detail;
+      setAccount(detail);
+      if (detail?.avatar || detail?.nickname) {
+        localStorage.setItem(DOUYIN_ACCOUNT_SUMMARY_KEY, JSON.stringify(detail));
+      } else {
+        localStorage.removeItem(DOUYIN_ACCOUNT_SUMMARY_KEY);
+      }
+    };
+    window.addEventListener("douyin-profile-updated", updateAvatar);
+    onCleanup(() => window.removeEventListener("douyin-profile-updated", updateAvatar));
+  });
+
   const menuItems = [
     {
       name: "下载",
@@ -19,6 +53,16 @@ export default function Menu(): JSXElement {
       ),
     },
     {
+      name: "用户",
+      link: "/douyin/user",
+      icon: <IconUsers class="h-4.5 w-4.5"/>,
+    },
+    {
+      name: "收藏",
+      link: "/douyin/favorite",
+      icon: <span class="scale-125"><StarIcon/></span>,
+    },
+    {
       name: "历史",
       link: "/douyin/history",
       icon: (
@@ -30,16 +74,6 @@ export default function Menu(): JSXElement {
                 stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       ),
-    },
-    {
-      name: "用户",
-      link: "/douyin/user",
-      icon: <IconUsers class="h-4.5 w-4.5"/>,
-    },
-    {
-      name: "收藏",
-      link: "/douyin/favorite",
-      icon: <span class="scale-125"><StarIcon/></span>,
     },
   ];
 
@@ -77,7 +111,7 @@ export default function Menu(): JSXElement {
       <div class="mt-auto border-t border-base-300/70 pt-3">
         <Link
           to="/douyin/profile"
-          title="账号"
+          title={accountTitle()}
           class="group flex flex-col items-center gap-1 rounded-2xl border border-base-300/50 bg-base-100/95 p-2.5 shadow-sm transition-all duration-200 hover:border-primary/40 hover:shadow-md"
           activeProps={{
             class: "border-primary/50 bg-gradient-to-b from-primary/[0.12] to-transparent shadow-md ring-1 ring-primary/20",
@@ -85,11 +119,12 @@ export default function Menu(): JSXElement {
         >
           <div class="avatar">
             <div
-              class="h-10 w-10 rounded-full bg-base-200 p-0.5 shadow-inner ring-2 ring-base-100 ring-offset-2 ring-offset-base-100 transition group-hover:ring-primary/30 group-data-[status=active]:ring-primary/50">
+              class="relative h-10 w-10 rounded-full bg-base-200 p-0.5 shadow-inner ring-2 ring-base-100 ring-offset-2 ring-offset-base-100 transition group-hover:ring-primary/30 group-data-[status=active]:ring-primary/50">
               <img
-                src={douyinAvatarFallback}
+                src={accountAvatar()}
                 alt=""
                 class="h-full w-full rounded-full object-cover"
+                referrerPolicy="no-referrer"
               />
             </div>
           </div>

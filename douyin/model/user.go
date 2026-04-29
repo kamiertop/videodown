@@ -6,20 +6,21 @@ type UserResponse struct {
 }
 
 type User struct {
-	AvatarLarger  Avatar `json:"avatar_larger"`
-	AvatarMedium  Avatar `json:"avatar_medium"`
-	AvatarThumb   Avatar `json:"avatar_thumb"`
-	City          string `json:"city"`
-	AwemeCount    int    `json:"aweme_count"` // 作品数量
-	Country       string `json:"country"`
-	FollowerCount int    `json:"follower_count"`
-	IpLocation    string `json:"ip_location"`
-	NickName      string `json:"nickname"`
-	Province      string `json:"province"`  // 省份
-	Signature     string `json:"signature"` // 签名
-	Uid           string `json:"uid"`
-	UniqueId      string `json:"unique_id"` // 抖音号
-	SecUid        string `json:"sec_uid"`   // 安全uid，某些接口需要传这个
+	AvatarLarger   Avatar `json:"avatar_larger"`
+	AvatarMedium   Avatar `json:"avatar_medium"`
+	AvatarThumb    Avatar `json:"avatar_thumb"`
+	City           string `json:"city"`
+	AwemeCount     int    `json:"aweme_count"` // 作品数量
+	Country        string `json:"country"`
+	FollowerCount  int    `json:"follower_count"`  // 粉丝数量
+	FollowingCount int    `json:"following_count"` // 关注数量
+	IpLocation     string `json:"ip_location"`     // IP所在地
+	NickName       string `json:"nickname"`
+	Province       string `json:"province"`  // 省份
+	Signature      string `json:"signature"` // 签名
+	Uid            string `json:"uid"`
+	UniqueId       string `json:"unique_id"` // 抖音号
+	SecUid         string `json:"sec_uid"`   // 安全uid，某些接口需要传这个
 }
 
 type UserVideoListResponse struct {

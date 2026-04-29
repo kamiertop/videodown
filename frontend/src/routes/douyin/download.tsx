@@ -1,12 +1,18 @@
 import {createFileRoute} from '@tanstack/solid-router'
-import {For, type JSXElement, Show} from "solid-js";
+import {createSignal, For, type JSXElement, Show} from "solid-js";
+import {ParseVideo, VideoDetail} from "../../../wailsjs/go/api/Douyin";
+import {model} from "../../../wailsjs/go/models";
 import EmptyState from "../../components/EmptyState.tsx";
 import Toast from "../../components/Toast.tsx";
 import {useToast} from "../../hooks/useToast.ts";
-import {formatDouyinSource, type DouyinDownloadProgress, useDouyinDownloadQueue} from "../../lib/douyinDownloadQueue.ts";
-import {formatDataSize} from "../../lib/douyinMedia.ts";
 import {
-  clearDouyinVideos,
+  type DouyinDownloadProgress,
+  formatDouyinSource,
+  useDouyinDownloadQueue
+} from "../../lib/douyinDownloadQueue.ts";
+import {defaultDouyinVideoOption, douyinImageURLs, douyinVideoOptions, formatDataSize,} from "../../lib/douyinMedia.ts";
+import {
+  addDouyinVideos,
   type DouyinDownloadItem,
   douyinVideoList,
   removeDouyinVideo,
@@ -17,6 +23,49 @@ import {formatCount, formatDate, formatDuration} from "../../lib/format.ts";
 export const Route = createFileRoute('/douyin/download')({
   component: DouyinDownloadPage,
 })
+
+function normalizeDouyinDuration(value?: number): number {
+  if (!value || value <= 0) return 0;
+  return value >= 1000 ? Math.floor(value / 1000) : value;
+}
+
+function awemeCover(item: model.AwemeItem): string {
+  return item.video?.cover?.url_list?.[0]
+    ?? item.video?.origin_cover?.url_list?.[0]
+    ?? "";
+}
+
+function awemeTitle(item: model.AwemeItem): string {
+  return item.item_title || item.desc || item.caption || `作品 ${item.aweme_id || ""}`.trim();
+}
+
+function detailToDownloadItem(item: model.AwemeItem): DouyinDownloadItem {
+  const awemeId = item.aweme_id || item.group_id || item.sec_item_id;
+  const title = awemeTitle(item);
+  const cover = awemeCover(item);
+  const duration = normalizeDouyinDuration(item.video?.duration ?? item.duration ?? 0);
+  const authorName = item.author?.nickname || item.author?.uid || "未知作者";
+  const videoOptions = douyinVideoOptions(item);
+  const selectedVideoOption = defaultDouyinVideoOption(videoOptions);
+
+  return {
+    awemeId,
+    sourceKind: "解析结果",
+    sourceName: "手动解析",
+    title,
+    cover,
+    duration,
+    authorName,
+    publishTime: item.create_time ?? 0,
+    diggCount: item.statistics?.digg_count ?? 0,
+    collectCount: item.statistics?.collect_count ?? 0,
+    link: awemeId ? `https://www.douyin.com/video/${awemeId}` : undefined,
+    videoURL: selectedVideoOption?.url,
+    videoOptions,
+    selectedVideoOptionId: selectedVideoOption?.id,
+    imageURLs: douyinImageURLs(item),
+  };
+}
 
 function progressText(progress: DouyinDownloadProgress | undefined): string {
   // 后端把视频和图片合集都归一成同一条 0-100 进度，前端只区分阶段文案。
@@ -79,7 +128,8 @@ function DouyinDownloadCard(props: {
         </div>
 
         <div class="flex flex-wrap items-center gap-2 text-xs text-base-content/55">
-          <span class="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary">{formatDouyinSource(props.item)}</span>
+          <span
+            class="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary">{formatDouyinSource(props.item)}</span>
           <span>发布 {props.item.publishTime ? formatDate(props.item.publishTime) : "-"}</span>
           <span class="rounded-full bg-base-200 px-2 py-0.5 tabular-nums">赞 {formatCount(props.item.diggCount)}</span>
           <span
@@ -154,25 +204,79 @@ function DouyinDownloadCard(props: {
 }
 
 function DouyinDownloadPage(): JSXElement {
+  const [videoURL, setVideoURL] = createSignal("");
+  const [parsing, setParsing] = createSignal(false);
   const {message, type, showToast} = useToast();
   // 下载状态集中在 hook 中，页面只负责渲染列表和把用户操作转发给队列。
   const queue = useDouyinDownloadQueue(showToast);
 
+  async function parseVideo(): Promise<void> {
+    if (parsing()) return;
+
+    const input = videoURL().trim();
+    if (!input) {
+      showToast("请输入抖音视频链接或视频 ID", "error");
+      return;
+    }
+
+    setParsing(true);
+    try {
+      // 复制分享文案时通常包含短链；如果用户直接输入 awemeId，就跳过重定向解析。
+      const awemeId = input.includes("http") ? await ParseVideo(input) : input;
+      if (!awemeId) {
+        showToast("未能解析出视频 ID", "error");
+        return;
+      }
+
+      const detail = await VideoDetail(awemeId);
+      const item = detailToDownloadItem(detail.aweme_detail);
+      if (!item.awemeId) {
+        showToast("解析成功，但详情中没有视频 ID", "error");
+        return;
+      }
+
+      addDouyinVideos([item]);
+      setVideoURL("");
+      showToast(`已添加：${item.title || item.awemeId}`, "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : String(error), "error");
+    } finally {
+      setParsing(false);
+    }
+  }
+
   return (
-    <section class="flex h-full min-h-0 flex-col p-4">
-      <header class="rounded-lg border border-base-300 bg-base-100 px-4 py-3">
-        <div class="flex items-center gap-3">
-          <div class="min-w-0 flex-1">
-            <h2 class="text-base font-bold">下载中心</h2>
-            <p class="text-sm text-base-content/60">从收藏、合集或用户页加入的内容会先出现在这里。</p>
-          </div>
-          <Show when={douyinVideoList().length > 0}>
-            <button class="btn btn-ghost btn-sm text-error" onClick={clearDouyinVideos} disabled={queue.downloading()}>
-              清空列表
-            </button>
-          </Show>
-        </div>
-      </header>
+    <section class="flex h-full min-h-0 flex-col p-3">
+      <section class="flex flex-row join gap-2">
+        <input
+          type="text"
+          placeholder="请输入抖音视频分享链接、分享文案或视频 ID，可按回车直接解析"
+          value={videoURL()}
+          onInput={(event) => setVideoURL(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") void parseVideo();
+          }}
+          class="input input-success w-full"
+          disabled={parsing()}
+        />
+        <button
+          class="btn btn-outline btn-secondary"
+          type="button"
+          onClick={() => void parseVideo()}
+          disabled={parsing()}
+        >
+          {parsing() ? "解析中..." : "解析"}
+        </button>
+        <button
+          class="btn btn-outline btn-info"
+          type="button"
+          onClick={() => setVideoURL("")}
+          disabled={parsing()}
+        >
+          清空
+        </button>
+
+      </section>
 
       <Show when={douyinVideoList().length > 0}>
         <section class="mt-2 flex flex-row items-center justify-between rounded-lg p-3 shadow-sm">
@@ -197,7 +301,8 @@ function DouyinDownloadPage(): JSXElement {
       <div class="mt-3 min-h-0 flex-1 overflow-hidden rounded-lg border border-base-300 bg-base-100">
         <Show
           when={douyinVideoList().length > 0}
-          fallback={<EmptyState title="下载列表为空" description="可以从收藏、合集或用户页勾选后加入下载列表。"/>}
+          fallback={<EmptyState title="下载列表为空"
+                                description="可以解析视频链接，或从收藏、合集、用户页勾选后加入下载列表。"/>}
         >
           <div class="flex h-full flex-col gap-1.5 overflow-auto p-2">
             <For each={douyinVideoList()}>
