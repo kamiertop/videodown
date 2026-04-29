@@ -46,6 +46,10 @@ export function ParseSecUserID(arg1) {
   return window['go']['api']['Douyin']['ParseSecUserID'](arg1);
 }
 
+export function ParseVideo(arg1) {
+  return window['go']['api']['Douyin']['ParseVideo'](arg1);
+}
+
 export function Profile() {
   return window['go']['api']['Douyin']['Profile']();
 }
@@ -64,4 +68,8 @@ export function UserSeries(arg1, arg2, arg3) {
 
 export function UserVideoList(arg1, arg2, arg3) {
   return window['go']['api']['Douyin']['UserVideoList'](arg1, arg2, arg3);
+}
+
+export function VideoDetail(arg1) {
+  return window['go']['api']['Douyin']['VideoDetail'](arg1);
 }

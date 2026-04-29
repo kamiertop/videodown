@@ -42,6 +42,10 @@ func (d *Douyin) User(secUserId string) (model.UserResponse, error) {
 		d.logger.Errorf("request info api error: %v", err)
 		return resp, err
 	}
+	if resp.StatusCode != 0 {
+		d.logger.Errorf("request user info api error, status code: %d", resp.StatusCode)
+		return resp, errors.New("请求用户信息失败")
+	}
 
 	return resp, nil
 }

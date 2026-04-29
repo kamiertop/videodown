@@ -25,7 +25,9 @@ export function GetCookie():Promise<string>;
 
 export function ParseSecUserID(arg1:string):Promise<string>;
 
-export function Profile():Promise<model.MyInfo>;
+export function ParseVideo(arg1:string):Promise<string>;
+
+export function Profile():Promise<model.MyInfoResponse>;
 
 export function SetCookie(arg1:string):Promise<void>;
 
@@ -34,3 +36,5 @@ export function User(arg1:string):Promise<model.UserResponse>;
 export function UserSeries(arg1:string,arg2:number,arg3:number):Promise<model.UserSeriesResponse>;
 
 export function UserVideoList(arg1:string,arg2:number,arg3:number):Promise<model.UserVideoListResponse>;
+
+export function VideoDetail(arg1:string):Promise<model.VideoDetailResponse>;
