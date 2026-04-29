@@ -85,22 +85,29 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         run: |
-          mkdir -p dist
-          tar -czf "dist/${{ matrix.archive }}" -C build/bin "${{ env.APP_NAME }}"
+          package_dir="dist/package/${{ env.APP_NAME }}"
+          mkdir -p "$package_dir"
+          cp "build/bin/${{ env.APP_NAME }}" "$package_dir/"
+          cp "build/appicon.png" "$package_dir/"
+          tar -czf "dist/${{ matrix.archive }}" -C "dist/package" "${{ env.APP_NAME }}"
 
       - name: Package Windows artifact
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Compress-Archive -Path "build/bin/${{ env.APP_NAME }}.exe" -DestinationPath "dist/${{ matrix.archive }}" -Force
+          $PackageDir = "dist/package/${{ env.APP_NAME }}"
+          New-Item -ItemType Directory -Force -Path "$PackageDir" | Out-Null
+          Copy-Item "build/bin/${{ env.APP_NAME }}.exe" "$PackageDir/"
+          Compress-Archive -Path "$PackageDir" -DestinationPath "dist/${{ matrix.archive }}" -Force
 
       - name: Package macOS artifact
         if: runner.os == 'macOS'
         shell: bash
         run: |
-          mkdir -p dist
-          ditto -c -k --sequesterRsrc --keepParent "build/bin/${{ env.APP_NAME }}.app" "dist/${{ matrix.archive }}"
+          package_dir="dist/package/${{ env.APP_NAME }}"
+          mkdir -p "$package_dir"
+          cp -R "build/bin/${{ env.APP_NAME }}.app" "$package_dir/"
+          ditto -c -k --sequesterRsrc --keepParent "$package_dir" "dist/${{ matrix.archive }}"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v6

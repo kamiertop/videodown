@@ -75,6 +75,8 @@ VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.d
 - [ ] 抖音收藏夹完善
 - [ ] 抖音图文下载
 - [ ] `ffmpeg`不存在时自动下载
+- [ ] 自动更新
+- [ ] 下载完成后打开文件所在目录
 
 ## 技术栈
 
