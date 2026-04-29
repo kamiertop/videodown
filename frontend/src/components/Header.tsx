@@ -2,7 +2,7 @@ import {Link, useLocation} from "@tanstack/solid-router";
 import type {JSXElement} from "solid-js";
 import {createMemo, For} from "solid-js";
 import {BrowserOpenURL} from "../../wailsjs/runtime";
-import app from "../assets/app.png";
+import app from "../assets/pixel.png";
 
 // Simple, data-driven Header: desktop-only, flat nav with emojis
 type RoutePath = '/' | '/bilibili' | '/douyin' | '/settings';
@@ -45,7 +45,7 @@ export default function HomeHeader(): JSXElement {
       <div class="w-full flex items-center justify-between px-4">
         {/* left: logo */}
         <Link to="/" class="btn btn-ghost normal-case text-xl text-primary flex items-center gap-3">
-          <img src={app} alt="VideoDown" class="h-8 w-8 object-contain"/>
+          <img src={app} alt="VideoDown" class="h-16 w-16 object-contain"/>
           <span class="font-semibold">VideoDown</span>
         </Link>
 
