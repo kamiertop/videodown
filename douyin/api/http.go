@@ -31,6 +31,7 @@ const (
 	SecChFetchSite  = "Sec-Fetch-Site"
 	UserAgent       = "User-Agent"
 	CacheControl    = "Cache-Control"
+	Pragma          = "Pragma"
 )
 
 // 默认返回Windows的
@@ -120,22 +121,22 @@ func (d *Douyin) publicHeaders() (map[string]string, error) {
 		return nil, fmt.Errorf("获取 cookie 失败: %w", err)
 	}
 	return map[string]string{
-		"Accept":             "application/json, text/plain, */*",
-		"Accept-Language":    "zh-CN,zh;q=0.9",
-		"Accept-Encoding":    "gzip, deflate, br, zstd",
-		"Origin":             originURL,
-		"Pragma":             "no-cache",
-		"Priority":           "u=1, i",
-		"Cache-Control":      "no-cache",
-		"Referer":            referURL,
-		"Sec-CH-UA":          `"Google Chrome";v="147", "Not:A-Brand";v="8", "Chromium";v="147"`,
-		"Sec-CH-UA-Mobile":   "?0",
-		"Sec-CH-UA-Platform": fmt.Sprintf(`"%s"`, osName()),
-		"Sec-Fetch-Dest":     "empty",
-		"Sec-Fetch-Mode":     "cors",
-		"Sec-Fetch-Site":     "same-site",
-		"User-Agent":         userAgent(),
-		Cookie:               cookie,
+		Accept:          "application/json, text/plain, */*",
+		AcceptLanguage:  "zh-CN,zh;q=0.9",
+		AcceptEncoding:  "gzip, deflate, br, zstd",
+		Origin:          originURL,
+		Pragma:          "no-cache",
+		Priority:        "u=1, i",
+		CacheControl:    "no-cache",
+		Referer:         referURL,
+		SecCHUA:         `"Google Chrome";v="147", "Not:A-Brand";v="8", "Chromium";v="147"`,
+		SecCHUAMobile:   "?0",
+		SecCHUAPlatform: fmt.Sprintf(`"%s"`, osName()),
+		SecChFetchDest:  "empty",
+		SecChFetchMode:  "cors",
+		SecChFetchSite:  "same-site",
+		UserAgent:       userAgent(),
+		Cookie:          cookie,
 	}, nil
 
 }

@@ -52,7 +52,7 @@ export default function DouyinVideoCard(props: {
             xmlns="http://www.w3.org/2000/svg"
             class="absolute right-1.5 top-1.5 z-10 h-3.5 w-3.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]"
             viewBox="0 0 12 12"
-            aria-label="图集"
+            aria-label="图文"
           >
             <path
               d="M1.455 0C.65 0 0 .651 0 1.455V8c0 .803.651 1.455 1.455 1.455H8c.803 0 1.455-.652 1.455-1.455V1.455C9.455.65 8.803 0 8 0H1.455z"

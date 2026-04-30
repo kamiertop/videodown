@@ -85,9 +85,8 @@ export default function DouyinVideoGrid(props: {
   return (
     <div class={`flex h-full min-h-0 flex-col ${props.allSelected ? "ring-1 ring-success/40" : ""}`}>
       {/* 固定操作栏：选择与下载按钮不跟随卡片区域滚动。 */}
-      <div class={`flex shrink-0 items-center gap-2 border-b px-4 py-3 ${
-        props.allSelected ? "border-success/40 bg-success/5" : "border-base-300"
-      }`}>
+      <div class="flex shrink-0 items-center gap-2 border-b px-4 py-3"
+           classList={{"border-success/40 bg-success/5": props.allSelected, "border-base-300": !props.allSelected}}>
         <div class="min-w-0 flex-1">
           <h3 class="truncate text-sm font-bold text-base-content">{props.title}</h3>
           <p class="text-xs text-base-content/55">{props.countText}</p>

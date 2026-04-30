@@ -7,6 +7,8 @@ export function Collection(arg1:number,arg2:number):Promise<model.CollectionData
 
 export function CollectionItem(arg1:string,arg2:number,arg3:number):Promise<model.CollectionItemData>;
 
+export function DeleteDownloadHistory(arg1:number):Promise<void>;
+
 export function DownloadHistory():Promise<Array<api.DownloadHistoryItem>>;
 
 export function DownloadVideoByDash(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;

@@ -8,6 +8,7 @@ require (
 	github.com/rs/zerolog v1.35.0
 	github.com/wailsapp/wails/v2 v2.12.0
 	github.com/wudi/jsonx v0.0.0-20260424033438-ddaecf3aaee0
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require (

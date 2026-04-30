@@ -10,6 +10,10 @@ export function CollectionItem(arg1, arg2, arg3) {
   return window['go']['api']['BiliBili']['CollectionItem'](arg1, arg2, arg3);
 }
 
+export function DeleteDownloadHistory(arg1) {
+  return window['go']['api']['BiliBili']['DeleteDownloadHistory'](arg1);
+}
+
 export function DownloadHistory() {
   return window['go']['api']['BiliBili']['DownloadHistory']();
 }

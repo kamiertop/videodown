@@ -1,19 +1,30 @@
 package logger
 
 import (
+	"io"
 	"os"
 
 	"github.com/rs/zerolog"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 type Logger struct {
 	zerolog.Logger
 }
 
+const (
+	prodEnvKey   = "mode"
+	prodEnvValue = "prod"
+)
+
 func New() *Logger {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
+	mode := os.Getenv(prodEnvKey)
+	if mode == prodEnvValue {
+		zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	}
 	return &Logger{
-		zerolog.New(os.Stdout).With().Timestamp().Logger(),
+		zerolog.New(logWriter(mode)).With().Timestamp().Logger(),
 	}
 }
 
@@ -21,6 +32,20 @@ func (l *Logger) WithName(name string) *Logger {
 	return &Logger{
 		l.Logger.With().Str("name", name).Logger(),
 	}
+}
+
+func logWriter(mode string) io.Writer {
+	if mode == prodEnvValue {
+		return &lumberjack.Logger{
+			Filename:   "videodown.log",
+			MaxSize:    10, // MB
+			MaxAge:     0,
+			MaxBackups: 100,
+			Compress:   true,
+		}
+	}
+
+	return os.Stdout
 }
 
 func (l *Logger) WithCaller(skipFrameCount int) *Logger {

@@ -218,6 +218,7 @@ export namespace api {
 	}
 	export class DownloadHistoryItem {
 	    bvid: string;
+	    cid: number;
 	    title: string;
 	    cover: string;
 	    duration: number;
@@ -237,6 +238,7 @@ export namespace api {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.bvid = source["bvid"];
+	        this.cid = source["cid"];
 	        this.title = source["title"];
 	        this.cover = source["cover"];
 	        this.duration = source["duration"];

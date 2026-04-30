@@ -37,8 +37,8 @@ func main() {
 		Height:            800,
 		MinWidth:          1024,
 		MinHeight:         768,
-		MaxWidth:          1920,
-		MaxHeight:         1080,
+		MaxWidth:          2560,
+		MaxHeight:         1440,
 		DisableResize:     false,
 		Fullscreen:        false,
 		Frameless:         false,
@@ -56,7 +56,7 @@ func main() {
 		OnBeforeClose:    app.beforeClose,
 		OnShutdown:       app.shutdown,
 		WindowStartState: options.Normal,
-		Bind: []interface{}{
+		Bind: []any{
 			app,
 			bilibili,
 			douyinapi.New(log, settings, func() context.Context {

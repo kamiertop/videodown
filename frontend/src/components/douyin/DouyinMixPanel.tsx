@@ -3,10 +3,15 @@ import {createEffect, createMemo, createSignal, For, type JSXElement, Match, Sho
 import {createStore} from "solid-js/store";
 import {Collection as FavoriteMixCollection, CollectionList, UserSeries} from "../../../wailsjs/go/api/Douyin";
 import {model} from "../../../wailsjs/go/models";
+import {
+  defaultDouyinVideoOption,
+  douyinImageURLs,
+  douyinVideoOptions,
+  isDouyinImageAlbum
+} from "../../lib/douyinMedia.ts";
 import type {DouyinDownloadItem} from "../../lib/douyinStore.ts";
 import {addDouyinVideos} from "../../lib/douyinStore.ts";
 import {formatDate, formatDuration} from "../../lib/format.ts";
-import {defaultDouyinVideoOption, douyinImageURLs, douyinVideoOptions, isDouyinImageAlbum} from "../../lib/douyinMedia.ts";
 import DetailError from "../DetailError.tsx";
 import DetailLoading from "../DetailLoading.tsx";
 import EmptyState from "../EmptyState.tsx";
@@ -329,7 +334,8 @@ export default function DouyinMixPanel(props: {
   }
 
   return (
-    <div class={props.active ? "flex h-full min-h-0 flex-1" : "hidden"}>
+    <div classList={{"flex h-full min-h-0 flex-1": props.active, "hidden": !props.active}}
+    >
       <Switch>
         <Match when={mixLoading()}>
           <DetailLoading/>
@@ -338,7 +344,9 @@ export default function DouyinMixPanel(props: {
           <DetailError message={mixError()} onRetry={() => void loadMixes()}/>
         </Match>
         <Match when={sidebarItems().length === 0}>
-          <EmptyState title={emptyTitle()} description="请先确认账号已登录，或稍后重试。"/>
+          <div class="m-auto">
+            <EmptyState title={emptyTitle()}/>
+          </div>
         </Match>
         <Match when={sidebarItems().length > 0}>
           {/* 左侧固定宽度目录，右侧详情区独立滚动，避免两块内容互相挤压。 */}
@@ -359,9 +367,8 @@ export default function DouyinMixPanel(props: {
                   return (
                     <button
                       type="button"
-                      class={`flex w-full gap-3 border-b border-base-200/80 p-3 text-left transition-colors ${
-                        isSelected() ? "bg-primary/10" : "hover:bg-base-200/35"
-                      }`}
+                      class="flex w-full gap-3 border-b border-base-200/80 p-3 text-left transition-colors"
+                      classList={{"bg-primary/10": isSelected(), "hover:bg-base-200/35": !isSelected()}}
                       onClick={() => {
                         const selected = selectedMix();
                         if (selected && mixId(selected) === mixId(item) && detail() && !detailLoading()) return;

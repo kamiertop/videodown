@@ -64,6 +64,7 @@ type DashDownloadBatchResult struct {
 
 type DownloadHistoryItem struct {
 	Bvid       string `json:"bvid"`
+	Cid        int64  `json:"cid"`
 	Title      string `json:"title"`
 	Cover      string `json:"cover"`
 	Duration   int    `json:"duration"`
@@ -82,15 +83,11 @@ func streamBaseURL(v string) string {
 	return strings.TrimSpace(v)
 }
 
-func downloadCacheKey(bvid string, cid int64) string {
-	t := strings.ToUpper(strings.TrimSpace(bvid))
-	if t == "" {
+func downloadCacheKey(cid int64) string {
+	if cid <= 0 {
 		return ""
 	}
-	if cid > 0 {
-		return downloadedVideoCachePrefix + t + ":c:" + strconv.FormatInt(cid, 10)
-	}
-	return downloadedVideoCachePrefix + t
+	return downloadedVideoCachePrefix + strconv.FormatInt(cid, 10)
 }
 
 func sanitizeFilename(name string) string {
@@ -131,8 +128,8 @@ func uniqueFilePath(path string) string {
 }
 
 // downloadedCachePath 返回已下载缓存中的文件路径；缓存只在后端使用，不增加前端协议字段。
-func (b *BiliBili) downloadedCachePath(bvid string, cid int64) (string, bool) {
-	key := downloadCacheKey(bvid, cid)
+func (b *BiliBili) downloadedCachePath(cid int64) (string, bool) {
+	key := downloadCacheKey(cid)
 	if key == "" {
 		return "", false
 	}
@@ -151,13 +148,14 @@ func (b *BiliBili) downloadedCachePath(bvid string, cid int64) (string, bool) {
 
 // markDownloaded 写入下载成功缓存；写缓存失败不影响已经完成的文件保存。
 func (b *BiliBili) markDownloaded(task DashDownloadTask, path string) {
-	key := downloadCacheKey(task.Bvid, task.Cid)
+	key := downloadCacheKey(task.Cid)
 	if key == "" {
 		return
 	}
 
 	payload, err := json.Marshal(DownloadHistoryItem{
 		Bvid:       strings.TrimSpace(task.Bvid),
+		Cid:        task.Cid,
 		Title:      strings.TrimSpace(task.Title),
 		Cover:      strings.TrimSpace(task.Cover),
 		Duration:   task.Duration,
@@ -211,6 +209,22 @@ func (b *BiliBili) DownloadHistory() ([]DownloadHistoryItem, error) {
 		return parseDownloadHistoryTime(items[i].Downloaded).After(parseDownloadHistoryTime(items[j].Downloaded))
 	})
 	return items, nil
+}
+
+// DeleteDownloadHistory 删除单条下载历史；只清理缓存记录，不删除已经保存到本地的视频文件。
+func (b *BiliBili) DeleteDownloadHistory(cid int64) error {
+	key := downloadCacheKey(cid)
+	if key == "" {
+		return errors.New("视频CID为空")
+	}
+
+	return b.settings.Update(func(txn *badger.Txn) error {
+		err := txn.Delete([]byte(key))
+		if errors.Is(err, badger.ErrKeyNotFound) {
+			return nil
+		}
+		return err
+	})
 }
 
 func parseDownloadHistoryTime(value string) time.Time {
@@ -428,7 +442,7 @@ func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title string, cid in
 // downloadDashTask 下载一个 DASH 任务，供单个下载和批量下载复用。
 func (b *BiliBili) downloadDashTask(task DashDownloadTask) (string, error) {
 	b.resetDownloadProgress(task.Bvid, task.Cid)
-	if path, ok := b.downloadedCachePath(task.Bvid, task.Cid); ok {
+	if path, ok := b.downloadedCachePath(task.Cid); ok {
 		b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
 		return path, nil
 	}
