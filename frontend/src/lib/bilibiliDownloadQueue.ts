@@ -37,6 +37,10 @@ export interface DownloadProgress {
 
 interface DownloadTask {
   item: MediaCardItem;
+  cid: number;
+  bvid: string;
+  uiKey: string | null;
+  backendKey: string | null;
   videoURL: string;
   audioURL: string;
 }
@@ -218,7 +222,16 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
         if (!videoURL) return null;
 
         const audioURL = entry.data.bestAudio ? streamBaseUrl(entry.data.bestAudio) : "";
-        return {item, videoURL, audioURL};
+        const backendKey = bilibiliPlayResolveKey({bvid: entry.data.bvid, cid: entry.data.cid});
+        return {
+          item,
+          cid: entry.data.cid,
+          bvid: entry.data.bvid,
+          uiKey: key,
+          backendKey,
+          videoURL,
+          audioURL,
+        };
       })
       .filter((v): v is DownloadTask => v !== null);
   }
@@ -229,8 +242,8 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
       sourceName: downloadDirName(task.item),
       sourceKind: task.item.sourceListKind ?? "",
       upperName: task.item.upperName ?? "",
-      bvid: task.item.bvid,
-      cid: task.item.cid ?? 0,
+      bvid: task.bvid,
+      cid: task.cid,
       title: task.item.title,
       cover: task.item.cover ?? "",
       duration: task.item.duration ?? 0,
@@ -245,7 +258,7 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
   async function runDownloadTasks(tasks: DownloadTask[]): Promise<{ success: number; failed: number }> {
     // 所有待提交任务先置为下载中；真实字节进度由后端事件逐条刷新。
     for (const task of tasks) {
-      const key = bilibiliPlayResolveKey(task.item);
+      const key = task.uiKey;
       if (key) {
         setDownloadingByBvid((p) => ({...p, [key]: true}));
       }
@@ -254,7 +267,12 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
     try {
       // 真正的并发下载、休眠控制、缓存判断都在后端完成；前端只提交任务列表并等待最终结果。
       const batch = await DownloadVideosByDash(tasks.map(toBackendTask));
-      const byKey = new Map(tasks.map((task) => [bilibiliPlayResolveKey(task.item), task.item]));
+      const byKey = new Map(tasks.flatMap((task) => {
+        const pairs: Array<[string, MediaCardItem]> = [];
+        if (task.uiKey) pairs.push([task.uiKey, task.item]);
+        if (task.backendKey) pairs.push([task.backendKey, task.item]);
+        return pairs;
+      }));
 
       // 后端返回每条任务的最终结果，前端只移除成功项，失败项保留给用户重试。
       for (const item of batch.results ?? []) {
@@ -276,12 +294,14 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
     } finally {
       // 批量调用结束后清理按钮态；失败项仍留在列表，但进度条回到待下载状态。
       for (const task of tasks) {
-        const key = bilibiliPlayResolveKey(task.item);
-        if (!key) continue;
-        setDownloadingByBvid((p) => ({...p, [key]: false}));
+        const key = task.uiKey;
+        if (key) {
+          setDownloadingByBvid((p) => ({...p, [key]: false}));
+        }
         setProgressByBvid((p) => {
           const next = {...p};
-          delete next[key];
+          if (key) delete next[key];
+          if (task.backendKey) delete next[task.backendKey];
           return next;
         });
       }
@@ -351,7 +371,10 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
 
   function progressFor(item: MediaCardItem): DownloadProgress | undefined {
     const key = bilibiliPlayResolveKey(item);
-    return key ? progressByBvid()[key] : undefined;
+    if (!key) return undefined;
+    const progress = progressByBvid();
+    if (progress[key]) return progress[key];
+    return Object.entries(progress).find(([k]) => k.startsWith(`${key}:`))?.[1];
   }
 
   return {

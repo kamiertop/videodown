@@ -142,6 +142,14 @@ export function NewWriteBatchAt(arg1) {
   return window['go']['utils']['Settings']['NewWriteBatchAt'](arg1);
 }
 
+export function OpenDownloadLocation(arg1) {
+  return window['go']['utils']['Settings']['OpenDownloadLocation'](arg1);
+}
+
+export function OpenLocalFile(arg1) {
+  return window['go']['utils']['Settings']['OpenLocalFile'](arg1);
+}
+
 export function Opts() {
   return window['go']['utils']['Settings']['Opts']();
 }

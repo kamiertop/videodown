@@ -28,26 +28,30 @@ export default function SidebarList<T extends SidebarListItem>(props: {
               onClick={() => props.onSelect(item)}
             >
               <div
-                class={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition-colors ${
-                  isSelected()
-                    ? 'border-success/40 bg-success/20 text-success'
-                    : 'border-base-300 bg-base-200/50 text-accent group-hover:border-accent/50 group-hover:bg-accent/10'
-                }`}>
+                class={"flex h-6 w-6 shrink-0 items-center justify-center rounded-md border transition-colors"}
+                classList={{
+                  'border-success/40 bg-success/20 text-success': isSelected(),
+                  'border-base-300 bg-base-200/50 text-accent group-hover:border-accent/50 group-hover:bg-accent/10': !isSelected()
+                }}
+              >
                 {props.icon}
               </div>
               <div class="min-w-0 flex-1">
-                                <span class={`block truncate text-sm font-semibold ${
-                                  isSelected() ? 'text-success' : 'text-base-content'
-                                }`}>{item.title}</span>
+                <span class={"block truncate text-sm font-semibold"}
+                      classList={{'text-success': isSelected(), 'text-base-content': !isSelected()}}>
+                  {item.title}
+                </span>
                 <Show when={item.subtitle}>
                   <span class="block truncate text-xs text-base-content/50">{item.subtitle}</span>
                 </Show>
               </div>
-              <span class={`shrink-0 rounded-full px-1.5 py-0.5 text-xs tabular-nums font-bold ${
-                isSelected()
-                  ? 'bg-success/15 text-success'
-                  : 'bg-base-200 text-base-content/70'
-              }`}>{item.count}</span>
+              <span class={"shrink-0 rounded-full px-1.5 py-0.5 text-xs tabular-nums font-bold"}
+                    classList={{
+                      'bg-success/15 text-success': isSelected(),
+                      'bg-base-200 text-base-content/70': !isSelected()
+                    }}>
+                {item.count}
+              </span>
             </button>
           );
         }}

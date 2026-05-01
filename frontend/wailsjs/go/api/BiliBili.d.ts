@@ -3,6 +3,8 @@
 import {model} from '../models';
 import {api} from '../models';
 
+export function ClearDownloadHistory():Promise<void>;
+
 export function Collection(arg1:number,arg2:number):Promise<model.CollectionData>;
 
 export function CollectionItem(arg1:string,arg2:number,arg3:number):Promise<model.CollectionItemData>;

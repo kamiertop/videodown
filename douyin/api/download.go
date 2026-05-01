@@ -252,6 +252,26 @@ func (d *Douyin) DeleteDownloadHistory(awemeID string) error {
 	})
 }
 
+// ClearDownloadHistory 清空抖音下载历史；不会删除已经下载到本地的文件。
+func (d *Douyin) ClearDownloadHistory() error {
+	prefix := []byte(douyinDownloadedCachePrefix)
+	return d.settings.Update(func(txn *badger.Txn) error {
+		keys := make([][]byte, 0)
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			keys = append(keys, it.Item().KeyCopy(nil))
+		}
+		for _, key := range keys {
+			if err := txn.Delete(key); err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 // downloadURLToFile 手动流式读取响应体，这样才能持续把字节进度推给前端。
 func (d *Douyin) downloadURLToFile(rawURL, targetPath string, task DouyinDownloadTask, phase string, start, weight float64) error {
 	rawURL = strings.TrimSpace(rawURL)

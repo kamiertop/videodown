@@ -1,5 +1,7 @@
 import {createSignal, type JSXElement, onMount} from "solid-js";
-import {GetTheme} from "../../wailsjs/go/utils/Settings";
+import {GetTheme, SetTheme} from "../../wailsjs/go/utils/Settings";
+import {useToast} from "../hooks/useToast.ts";
+import Toast from "./Toast.tsx";
 
 
 /**
@@ -8,22 +10,30 @@ import {GetTheme} from "../../wailsjs/go/utils/Settings";
 
 export default function ThemeChange(): JSXElement {
   const [theme, setTheme] = createSignal<string>('');
+  const {message, type, showToast} = useToast();
 
   // 页面加载时读取当前主题
   onMount(async () => {
     const savedTheme: string = await GetTheme();
     setTheme(savedTheme);
+    document.documentElement.setAttribute('data-theme', savedTheme);
   });
 
-  function handleThemeChange(event: Event): void {
+  async function handleThemeChange(event: Event): Promise<void> {
     const target = event.target as HTMLSelectElement;
     const newTheme: string = target.value;
     setTheme(newTheme);
     document.documentElement.setAttribute('data-theme', newTheme);
+    try {
+      await SetTheme(newTheme);
+      showToast(`已切换到 ${newTheme} 主题`, 'success');
+    } catch (err) {
+      showToast(String(err), 'error');
+    }
   }
 
   return (
-    <>
+    <section>
       {/* 主题设置 */}
       <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
@@ -42,6 +52,7 @@ export default function ThemeChange(): JSXElement {
                 <option value="dark">dark - 深色模式</option>
                 <option value="light">light - 浅色模式</option>
                 <option value="cupcake">cupcake - 纸杯蛋糕</option>
+                <option value="caramellatte">caramellatte 焦糖</option>
               </select>
             </label>
             <label class="label">
@@ -52,6 +63,7 @@ export default function ThemeChange(): JSXElement {
           </div>
         </div>
       </div>
-    </>
+      <Toast message={message()} type={type()}/>
+    </section>
   )
 }

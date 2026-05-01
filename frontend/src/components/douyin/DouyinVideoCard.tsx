@@ -1,5 +1,6 @@
 import {type JSXElement, Show} from "solid-js";
 import type {DouyinDownloadItem} from "../../lib/douyinStore.ts";
+import NoCover from "../NoCover.tsx";
 
 export interface DouyinVideoCardItem {
   id: string;
@@ -11,7 +12,6 @@ export interface DouyinVideoCardItem {
   downloadItem: DouyinDownloadItem;
   showImgLabel: boolean;
 }
-
 
 export default function DouyinVideoCard(props: {
   item: DouyinVideoCardItem;
@@ -26,18 +26,11 @@ export default function DouyinVideoCard(props: {
       onClick={props.onClick}
     >
       <div class="relative aspect-3/5 w-full overflow-hidden bg-base-200">
-        <Show
-          when={props.item.cover}
-          fallback={
-            <div class="absolute inset-0 flex items-center justify-center text-xs text-base-content/35">
-              无封面
-            </div>
-          }
-        >
+        <Show when={props.item.cover} fallback={<NoCover/>}>
           <img
             src={props.item.cover}
             class="h-full w-full object-cover"
-            alt=""
+            alt={props.item.title}
             loading="lazy"
             decoding="async"
             referrerPolicy="no-referrer"

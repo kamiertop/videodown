@@ -1,226 +1,218 @@
 import {createFileRoute, useNavigate} from '@tanstack/solid-router'
-import {createResource, createSignal, For, Match, Show, Switch, type JSXElement} from "solid-js";
+import {createResource, createSignal, For, type JSXElement, Match, Show, Switch} from "solid-js";
 import {FollowList, Info} from "../../../../wailsjs/go/api/BiliBili";
 import {model} from "../../../../wailsjs/go/models";
 import UpCommonLayout from "../../../components/bilibili/up/UpCommonLayout";
+import DetailError from "../../../components/DetailError.tsx";
 import IconRefresh from "../../../components/icons/IconRefresh";
 import IconUsers from "../../../components/icons/IconUsers";
 import Toast from "../../../components/Toast";
 import {useToast} from "../../../hooks/useToast";
-import DetailError from "../../../components/DetailError.tsx";
 
 const PAGE_SIZE = 30;
 
 export const Route = createFileRoute('/bilibili/up/')({
-    component: UpIndex,
+  component: UpIndex,
 })
 
 function UpIndex(): JSXElement {
-    const navigate = useNavigate();
-    const [parsing, setParsing] = createSignal<boolean>(false);
-    const [page, setPage] = createSignal<number>(1);
-    const {message, type, showToast} = useToast();
-    const [searchInput, setSearchInput] = createSignal<string>('');
-    const [parsedInfo, setParsedInfo] = createSignal<model.UserInfoData | null>(null);
-    const [followData, {refetch}] = createResource(
-        page,
-        async (pn) => await FollowList(pn, PAGE_SIZE),
-    );
-    
-    function totalPages(): number {
-        const total: number = followData()?.total ?? 0;
-        return Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const navigate = useNavigate();
+  const [parsing, setParsing] = createSignal<boolean>(false);
+  const [page, setPage] = createSignal<number>(1);
+  const {message, type, showToast} = useToast();
+  const [searchInput, setSearchInput] = createSignal<string>('');
+  const [parsedInfo, setParsedInfo] = createSignal<model.UserInfoData | null>(null);
+  const [followData, {refetch}] = createResource(
+    page,
+    async (pn) => await FollowList(pn, PAGE_SIZE),
+  );
+
+  function totalPages(): number {
+    const total: number = followData()?.total ?? 0;
+    return Math.max(1, Math.ceil(total / PAGE_SIZE));
+  }
+
+  const goToUp = (mid: number) => {
+    void navigate({to: '/bilibili/up/$mid', params: {mid: String(mid)}});
+  };
+
+  const handleSearch = async () => {
+    const raw = searchInput().trim();
+    if (!raw) return;
+
+    if (parsing()) return;
+    // “解析”是一次性动作：避免用户连点导致重复请求与状态抖动。
+    setParsing(true);
+    setParsedInfo(null);
+    try {
+      const info = await Info(raw);
+      setParsedInfo(info);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : String(error), 'error');
+    } finally {
+      setParsing(false);
     }
+  };
 
-    const goToUp = (mid: number) => {
-        void navigate({to: '/bilibili/up/$mid', params: {mid: String(mid)}});
-    };
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Enter') void handleSearch();
+  };
 
-    const handleSearch = async () => {
-        const raw = searchInput().trim();
-        if (!raw) return;
-
-        if (parsing()) return;
-        // “解析”是一次性动作：避免用户连点导致重复请求与状态抖动。
-        setParsing(true);
-        setParsedInfo(null);
-        try {
-            const info = await Info(raw);
-            setParsedInfo(info);
-        } catch (error) {
-            showToast(error instanceof Error ? error.message : String(error), 'error');
-        } finally {
-            setParsing(false);
-        }
-    };
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === 'Enter') void handleSearch();
-    };
-
-    return (
-        <UpCommonLayout
-            headerLeft={
-                <div class="flex items-center gap-2">
-                    <h2 class="text-sm font-bold text-base-content">我的关注</h2>
-                    <Show when={followData()}>
-                        <span
-                            class="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold tabular-nums text-primary">
-                            {followData()!.total}
-                        </span>
-                    </Show>
-                    <button
-                        class="flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-base-200 disabled:cursor-not-allowed"
-                        onClick={() => void refetch()}
-                        disabled={followData.loading}
-                        title="刷新"
-                    >
-                        <IconRefresh class={`h-3.5 w-3.5 text-base-content/50 ${followData.loading ? 'animate-spin' : ''}`}/>
-                    </button>
+  return (
+    <UpCommonLayout
+      headerLeft={
+        <div class="flex items-center gap-2">
+          <h2 class="text-sm font-bold text-base-content">我的关注</h2>
+          <Show when={followData()}>
+            <span class="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold tabular-nums text-primary">
+                {followData()!.total}
+            </span>
+          </Show>
+          <button
+            class="flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-base-200 disabled:cursor-not-allowed"
+            onClick={() => void refetch()}
+            disabled={followData.loading}
+          >
+            <IconRefresh class={`h-3.5 w-3.5 text-base-content/50 ${followData.loading ? 'animate-spin' : ''}`}/>
+          </button>
+        </div>
+      }
+      headerRight={
+        <div class="flex items-center gap-2">
+          <input
+            type="text"
+            class="input input-sm input-bordered w-72"
+            placeholder="输入 UP主 mid / 空间链接（支持不带 https）"
+            value={searchInput()}
+            onInput={(e) => setSearchInput(e.currentTarget.value)}
+            onKeyDown={handleKeyDown}
+          />
+          <button class="btn btn-primary btn-sm" onClick={() => void handleSearch()} disabled={parsing()}>
+            <Show when={!parsing()} fallback={<span class="loading loading-spinner loading-xs"></span>}>
+              解析
+            </Show>
+          </button>
+        </div>
+      }
+      headerBelow={
+        parsedInfo() ? (
+          <div class="rounded-xl border border-base-300 bg-base-100 px-4 py-3">
+            <div class="flex flex-wrap items-center gap-3 rounded-xl border border-base-300 bg-base-200/30 p-3">
+              <div class="h-10 w-10 overflow-hidden rounded-full bg-base-200 ring-2 ring-base-200">
+                <img
+                  src={parsedInfo()!.face}
+                  alt={parsedInfo()!.name}
+                  referrerPolicy="no-referrer"
+                  class="h-full w-full object-cover"
+                />
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="truncate text-sm font-bold text-base-content">{parsedInfo()!.name}</span>
+                  <span class="badge badge-outline badge-sm">mid: {parsedInfo()!.mid}</span>
+                  <span class={`badge badge-sm ${parsedInfo()!.is_followed ? 'badge-primary' : 'badge-ghost'}`}>
+                      {parsedInfo()!.is_followed ? '已关注' : '未关注'}
+                  </span>
+                  <span class="badge badge-outline badge-sm">Lv.{parsedInfo()!.level}</span>
                 </div>
-            }
-            headerRight={
-                <div class="flex items-center gap-2">
-                    <input
-                        type="text"
-                        class="input input-sm input-bordered w-72"
-                        placeholder="输入 UP主 mid / 空间链接（支持不带 https）"
-                        value={searchInput()}
-                        onInput={(e) => setSearchInput(e.currentTarget.value)}
-                        onKeyDown={handleKeyDown}
-                    />
-                    <button class="btn btn-primary btn-sm" onClick={() => void handleSearch()} disabled={parsing()}>
-                        <Show when={!parsing()} fallback={<span class="loading loading-spinner loading-xs"></span>}>
-                            解析
-                        </Show>
-                    </button>
+                <div class="mt-0.5 line-clamp-1 text-xs text-base-content/60">
+                  {parsedInfo()!.sign?.trim() ? parsedInfo()!.sign : '这个人很懒，什么也没有写~'}
                 </div>
-            }
-            headerBelow={
-                parsedInfo() ? (
-                    <div class="rounded-xl border border-base-300 bg-base-100 px-4 py-3">
-                        <div
-                            class="flex flex-wrap items-center gap-3 rounded-xl border border-base-300 bg-base-200/30 p-3">
-                            <div class="h-10 w-10 overflow-hidden rounded-full bg-base-200 ring-2 ring-base-200">
-                                <img
-                                    src={parsedInfo()!.face}
-                                    alt={parsedInfo()!.name}
-                                    referrerPolicy="no-referrer"
-                                    class="h-full w-full object-cover"
-                                />
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <div class="flex flex-wrap items-center gap-2">
-                                    <span
-                                        class="truncate text-sm font-bold text-base-content">{parsedInfo()!.name}</span>
-                                    <span class="badge badge-outline badge-sm">mid: {parsedInfo()!.mid}</span>
-                                    <span
-                                        class={`badge badge-sm ${parsedInfo()!.is_followed ? 'badge-primary' : 'badge-ghost'}`}>
-                                        {parsedInfo()!.is_followed ? '已关注' : '未关注'}
-                                    </span>
-                                    <span class="badge badge-outline badge-sm">Lv.{parsedInfo()!.level}</span>
-                                </div>
-                                <div class="mt-0.5 line-clamp-1 text-xs text-base-content/60">
-                                    {parsedInfo()!.sign?.trim() ? parsedInfo()!.sign : '这个人很懒，什么也没有写~'}
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <button class="btn btn-outline btn-sm" onClick={() => setParsedInfo(null)}>
-                                    清除
-                                </button>
-                                <button class="btn btn-primary btn-sm" onClick={() => goToUp(parsedInfo()!.mid)}>
-                                    进入详情
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ) : undefined
-            }
-        >
-            {/* 关注列表 */}
-            <div class="min-h-0 flex-1 overflow-auto rounded-xl border border-base-300 bg-base-100">
-                <Switch>
-                    <Match when={followData.loading}>
-                        <div class="flex h-full items-center justify-center">
-                            <span class="loading loading-spinner loading-md text-primary"></span>
-                        </div>
-                    </Match>
-                    <Match when={followData.error}>
-                        <DetailError message={String(followData.error)} onRetry={() => void refetch()}/>
-                    </Match>
-                    <Match when={!followData()?.list?.length}>
-                        <div class="flex h-full items-center justify-center text-base-content/40">
-                            <div class="text-center">
-                                <IconUsers class="mx-auto h-14 w-14"/>
-                                <p class="mt-3 text-sm font-semibold text-base-content/60">暂无关注</p>
-                                <p class="mt-1 text-xs text-base-content/50">可以通过上方搜索框直接输入 UP主 mid
-                                    解析</p>
-                            </div>
-                        </div>
-                    </Match>
-                    <Match when={followData()?.list?.length}>
-                        <div class="p-4">
-                            <div class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                                <For each={followData()!.list}>
-                                    {(up) => {
-                                        return (
-                                            <button
-                                                class="group flex flex-col items-center gap-2 rounded-xl border border-base-300 bg-base-100 p-4 transition-all duration-150 hover:-translate-y-px hover:border-primary/40 hover:shadow-md active:scale-[0.98]"
-                                                onClick={() => goToUp(up.mid)}
-                                            >
-                                                <div class="relative">
-                                                    <div
-                                                        class="h-16 w-16 overflow-hidden rounded-full bg-base-200 ring-2 ring-base-200 transition group-hover:ring-primary/30">
-                                                        <img
-                                                            src={up.face}
-                                                            alt={up.uname}
-                                                            referrerPolicy="no-referrer"
-                                                            class="h-full w-full object-cover"
-                                                            loading="lazy"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <span
-                                                    class="max-w-full truncate text-sm font-semibold text-base-content group-hover:text-primary">
-                                                    {up.uname}
-                                                </span>
-                                                <span
-                                                    class="line-clamp-2 max-w-full text-center text-xs leading-relaxed text-base-content/50">
-                                                    {up.sign || '这个人很懒，什么也没有写~'}
-                                                </span>
-                                            </button>
-                                        );
-                                    }}
-                                </For>
-                            </div>
-
-                            {/* 翻页 */}
-                            <Show when={totalPages() > 1}>
-                                <div class="mt-4 flex items-center justify-center gap-2">
-                                    <button
-                                        class="btn btn-outline btn-sm"
-                                        disabled={page() <= 1}
-                                        onClick={() => setPage(page() - 1)}
-                                    >
-                                        上一页
-                                    </button>
-                                    <span class="text-sm tabular-nums text-base-content/70">
-                                        {page()} / {totalPages()}
-                                    </span>
-                                    <button
-                                        class="btn btn-outline btn-sm"
-                                        disabled={page() >= totalPages()}
-                                        onClick={() => setPage(page() + 1)}
-                                    >
-                                        下一页
-                                    </button>
-                                </div>
-                            </Show>
-                        </div>
-                    </Match>
-                </Switch>
+              </div>
+              <div class="flex items-center gap-2">
+                <button class="btn btn-outline btn-sm" onClick={() => setParsedInfo(null)}>
+                  清除
+                </button>
+                <button class="btn btn-primary btn-sm" onClick={() => goToUp(parsedInfo()!.mid)}>
+                  进入详情
+                </button>
+              </div>
             </div>
-            <Toast message={message()} type={type()}/>
-        </UpCommonLayout>
-    );
+          </div>
+        ) : undefined
+      }
+    >
+      {/* 关注列表 */}
+      <div class="min-h-0 flex-1 overflow-auto rounded-xl border border-base-300 bg-base-100">
+        <Switch>
+          <Match when={followData.loading}>
+            <div class="flex h-full items-center justify-center">
+              <span class="loading loading-spinner loading-md text-primary"></span>
+            </div>
+          </Match>
+          <Match when={followData.error}>
+            <DetailError message={String(followData.error)} onRetry={() => void refetch()}/>
+          </Match>
+          <Match when={!followData()?.list?.length}>
+            <div class="flex h-full items-center justify-center text-base-content/40">
+              <div class="text-center">
+                <IconUsers class="mx-auto h-14 w-14"/>
+                <p class="mt-3 text-sm font-semibold text-base-content/60">暂无关注</p>
+                <p class="mt-1 text-xs text-base-content/50">可以通过上方搜索框直接输入 UP主 mid
+                  解析</p>
+              </div>
+            </div>
+          </Match>
+          <Match when={followData()?.list?.length}>
+
+            <div class="p-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              <For each={followData()!.list}>
+                {(up): JSXElement => {
+                  return (
+                    <button
+                      class="group flex flex-col items-center gap-2 rounded-xl border border-base-300 bg-base-100 p-4 transition-all duration-150 hover:-translate-y-px hover:border-primary/40 hover:shadow-md active:scale-[0.98]"
+                      onClick={() => goToUp(up.mid)}
+                    >
+                      <div class="relative">
+                        <div
+                          class="h-16 w-16 overflow-hidden rounded-full bg-base-200 ring-2 ring-base-200 transition group-hover:ring-primary/30">
+                          <img
+                            src={up.face}
+                            alt={up.uname}
+                            referrerPolicy="no-referrer"
+                            class="h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
+                      </div>
+                      <span class="truncate text-sm font-semibold text-base-content group-hover:text-primary">
+                        {up.uname}
+                      </span>
+                      <span class="line-clamp-2 text-center text-xs leading-relaxed text-base-content/50">
+                        {up.sign}
+                      </span>
+                    </button>
+                  );
+                }}
+              </For>
+            </div>
+
+            {/* 翻页 */}
+            <Show when={totalPages() > 1}>
+              <div class="mt-4 p-4 flex items-center justify-center gap-2">
+                <button
+                  class="btn btn-outline btn-sm"
+                  disabled={page() <= 1}
+                  onClick={() => setPage(page() - 1)}
+                >
+                  上一页
+                </button>
+                <span class="text-sm tabular-nums text-base-content/70">
+                    {page()} / {totalPages()}
+                  </span>
+                <button
+                  class="btn btn-outline btn-sm"
+                  disabled={page() >= totalPages()}
+                  onClick={() => setPage(page() + 1)}
+                >
+                  下一页
+                </button>
+              </div>
+            </Show>
+          </Match>
+        </Switch>
+      </div>
+      <Toast message={message()} type={type()}/>
+    </UpCommonLayout>
+  );
 }
