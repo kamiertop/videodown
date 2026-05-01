@@ -39,7 +39,7 @@ func (d *Douyin) CollectList(cursor int) (model.CollectListResponse, error) {
 	return resp, nil
 }
 
-// FavoriteVideo 收藏的视频列表
+// FavoriteVideo 收藏的视频列表，视频列表包含收藏夹中的
 func (d *Douyin) FavoriteVideo(count, cursor uint) (model.FavoriteVideoResponse, error) {
 	var resp model.FavoriteVideoResponse
 
@@ -70,6 +70,47 @@ func (d *Douyin) FavoriteVideo(count, cursor uint) (model.FavoriteVideoResponse,
 	if err != nil || resp.StatusCode != 0 {
 		d.logger.Errorf("request favorite video failed: %v", err)
 		return resp, errors.New("请求收藏视频列表失败")
+	}
+
+	return resp, nil
+}
+
+// FavoritesVideoList 获取指定收藏夹中的视频列表。
+// 收藏夹 ID 可能超过 JS 安全整数范围，前端应传 collects_id_str，避免 Wails number 精度丢失。
+func (d *Douyin) FavoritesVideoList(collectID string, cursor, count int) (model.FavoriteVideoResponse, error) {
+	var resp model.FavoriteVideoResponse
+	if collectID == "" {
+		return resp, errors.New("收藏夹ID为空")
+	}
+	params, err := d.publicQueryParams()
+	if err != nil {
+		d.logger.Errorf("request public query params failed: %v", err)
+		return resp, fmt.Errorf("获取公共查询参数失败: %w", err)
+	}
+	headers, err := d.publicHeaders()
+	if err != nil {
+		d.logger.Errorf("request public header failed: %v", err)
+		return resp, fmt.Errorf("获取公共请求头失败: %w", err)
+	}
+	err = d.client.
+		Get("https://www-hj.douyin.com/aweme/v1/web/collects/video/list/").
+		SetQueryParamsAnyType(params).
+		SetQueryParamsAnyType(map[string]any{
+			"collects_id": collectID, // 收藏夹ID
+			"cursor":      cursor,    // 偏移量，默认是0，即从第0条数据开始返回
+			"count":       count,     // 每次请求返回的数据条数，默认是10
+		}).
+		SetHeaders(headers).
+		Do().
+		Into(&resp)
+	if err != nil {
+		d.logger.Errorf("request favorites video list failed: %v", err)
+		return resp, err
+	}
+
+	if resp.StatusCode != 0 {
+		d.logger.Errorf("request favorites video list failed, status code: %d", resp.StatusCode)
+		return resp, fmt.Errorf("请求收藏夹视频列表失败: %d", resp.StatusCode)
 	}
 
 	return resp, nil

@@ -1,20 +1,13 @@
-import {createFileRoute, Link, useNavigate} from '@tanstack/solid-router'
-import {createMemo, createResource, createSignal, type JSXElement, Match, Show, Switch} from "solid-js";
-import {createStore} from "solid-js/store";
+import {createFileRoute, Link} from '@tanstack/solid-router'
+import {createResource, createSignal, type JSXElement, Match, Show, Switch} from "solid-js";
 import {User, UserVideoList} from "../../../../wailsjs/go/api/Douyin";
 import {model} from "../../../../wailsjs/go/models";
-import DetailError from "../../../components/DetailError.tsx";
-import DetailLoading from "../../../components/DetailLoading.tsx";
-import DouyinMixPanel from "../../../components/douyin/DouyinMixPanel.tsx";
-import type {DouyinVideoCardItem} from "../../../components/douyin/DouyinVideoCard.tsx";
-import DouyinVideoGrid from "../../../components/douyin/DouyinVideoGrid.tsx";
-import EmptyState from "../../../components/EmptyState.tsx";
+import MixPanel from "../../../components/douyin/MixPanel.tsx";
+import VideoContentPanel from "../../../components/douyin/VideoContentPanel.tsx";
 import IconRefresh from "../../../components/icons/IconRefresh.tsx";
 import Toast from "../../../components/Toast.tsx";
 import {useToast} from "../../../hooks/useToast.ts";
-import {defaultDouyinVideoOption, douyinImageURLs, douyinVideoOptions, isDouyinImageAlbum} from "../../../lib/douyinMedia.ts";
-import {addDouyinVideos, type DouyinDownloadItem} from "../../../lib/douyinStore.ts";
-import {formatCount, formatDate, formatDuration} from "../../../lib/format.ts";
+import {formatCount} from "../../../lib/format.ts";
 
 export const Route = createFileRoute('/douyin/user/$secUserId')({
   component: DouyinUserPage,
@@ -31,32 +24,13 @@ function avatarUrl(user: model.User | undefined): string {
     ?? "";
 }
 
-function normalizeDouyinDuration(value?: number): number {
-  if (!value || value <= 0) return 0;
-  return value >= 1000 ? Math.floor(value / 1000) : value;
-}
-
-function awemeKey(item: model.AwemeItem, index: number): string {
-  return item.aweme_id || item.group_id || item.sec_item_id || `${item.author_user_id || "item"}-${index}`;
-}
-
-function awemeCover(item: model.AwemeItem): string {
-  return item.video.cover.url_list[0] || item.video.origin_cover.url_list[0] || "";
-}
-
-function awemeTitle(item: model.AwemeItem): string {
-  return item.item_title || item.desc || item.caption || `作品 ${item.aweme_id || ""}`.trim();
-}
-
 function DouyinUserPage(): JSXElement {
   const params = Route.useParams();
   const secUserId = () => params().secUserId;
-  const navigate = useNavigate();
   const [activeTab, setActiveTab] = createSignal<UserTab>("video");
   const [loadingMore, setLoadingMore] = createSignal(false);
+  // 用户合集列表由 MixPanel 拉取；刷新按钮通过 refreshKey 通知它重置并重新请求。
   const [seriesRefreshKey, setSeriesRefreshKey] = createSignal(0);
-  const [allSelected, setAllSelected] = createSignal(false);
-  const [selectedMap, setSelectedMap] = createStore<Record<string, true>>({});
   const {message, type, showToast} = useToast();
   const [userResult, {refetch: refetchUser}] = createResource(secUserId, User);
   const [videoResult, {refetch: refetchVideos, mutate: mutateVideos}] = createResource(
@@ -66,98 +40,6 @@ function DouyinUserPage(): JSXElement {
 
   const user = () => userResult()?.user;
   const videos = () => videoResult()?.aweme_list ?? [];
-  const videoItems = createMemo<DouyinVideoCardItem[]>(() =>
-    videos().map((item, index): DouyinVideoCardItem => {
-      const duration = normalizeDouyinDuration(item.video?.duration ?? item.duration ?? 0);
-      const awemeId = item.aweme_id || item.group_id || item.sec_item_id || `${item.author_user_id}-${index}`;
-      const title = awemeTitle(item);
-      const cover = awemeCover(item);
-      const authorName = item.author?.nickname || user()?.nickname || "未知作者";
-      const videoOptions = douyinVideoOptions(item);
-      const selectedVideoOption = defaultDouyinVideoOption(videoOptions);
-      return {
-        id: awemeKey(item, index),
-        cover,
-        title,
-        author: authorName,
-        publishText: formatDate(item.create_time ?? 0),
-        durationText: formatDuration(duration),
-        downloadItem: {
-          awemeId,
-          sourceKind: "用户作品",
-          sourceName: user()?.nickname || authorName,
-          title,
-          cover,
-          duration,
-          authorName,
-          publishTime: item.create_time ?? 0,
-          diggCount: item.statistics?.digg_count ?? 0,
-          collectCount: item.statistics?.collect_count ?? 0,
-          link: awemeId ? `https://www.douyin.com/video/${awemeId}` : undefined,
-          videoURL: selectedVideoOption?.url,
-          videoOptions,
-          selectedVideoOptionId: selectedVideoOption?.id,
-          imageURLs: douyinImageURLs(item),
-        },
-        showImgLabel: isDouyinImageAlbum(item),
-      }
-    }),
-  );
-  const selectedKeys = createMemo(() => Object.keys(selectedMap));
-  const selectedCount = createMemo(() => {
-    if (allSelected()) return Math.max(0, videoItems().length - selectedKeys().length);
-    return selectedKeys().length;
-  });
-
-  function isSelected(id: string): boolean {
-    if (allSelected()) return !selectedMap[id];
-    return selectedMap[id];
-  }
-
-  function allVideosSelected(): boolean {
-    return videoItems().length > 0 && selectedCount() === videoItems().length;
-  }
-
-  function toggleSelect(id: string): void {
-    if (selectedMap[id]) setSelectedMap(id, undefined!);
-    else setSelectedMap(id, true);
-  }
-
-  function clearSelection(): void {
-    setAllSelected(false);
-    for (const id of Object.keys(selectedMap)) setSelectedMap(id, undefined!);
-  }
-
-  function toggleSelectAll(): void {
-    if (allVideosSelected()) {
-      clearSelection();
-      return;
-    }
-    setAllSelected(true);
-    for (const id of Object.keys(selectedMap)) setSelectedMap(id, undefined!);
-  }
-
-  function cardClass(id: string): string {
-    if (allSelected()) {
-      return selectedMap[id]
-        ? "border-2 border-base-300 bg-base-100 opacity-70"
-        : "border-2 border-transparent bg-base-100 ring-1 ring-base-300";
-    }
-    return selectedMap[id]
-      ? "border-2 border-success bg-success/5 shadow-sm shadow-success/15"
-      : "border-2 border-transparent bg-base-100 ring-1 ring-base-300";
-  }
-
-  const selectedDownloadItems = createMemo(() =>
-    videoItems().filter(item => isSelected(item.id)).map(item => item.downloadItem),
-  );
-
-  async function enqueueAndGoDownload(items: DouyinDownloadItem[]): Promise<void> {
-    if (items.length === 0) return;
-    addDouyinVideos(items);
-    clearSelection();
-    await navigate({to: "/douyin/download"});
-  }
 
   function hasMore(): boolean {
     return Number(videoResult()?.has_more ?? 0) > 0;
@@ -170,6 +52,7 @@ function DouyinUserPage(): JSXElement {
     setLoadingMore(true);
     try {
       const next = await UserVideoList(secUserId(), USER_VIDEO_PAGE_SIZE, current.max_cursor ?? videos().length);
+      // 用户作品接口使用 max_cursor 分页，追加时保留前面已经加载的作品。
       mutateVideos(model.UserVideoListResponse.createFrom({
         ...next,
         aweme_list: [...videos(), ...(next.aweme_list ?? [])],
@@ -180,8 +63,8 @@ function DouyinUserPage(): JSXElement {
   }
 
   async function reload(): Promise<void> {
-    clearSelection();
     if (activeTab() === "series") {
+      // 合集 tab 的数据不在当前路由组件里，靠 refreshKey 让子组件自行刷新。
       setSeriesRefreshKey((value) => value + 1);
       await refetchUser();
       return;
@@ -223,7 +106,7 @@ function DouyinUserPage(): JSXElement {
                     {user()?.nickname || "抖音用户"}
                   </span>
                   <span
-                    class="badge badge-outline badge-sm">作品 {formatCount(user()?.aweme_count ?? videoItems().length)}</span>
+                    class="badge badge-outline badge-sm">作品 {formatCount(user()?.aweme_count ?? videos().length)}</span>
                   <span class="badge badge-outline badge-sm">粉丝 {formatCount(user()?.follower_count ?? 0)}</span>
                   <Show when={user()?.ip_location}>
                     <span class="badge badge-ghost badge-sm">{user()?.ip_location}</span>
@@ -275,39 +158,25 @@ function DouyinUserPage(): JSXElement {
             <Switch>
               {/*左侧视频网格*/}
               <Match when={activeTab() === "video"}>
-                <Switch>
-                  <Match when={userResult.loading || videoResult.loading}>
-                    <DetailLoading/>
-                  </Match>
-                  <Match when={userResult.error || videoResult.error}>
-                    <DetailError message={String(userResult.error || videoResult.error)} onRetry={() => void reload()}/>
-                  </Match>
-                  <Match when={videoItems().length === 0}>
-                    <EmptyState title="暂无作品" description="该用户暂未返回可展示的视频。"/>
-                  </Match>
-                  <Match when={true}>
-                    <DouyinVideoGrid
-                      title="全部作品"
-                      countText={`${videoItems().length} 个已加载`}
-                      items={videoItems()}
-                      selectedCount={selectedCount()}
-                      allSelected={allVideosSelected()}
-                      selectedClass={cardClass}
-                      onToggleItem={toggleSelect}
-                      onToggleAll={toggleSelectAll}
-                      onClearSelection={clearSelection}
-                      onDownloadSelected={() => void enqueueAndGoDownload(selectedDownloadItems())}
-                      onDownloadAll={() => void enqueueAndGoDownload(videoItems().map(item => item.downloadItem))}
-                      hasMore={hasMore()}
-                      loadingMore={loadingMore()}
-                      onLoadMore={() => void loadMore()}
-                    />
-                  </Match>
-                </Switch>
+                {/* 用户作品和收藏视频共用 VideoContentPanel，区别只在 kind/sourceName/fallbackAuthor。 */}
+                <VideoContentPanel
+                  kind="user-video"
+                  loading={userResult.loading || videoResult.loading}
+                  error={(userResult.error || videoResult.error) ? String(userResult.error || videoResult.error) : ""}
+                  onRetry={() => void reload()}
+                  items={videos()}
+                  sourceName={user()?.nickname || "用户作品"}
+                  fallbackAuthor={user()?.nickname || "未知作者"}
+                  showToast={showToast}
+                  hasMore={hasMore()}
+                  loadingMore={loadingMore()}
+                  onLoadMore={() => void loadMore()}
+                />
               </Match>
               {/*右侧合集网格*/}
               <Match when={activeTab() === "series"}>
-                <DouyinMixPanel
+                {/* 传入 secUserId 后，MixPanel 会切到“用户合集”接口和文案。 */}
+                <MixPanel
                   active={activeTab() === "series"}
                   userSecUserId={secUserId()}
                   refreshKey={seriesRefreshKey()}

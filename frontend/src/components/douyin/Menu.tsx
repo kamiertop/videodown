@@ -13,11 +13,15 @@ interface DouyinAccountSummary {
 }
 
 export default function Menu(): JSXElement {
+  // account 只保存菜单渲染需要的昵称和头像，不保存完整 Profile 响应。
   const [account, setAccount] = createSignal<DouyinAccountSummary | null>(null);
+  // 头像不存在时用抖音默认图标，避免菜单底部出现空白。
   const accountAvatar = () => account()?.avatar || douyinAvatarFallback;
+  // title 用于鼠标悬停显示当前登录账号。
   const accountTitle = () => account()?.nickname ? `账号：${account()?.nickname}` : "账号";
 
   onMount(() => {
+    // 侧栏常驻，账号页刷新成功后会广播头像/昵称；这里缓存一份，避免切页后头像闪回默认图。
     const cached = localStorage.getItem(DOUYIN_ACCOUNT_SUMMARY_KEY);
     if (cached) {
       try {
@@ -28,6 +32,7 @@ export default function Menu(): JSXElement {
     }
 
     const updateAvatar = (event: Event) => {
+      // profile 页通过 douyin-profile-updated 事件同步账号摘要，不让菜单直接依赖 profile 请求。
       const detail = (event as CustomEvent<DouyinAccountSummary | null>).detail;
       setAccount(detail);
       if (detail?.avatar || detail?.nickname) {
@@ -41,6 +46,7 @@ export default function Menu(): JSXElement {
   });
 
   const menuItems = [
+    // 菜单项都保持图标 + 短文字；账号入口固定在底部单独处理。
     {
       name: "下载",
       link: "/douyin/download",
@@ -78,6 +84,7 @@ export default function Menu(): JSXElement {
   ];
 
   return (
+    // 抖音一级菜单固定窄侧栏；中间菜单项滚动风险小，账号入口固定在底部。
     <div
       class="flex h-full w-22 shrink-0 flex-col gap-1.5 overflow-hidden border-r border-base-300/90 bg-linear-to-b from-base-100 via-base-100 to-base-200/50 px-2 py-3">
       <p
@@ -87,6 +94,7 @@ export default function Menu(): JSXElement {
 
       <For each={menuItems}>
         {(item) => (
+          // Link 的 activeProps 由 TanStack Router 根据当前路由自动应用。
           <Link
             to={item.link}
             title={item.name}
@@ -109,6 +117,7 @@ export default function Menu(): JSXElement {
       </For>
 
       <div class="mt-auto border-t border-base-300/70 pt-3">
+        {/* 底部账号入口不放进 menuItems，因为它要展示头像和账号状态。 */}
         <Link
           to="/douyin/profile"
           title={accountTitle()}

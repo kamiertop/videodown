@@ -21,6 +21,8 @@ export function DownloadVideos(arg1:Array<api.DouyinDownloadTask>):Promise<api.D
 
 export function FavoriteVideo(arg1:number,arg2:number):Promise<model.FavoriteVideoResponse>;
 
+export function FavoritesVideoList(arg1:string,arg2:number,arg3:number):Promise<model.FavoriteVideoResponse>;
+
 export function FollowList(arg1:number):Promise<model.FollowResponse>;
 
 export function GetCookie():Promise<string>;

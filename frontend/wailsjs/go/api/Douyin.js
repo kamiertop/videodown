@@ -38,6 +38,10 @@ export function FavoriteVideo(arg1, arg2) {
   return window['go']['api']['Douyin']['FavoriteVideo'](arg1, arg2);
 }
 
+export function FavoritesVideoList(arg1, arg2, arg3) {
+  return window['go']['api']['Douyin']['FavoritesVideoList'](arg1, arg2, arg3);
+}
+
 export function FollowList(arg1) {
   return window['go']['api']['Douyin']['FollowList'](arg1);
 }

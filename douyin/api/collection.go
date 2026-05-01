@@ -42,6 +42,7 @@ func (d *Douyin) Collection(count, cursor int) (model.CollectionResponse, error)
 	return resp, nil
 }
 
+// CollectionList 合集视频列表
 func (d *Douyin) CollectionList(secUserID, seriesID string, cursor, count int) (model.CollectionListResponse, error) {
 	var resp model.CollectionListResponse
 

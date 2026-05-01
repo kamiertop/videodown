@@ -27,7 +27,7 @@ type CollectsList struct {
 	States                  int      `json:"states"`
 	Status                  int      `json:"status"`
 	SystemType              int      `json:"system_type"`
-	TotalNumber             int      `json:"total_number"` //
+	TotalNumber             int      `json:"total_number"` // 收藏夹内视频总数
 	UserID                  uint     `json:"user_id"`
 	UserIDStr               string   `json:"user_id_str"` // 用户ID的字符串形式
 	UserInfo                UserInfo `json:"user_info"`
