@@ -45,7 +45,7 @@ export function removeVideoAfterDownloadSuccess(bvid: string, cid?: number): voi
   setVideoList((prev) =>
     prev.filter((item) => {
       if (item.bvid?.trim().toUpperCase() !== bv) return true;
-      if (part) return Number(item.cid) !== cid;
+      if (part) return item.cid != null && item.cid > 0 && Number(item.cid) !== cid;
       const ic = item.cid;
 
       return ic != null && ic > 0;

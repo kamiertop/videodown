@@ -1,29 +1,20 @@
 import {createFileRoute} from '@tanstack/solid-router'
 import {createResource, For, type JSXElement, Match, Show, Switch} from "solid-js";
-import {DeleteDownloadHistory, DownloadHistory} from "../../../wailsjs/go/api/BiliBili";
+import {ClearDownloadHistory, DeleteDownloadHistory, DownloadHistory} from "../../../wailsjs/go/api/BiliBili";
+import {OpenDownloadLocation, OpenLocalFile} from "../../../wailsjs/go/utils/Settings";
 import DetailError from "../../components/DetailError.tsx";
 import IconChat from "../../components/icons/IconChat";
 import IconEye from "../../components/icons/IconEye";
+import IconFolderOpen from "../../components/icons/IconFolderOpen";
+import IconPlayCircle from "../../components/icons/IconPlayCircle";
 import Toast from "../../components/Toast.tsx";
 import {useToast} from "../../hooks/useToast.ts";
 import {formatCount, formatDate, formatDuration} from "../../lib/format";
+import {formatDownloadedAt} from "../../utils/format.ts";
 
 export const Route = createFileRoute('/bilibili/history')({
   component: History,
 })
-
-function formatDownloadedAt(value: any): string {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, "0");
-  const d = String(date.getDate()).padStart(2, "0");
-  const hh = String(date.getHours()).padStart(2, "0");
-  const mm = String(date.getMinutes()).padStart(2, "0");
-  const ss = String(date.getSeconds()).padStart(2, "0");
-  return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
-}
 
 function History(): JSXElement {
   const {message, type, showToast} = useToast();
@@ -45,6 +36,34 @@ function History(): JSXElement {
     }
   }
 
+  async function clearHistory(): Promise<void> {
+    if (historyItems().length === 0) return;
+    if (!window.confirm("确定要删除所有下载历史吗？本地文件不会被删除。")) return;
+    try {
+      await ClearDownloadHistory();
+      mutate([]);
+      showToast("下载历史已清空", "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : String(error), "error");
+    }
+  }
+
+  async function openLocalFile(path: string): Promise<void> {
+    try {
+      await OpenLocalFile(path);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : String(error), "error");
+    }
+  }
+
+  async function openLocation(path: string): Promise<void> {
+    try {
+      await OpenDownloadLocation(path);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : String(error), "error");
+    }
+  }
+
   return (
     <div class="flex h-full flex-col p-4">
       <section class="mb-3 flex items-center justify-between rounded-lg border border-base-300 bg-base-100 px-4 py-3">
@@ -54,9 +73,24 @@ function History(): JSXElement {
             已记录 {historyItems().length} 个视频
           </p>
         </div>
-        <button class="btn btn-outline btn-sm" type="button" onClick={() => void refetch()} disabled={items.loading}>
-          {items.loading ? "刷新中..." : "刷新"}
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            class="btn btn-outline btn-sm"
+            type="button"
+            onClick={() => void refetch()}
+            disabled={items.loading}
+          >
+            {items.loading ? "刷新中..." : "刷新"}
+          </button>
+          <button
+            class="btn btn-outline btn-error btn-sm"
+            type="button"
+            onClick={() => void clearHistory()}
+            disabled={items.loading || historyItems().length === 0}
+          >
+            删除全部
+          </button>
+        </div>
       </section>
 
       <section class="min-h-0 flex-1 overflow-y-auto rounded-lg border border-base-300 bg-base-100">
@@ -105,7 +139,24 @@ function History(): JSXElement {
                           {item.title}
                         </h3>
                         <button
+                          class="btn btn-ghost btn-square btn-xs shrink-0"
+                          type="button"
+                          title="本地打开"
+                          onClick={() => void openLocalFile(item.path)}
+                        >
+                          <IconPlayCircle class="h-4 w-4"/>
+                        </button>
+                        <button
+                          class="btn btn-ghost btn-square btn-xs shrink-0"
+                          type="button"
+                          title="打开所在目录"
+                          onClick={() => void openLocation(item.path)}
+                        >
+                          <IconFolderOpen class="h-4 w-4"/>
+                        </button>
+                        <button
                           class="btn btn-ghost btn-xs shrink-0 text-error"
+                          type="button"
                           onClick={() => void removeHistory(item.cid)}
                         >
                           删除

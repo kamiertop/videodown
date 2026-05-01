@@ -4,7 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	stdRuntime "runtime"
 	"strconv"
+	"strings"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
@@ -221,4 +226,64 @@ func (s *Settings) GetConcurrencyNum() (int, error) {
 func (s *Settings) SetConcurrencyNum(num int) error {
 	s.logger.Infof("Setting concurrency num to %d", num)
 	return s.SetKey(concurrencyNumKey, strconv.Itoa(num))
+}
+
+// OpenDownloadLocation 打开下载历史中的文件位置.
+func (s *Settings) OpenDownloadLocation(path string) error {
+	target := strings.TrimSpace(path)
+	if target == "" {
+		return errors.New("文件路径为空")
+	}
+
+	info, err := os.Stat(target)
+	if err == nil {
+		if !info.IsDir() {
+			target = filepath.Dir(target)
+		}
+	} else if errors.Is(err, os.ErrNotExist) {
+		target = filepath.Dir(target)
+		if _, statErr := os.Stat(target); statErr != nil {
+			return errors.New("文件所在目录不存在")
+		}
+	} else {
+		return err
+	}
+
+	var cmd *exec.Cmd
+	switch stdRuntime.GOOS {
+	case "windows":
+		cmd = exec.Command("explorer", target)
+	case "darwin":
+		cmd = exec.Command("open", target)
+	default:
+		cmd = exec.Command("xdg-open", target)
+	}
+
+	return cmd.Start()
+}
+
+// OpenLocalFile 使用系统默认程序打开下载历史中的本地文件或目录.
+func (s *Settings) OpenLocalFile(path string) error {
+	target := strings.TrimSpace(path)
+	if target == "" {
+		return errors.New("文件路径为空")
+	}
+	if _, err := os.Stat(target); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return errors.New("文件不存在")
+		}
+		return err
+	}
+
+	var cmd *exec.Cmd
+	switch stdRuntime.GOOS {
+	case "windows":
+		cmd = exec.Command("cmd", "/c", "start", "", target)
+	case "darwin":
+		cmd = exec.Command("open", target)
+	default:
+		cmd = exec.Command("xdg-open", target)
+	}
+
+	return cmd.Start()
 }

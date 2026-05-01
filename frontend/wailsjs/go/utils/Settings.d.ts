@@ -77,6 +77,10 @@ export function NewWriteBatch():Promise<badger.WriteBatch>;
 
 export function NewWriteBatchAt(arg1:number):Promise<badger.WriteBatch>;
 
+export function OpenDownloadLocation(arg1:string):Promise<void>;
+
+export function OpenLocalFile(arg1:string):Promise<void>;
+
 export function Opts():Promise<badger.Options>;
 
 export function PrintHistogram(arg1:Array<number>):Promise<void>;
