@@ -52,7 +52,7 @@ VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.d
 - 收藏夹和收藏夹内合集浏览
 - 下载队列、清晰度/音轨选择、下载进度
 - 批量下载收藏夹、合集、系列、UP 主视频
-- 下载历史查看
+- 下载历史查看和删除
 
 ### 抖音
 
@@ -76,15 +76,12 @@ VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.d
 - [ ] 抖音图文下载
 - [ ] `ffmpeg`不存在时自动下载
 - [ ] 自动更新
-- [ ] 下载完成后打开文件所在目录
 
 ## 技术栈
 
 - 桌面框架：Wails v2
-- 后端：Go
+- 后端：Go、BadgerDB、req/v3
 - 前端：SolidJS、TanStack Router、Tailwind CSS、DaisyUI
-- 本地存储：BadgerDB
-- HTTP 客户端：req/v3
 
 ## 开发
 
