@@ -77,9 +77,9 @@ func (d *Douyin) FavoriteVideo(count, cursor uint) (model.FavoriteVideoResponse,
 
 // FavoritesVideoList 获取指定收藏夹中的视频列表。
 // 收藏夹 ID 可能超过 JS 安全整数范围，前端应传 collects_id_str，避免 Wails number 精度丢失。
-func (d *Douyin) FavoritesVideoList(collectID string, cursor, count int) (model.FavoriteVideoResponse, error) {
+func (d *Douyin) FavoritesVideoList(collectIDStr string, cursor, count int) (model.FavoriteVideoResponse, error) {
 	var resp model.FavoriteVideoResponse
-	if collectID == "" {
+	if collectIDStr == "" {
 		return resp, errors.New("收藏夹ID为空")
 	}
 	params, err := d.publicQueryParams()
@@ -96,9 +96,9 @@ func (d *Douyin) FavoritesVideoList(collectID string, cursor, count int) (model.
 		Get("https://www-hj.douyin.com/aweme/v1/web/collects/video/list/").
 		SetQueryParamsAnyType(params).
 		SetQueryParamsAnyType(map[string]any{
-			"collects_id": collectID, // 收藏夹ID
-			"cursor":      cursor,    // 偏移量，默认是0，即从第0条数据开始返回
-			"count":       count,     // 每次请求返回的数据条数，默认是10
+			"collects_id": collectIDStr, // 收藏夹ID
+			"cursor":      cursor,       // 偏移量，默认是0，即从第0条数据开始返回
+			"count":       count,        // 每次请求返回的数据条数，默认是10
 		}).
 		SetHeaders(headers).
 		Do().

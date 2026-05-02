@@ -115,6 +115,8 @@ export default function VideoContentPanel(props: {
   sourceName: string;
   fallbackAuthor: string;
   showToast: (message: string, type?: "success" | "error" | "warning" | "info") => void;
+  refreshing?: boolean;
+  onRefresh?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
   onLoadMore?: () => void;
@@ -251,7 +253,7 @@ export default function VideoContentPanel(props: {
         <DetailError message={props.error!} onRetry={props.onRetry ?? (() => undefined)}/>
       </Match>
       <Match when={videoItems().length === 0}>
-        {/* 空态文案从 kind 推导，调用方不用传重复字符串。 */}
+        {/* 空态文案从 kind 推导，调用方不用传重复字符串*/}
         <div class="flex h-full min-h-0 flex-1 items-center justify-center p-6">
           <EmptyState title={emptyTitle(props.kind)} description={emptyDescription(props.kind)}/>
         </div>
@@ -269,6 +271,8 @@ export default function VideoContentPanel(props: {
           onClearSelection={clearSelection}
           onDownloadSelected={() => void enqueueAndGoDownload(selectedDownloadItems())}
           onDownloadAll={() => void enqueueAndGoDownload(videoItems().map((item) => item.downloadItem))}
+          refreshing={props.refreshing}
+          onRefresh={props.onRefresh}
           hasMore={props.hasMore}
           loadingMore={props.loadingMore}
           onLoadMore={props.onLoadMore}

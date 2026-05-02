@@ -3,16 +3,15 @@ import {type JSXElement, onMount} from "solid-js";
 import {GetTheme} from "../../wailsjs/go/utils/Settings";
 import HomeHeader from "../components/Header.tsx";
 
-
 export const Route = createRootRoute({
   component: RootComponent,
 })
 
 function RootComponent(): JSXElement {
   onMount(async () => {
-    const savedTheme: string = await GetTheme();
-    document.documentElement.setAttribute('data-theme', savedTheme);
-  })
+    const theme: string = await GetTheme().catch(() => 'light');
+    document.documentElement.setAttribute('data-theme', theme);
+  });
   return (
     <div class="h-screen bg-base-200 flex flex-col">
       <HomeHeader/>

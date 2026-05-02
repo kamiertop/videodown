@@ -372,7 +372,7 @@ function ThemeChange(): JSXElement {
 
   // 页面加载时读取当前主题
   onMount(async () => {
-    const savedTheme: string = await GetTheme();
+    const savedTheme: string = await GetTheme().catch(() => 'light');
     setTheme(savedTheme);
     document.documentElement.setAttribute('data-theme', savedTheme);
   });

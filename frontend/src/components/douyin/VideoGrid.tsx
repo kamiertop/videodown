@@ -105,6 +105,8 @@ export default function VideoGrid(props: {
   onClearSelection: () => void;
   onDownloadSelected: () => void;
   onDownloadAll?: () => void;
+  refreshing?: boolean;
+  onRefresh?: () => void;
   hasMore?: boolean;
   loadingMore?: boolean;
   onLoadMore?: () => void;
@@ -169,7 +171,7 @@ export default function VideoGrid(props: {
   }
 
   return (
-    <div class={`flex h-full min-h-0 flex-col ${props.allSelected ? "ring-1 ring-success/40" : ""}`}>
+    <div class={`flex h-full min-h-0 w-full min-w-0 flex-col ${props.allSelected ? "ring-1 ring-success/40" : ""}`}>
       {/* 固定操作栏：选择与下载按钮不跟随卡片区域滚动。 */}
       <div class="flex shrink-0 items-center gap-2 border-b px-4 py-3"
            classList={{"border-success/40 bg-success/5": props.allSelected, "border-base-300": !props.allSelected}}>
@@ -180,6 +182,15 @@ export default function VideoGrid(props: {
         <button class="btn btn-ghost btn-sm" type="button" onClick={props.onToggleAll}>
           {props.allSelected ? "取消全选" : "全选"}
         </button>
+        <Show when={props.onRefresh}>
+          {(onRefresh) => (
+            <button class="btn btn-ghost btn-sm" type="button" onClick={onRefresh()} title="刷新">
+              <Show when={!props.refreshing} fallback={<span class="loading loading-spinner loading-xs"/>}>
+                刷新
+              </Show>
+            </button>
+          )}
+        </Show>
         <Show when={props.selectedCount > 0}>
           <button class="btn btn-ghost btn-sm text-error" type="button" onClick={props.onClearSelection}>
             取消已选

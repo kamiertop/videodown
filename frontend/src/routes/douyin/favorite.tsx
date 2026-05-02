@@ -1,19 +1,18 @@
 import {createFileRoute} from '@tanstack/solid-router'
+import {createEffect, createSignal, For, type JSXElement, onCleanup, onMount,} from "solid-js";
 import {
-  createEffect,
-  createResource,
-  createSignal,
-  For,
-  type JSXElement,
-  Match,
-  onCleanup,
-  onMount,
-  Switch,
-} from "solid-js";
-import {FavoriteVideo} from "../../../wailsjs/go/api/Douyin";
+  Collection as FavoriteMixCollection,
+  CollectionList,
+  CollectList,
+  FavoritesVideoList,
+  FavoriteVideo,
+} from "../../../wailsjs/go/api/Douyin";
 import {model} from "../../../wailsjs/go/models";
-import FavoriteCollectionPanel from "../../components/douyin/FavoriteCollectionPanel.tsx";
-import MixPanel from "../../components/douyin/MixPanel.tsx";
+import CollectionVideoPanel, {
+  type DouyinListItem,
+  type ListPage,
+  type VideoPage,
+} from "../../components/douyin/CollectionVideoPanel.tsx";
 import VideoContentPanel from "../../components/douyin/VideoContentPanel.tsx";
 import Toast from "../../components/Toast.tsx";
 import {useToast} from "../../hooks/useToast.ts";
@@ -23,6 +22,66 @@ export const Route = createFileRoute('/douyin/favorite')({
 })
 
 type FavoriteTab = 'collection' | 'video' | 'mix';
+
+const MIX_PAGE_SIZE = 12;
+const MIX_VIDEO_PAGE_SIZE = 10;
+
+type DouyinMixItem = model.CollectionItem | model.SeriesInfoItem;
+
+function collectionId(item: model.CollectsList | null | undefined): string {
+  return item?.collects_id_str?.trim() || "";
+}
+
+function isUserSeries(item: DouyinMixItem): item is model.SeriesInfoItem {
+  return "series_id" in item;
+}
+
+function mixId(item: DouyinMixItem): string {
+  return isUserSeries(item) ? item.series_id : item.mix_id;
+}
+
+async function loadCollections(cursor: number): Promise<ListPage> {
+  const data = await CollectList(cursor);
+  const items = data.collects_list ?? [];
+  return {
+    items,
+    cursor: data.cursor ?? cursor + items.length,
+    hasMore: Boolean(data.has_more),
+  };
+}
+
+async function loadCollectionVideos(item: DouyinListItem, cursor: number): Promise<VideoPage> {
+  const id = collectionId(item as model.CollectsList);
+  if (!id) throw new Error("收藏夹 ID 无效");
+
+  const data = await FavoritesVideoList(id, cursor, 10);  // 默认每页10个视频
+  return {
+    items: data.aweme_list ?? [],
+    hasMore: Number(data.has_more ?? 0) > 0,
+  };
+}
+
+async function loadFavoriteMixes(cursor: number): Promise<ListPage> {
+  const data = await FavoriteMixCollection(MIX_PAGE_SIZE, cursor);
+  const items = data.mix_infos ?? [];
+  return {
+    items,
+    cursor: data.cursor ?? cursor + items.length,
+    hasMore: Number(data.has_more ?? 0) > 0,
+  };
+}
+
+async function loadFavoriteMixVideos(item: DouyinListItem, cursor: number): Promise<VideoPage> {
+  const mixItem = item as DouyinMixItem;
+  const seriesID = mixId(mixItem);
+  if (!seriesID) throw new Error("合集 ID 无效");
+
+  const data = await CollectionList(mixItem.author?.sec_uid || "", seriesID, cursor, MIX_VIDEO_PAGE_SIZE);
+  return {
+    items: data.aweme_list ?? [],
+    hasMore: Number(data.has_more ?? 0) > 0,
+  };
+}
 
 function tabLabel(tab: FavoriteTab): string {
   const labels: Record<FavoriteTab, string> = {
@@ -34,26 +93,53 @@ function tabLabel(tab: FavoriteTab): string {
   return labels[tab];
 }
 
+function FavoriteHeader(props: {
+  activeTab: FavoriteTab;
+  onTabChange: (tab: FavoriteTab) => void;
+}): JSXElement {
+  return (
+    <header class="mb-2 shrink-0">
+      <nav
+        class="flex min-w-0 flex-row justify-between rounded-2xl border border-base-300/90 bg-linear-to-b from-base-100 via-base-100 to-base-200/20 p-1.5 shadow-sm"
+        role="tablist"
+        aria-label="收藏分类"
+      >
+        <For each={['collection', 'video', 'mix'] as const}>
+          {(tab) => (
+            <button
+              class={'min-h-6 flex-1 rounded-xl px-2 text-center text-xs font-semibold sm:text-sm'}
+              classList={{
+                "bg-primary/12 text-primary shadow-sm ring-1 ring-primary/25": props.activeTab === tab,
+                "text-base-content/50 hover:bg-base-200/80 hover:text-base-content": props.activeTab !== tab,
+                "opacity-90": tab === 'mix',
+              }}
+              type="button"
+              role="tab"
+              aria-selected={props.activeTab === tab}
+              onClick={() => props.onTabChange(tab)}
+            >
+              {tabLabel(tab)}
+            </button>
+          )}
+        </For>
+      </nav>
+    </header>
+  );
+}
+
 function DouyinFavoritePage(): JSXElement {
   const [activeTab, setActiveTab] = createSignal<FavoriteTab>('collection');
+  const [videoLoading, setVideoLoading] = createSignal(false);
+  const [videoError, setVideoError] = createSignal("");
   const [videoLoadingMore, setVideoLoadingMore] = createSignal(false);
-  // 收藏视频接口只在用户真的切到“视频”tab 后再请求；收藏夹/合集 tab 有自己的延迟加载逻辑。
-  const [videoEnabled, setVideoEnabled] = createSignal(false);
+  const [videoLoaded, setVideoLoaded] = createSignal(false);
+  const [videoResult, setVideoResult] = createSignal<model.FavoriteVideoResponse>();
   const {message, type, showToast} = useToast();
-
-  // 视频列表仅在切到“视频”标签后再触发，避免无意义请求。
-  const [videoResult, {refetch: refetchVideos, mutate: mutateVideos}] = createResource(
-    () => videoEnabled(),
-    async (enabled) => {
-      if (!enabled) return undefined;
-      return FavoriteVideo(10, 0);
-    },
-  );
+  let videoRequestSeq = 0;
 
   const videos = () => videoResult()?.aweme_list ?? [];
 
   function switchTab(event: KeyboardEvent): void {
-    // 收藏页只有三个平级 tab，用左右方向键做轻量切换。
     if (event.key === 'ArrowLeft') {
       event.preventDefault();
       setActiveTab((prev) => {
@@ -82,13 +168,30 @@ function DouyinFavoritePage(): JSXElement {
   });
 
   createEffect(() => {
-    if (activeTab() === 'video' && !videoEnabled()) {
-      setVideoEnabled(true);
+    if (activeTab() === 'video' && !videoLoaded() && !videoLoading()) {
+      void loadFavoriteVideos();
     }
   });
 
   function videoHasMore(): boolean {
     return Number(videoResult()?.has_more ?? 0) > 0;
+  }
+
+  async function loadFavoriteVideos(): Promise<void> {
+    const seq = ++videoRequestSeq;
+    setVideoLoading(true);
+    setVideoError("");
+    try {
+      const data = await FavoriteVideo(10, 0);
+      if (seq !== videoRequestSeq) return;
+      setVideoResult(data);
+      setVideoLoaded(true);
+    } catch (error) {
+      if (seq !== videoRequestSeq) return;
+      setVideoError(error instanceof Error ? error.message : String(error));
+    } finally {
+      if (seq === videoRequestSeq) setVideoLoading(false);
+    }
   }
 
   async function loadMoreVideos(): Promise<void> {
@@ -100,8 +203,7 @@ function DouyinFavoritePage(): JSXElement {
     setVideoLoadingMore(true);
     try {
       const next = await FavoriteVideo(20, current.cursor ?? videos().length);
-      // createResource 的 mutate 只替换当前资源值；分页时手动把新旧 aweme_list 拼起来。
-      mutateVideos(model.FavoriteVideoResponse.createFrom({
+      setVideoResult(model.FavoriteVideoResponse.createFrom({
         ...next,
         aweme_list: [...videos(), ...(next.aweme_list ?? [])],
         uid: current.uid ?? next.uid,
@@ -116,62 +218,51 @@ function DouyinFavoritePage(): JSXElement {
 
   return (
     <section class="flex h-full min-h-0 flex-col p-2">
-      <header class="shrink-0">
-        <nav
-          class="mb-2 flex flex-row justify-between rounded-2xl border border-base-300/90 bg-linear-to-b from-base-100 via-base-100 to-base-200/20 p-1.5 shadow-sm"
-          role="tablist"
-          aria-label="收藏分类"
-        >
-          <For each={['collection', 'video', 'mix'] as const}>
-            {(tab) => (
-              <button
-                class={`min-h-6 flex-1 rounded-xl px-2 text-center text-xs font-semibold sm:text-sm ${
-                  activeTab() === tab
-                    ? "bg-primary/12 text-primary shadow-sm ring-1 ring-primary/25"
-                    : "text-base-content/50 hover:bg-base-200/80 hover:text-base-content"
-                } ${tab === 'mix' ? "opacity-90" : ""}`}
-                type="button"
-                role="tab"
-                aria-selected={activeTab() === tab}
-                onClick={() => setActiveTab(tab)}
-              >
-                {tabLabel(tab)}
-              </button>
-            )}
-          </For>
-        </nav>
-      </header>
+      <FavoriteHeader
+        activeTab={activeTab()}
+        onTabChange={setActiveTab}
+      />
 
-      {/* 外层只负责标签和边框，具体视频网格统一交给 VideoGrid 渲染。 */}
       <div class="min-h-0 flex-1 overflow-hidden rounded-xl border border-base-300 bg-base-100 shadow-sm">
         <div class="flex h-full min-h-0 flex-col">
-          <Switch>
-            <Match when={activeTab() === 'collection'}>
-              {/* 收藏夹 tab：左侧收藏夹列表 + 右侧点击后加载视频。 */}
-              <FavoriteCollectionPanel active={activeTab() === 'collection'} showToast={showToast}/>
-            </Match>
+          <CollectionVideoPanel
+            active={activeTab() === 'collection'}
+            kind="favorite-collection"
+            sourceKey="favorite-collections"
+            showToast={showToast}
+            loadList={loadCollections}
+            loadVideos={loadCollectionVideos}
+          />
 
-            <Match when={activeTab() === 'video'}>
-              {/* 收藏视频没有左侧集合列表，直接复用统一视频内容面板。 */}
-              <VideoContentPanel
-                kind="favorite-video"
-                loading={videoResult.loading}
-                error={videoResult.error ? String(videoResult.error) : ""}
-                onRetry={() => void refetchVideos()}
-                items={videos()}
-                sourceName="收藏视频"
-                fallbackAuthor="未知作者"
-                showToast={showToast}
-                hasMore={videoHasMore()}
-                loadingMore={videoLoadingMore()}
-                onLoadMore={() => void loadMoreVideos()}
-              />
-            </Match>
-            <Match when={activeTab() === 'mix'}>
-              {/* 收藏合集 tab 与用户合集共用 MixPanel，只是没有 userSecUserId。 */}
-              <MixPanel active={activeTab() === 'mix'} showToast={showToast}/>
-            </Match>
-          </Switch>
+          <div classList={{
+            "flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden": activeTab() === 'video',
+            "hidden": activeTab() !== 'video',
+          }}>
+            <VideoContentPanel
+              kind="favorite-video"
+              loading={videoLoading()}
+              error={videoError()}
+              onRetry={() => void loadFavoriteVideos()}
+              items={videos()}
+              sourceName="收藏视频"
+              fallbackAuthor="未知作者"
+              showToast={showToast}
+              refreshing={videoLoading()}
+              onRefresh={() => void loadFavoriteVideos()}
+              hasMore={videoHasMore()}
+              loadingMore={videoLoadingMore()}
+              onLoadMore={() => void loadMoreVideos()}
+            />
+          </div>
+
+          <CollectionVideoPanel
+            active={activeTab() === 'mix'}
+            kind="favorite-mix"
+            sourceKey="favorite-mixes"
+            showToast={showToast}
+            loadList={loadFavoriteMixes}
+            loadVideos={loadFavoriteMixVideos}
+          />
         </div>
       </div>
       <Toast message={message()} type={type()}/>

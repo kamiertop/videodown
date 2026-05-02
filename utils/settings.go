@@ -107,6 +107,7 @@ func NewSettings(logger *logger.Logger) *Settings {
 	return s
 }
 
+// GetTheme 获取主题设置
 func (s *Settings) GetTheme() (string, error) {
 	theme, err := s.GetKey(themeKey)
 	if err != nil {
