@@ -16,7 +16,7 @@ export const Route = createFileRoute('/douyin/user/$secUserId')({
   component: DouyinUserPage,
 })
 
-const USER_VIDEO_PAGE_SIZE = 20;
+const USER_VIDEO_PAGE_SIZE = 16;
 const USER_MIX_PAGE_SIZE = 12;
 const USER_MIX_VIDEO_PAGE_SIZE = 20;
 

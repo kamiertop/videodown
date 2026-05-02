@@ -23,6 +23,7 @@ type User struct {
 	SecUid         string `json:"sec_uid"`   // 安全uid，某些接口需要传这个
 }
 
+// UserVideoListResponse 用户空间的视频列表响应
 type UserVideoListResponse struct {
 	AwemeList          []AwemeItem `json:"aweme_list"`
 	HasMore            int         `json:"has_more"`    // 是否还有更多数据，0没有，1有
@@ -34,6 +35,9 @@ type UserVideoListResponse struct {
 	ReplaceSeriesCover int         `json:"replace_series_cover"`
 }
 
+// AwemeItem 视频信息
+// 图片合集：media_type=2,aweme_type=68;video.play_addr里面是音乐，entertainment_video_type=3，images里面是图片列表
+// 视频：media_type=4,aweme_type=0;images是null
 type AwemeItem struct {
 	AwemeId                 string          `json:"aweme_id"`    // 视频ID
 	Desc                    string          `json:"desc"`        // 视频标题+#标签
@@ -49,13 +53,12 @@ type AwemeItem struct {
 	Region                  string          `json:"region"` // 视频发布的地区:CN等
 	GroupId                 string          `json:"group_id"`
 	PreventDownload         bool            `json:"prevent_download"`
-	CfAssetsType            int             `json:"cf_assets_type"`
-	FlashMobTrends          int             `json:"flash_mob_trends"`
+	CfAssetsType            int             `json:"cf_assets_type"` // 内容资源类型
 	IsMomentHistory         int             `json:"is_moment_history"`
 	IsMomentStory           int             `json:"is_moment_story"`
 	SecItemId               string          `json:"sec_item_id"`
 	ItemAigcFollowShot      int             `json:"item_aigc_follow_shot"`
-	Images                  []ImageItem     `json:"images"`
+	Images                  []ImageItem     `json:"images"` // 图文类型视频使用这个字段中的图片列表
 	OriginDuetResourceUri   string          `json:"origin_duet_resource_uri"`
 	LibfinsertTaskId        string          `json:"libfinsert_task_id"`
 	DuetAggregateInMusicTab bool            `json:"duet_aggregate_in_music_tab"`
@@ -92,15 +95,18 @@ type AwemeItem struct {
 	LunaVideoCandidateStatus string `json:"luna_video_candidate_status,omitempty"`
 	IsMultiContent           int    `json:"is_multi_content,omitempty"`
 	ImageItemQualityLevel    int    `json:"image_item_quality_level,omitempty"`
+	IsLivePhoto              int    `json:"is_live_photo"` // 是否是动图，1是，0不是
 }
 
 type ImageItem struct {
-	Uri             string   `json:"uri"`
-	UrlList         []string `json:"url_list"`          /// 不带水印的图片下载地址列表
-	DownloadUrlList []string `json:"download_url_list"` // 带水印的图片下载地址列表
-	Height          int      `json:"height"`
-	Width           int      `json:"width"`
-	IsNewTextMode   int      `json:"is_new_text_mode"`
+	Uri             string     `json:"uri"`
+	UrlList         []string   `json:"url_list"`          /// 不带水印的图片下载地址列表
+	DownloadUrlList []string   `json:"download_url_list"` // 带水印的图片下载地址列表
+	Height          int        `json:"height"`
+	Width           int        `json:"width"`
+	ClipType        int        `json:"clip_type"`       // 剪辑类型 5：动图; 2: 普通图片
+	LivePhotoType   int        `json:"live_photo_type"` // 1: 动图
+	Video           ImageVideo `json:"video"`           // 动图视频信息，clip_type=5时存在
 }
 
 type PlayUrl struct {
@@ -221,6 +227,3 @@ type SeriesStat struct {
 	UpdatedToEpisode int `json:"updated_to_episode"` // 合集数量
 	TotalEpisode     int `json:"total_episode"`      // 合集数量
 }
-
-// 图片合集：media_type=2,aweme_type=68;video.play_addr里面是音乐，entertainment_video_type=3，images里面是图片列表
-// 视频：media_type=4,aweme_type=0;images是null

@@ -945,13 +945,63 @@ export namespace model {
 	    }
 	}
 	
+	export class ImageVideo {
+	    cover: Cover;
+	    origin_cover: Cover;
+	    bit_rate: BitRateItem[];
+	    big_thumbs: BigThumbItem[];
+	    duration: number;
+	    height: number;
+	    width: number;
+	    play_addr_h264: PlayInfo;
+	    play_addr: PlayInfo;
+	    has_watermark: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImageVideo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.cover = this.convertValues(source["cover"], Cover);
+	        this.origin_cover = this.convertValues(source["origin_cover"], Cover);
+	        this.bit_rate = this.convertValues(source["bit_rate"], BitRateItem);
+	        this.big_thumbs = this.convertValues(source["big_thumbs"], BigThumbItem);
+	        this.duration = source["duration"];
+	        this.height = source["height"];
+	        this.width = source["width"];
+	        this.play_addr_h264 = this.convertValues(source["play_addr_h264"], PlayInfo);
+	        this.play_addr = this.convertValues(source["play_addr"], PlayInfo);
+	        this.has_watermark = source["has_watermark"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class ImageItem {
 	    uri: string;
 	    url_list: string[];
 	    download_url_list: string[];
 	    height: number;
 	    width: number;
-	    is_new_text_mode: number;
+	    clip_type: number;
+	    live_photo_type: number;
+	    video: ImageVideo;
 	
 	    static createFrom(source: any = {}) {
 	        return new ImageItem(source);
@@ -964,8 +1014,28 @@ export namespace model {
 	        this.download_url_list = source["download_url_list"];
 	        this.height = source["height"];
 	        this.width = source["width"];
-	        this.is_new_text_mode = source["is_new_text_mode"];
+	        this.clip_type = source["clip_type"];
+	        this.live_photo_type = source["live_photo_type"];
+	        this.video = this.convertValues(source["video"], ImageVideo);
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class VideoStatistics {
 	    collect_count: number;
@@ -1501,7 +1571,6 @@ export namespace model {
 	    group_id: string;
 	    prevent_download: boolean;
 	    cf_assets_type: number;
-	    flash_mob_trends: number;
 	    is_moment_history: number;
 	    is_moment_story: number;
 	    sec_item_id: string;
@@ -1532,6 +1601,7 @@ export namespace model {
 	    luna_video_candidate_status?: string;
 	    is_multi_content?: number;
 	    image_item_quality_level?: number;
+	    is_live_photo: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new AwemeItem(source);
@@ -1554,7 +1624,6 @@ export namespace model {
 	        this.group_id = source["group_id"];
 	        this.prevent_download = source["prevent_download"];
 	        this.cf_assets_type = source["cf_assets_type"];
-	        this.flash_mob_trends = source["flash_mob_trends"];
 	        this.is_moment_history = source["is_moment_history"];
 	        this.is_moment_story = source["is_moment_story"];
 	        this.sec_item_id = source["sec_item_id"];
@@ -1585,6 +1654,7 @@ export namespace model {
 	        this.luna_video_candidate_status = source["luna_video_candidate_status"];
 	        this.is_multi_content = source["is_multi_content"];
 	        this.image_item_quality_level = source["image_item_quality_level"];
+	        this.is_live_photo = source["is_live_photo"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
@@ -3006,6 +3076,7 @@ export namespace model {
 		    return a;
 		}
 	}
+	
 	
 	export class LogOutData {
 	    redirectUrl: string;

@@ -27,6 +27,7 @@ export interface DouyinDownloadItem {
   videoOptions?: DouyinVideoOption[];
   selectedVideoOptionId?: string;
   imageURLs?: string[];
+  mediaBadge?: "image" | "live-photo";
 }
 
 const [douyinVideoList, setDouyinVideoList] = createSignal<DouyinDownloadItem[]>([]);

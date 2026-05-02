@@ -2,7 +2,7 @@ import {createSignal, onCleanup} from "solid-js";
 import {DownloadVideos} from "../../wailsjs/go/api/Douyin";
 import {api} from "../../wailsjs/go/models";
 import {EventsOn} from "../../wailsjs/runtime";
-import {douyinVideoList, removeDouyinVideo, type DouyinDownloadItem} from "./douyinStore.ts";
+import {type DouyinDownloadItem, douyinVideoList, removeDouyinVideo} from "./douyinStore.ts";
 
 type ToastType = "error" | "success" | "info" | "warning";
 type ShowToast = (message: string, type?: ToastType) => void;
@@ -162,7 +162,7 @@ export function useDouyinDownloadQueue(showToast: ShowToast) {
   }
 
   function isDownloading(item: DouyinDownloadItem): boolean {
-    return !!downloadingByID()[item.awemeId];
+    return downloadingByID()[item.awemeId];
   }
 
   function progressFor(item: DouyinDownloadItem): DouyinDownloadProgress | undefined {

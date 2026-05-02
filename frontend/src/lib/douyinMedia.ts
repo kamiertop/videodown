@@ -100,3 +100,7 @@ export function isDouyinImageAlbum(item: model.AwemeItem): boolean {
   // 抖音图集通常表现为 media_type=2 且 aweme_type=68，视频字段里可能只是配乐。
   return item.media_type === 2 && douyinImageURLs(item).length > 0 && item.aweme_type === 68;
 }
+
+export function isDouyinLivePhoto(item: model.AwemeItem): boolean {
+  return item.is_live_photo === 1;
+}

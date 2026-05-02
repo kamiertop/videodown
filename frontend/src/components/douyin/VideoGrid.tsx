@@ -1,5 +1,6 @@
 import {createMemo, createSignal, For, Index, type JSXElement, onCleanup, onMount, Show} from "solid-js";
 import type {DouyinDownloadItem} from "../../lib/douyinStore.ts";
+import IconLivePhoto from "../icons/IconLivePhoto.tsx";
 import NoCover from "../NoCover.tsx";
 
 const GRID_GAP = 8;
@@ -15,7 +16,7 @@ export interface DouyinVideoCardItem {
   publishText: string;
   durationText: string;
   downloadItem: DouyinDownloadItem;
-  showImgLabel: boolean;
+  mediaBadge?: "image" | "live-photo";
 }
 
 // 与下方虚拟行的响应式列布局保持一致。
@@ -51,8 +52,7 @@ function VideoCard(props: {
             referrerPolicy="no-referrer"
           />
         </Show>
-        {/* 图文作品没有视频时长，用右上角图标和普通视频区分。 */}
-        <Show when={props.item.showImgLabel}>
+        <Show when={props.item.mediaBadge === "image"}>
           <svg
             width="12"
             height="12"
@@ -70,7 +70,10 @@ function VideoCard(props: {
               fill="#fff"></path>
           </svg>
         </Show>
-        <Show when={!props.item.showImgLabel}>
+        <Show when={props.item.mediaBadge === "live-photo"}>
+          <IconLivePhoto/>
+        </Show>
+        <Show when={!props.item.mediaBadge}>
           <span
             class="absolute bottom-1 right-1 rounded-md bg-black/65 px-1.5 py-1 text-[0.65rem] font-medium leading-none text-white">
             {props.item.durationText}

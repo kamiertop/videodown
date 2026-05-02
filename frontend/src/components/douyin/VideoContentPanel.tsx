@@ -7,6 +7,7 @@ import {
   douyinImageURLs,
   douyinVideoOptions,
   isDouyinImageAlbum,
+  isDouyinLivePhoto,
 } from "../../lib/douyinMedia.ts";
 import {addDouyinVideos, type DouyinDownloadItem} from "../../lib/douyinStore.ts";
 import {formatDate, formatDuration} from "../../lib/format.ts";
@@ -144,6 +145,7 @@ export default function VideoContentPanel(props: {
       // 清晰度选项在进入下载页前就解析好，下载页只需要让用户切换最终 URL。
       const videoOptions = douyinVideoOptions(item);
       const selectedVideoOption = defaultDouyinVideoOption(videoOptions);
+      const imageURLs = douyinImageURLs(item);
 
       return {
         id: awemeKey(item, index),
@@ -167,9 +169,14 @@ export default function VideoContentPanel(props: {
           videoURL: selectedVideoOption?.url,
           videoOptions,
           selectedVideoOptionId: selectedVideoOption?.id,
-          imageURLs: douyinImageURLs(item),
+          imageURLs,
+          mediaBadge: isDouyinLivePhoto(item)
+            ? "live-photo"
+            : isDouyinImageAlbum(item) ? "image" : undefined,
         },
-        showImgLabel: isDouyinImageAlbum(item),
+        mediaBadge: isDouyinLivePhoto(item)
+          ? "live-photo"
+          : isDouyinImageAlbum(item) ? "image" : undefined,
       };
     }),
   );
