@@ -58,6 +58,7 @@ type FavoriteVideoResponse struct {
 	AwemeList  []AwemeItem `json:"aweme_list"`  // 收藏视频列表
 }
 
+// Video 视频信息，图文类型时，play_addr是mp3格式的音频地址
 type Video struct {
 	Cover         Cover              `json:"cover"`          // 视频封面
 	BitRate       []BitRateItem      `json:"bit_rate"`       // 视频不同质量的播放地址信息列表

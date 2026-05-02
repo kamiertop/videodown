@@ -949,7 +949,6 @@ export namespace model {
 	    cover: Cover;
 	    origin_cover: Cover;
 	    bit_rate: BitRateItem[];
-	    big_thumbs: BigThumbItem[];
 	    duration: number;
 	    height: number;
 	    width: number;
@@ -966,7 +965,6 @@ export namespace model {
 	        this.cover = this.convertValues(source["cover"], Cover);
 	        this.origin_cover = this.convertValues(source["origin_cover"], Cover);
 	        this.bit_rate = this.convertValues(source["bit_rate"], BitRateItem);
-	        this.big_thumbs = this.convertValues(source["big_thumbs"], BigThumbItem);
 	        this.duration = source["duration"];
 	        this.height = source["height"];
 	        this.width = source["width"];
@@ -994,11 +992,7 @@ export namespace model {
 		}
 	}
 	export class ImageItem {
-	    uri: string;
 	    url_list: string[];
-	    download_url_list: string[];
-	    height: number;
-	    width: number;
 	    clip_type: number;
 	    live_photo_type: number;
 	    video: ImageVideo;
@@ -1009,11 +1003,7 @@ export namespace model {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.uri = source["uri"];
 	        this.url_list = source["url_list"];
-	        this.download_url_list = source["download_url_list"];
-	        this.height = source["height"];
-	        this.width = source["width"];
 	        this.clip_type = source["clip_type"];
 	        this.live_photo_type = source["live_photo_type"];
 	        this.video = this.convertValues(source["video"], ImageVideo);
@@ -1566,20 +1556,15 @@ export namespace model {
 	    duration: number;
 	    aweme_type: number;
 	    author_user_id: number;
-	    is_subtitled: number;
 	    region: string;
 	    group_id: string;
 	    prevent_download: boolean;
-	    cf_assets_type: number;
 	    is_moment_history: number;
 	    is_moment_story: number;
 	    sec_item_id: string;
 	    item_aigc_follow_shot: number;
 	    images: ImageItem[];
 	    origin_duet_resource_uri: string;
-	    libfinsert_task_id: string;
-	    duet_aggregate_in_music_tab: boolean;
-	    is_duet_sing: boolean;
 	    is_image_beat: boolean;
 	    is_life_item: boolean;
 	    author_mask_tag: number;
@@ -1592,16 +1577,12 @@ export namespace model {
 	    boost_status: number;
 	    caption: string;
 	    item_title: string;
-	    is_use_music: boolean;
 	    original: number;
-	    mark_largely_following: boolean;
-	    enable_comment_sticker_rec: boolean;
-	    video_share_edit_status: number;
-	    is_24_story: number;
 	    luna_video_candidate_status?: string;
 	    is_multi_content?: number;
 	    image_item_quality_level?: number;
 	    is_live_photo: number;
+	    is_slides: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new AwemeItem(source);
@@ -1619,20 +1600,15 @@ export namespace model {
 	        this.duration = source["duration"];
 	        this.aweme_type = source["aweme_type"];
 	        this.author_user_id = source["author_user_id"];
-	        this.is_subtitled = source["is_subtitled"];
 	        this.region = source["region"];
 	        this.group_id = source["group_id"];
 	        this.prevent_download = source["prevent_download"];
-	        this.cf_assets_type = source["cf_assets_type"];
 	        this.is_moment_history = source["is_moment_history"];
 	        this.is_moment_story = source["is_moment_story"];
 	        this.sec_item_id = source["sec_item_id"];
 	        this.item_aigc_follow_shot = source["item_aigc_follow_shot"];
 	        this.images = this.convertValues(source["images"], ImageItem);
 	        this.origin_duet_resource_uri = source["origin_duet_resource_uri"];
-	        this.libfinsert_task_id = source["libfinsert_task_id"];
-	        this.duet_aggregate_in_music_tab = source["duet_aggregate_in_music_tab"];
-	        this.is_duet_sing = source["is_duet_sing"];
 	        this.is_image_beat = source["is_image_beat"];
 	        this.is_life_item = source["is_life_item"];
 	        this.author_mask_tag = source["author_mask_tag"];
@@ -1645,16 +1621,12 @@ export namespace model {
 	        this.boost_status = source["boost_status"];
 	        this.caption = source["caption"];
 	        this.item_title = source["item_title"];
-	        this.is_use_music = source["is_use_music"];
 	        this.original = source["original"];
-	        this.mark_largely_following = source["mark_largely_following"];
-	        this.enable_comment_sticker_rec = source["enable_comment_sticker_rec"];
-	        this.video_share_edit_status = source["video_share_edit_status"];
-	        this.is_24_story = source["is_24_story"];
 	        this.luna_video_candidate_status = source["luna_video_candidate_status"];
 	        this.is_multi_content = source["is_multi_content"];
 	        this.image_item_quality_level = source["image_item_quality_level"];
 	        this.is_live_photo = source["is_live_photo"];
+	        this.is_slides = source["is_slides"];
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

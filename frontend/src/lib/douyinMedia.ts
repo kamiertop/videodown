@@ -53,7 +53,7 @@ export function douyinVideoOptions(item: model.AwemeItem): DouyinVideoOption[] {
   }
 
   // 有些响应没有 bit_rate，或者 bit_rate 中缺少可用地址；保留顶层 play_addr 作为兜底下载选项。
-  const fallbacks: Array<{name: string; codec: string; playAddr?: model.PlayInfo}> = [
+  const fallbacks: Array<{ name: string; codec: string; playAddr?: model.PlayInfo }> = [
     {name: "play_addr_h264", codec: "H.264", playAddr: item.video?.play_addr_h264},
     {name: "play_addr_265", codec: "H.265", playAddr: item.video?.play_addr_265},
     {name: "play_addr", codec: "默认", playAddr: item.video?.play_addr},
@@ -90,17 +90,41 @@ export function douyinVideoURL(item: model.AwemeItem): string {
 }
 
 export function douyinImageURLs(item: model.AwemeItem): string[] {
-  // 图片合集的无水印地址在 url_list，download_url_list 通常是带水印兜底。
+  // 图片合集的无水印地址在 url_list
   return (item.images ?? [])
-    .map((image) => image.url_list?.[0] ?? image.download_url_list?.[0] ?? "")
+    .map((image) => image.url_list?.[0] ?? "")
     .filter((url) => url.length > 0);
 }
 
-export function isDouyinImageAlbum(item: model.AwemeItem): boolean {
-  // 抖音图集通常表现为 media_type=2 且 aweme_type=68，视频字段里可能只是配乐。
-  return item.media_type === 2 && douyinImageURLs(item).length > 0 && item.aweme_type === 68;
+function hasDouyinImages(item: model.AwemeItem): boolean {
+  return item.images != null;
 }
 
+function isLivePhotoImage(image: model.ImageItem): boolean {
+  // image.video 是 ImageVideo 值类型（Go 非指针），即使静态图片也会序列化为非 null 对象，
+  // 因此必须检查 video 是否有实质内容（play_addr 有 URL）而非判断 null。
+  return image.live_photo_type === 1
+    || image.clip_type === 5
+    || (image.video?.play_addr?.url_list?.length ?? 0) > 0;
+}
+
+function hasStaticImage(item: model.AwemeItem): boolean {
+  return (item.images ?? []).some((image) => !isLivePhotoImage(image));
+}
+
+function hasOnlyLivePhotoImages(item: model.AwemeItem): boolean {
+  const images = item.images ?? [];
+  return images.length > 0 && images.every(isLivePhotoImage);
+}
+
+// 是否是图片合集；只要存在静态照片，即使混有动图，也按图文处理。
+export function isDouyinImageAlbum(item: model.AwemeItem): boolean {
+  return hasDouyinImages(item) && hasStaticImage(item);
+}
+
+// 是否是动图
 export function isDouyinLivePhoto(item: model.AwemeItem): boolean {
-  return item.is_live_photo === 1;
+  return item.is_live_photo === 1
+    || hasOnlyLivePhotoImages(item)
+    || (!hasStaticImage(item) && (item.media_type === 42 || item.is_slides));
 }

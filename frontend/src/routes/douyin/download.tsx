@@ -93,7 +93,7 @@ function DouyinDownloadCard(props: {
   progress: DouyinDownloadProgress | undefined;
   onDownload: () => void;
 }): JSXElement {
-  const mediaBadge = () => props.item.mediaBadge ?? ((props.item.imageURLs?.length ?? 0) > 0 ? "image" : undefined);
+  const mediaBadge = () => props.item.mediaBadge;
   const isStandardVideo = () => !mediaBadge();
   const selectedOption = () => props.item.videoOptions?.find((option) => option.id === props.item.selectedVideoOptionId);
 

@@ -67,16 +67,17 @@ func (d *Douyin) UserVideoList(secUserId string, count, maxCursor int) (model.Us
 		Get("https://www-hj.douyin.com/aweme/v1/web/aweme/post/").
 		SetQueryParamsAnyType(queryParams).
 		SetQueryParamsAnyType(map[string]any{
-			"sec_user_id":               secUserId,
-			"max_cursor":                maxCursor,
-			"count":                     count,
-			"from_user_page":            1,
-			"cut_version":               1,
-			"whale_cut_token":           "",
-			"need_time_list":            1,
-			"time_list_query":           0,
-			"locate_query":              false,
-			"show_live_replay_strategy": 1,
+			"sec_user_id":                 secUserId,
+			"max_cursor":                  maxCursor,
+			"count":                       count,
+			"from_user_page":              1,
+			"cut_version":                 1,
+			"whale_cut_token":             "",
+			"need_time_list":              1,
+			"time_list_query":             0,
+			"locate_query":                false,
+			"show_live_replay_strategy":   1,
+			"publish_video_strategy_type": 2,
 		}).
 		SetHeaders(publicHeaders).
 		SetHeader("Uifid", queryParams["uifid"].(string)).

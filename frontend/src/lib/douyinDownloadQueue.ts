@@ -28,8 +28,9 @@ export function formatDouyinSource(item: DouyinDownloadItem): string {
 }
 
 function hasDownloadURL(item: DouyinDownloadItem): boolean {
-  // 普通视频走 videoURL；图片合集没有 videoURL，交给后端按 imageURLs 逐张保存。
-  return !!item.videoURL || (item.imageURLs?.length ?? 0) > 0;
+  // 普通视频走 videoURL；图文走 imageURLs。动图不回退成图片下载。
+  if (item.mediaBadge === "image") return (item.imageURLs?.length ?? 0) > 0;
+  return !!item.videoURL;
 }
 
 function toBackendTask(item: DouyinDownloadItem): BackendTask {
@@ -46,7 +47,7 @@ function toBackendTask(item: DouyinDownloadItem): BackendTask {
     diggCount: item.diggCount ?? 0,
     collectCount: item.collectCount ?? 0,
     videoURL: item.videoURL ?? "",
-    imageURLs: item.imageURLs ?? [],
+    imageURLs: item.mediaBadge === "image" ? item.imageURLs ?? [] : [],
   };
 }
 
