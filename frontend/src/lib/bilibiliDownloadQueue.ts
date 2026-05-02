@@ -23,7 +23,7 @@ export type PlayResolveEntry =
   | { status: "done"; data: ResolvedPlayInfo }
   | { status: "error"; message: string; accessInfo?: VideoAccessInfo };
 
-export type DownloadPhase = "video" | "audio" | "merge" | "done" | "error";
+export type DownloadPhase = "video" | "audio" | "merge" | "sleep" | "done" | "error";
 
 export interface DownloadProgress {
   bvid: string;
@@ -33,6 +33,8 @@ export interface DownloadProgress {
   downloaded: number;
   total: number;
   percent: number;
+  sleepRemaining?: number;
+  sleepTotal?: number;
 }
 
 interface DownloadTask {

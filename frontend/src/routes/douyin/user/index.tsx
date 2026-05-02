@@ -13,6 +13,14 @@ export const Route = createFileRoute('/douyin/user/')({
   component: DouyinUserIndexPage,
 })
 
+function readResource<T>(read: () => T | undefined): T | undefined {
+  try {
+    return read();
+  } catch {
+    return undefined;
+  }
+}
+
 function DouyinUserIndexPage(): JSXElement {
   const navigate = useNavigate();
   const [parsing, setParsing] = createSignal(false);
@@ -23,7 +31,8 @@ function DouyinUserIndexPage(): JSXElement {
   const {message, type, showToast} = useToast();
   const [result, {mutate, refetch}] = createResource(async () => FollowList(0));
 
-  const users = () => result()?.followings ?? [];
+  const followData = () => readResource(() => result());
+  const users = () => followData()?.followings ?? [];
 
   function coverUrl(item: model.FollowItem): string {
     return item.avatar_larger.url_list[0] || item.avatar_medium.url_list[0] || item.avatar_thumb.url_list[0] || '';
@@ -37,12 +46,12 @@ function DouyinUserIndexPage(): JSXElement {
   }
 
   function userTotal(): number {
-    return result()?.total ?? 0;
+    return followData()?.total ?? 0;
   }
 
   // 是否还有更多用户数据可以加载
   function hasMore(): boolean {
-    const data = result();
+    const data = followData();
     if (!data) {
       return false;
     }
@@ -83,7 +92,7 @@ function DouyinUserIndexPage(): JSXElement {
   }
 
   async function loadMore(): Promise<void> {
-    const data = result();
+    const data = followData();
     if (!data || !data.has_more || loadingMore()) {
       return;
     }

@@ -26,7 +26,7 @@ func (s *Settings) init() error {
 	return s.DB.Update(func(txn *badger.Txn) error {
 		defaultValue := map[string]string{
 			themeKey:            "light",
-			storageKey:          "./downloads",
+			storageKey:          "./download",
 			allowGroupOnSaveKey: "true",
 			sleepTimeKey:        "60",
 			concurrencyNumKey:   "1",

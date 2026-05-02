@@ -1,4 +1,4 @@
-import {createFileRoute, useNavigate} from '@tanstack/solid-router'
+import {createFileRoute, Link, useNavigate} from '@tanstack/solid-router'
 import {createResource, createSignal, For, type JSXElement, Match, Show, Switch} from "solid-js";
 import {FollowList, Info} from "../../../../wailsjs/go/api/BiliBili";
 import {model} from "../../../../wailsjs/go/models";
@@ -15,6 +15,14 @@ export const Route = createFileRoute('/bilibili/up/')({
   component: UpIndex,
 })
 
+function readResource<T>(read: () => T | undefined): T | undefined {
+  try {
+    return read();
+  } catch {
+    return undefined;
+  }
+}
+
 function UpIndex(): JSXElement {
   const navigate = useNavigate();
   const [parsing, setParsing] = createSignal<boolean>(false);
@@ -26,9 +34,12 @@ function UpIndex(): JSXElement {
     page,
     async (pn) => await FollowList(pn, PAGE_SIZE),
   );
+  const safeFollowData = () => readResource(() => followData());
+  const followErrorMessage = () => followData.error ? String(followData.error) : "";
+  const isLoginError = () => followErrorMessage().includes("未登录");
 
   function totalPages(): number {
-    const total: number = followData()?.total ?? 0;
+    const total: number = safeFollowData()?.total ?? 0;
     return Math.max(1, Math.ceil(total / PAGE_SIZE));
   }
 
@@ -63,9 +74,9 @@ function UpIndex(): JSXElement {
       headerLeft={
         <div class="flex items-center gap-2">
           <h2 class="text-sm font-bold text-base-content">我的关注</h2>
-          <Show when={followData()}>
+          <Show when={safeFollowData()}>
             <span class="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold tabular-nums text-primary">
-                {followData()!.total}
+                {safeFollowData()!.total}
             </span>
           </Show>
           <button
@@ -141,9 +152,32 @@ function UpIndex(): JSXElement {
             </div>
           </Match>
           <Match when={followData.error}>
-            <DetailError message={String(followData.error)} onRetry={() => void refetch()}/>
+            <Show
+              when={isLoginError()}
+              fallback={<DetailError message={followErrorMessage()} onRetry={() => void refetch()}/>}
+            >
+              <div class="flex h-full min-h-[28rem] items-center justify-center p-8">
+                <div class="flex w-full max-w-xl flex-col items-center rounded-2xl border border-warning/30 bg-warning/10 px-8 py-10 text-center shadow-sm">
+                  <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-warning/15 text-3xl font-black text-warning">
+                    !
+                  </div>
+                  <h3 class="text-2xl font-black text-warning">请先登录 B 站账号</h3>
+                  <p class="mt-3 max-w-md text-sm leading-6 text-warning/80">
+                    当前没有检测到有效登录信息，登录后才能读取关注的 UP 主列表。
+                  </p>
+                  <div class="mt-6 flex items-center gap-3">
+                    <Link to="/bilibili/profile" class="btn btn-warning">
+                      前往登录
+                    </Link>
+                    <button class="btn btn-outline btn-warning" type="button" onClick={() => void refetch()}>
+                      重试
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </Show>
           </Match>
-          <Match when={!followData()?.list?.length}>
+          <Match when={!safeFollowData()?.list?.length}>
             <div class="flex h-full items-center justify-center text-base-content/40">
               <div class="text-center">
                 <IconUsers class="mx-auto h-14 w-14"/>
@@ -153,10 +187,10 @@ function UpIndex(): JSXElement {
               </div>
             </div>
           </Match>
-          <Match when={followData()?.list?.length}>
+          <Match when={safeFollowData()?.list?.length}>
 
             <div class="p-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              <For each={followData()!.list}>
+              <For each={safeFollowData()!.list}>
                 {(up): JSXElement => {
                   return (
                     <button

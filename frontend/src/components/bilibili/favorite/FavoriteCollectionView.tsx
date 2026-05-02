@@ -54,7 +54,7 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
   }
 
   return (
-    <div class="flex h-full min-h-0 gap-3 overflow-hidden">
+    <div class="flex h-full min-h-0 w-full gap-3 overflow-hidden">
       {/*水平布局，左侧收藏夹列表，右侧收藏夹内容*/}
       <aside class="flex w-56 shrink-0 flex-col overflow-hidden rounded-xl border border-base-300 bg-base-100">
         <div

@@ -53,7 +53,7 @@ function CollectionPage<T>(props: {
   onContentLoadMore: () => void;
 }): JSXElement {
   return (
-    <div classList={{"flex h-full min-h-0 flex-1": props.active, "hidden": !props.active}}>
+    <div classList={{"flex h-full min-h-0 w-full flex-1": props.active, "hidden": !props.active}}>
       <Switch>
         <Match when={props.loading}>
           <DetailLoading/>

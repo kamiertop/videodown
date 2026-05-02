@@ -73,12 +73,14 @@ type DouyinDownloadHistoryItem struct {
 
 // douyinDownloadProgress 通过 Wails 事件推给前端，前端按 awemeId 更新对应卡片进度。
 type douyinDownloadProgress struct {
-	AwemeID    string  `json:"awemeId"`
-	Title      string  `json:"title"`
-	Phase      string  `json:"phase"`
-	Downloaded int64   `json:"downloaded"`
-	Total      int64   `json:"total"`
-	Percent    float64 `json:"percent"`
+	AwemeID        string  `json:"awemeId"`
+	Title          string  `json:"title"`
+	Phase          string  `json:"phase"`
+	Downloaded     int64   `json:"downloaded"`
+	Total          int64   `json:"total"`
+	Percent        float64 `json:"percent"`
+	SleepRemaining int64   `json:"sleepRemaining"`
+	SleepTotal     int64   `json:"sleepTotal"`
 }
 
 func douyinDownloadCacheKey(awemeID string) string {
@@ -465,13 +467,28 @@ func uniqueDouyinDownloadTasks(tasks []DouyinDownloadTask) []DouyinDownloadTask 
 	return unique
 }
 
-func (d *Douyin) sleepAfterTask() {
+func (d *Douyin) sleepAfterTask(task DouyinDownloadTask) {
 	// 和 B 站下载保持一致：每个 worker 完成一条任务后按用户设置随机休眠，降低连续请求频率。
 	sleepTime, err := d.settings.GetSleepTime()
 	if err != nil || sleepTime <= 0 {
 		return
 	}
-	time.Sleep(time.Duration(rand.Int63n(sleepTime)) * time.Second)
+	sleepTime = rand.Int63n(sleepTime)
+	if sleepTime <= 0 {
+		return
+	}
+	for remaining := sleepTime; remaining > 0; remaining-- {
+		d.emitDownloadProgress(douyinDownloadProgress{
+			AwemeID:        task.AwemeID,
+			Title:          task.Title,
+			Phase:          "sleep",
+			Percent:        100,
+			SleepRemaining: remaining,
+			SleepTotal:     sleepTime,
+		})
+		time.Sleep(time.Second)
+	}
+	d.emitDownloadProgress(douyinDownloadProgress{AwemeID: task.AwemeID, Title: task.Title, Phase: "done", Percent: 100})
 }
 
 // DownloadVideos 批量下载抖音任务；单个任务失败不会中断整批，结果逐条返回给前端。
@@ -505,7 +522,9 @@ func (d *Douyin) DownloadVideos(tasks []DouyinDownloadTask) (DouyinDownloadBatch
 					item.Error = err.Error()
 				}
 				results <- item
-				d.sleepAfterTask()
+				if err == nil {
+					d.sleepAfterTask(task)
+				}
 			}
 		})
 	}

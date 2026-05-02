@@ -283,13 +283,15 @@ func (b *BiliBili) resolveTargetDir(storagePath string, task DashDownloadTask) (
 }
 
 type downloadProgress struct {
-	Bvid       string  `json:"bvid"`
-	Cid        int64   `json:"cid"`
-	Title      string  `json:"title"`
-	Phase      string  `json:"phase"`
-	Downloaded int64   `json:"downloaded"`
-	Total      int64   `json:"total"`
-	Percent    float64 `json:"percent"`
+	Bvid           string  `json:"bvid"`
+	Cid            int64   `json:"cid"`
+	Title          string  `json:"title"`
+	Phase          string  `json:"phase"`
+	Downloaded     int64   `json:"downloaded"`
+	Total          int64   `json:"total"`
+	Percent        float64 `json:"percent"`
+	SleepRemaining int64   `json:"sleepRemaining"`
+	SleepTotal     int64   `json:"sleepTotal"`
 }
 
 func progressKey(bvid string, cid int64) string {
@@ -560,16 +562,31 @@ func (b *BiliBili) DownloadVideoByDash(sourceName, bvid, title, videoURL, audioU
 
 // sleepAfterTask 按设置项在同一个 worker 中休眠，避免连续请求过快；并发 worker 互不阻塞。
 // 根据设置的时间上下浮动
-func (b *BiliBili) sleepAfterTask() {
+func (b *BiliBili) sleepAfterTask(task DashDownloadTask) {
 	sleepTime, err := b.settings.GetSleepTime()
 	if err != nil || sleepTime <= 0 {
 		return
 	}
 
 	sleepTime = rand.Int63n(sleepTime)
+	if sleepTime <= 0 {
+		return
+	}
 	b.logger.Infof("download success, sleep %d second", sleepTime)
 
-	time.Sleep(time.Duration(sleepTime) * time.Second)
+	for remaining := sleepTime; remaining > 0; remaining-- {
+		b.emitDownloadProgress(downloadProgress{
+			Bvid:           task.Bvid,
+			Cid:            task.Cid,
+			Title:          task.Title,
+			Phase:          "sleep",
+			Percent:        100,
+			SleepRemaining: remaining,
+			SleepTotal:     sleepTime,
+		})
+		time.Sleep(time.Second)
+	}
+	b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
 }
 
 func dashDownloadDedupKey(task DashDownloadTask) string {
@@ -631,7 +648,9 @@ func (b *BiliBili) DownloadVideosByDash(tasks []DashDownloadTask) (DashDownloadB
 					item.Error = err.Error()
 				}
 				results <- item
-				b.sleepAfterTask()
+				if err == nil {
+					b.sleepAfterTask(task)
+				}
 			}
 		})
 	}

@@ -76,6 +76,7 @@ func (d *Douyin) getMsToken() (string, error) {
 }
 
 func (d *Douyin) SetCookie(cookie string) error {
+	cookie = strings.TrimSpace(cookie)
 	if err := d.settings.SetKey(douyinCookieKey, cookie); err != nil {
 		d.logger.Errorf("set cookie error: %s", err.Error())
 		return errors.New("设置Cookie失败")

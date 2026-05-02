@@ -189,6 +189,7 @@ function DouyinFavoritePage(): JSXElement {
     } catch (error) {
       if (seq !== videoRequestSeq) return;
       setVideoError(error instanceof Error ? error.message : String(error));
+      setVideoLoaded(true);
     } finally {
       if (seq === videoRequestSeq) setVideoLoading(false);
     }

@@ -16,6 +16,14 @@ export const Route = createFileRoute('/bilibili/history')({
   component: History,
 })
 
+function readResource<T>(read: () => T | undefined): T | undefined {
+  try {
+    return read();
+  } catch {
+    return undefined;
+  }
+}
+
 function History(): JSXElement {
   const {message, type, showToast} = useToast();
   const [items, {refetch, mutate}] = createResource(async () => {
@@ -23,7 +31,7 @@ function History(): JSXElement {
     return data ?? [];
   });
 
-  const historyItems = () => items() ?? [];
+  const historyItems = () => readResource(() => items()) ?? [];
 
   // 移除下载历史记录
   async function removeHistory(cid: number): Promise<void> {

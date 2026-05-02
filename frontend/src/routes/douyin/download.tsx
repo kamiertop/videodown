@@ -82,6 +82,7 @@ function progressText(progress: DouyinDownloadProgress | undefined): string {
   if (!progress) return "";
   if (progress.phase === "video") return `视频下载 ${Math.round(progress.percent)}%`;
   if (progress.phase === "image") return `图片下载 ${Math.round(progress.percent)}%`;
+  if (progress.phase === "sleep") return `休眠中 ${Math.max(0, Math.ceil(progress.sleepRemaining ?? 0))}s`;
   if (progress.phase === "done") return "完成";
   return "下载失败";
 }

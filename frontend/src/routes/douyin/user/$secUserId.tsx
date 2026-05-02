@@ -23,6 +23,14 @@ const USER_MIX_VIDEO_PAGE_SIZE = 20;
 type UserTab = "video" | "series";
 type DouyinMixItem = model.CollectionItem | model.SeriesInfoItem;
 
+function readResource<T>(read: () => T | undefined): T | undefined {
+  try {
+    return read();
+  } catch {
+    return undefined;
+  }
+}
+
 function isUserSeries(item: DouyinMixItem): item is model.SeriesInfoItem {
   return "series_id" in item;
 }
@@ -125,15 +133,17 @@ function DouyinUserPage(): JSXElement {
     (id) => UserVideoList(id, USER_VIDEO_PAGE_SIZE, 0),
   );
 
-  const user = () => userResult()?.user;
-  const videos = () => videoResult()?.aweme_list ?? [];
+  const userData = () => readResource(() => userResult());
+  const videoData = () => readResource(() => videoResult());
+  const user = () => userData()?.user;
+  const videos = () => videoData()?.aweme_list ?? [];
 
   function hasMore(): boolean {
-    return Number(videoResult()?.has_more ?? 0) > 0;
+    return Number(videoData()?.has_more ?? 0) > 0;
   }
 
   async function loadMore(): Promise<void> {
-    const current = videoResult();
+    const current = videoData();
     if (!current || !hasMore() || loadingMore()) return;
 
     setLoadingMore(true);
@@ -157,78 +167,98 @@ function DouyinUserPage(): JSXElement {
     await Promise.all([refetchUser(), refetchVideos()]);
   }
 
+  const errorMessage = () => {
+    const error = userResult.error || videoResult.error;
+    return error ? String(error) : "";
+  };
+
+  const isCookieError = () => {
+    const message = errorMessage().toLowerCase();
+    return message.includes("cookie") || message.includes("未设置") || message.includes("未登录");
+  };
+
   return (
     <section class="flex h-full min-h-0 flex-col gap-3 overflow-hidden bg-base-200/40 p-3">
-      <UserHeader
-        user={user()}
-        videoCount={videos().length}
-        loading={userResult.loading}
-      />
-
-      <main class="min-h-0 flex-1 overflow-hidden rounded-xl border border-base-300 bg-base-100">
-        <div class="flex h-full min-h-0 flex-col">
-          <nav class="grid shrink-0 grid-cols-2 border-b border-base-300 bg-base-100 p-1" role="tablist"
-               aria-label="用户内容">
-            <button
-              class={`min-h-8 rounded-lg text-sm font-semibold ${
-                activeTab() === "video" ? "bg-primary/12 text-primary ring-1 ring-primary/25" : "text-base-content/55 hover:bg-base-200"
-              }`}
-              type="button"
-              role="tab"
-              aria-selected={activeTab() === "video"}
-              onClick={() => setActiveTab("video")}
-            >
-              视频
-            </button>
-            <button
-              class={`min-h-8 rounded-lg text-sm font-semibold ${
-                activeTab() === "series" ? "bg-primary/12 text-primary ring-1 ring-primary/25" : "text-base-content/55 hover:bg-base-200"
-              }`}
-              type="button"
-              role="tab"
-              aria-selected={activeTab() === "series"}
-              onClick={() => {
-                setActiveTab("series");
-              }}
-            >
-              合集
-            </button>
-          </nav>
-
-          <div class="min-h-0 flex-1 overflow-hidden">
-            <div classList={{
-              "flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden": activeTab() === "video",
-              "hidden": activeTab() !== "video",
-            }}>
-              <VideoContentPanel
-                kind="user-video"
-                loading={userResult.loading || videoResult.loading}
-                error={(userResult.error || videoResult.error) ? String(userResult.error || videoResult.error) : ""}
-                onRetry={() => void reload()}
-                items={videos()}
-                sourceName={user()?.nickname || "用户作品"}
-                fallbackAuthor={user()?.nickname || "未知作者"}
-                showToast={showToast}
-                refreshing={userResult.loading || videoResult.loading}
-                onRefresh={() => void reload()}
-                hasMore={hasMore()}
-                loadingMore={loadingMore()}
-                onLoadMore={() => void loadMore()}
-              />
-            </div>
-
-            <CollectionVideoPanel
-              active={activeTab() === "series"}
-              kind="user-mix"
-              sourceKey={`user:${secUserId()}`}
-              refreshKey={seriesRefreshKey()}
-              showToast={showToast}
-              loadList={(cursor) => loadUserMixes(secUserId(), cursor)}
-              loadVideos={(item, cursor) => loadUserMixVideos(secUserId(), item, cursor)}
-            />
+      <Show when={!isCookieError()} fallback={
+        <div class="m-auto max-w-md w-full flex flex-col items-center justify-center gap-4 p-8">
+          <div class="rounded-xl border border-warning/30 bg-warning/10 px-5 py-4 text-center">
+            <p class="text-base font-semibold text-warning">请先设置抖音 Cookie</p>
+            <p class="mt-2 text-xs text-warning/80">后端未检测到抖音 Cookie，无法获取用户信息。请前往设置页面填写 Cookie。</p>
+            <Link to="/settings" class="btn btn-warning btn-sm mt-4">前往设置</Link>
           </div>
         </div>
-      </main>
+      }>
+        <UserHeader
+          user={user()}
+          videoCount={videos().length}
+          loading={userResult.loading}
+        />
+
+        <main class="min-h-0 flex-1 overflow-hidden rounded-xl border border-base-300 bg-base-100">
+          <div class="flex h-full min-h-0 flex-col">
+            <nav class="grid shrink-0 grid-cols-2 border-b border-base-300 bg-base-100 p-1" role="tablist"
+                 aria-label="用户内容">
+              <button
+                class={`min-h-8 rounded-lg text-sm font-semibold ${
+                  activeTab() === "video" ? "bg-primary/12 text-primary ring-1 ring-primary/25" : "text-base-content/55 hover:bg-base-200"
+                }`}
+                type="button"
+                role="tab"
+                aria-selected={activeTab() === "video"}
+                onClick={() => setActiveTab("video")}
+              >
+                视频
+              </button>
+              <button
+                class={`min-h-8 rounded-lg text-sm font-semibold ${
+                  activeTab() === "series" ? "bg-primary/12 text-primary ring-1 ring-primary/25" : "text-base-content/55 hover:bg-base-200"
+                }`}
+                type="button"
+                role="tab"
+                aria-selected={activeTab() === "series"}
+                onClick={() => {
+                  setActiveTab("series");
+                }}
+              >
+                合集
+              </button>
+            </nav>
+
+            <div class="min-h-0 flex-1 overflow-hidden">
+              <div classList={{
+                "flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden": activeTab() === "video",
+                "hidden": activeTab() !== "video",
+              }}>
+                <VideoContentPanel
+                  kind="user-video"
+                  loading={userResult.loading || videoResult.loading}
+                  error={!isCookieError() ? errorMessage() : ""}
+                  onRetry={() => void reload()}
+                  items={videos()}
+                  sourceName={user()?.nickname || "用户作品"}
+                  fallbackAuthor={user()?.nickname || "未知作者"}
+                  showToast={showToast}
+                  refreshing={userResult.loading || videoResult.loading}
+                  onRefresh={() => void reload()}
+                  hasMore={hasMore()}
+                  loadingMore={loadingMore()}
+                  onLoadMore={() => void loadMore()}
+                />
+              </div>
+
+              <CollectionVideoPanel
+                active={activeTab() === "series"}
+                kind="user-mix"
+                sourceKey={`user:${secUserId()}`}
+                refreshKey={seriesRefreshKey()}
+                showToast={showToast}
+                loadList={(cursor) => loadUserMixes(secUserId(), cursor)}
+                loadVideos={(item, cursor) => loadUserMixVideos(secUserId(), item, cursor)}
+              />
+            </div>
+          </div>
+        </main>
+      </Show>
       <Toast message={message()} type={type()}/>
     </section>
   );

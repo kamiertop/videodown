@@ -7,7 +7,7 @@ import {type DouyinDownloadItem, douyinVideoList, removeDouyinVideo} from "./dou
 type ToastType = "error" | "success" | "info" | "warning";
 type ShowToast = (message: string, type?: ToastType) => void;
 
-export type DouyinDownloadPhase = "video" | "image" | "done" | "error";
+export type DouyinDownloadPhase = "video" | "image" | "sleep" | "done" | "error";
 
 export interface DouyinDownloadProgress {
   awemeId: string;
@@ -16,6 +16,8 @@ export interface DouyinDownloadProgress {
   downloaded: number;
   total: number;
   percent: number;
+  sleepRemaining?: number;
+  sleepTotal?: number;
 }
 
 type BackendTask = api.DouyinDownloadTask;

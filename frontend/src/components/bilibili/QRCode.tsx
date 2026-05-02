@@ -55,12 +55,12 @@ export default function BiliBiliQRCode(props: BiliBiliQRCodeProps): JSXElement {
     return (
         <>
             <div class="card border border-base-300 bg-base-100 shadow-2xl">
-                <div class="card-body items-center gap-5 p-8 text-center">
-                    <div class="rounded-3xl bg-base-200 p-4">
+                <div class="card-body items-center gap-4 p-6 text-center">
+                    <div class="rounded-3xl bg-base-200 p-3">
                         <Show
                             when={qrCode()}
                             fallback={
-                                <div class="flex h-60 w-60 items-center justify-center">
+                                <div class="flex h-56 w-56 items-center justify-center">
                                     <span class="loading loading-spinner loading-lg text-primary"></span>
                                 </div>
                             }
@@ -69,7 +69,7 @@ export default function BiliBiliQRCode(props: BiliBiliQRCodeProps): JSXElement {
                                 <img
                                     src={qrCode()!.image}
                                     alt="Bilibili 登录二维码"
-                                    class={`h-60 w-60 rounded-2xl border bg-white p-2 transition ${props.expired ? 'opacity-40 grayscale' : 'border-base-300'}`}
+                                    class={`h-56 w-56 rounded-2xl border bg-white p-2 transition ${props.expired ? 'opacity-40 grayscale' : 'border-base-300'}`}
                                 />
                                 <Show when={props.expired}>
                                     <button
@@ -83,8 +83,8 @@ export default function BiliBiliQRCode(props: BiliBiliQRCodeProps): JSXElement {
                         </Show>
                     </div>
 
-                    <div class="space-y-2">
-                        <h2 class="text-xl font-semibold">请使用 B 站 App 扫码</h2>
+                    <div class="space-y-1.5">
+                        <h2 class="text-lg font-semibold">请使用 B 站 App 扫码</h2>
                         <p class="text-sm text-base-content/60">扫码后在手机上确认登录，页面会自动更新状态。</p>
                     </div>
 

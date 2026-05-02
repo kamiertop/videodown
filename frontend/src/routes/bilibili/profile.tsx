@@ -99,12 +99,12 @@ function Profile(): JSXElement {
       if (result.code === 86038) {
         stopPolling();
         setQRExpired(true);
-        showToast('二维码已失效，请刷新后重试。', 'warning');
+        showToast('二维码已失效，请刷新后重试', 'warning');
         return;
       }
 
       if (result.code === 86101) {
-        showToast('二维码已就绪，请使用 B 站 App 扫码。', 'info');
+        showToast('二维码已就绪，请使用 B 站 App 扫码', 'info');
         schedulePoll(qrcodeKey);
         return;
       }
@@ -134,7 +134,7 @@ function Profile(): JSXElement {
   })
 
   return (
-    <section class="h-full overflow-hidden bg-base-200/40 px-4 py-4 md:px-6 md:py-5">
+    <section class="h-full overflow-hidden bg-base-200/40 px-4 py-3 md:px-6 md:py-4">
       <Switch>
         <Match when={checkingLogin()}>
           <div class="flex h-full items-center justify-center">
@@ -152,16 +152,16 @@ function Profile(): JSXElement {
         </Match>
 
         <Match when={!loggedIn()}>
-          <div class="flex h-full flex-col items-center justify-center gap-8">
-            <div class="text-center space-y-3">
-              <h1 class="text-3xl font-black leading-tight text-base-content">先完成扫码登录，再进入下载流程</h1>
+          <div class="flex h-full flex-col items-center justify-start gap-4 overflow-auto pt-2">
+            <div class="text-center space-y-1.5">
+              <h1 class="text-2xl font-black leading-tight text-base-content">先完成扫码登录，再进入下载流程</h1>
               <p class="text-sm text-base-content/60">使用 B 站 App 扫描二维码即可登录</p>
             </div>
 
             <QRCode
               expired={qrExpired()}
               onLoad={(data: model.QRCodeData) => {
-                showToast('二维码已就绪，请使用 B 站 App 扫码。', 'info');
+                showToast('二维码已就绪，请使用 B 站 App 扫码', 'info');
                 setQRExpired(false);
                 schedulePoll(data.qrcode_key);
               }}

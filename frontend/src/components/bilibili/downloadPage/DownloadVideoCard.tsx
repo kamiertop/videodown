@@ -38,6 +38,7 @@ export default function DownloadVideoCard(props: DownloadVideoCardProps): JSXEle
         if (progress.phase === "video") return `视频下载 ${Math.round(progress.percent)}%`;
         if (progress.phase === "audio") return `音频下载 ${Math.round(progress.percent)}%`;
         if (progress.phase === "merge") return "合并中";
+        if (progress.phase === "sleep") return `休眠中 ${Math.max(0, Math.ceil(progress.sleepRemaining ?? 0))}s`;
         if (progress.phase === "done") return "完成";
         return "下载失败";
     };
