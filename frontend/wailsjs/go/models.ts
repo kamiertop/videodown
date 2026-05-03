@@ -1476,8 +1476,6 @@ export namespace model {
 	    avatar_thumb: Avatar;
 	    avatar_medium: Avatar;
 	    avatar_large: Avatar;
-	    preview_start_time: number;
-	    preview_end_time: number;
 	    is_commerce_music: boolean;
 	    is_original_sound: boolean;
 	    audition_duration: number;
@@ -1541,8 +1539,6 @@ export namespace model {
 	        this.avatar_thumb = this.convertValues(source["avatar_thumb"], Avatar);
 	        this.avatar_medium = this.convertValues(source["avatar_medium"], Avatar);
 	        this.avatar_large = this.convertValues(source["avatar_large"], Avatar);
-	        this.preview_start_time = source["preview_start_time"];
-	        this.preview_end_time = source["preview_end_time"];
 	        this.is_commerce_music = source["is_commerce_music"];
 	        this.is_original_sound = source["is_original_sound"];
 	        this.audition_duration = source["audition_duration"];

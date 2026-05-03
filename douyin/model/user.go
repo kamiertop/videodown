@@ -139,8 +139,6 @@ type Music struct {
 	AvatarThumb                    Avatar          `json:"avatar_thumb"`
 	AvatarMedium                   Avatar          `json:"avatar_medium"`
 	AvatarLarge                    Avatar          `json:"avatar_large"`
-	PreviewStartTime               int             `json:"preview_start_time"`
-	PreviewEndTime                 int             `json:"preview_end_time"`
 	IsCommerceMusic                bool            `json:"is_commerce_music"`
 	IsOriginalSound                bool            `json:"is_original_sound"`
 	AuditionDuration               int             `json:"audition_duration"`

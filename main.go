@@ -40,9 +40,9 @@ func main() {
 	err = wails.Run(&options.App{
 		Title:             "videodown",
 		Width:             1300,
-		Height:            800,
+		Height:            1000,
 		MinWidth:          1024,
-		MinHeight:         768,
+		MinHeight:         800,
 		MaxWidth:          2560,
 		MaxHeight:         1440,
 		DisableResize:     false,
