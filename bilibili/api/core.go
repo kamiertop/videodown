@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/bytedance/sonic"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/imroc/req/v3"
 
@@ -36,9 +37,15 @@ func New(logger *logger.Logger, db *utils.Settings, ctxProvider ...func() contex
 		provider = ctxProvider[0]
 	}
 	return &BiliBili{
-		ctxProvider:    provider,
-		logger:         logger.WithCaller(2),
-		client:         req.C().SetLogger(logger).EnableDebugLog().EnableAutoDecompress(),
+		ctxProvider: provider,
+		logger:      logger.WithName("BiliBili").WithCaller(2),
+		client: req.
+			C().
+			SetLogger(logger).
+			EnableDebugLog().
+			EnableAutoDecompress().
+			SetJsonMarshal(sonic.Marshal).
+			SetJsonUnmarshal(sonic.Unmarshal),
 		settings:       db,
 		progressByBvid: make(map[string]float64),
 	}
