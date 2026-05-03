@@ -26,6 +26,10 @@ export function Close() {
   return window['go']['utils']['Settings']['Close']();
 }
 
+export function CloseDB() {
+  return window['go']['utils']['Settings']['CloseDB']();
+}
+
 export function DropAll() {
   return window['go']['utils']['Settings']['DropAll']();
 }

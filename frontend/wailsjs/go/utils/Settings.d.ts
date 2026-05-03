@@ -19,6 +19,8 @@ export function CacheMaxCost(arg1:badger.CacheType,arg2:number):Promise<number>;
 
 export function Close():Promise<void>;
 
+export function CloseDB():Promise<void>;
+
 export function DropAll():Promise<void>;
 
 export function DropPrefix(arg1:Array<any>):Promise<void>;

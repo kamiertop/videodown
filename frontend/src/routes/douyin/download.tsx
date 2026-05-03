@@ -181,30 +181,27 @@ function DouyinDownloadCard(props: {
           <p class="text-xs text-warning">没有可用下载地址，可能需要重新进入来源页面刷新数据。</p>
         </Show>
 
-        <Show when={isStandardVideo() && (props.item.videoOptions?.length ?? 0) > 0}>
-          {/* 清晰度选项来自 bit_rate/play_addr；切换后会更新队列里的 videoURL，下载时使用当前选择。 */}
-          <div class="flex items-center gap-2 text-xs">
-            <span class="text-base-content/55">清晰度</span>
-            <select
-              class="select select-bordered select-xs min-w-0 w-56"
-              value={props.item.selectedVideoOptionId ?? ""}
-              disabled={props.downloading}
-              onChange={(event) => updateDouyinVideoOption(props.item.awemeId, event.currentTarget.value)}
-            >
-              <For each={props.item.videoOptions ?? []}>
-                {(option) => (
-                  <option value={option.id}>
-                    {option.gearName} · {formatDataSize(option.dataSize)}
-                  </option>
-                )}
-              </For>
-            </select>
-
-          </div>
-        </Show>
         <Show when={isStandardVideo()}>
-          <div class="flex flex-row gap-2 text-xs">
-            <span class="text-base-content/55">编码</span>
+          <div class="flex items-center gap-3 text-xs">
+            {/* 清晰度选项来自 bit_rate/play_addr；切换后会更新队列里的 videoURL，下载时使用当前选择。 */}
+            <Show when={(props.item.videoOptions?.length ?? 0) > 0}>
+              <span class="text-base-content/55 shrink-0">清晰度</span>
+              <select
+                class="select select-bordered select-xs min-w-0 w-44"
+                value={props.item.selectedVideoOptionId ?? ""}
+                disabled={props.downloading}
+                onChange={(event) => updateDouyinVideoOption(props.item.awemeId, event.currentTarget.value)}
+              >
+                <For each={props.item.videoOptions ?? []}>
+                  {(option) => (
+                    <option value={option.id}>
+                      {option.gearName} · {formatDataSize(option.dataSize)}
+                    </option>
+                  )}
+                </For>
+              </select>
+            </Show>
+            <span class="text-base-content/55 shrink-0">编码</span>
             <span class="truncate text-base-content/70">
               {selectedOption()?.codec ?? "-"}
               <Show when={selectedOption()?.bitRate}>

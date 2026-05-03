@@ -36,11 +36,6 @@ func (a *App) beforeClose(ctx context.Context) (prevent bool) {
 	return false
 }
 
-// shutdown is called at application termination
-func (a *App) shutdown(ctx context.Context) {
-	// Perform your teardown here
-}
-
 func (a *App) SetStorage() (string, error) {
 	return a.settings.SetStorage(a.ctx)
 }

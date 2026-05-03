@@ -22,7 +22,7 @@ export const Route = createFileRoute('/settings')({
 
 function SettingsComponent(): JSXElement {
   return (
-    <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="pt-5 pl-6 pr-6 grid grid-cols-1 md:grid-cols-2 gap-6">
       {/* 下载路径设置 */}
       <StorageDirectory/>
       <ConcurrencyNum/>
@@ -321,26 +321,32 @@ function ConcurrencyNum(): JSXElement {
           下载控制
         </h2>
         <span>
-          同时下载视频的数量（被封了不关我事🤣）
+          同时下载视频的数量 [ {num()} ]（被封了不关我事🤣）
         </span>
+        <div class="w-full max-w-xl">
+          {/* 滑块 */}
+          <input
+            type="range"
+            min={1}
+            max={10}
+            step={1}
+            value={num()}
+            onInput={saveNum}
+            class="range range-secondary w-full"
+          />
 
-        <div class="w-full max-w-xs">
-          <input type="range" min={1} max="5" value={num()}
-                 onInput={(e) => saveNum(e)}
-                 class="range range-secondary" step="1"/>
-          <div class="flex justify-between px-2.5 mt-2 text-xs">
-            <span>|</span>
-            <span>|</span>
-            <span>|</span>
-            <span>|</span>
-            <span>|</span>
+          {/* 刻度线 */}
+          <div class="flex justify-between px-2.5 mt-2 text-xs pointer-events-none select-none">
+            {Array.from({length: 10}).map(() => (
+              <span>|</span>
+            ))}
           </div>
-          <div class="flex justify-between px-2.5 mt-2 text-xs">
-            <span>1</span>
-            <span>2</span>
-            <span>3</span>
-            <span>4</span>
-            <span>5</span>
+
+          {/* 数字 */}
+          <div class="flex justify-between px-2.5 mt-2 text-xs pointer-events-none select-none">
+            {Array.from({length: 10}).map((_, i) => (
+              <span>{i + 1}</span>
+            ))}
           </div>
         </div>
       </div>
