@@ -25,13 +25,19 @@ var macIcon []byte
 
 func main() {
 	log := mylogger.New()
-	settings := utils.NewSettings(log)
+	settings, err := utils.NewSettings(log)
+	if err != nil {
+		log.Fatalf("Failed to initialize settings: %v", err)
+	}
 	app := NewApp(settings)
 	bilibili := bilibiliapi.New(log, settings, func() context.Context {
 		return app.ctx
 	})
+	douyin := douyinapi.New(log, settings, func() context.Context {
+		return app.ctx
+	})
 	// Create application with options
-	err := wails.Run(&options.App{
+	err = wails.Run(&options.App{
 		Title:             "videodown",
 		Width:             1300,
 		Height:            800,
@@ -41,27 +47,31 @@ func main() {
 		MaxHeight:         1440,
 		DisableResize:     false,
 		Fullscreen:        false,
-		Frameless:         false,
+		Frameless:         false, // 是否无边框，无边框时需要额外处理窗口拖动等功能
 		StartHidden:       false,
 		HideWindowOnClose: false,
 		BackgroundColour:  &options.RGBA{R: 255, G: 255, B: 255, A: 255},
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		Menu:             nil,
-		Logger:           log.WithName("wails"),
-		LogLevel:         logger.DEBUG,
-		OnStartup:        app.startup,
-		OnDomReady:       app.domReady,
-		OnBeforeClose:    app.beforeClose,
-		OnShutdown:       app.shutdown,
+		Menu:          nil,
+		Logger:        log.WithName("wails"),
+		LogLevel:      logger.DEBUG,
+		OnStartup:     app.startup,
+		OnDomReady:    app.domReady,
+		OnBeforeClose: app.beforeClose,
+		OnShutdown: func(ctx context.Context) {
+			if err := settings.CloseDB(); err != nil {
+				log.Errorf("Failed to close settings DB: %v", err)
+				return
+			}
+			log.Info("Close BadgerDB and shutdown application")
+		},
 		WindowStartState: options.Normal,
 		Bind: []any{
 			app,
 			bilibili,
-			douyinapi.New(log, settings, func() context.Context {
-				return app.ctx
-			}),
+			douyin,
 			settings,
 		},
 		// Windows platform specific options

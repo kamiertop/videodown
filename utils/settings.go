@@ -47,6 +47,10 @@ func (s *Settings) init() error {
 	})
 }
 
+func (s *Settings) CloseDB() error {
+	return s.DB.Close()
+}
+
 const (
 	themeKey            = "theme"
 	storageKey          = "storage"
@@ -92,7 +96,7 @@ func NewSettingsWithMemory(logger *logger.Logger) *Settings {
 	return s
 }
 
-func NewSettings(logger *logger.Logger) *Settings {
+func NewSettings(logger *logger.Logger) (*Settings, error) {
 	db, err := badger.Open(badger.DefaultOptions("videodown.db").WithLogger(logger).WithLoggingLevel(badger.ERROR))
 	if err != nil {
 		panic(err)
@@ -100,11 +104,7 @@ func NewSettings(logger *logger.Logger) *Settings {
 
 	s := &Settings{DB: db, logger: logger.WithName("Settings")}
 
-	if err := s.init(); err != nil {
-		panic(err)
-	}
-
-	return s
+	return s, s.init()
 }
 
 // GetTheme 获取主题设置
