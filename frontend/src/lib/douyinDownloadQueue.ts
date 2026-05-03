@@ -7,7 +7,7 @@ import {type DouyinDownloadItem, douyinVideoList, removeDouyinVideo} from "./dou
 type ToastType = "error" | "success" | "info" | "warning";
 type ShowToast = (message: string, type?: ToastType) => void;
 
-export type DouyinDownloadPhase = "video" | "image" | "sleep" | "done" | "error";
+export type DouyinDownloadPhase = "video" | "image" | "sleep" | "music"|"done" | "error";
 
 export interface DouyinDownloadProgress {
   awemeId: string;
@@ -30,14 +30,14 @@ export function formatDouyinSource(item: DouyinDownloadItem): string {
 }
 
 function hasDownloadURL(item: DouyinDownloadItem): boolean {
-  // 普通视频走 videoURL；图文走 imageURLs。动图不回退成图片下载。
-  if (item.mediaBadge === "image") return (item.imageURLs?.length ?? 0) > 0;
+  // 普通视频走 videoURL；图文/动图走有序素材列表，配乐是附加资源。
+  if (item.mediaBadge) return (item.assets?.length ?? 0) > 0 || (item.imageURLs?.length ?? 0) > 0;
   return !!item.videoURL;
 }
 
 function toBackendTask(item: DouyinDownloadItem): BackendTask {
   // 前端只提交最终选择好的下载地址，后端不再重新解析清晰度，行为和 B 站下载队列保持一致。
-  return {
+  return api.DouyinDownloadTask.createFrom({
     awemeId: item.awemeId,
     sourceKind: item.sourceKind,
     sourceName: item.sourceName ?? "",
@@ -50,7 +50,9 @@ function toBackendTask(item: DouyinDownloadItem): BackendTask {
     collectCount: item.collectCount ?? 0,
     videoURL: item.videoURL ?? "",
     imageURLs: item.mediaBadge === "image" ? item.imageURLs ?? [] : [],
-  };
+    assets: item.mediaBadge ? item.assets ?? [] : [],
+    musicURL: item.mediaBadge ? item.musicURL ?? "" : "",
+  });
 }
 
 export function useDouyinDownloadQueue(showToast: ShowToast) {

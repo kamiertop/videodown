@@ -4,7 +4,9 @@ import {createStore} from "solid-js/store";
 import {model} from "../../../wailsjs/go/models";
 import {
   defaultDouyinVideoOption,
+  douyinDownloadAssets,
   douyinImageURLs,
+  douyinMusicURL,
   douyinVideoOptions,
   isDouyinImageAlbum,
   isDouyinLivePhoto,
@@ -146,6 +148,9 @@ export default function VideoContentPanel(props: {
       const videoOptions = douyinVideoOptions(item);
       const selectedVideoOption = defaultDouyinVideoOption(videoOptions);
       const imageURLs = douyinImageURLs(item);
+      const mediaBadge = isDouyinLivePhoto(item)
+        ? "live-photo"
+        : isDouyinImageAlbum(item) ? "image" : undefined;
 
       return {
         id: awemeKey(item, index),
@@ -170,13 +175,11 @@ export default function VideoContentPanel(props: {
           videoOptions,
           selectedVideoOptionId: selectedVideoOption?.id,
           imageURLs,
-          mediaBadge: isDouyinLivePhoto(item)
-            ? "live-photo"
-            : isDouyinImageAlbum(item) ? "image" : undefined,
+          assets: mediaBadge ? douyinDownloadAssets(item) : undefined,
+          musicURL: mediaBadge ? douyinMusicURL(item) : undefined,
+          mediaBadge,
         },
-        mediaBadge: isDouyinLivePhoto(item)
-          ? "live-photo"
-          : isDouyinImageAlbum(item) ? "image" : undefined,
+        mediaBadge,
       };
     }),
   );

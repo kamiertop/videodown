@@ -91,6 +91,22 @@ export namespace api {
 	        this.audioURL = source["audioURL"];
 	    }
 	}
+	export class DouyinDownloadAsset {
+	    url: string;
+	    kind: string;
+	    ext: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DouyinDownloadAsset(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.url = source["url"];
+	        this.kind = source["kind"];
+	        this.ext = source["ext"];
+	    }
+	}
 	export class DouyinDownloadResult {
 	    awemeId: string;
 	    title: string;
@@ -195,6 +211,8 @@ export namespace api {
 	    collectCount: number;
 	    videoURL: string;
 	    imageURLs: string[];
+	    assets: DouyinDownloadAsset[];
+	    musicURL: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new DouyinDownloadTask(source);
@@ -214,7 +232,27 @@ export namespace api {
 	        this.collectCount = source["collectCount"];
 	        this.videoURL = source["videoURL"];
 	        this.imageURLs = source["imageURLs"];
+	        this.assets = this.convertValues(source["assets"], DouyinDownloadAsset);
+	        this.musicURL = source["musicURL"];
 	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class DownloadHistoryItem {
 	    bvid: string;

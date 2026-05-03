@@ -1,5 +1,5 @@
 import {model} from "../../wailsjs/go/models";
-import type {DouyinVideoOption} from "./douyinStore.ts";
+import type {DouyinDownloadAsset, DouyinVideoOption} from "./douyinStore.ts";
 
 function firstURL(playAddr: model.PlayInfo | undefined): string {
   return playAddr?.url_list?.[0] ?? "";
@@ -94,6 +94,30 @@ export function douyinImageURLs(item: model.AwemeItem): string[] {
   return (item.images ?? [])
     .map((image) => image.url_list?.[0] ?? "")
     .filter((url) => url.length > 0);
+}
+
+function imageVideoURL(image: model.ImageItem): string {
+  return image.video?.play_addr_h264?.url_list?.[0]
+    ?? image.video?.play_addr?.url_list?.[0]
+    ?? image.video?.bit_rate?.[0]?.play_addr?.url_list?.[0]
+    ?? "";
+}
+
+export function douyinMusicURL(item: model.AwemeItem): string {
+  return item.music?.play_url?.url_list?.[0] ?? "";
+}
+
+export function douyinDownloadAssets(item: model.AwemeItem): DouyinDownloadAsset[] {
+  return (item.images ?? [])
+    .map((image): DouyinDownloadAsset | undefined => {
+      if (isLivePhotoImage(image)) {
+        const url = imageVideoURL(image);
+        return url ? {url, kind: "video", ext: ".mp4"} : undefined;
+      }
+      const url = image.url_list?.[0] ?? "";
+      return url ? {url, kind: "image", ext: ".jpg"} : undefined;
+    })
+    .filter((asset): asset is DouyinDownloadAsset => asset != null);
 }
 
 function hasDouyinImages(item: model.AwemeItem): boolean {

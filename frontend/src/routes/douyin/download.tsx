@@ -12,7 +12,9 @@ import {
 } from "../../lib/douyinDownloadQueue.ts";
 import {
   defaultDouyinVideoOption,
+  douyinDownloadAssets,
   douyinImageURLs,
+  douyinMusicURL,
   douyinVideoOptions,
   formatDataSize,
   isDouyinImageAlbum,
@@ -54,6 +56,9 @@ function detailToDownloadItem(item: model.AwemeItem): DouyinDownloadItem {
   const authorName = item.author?.nickname || item.author?.uid || "未知作者";
   const videoOptions = douyinVideoOptions(item);
   const selectedVideoOption = defaultDouyinVideoOption(videoOptions);
+  const mediaBadge = isDouyinLivePhoto(item)
+    ? "live-photo"
+    : isDouyinImageAlbum(item) ? "image" : undefined;
 
   return {
     awemeId,
@@ -71,9 +76,9 @@ function detailToDownloadItem(item: model.AwemeItem): DouyinDownloadItem {
     videoOptions,
     selectedVideoOptionId: selectedVideoOption?.id,
     imageURLs: douyinImageURLs(item),
-    mediaBadge: isDouyinLivePhoto(item)
-      ? "live-photo"
-      : isDouyinImageAlbum(item) ? "image" : undefined,
+    assets: mediaBadge ? douyinDownloadAssets(item) : undefined,
+    musicURL: mediaBadge ? douyinMusicURL(item) : undefined,
+    mediaBadge,
   };
 }
 
@@ -82,6 +87,7 @@ function progressText(progress: DouyinDownloadProgress | undefined): string {
   if (!progress) return "";
   if (progress.phase === "video") return `视频下载 ${Math.round(progress.percent)}%`;
   if (progress.phase === "image") return `图片下载 ${Math.round(progress.percent)}%`;
+  if (progress.phase === "music") return `音乐下载 ${Math.round(progress.percent)}%`;
   if (progress.phase === "sleep") return `休眠中 ${Math.max(0, Math.ceil(progress.sleepRemaining ?? 0))}s`;
   if (progress.phase === "done") return "完成";
   return "下载失败";

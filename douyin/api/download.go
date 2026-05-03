@@ -26,18 +26,26 @@ const douyinDownloadedCachePrefix = "douyin:downloaded:"
 // DouyinDownloadTask 是前端提交给后端的最小任务协议。
 // 前端已经完成清晰度选择，所以后端只消费最终 videoURL；图片合集则使用 ImageURLs。
 type DouyinDownloadTask struct {
-	AwemeID      string   `json:"awemeId"`
-	SourceKind   string   `json:"sourceKind"`
-	SourceName   string   `json:"sourceName"`
-	Title        string   `json:"title"`
-	Cover        string   `json:"cover"`
-	Duration     int      `json:"duration"`
-	AuthorName   string   `json:"authorName"`
-	PublishTime  int      `json:"publishTime"`
-	DiggCount    int      `json:"diggCount"`
-	CollectCount int      `json:"collectCount"`
-	VideoURL     string   `json:"videoURL"`
-	ImageURLs    []string `json:"imageURLs"`
+	AwemeID      string                `json:"awemeId"`
+	SourceKind   string                `json:"sourceKind"`
+	SourceName   string                `json:"sourceName"`
+	Title        string                `json:"title"`
+	Cover        string                `json:"cover"`
+	Duration     int                   `json:"duration"`
+	AuthorName   string                `json:"authorName"`
+	PublishTime  int                   `json:"publishTime"`
+	DiggCount    int                   `json:"diggCount"`
+	CollectCount int                   `json:"collectCount"`
+	VideoURL     string                `json:"videoURL"`
+	ImageURLs    []string              `json:"imageURLs"`
+	Assets       []DouyinDownloadAsset `json:"assets"`
+	MusicURL     string                `json:"musicURL"`
+}
+
+type DouyinDownloadAsset struct {
+	URL  string `json:"url"`
+	Kind string `json:"kind"`
+	Ext  string `json:"ext"`
 }
 
 type DouyinDownloadResult struct {
@@ -389,6 +397,29 @@ func (d *Douyin) resolveDownloadDir(storagePath string, task DouyinDownloadTask)
 	return filepath.Join(storagePath, author), nil
 }
 
+func douyinAssetExt(asset DouyinDownloadAsset) string {
+	ext := strings.TrimSpace(asset.Ext)
+	if ext == "" {
+		if asset.Kind == "video" {
+			return ".mp4"
+		}
+		return ".jpg"
+	}
+	if !strings.HasPrefix(ext, ".") {
+		ext = "." + ext
+	}
+	ext = strings.ToLower(ext)
+	switch ext {
+	case ".jpg", ".jpeg", ".png", ".webp", ".mp4":
+		return ext
+	default:
+		if asset.Kind == "video" {
+			return ".mp4"
+		}
+		return ".jpg"
+	}
+}
+
 // downloadTask 同时处理普通视频和图片合集；当前版本不在后端重新解析 bit_rate。
 func (d *Douyin) downloadTask(task DouyinDownloadTask) (string, error) {
 	task.AwemeID = strings.TrimSpace(task.AwemeID)
@@ -416,25 +447,47 @@ func (d *Douyin) downloadTask(task DouyinDownloadTask) (string, error) {
 	delete(d.progressByID, task.AwemeID)
 	d.progressMu.Unlock()
 
-	if len(task.ImageURLs) > 0 {
-		// 图集保存为一个目录，文件名按 001.jpg、002.jpg 顺序落盘。
+	if len(task.Assets) > 0 || len(task.ImageURLs) > 0 {
+		// 图文/动图保存为一个目录，素材按 001.jpg、002.mp4 顺序落盘，配乐单独保存为 music.mp3。
 		dir := uniqueDouyinFilePath(filepath.Join(targetDir, sanitizeDouyinFilename(task.Title)))
 		if err = os.MkdirAll(dir, 0o755); err != nil {
-			return "", errors.New("创建图集目录失败")
+			return "", errors.New("创建素材目录失败")
 		}
-		total := len(task.ImageURLs)
-		for index, imageURL := range task.ImageURLs {
-			ext := ".jpg"
+		assets := task.Assets
+		if len(assets) == 0 {
+			assets = make([]DouyinDownloadAsset, 0, len(task.ImageURLs))
+			for _, imageURL := range task.ImageURLs {
+				assets = append(assets, DouyinDownloadAsset{URL: imageURL, Kind: "image", Ext: ".jpg"})
+			}
+		}
+		total := len(assets)
+		if strings.TrimSpace(task.MusicURL) != "" {
+			total++
+		}
+		if total == 0 {
+			return "", errors.New("素材下载地址为空")
+		}
+		for index, asset := range assets {
+			ext := douyinAssetExt(asset)
 			start := float64(index) / float64(total) * 100
 			weight := 100 / float64(total)
 			path := filepath.Join(dir, fmt.Sprintf("%03d%s", index+1, ext))
-			if err = d.downloadURLToFile(imageURL, path, task, "image", start, weight); err != nil {
+			if err = d.downloadURLToFile(asset.URL, path, task, asset.Kind, start, weight); err != nil {
+				d.emitDownloadProgress(douyinDownloadProgress{AwemeID: task.AwemeID, Title: task.Title, Phase: "error"})
+				return "", err
+			}
+		}
+		if strings.TrimSpace(task.MusicURL) != "" {
+			start := float64(len(assets)) / float64(total) * 100
+			weight := 100 / float64(total)
+			path := filepath.Join(dir, "music.mp3")
+			if err = d.downloadURLToFile(task.MusicURL, path, task, "music", start, weight); err != nil {
 				d.emitDownloadProgress(douyinDownloadProgress{AwemeID: task.AwemeID, Title: task.Title, Phase: "error"})
 				return "", err
 			}
 		}
 		d.emitDownloadProgress(douyinDownloadProgress{AwemeID: task.AwemeID, Title: task.Title, Phase: "done", Percent: 100})
-		d.markDownloaded(task, dir, true, len(task.ImageURLs))
+		d.markDownloaded(task, dir, true, len(assets))
 		return dir, nil
 	}
 

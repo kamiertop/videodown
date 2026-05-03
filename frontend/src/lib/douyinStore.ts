@@ -10,6 +10,12 @@ export interface DouyinVideoOption {
   url: string;
 }
 
+export interface DouyinDownloadAsset {
+  url: string;
+  kind: "image" | "video";
+  ext: string;
+}
+
 // 下载页只保存轻量任务数据；完整 AwemeItem 太大，也不适合跨页面长期持有。
 export interface DouyinDownloadItem {
   awemeId: string;
@@ -27,6 +33,8 @@ export interface DouyinDownloadItem {
   videoOptions?: DouyinVideoOption[];
   selectedVideoOptionId?: string;
   imageURLs?: string[];
+  assets?: DouyinDownloadAsset[];
+  musicURL?: string;
   mediaBadge?: "image" | "live-photo";
 }
 
