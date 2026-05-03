@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/imroc/req/v3"
-	"github.com/wudi/jsonx"
 
 	"github.com/kamiertop/videodown/logger"
 	"github.com/kamiertop/videodown/utils"
@@ -45,14 +45,14 @@ func New(logger *logger.Logger, settings *utils.Settings, ctxProvider ...func() 
 	}
 	return &Douyin{
 		ctxProvider: provider,
-		logger:      logger.WithName("Douyin"),
+		logger:      logger.WithName("Douyin").WithCaller(2),
 		client: req.
 			C().
 			SetLogger(logger).
 			EnableDebugLog().
 			EnableAutoDecompress().
-			SetJsonUnmarshal(jsonx.Unmarshal).
-			SetJsonMarshal(jsonx.Marshal),
+			SetJsonUnmarshal(sonic.Unmarshal).
+			SetJsonMarshal(sonic.Marshal),
 		settings:     settings,
 		progressByID: make(map[string]float64),
 	}
@@ -112,7 +112,7 @@ func (d *Douyin) cookieQuery() (cookieParams, error) {
 			} else {
 				// 这个字段是个json字符串, 解析后取第一个key就是userID了
 				var userId map[string]any
-				err = jsonx.Unmarshal([]byte(unescape), &userId)
+				err = sonic.Unmarshal([]byte(unescape), &userId)
 				if err == nil {
 					for value := range userId {
 						d.userID = value

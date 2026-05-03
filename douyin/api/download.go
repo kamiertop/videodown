@@ -2,7 +2,6 @@ package api
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/dgraph-io/badger/v4"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -178,7 +178,7 @@ func (d *Douyin) markDownloaded(task DouyinDownloadTask, path string, isImageAlb
 		return
 	}
 
-	payload, err := json.Marshal(DouyinDownloadHistoryItem{
+	payload, err := sonic.Marshal(DouyinDownloadHistoryItem{
 		AwemeID:      strings.TrimSpace(task.AwemeID),
 		Title:        strings.TrimSpace(task.Title),
 		Cover:        strings.TrimSpace(task.Cover),
@@ -216,7 +216,7 @@ func (d *Douyin) DownloadHistory() ([]DouyinDownloadHistoryItem, error) {
 			item := it.Item()
 			if err := item.Value(func(val []byte) error {
 				var history DouyinDownloadHistoryItem
-				if err := json.Unmarshal(bytes.Clone(val), &history); err != nil {
+				if err := sonic.Unmarshal(bytes.Clone(val), &history); err != nil {
 					return nil
 				}
 				items = append(items, history)

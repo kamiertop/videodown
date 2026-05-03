@@ -44,7 +44,7 @@ type AwemeItem struct {
 	Music                 Music           `json:"music"`
 	Video                 Video           `json:"video"` // 视频信息
 	Statistics            VideoStatistics `json:"statistics"`
-	Duration              int             `json:"duration"`       // 视频时长, 单位为毫秒
+	Duration              int             `json:"duration"` // 视频时长, 单位为毫秒
 	AwemeType             int             `json:"aweme_type"`
 	AuthorUserId          int64           `json:"author_user_id"` // 视频作者的用户ID
 	Region                string          `json:"region"`         // 视频发布的地区:CN等

@@ -2,7 +2,6 @@ package api
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/dgraph-io/badger/v4"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -140,7 +140,7 @@ func (b *BiliBili) downloadedCachePath(cid int64) (string, bool) {
 	}
 
 	var cached DownloadHistoryItem
-	if err = json.Unmarshal([]byte(raw), &cached); err != nil {
+	if err = sonic.Unmarshal([]byte(raw), &cached); err != nil {
 		return "", false
 	}
 	return cached.Path, true
@@ -153,7 +153,7 @@ func (b *BiliBili) markDownloaded(task DashDownloadTask, path string) {
 		return
 	}
 
-	payload, err := json.Marshal(DownloadHistoryItem{
+	payload, err := sonic.Marshal(DownloadHistoryItem{
 		Bvid:       strings.TrimSpace(task.Bvid),
 		Cid:        task.Cid,
 		Title:      strings.TrimSpace(task.Title),
@@ -190,7 +190,7 @@ func (b *BiliBili) DownloadHistory() ([]DownloadHistoryItem, error) {
 			item := it.Item()
 			if err := item.Value(func(val []byte) error {
 				var history DownloadHistoryItem
-				if err := json.Unmarshal(bytes.Clone(val), &history); err != nil {
+				if err := sonic.Unmarshal(bytes.Clone(val), &history); err != nil {
 					return nil
 				}
 				items = append(items, history)
