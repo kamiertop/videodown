@@ -120,6 +120,7 @@ func (d *Douyin) publicHeaders() (map[string]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("获取 cookie 失败: %w", err)
 	}
+
 	return map[string]string{
 		Accept:          "application/json, text/plain, */*",
 		AcceptLanguage:  "zh-CN,zh;q=0.9",
@@ -138,7 +139,6 @@ func (d *Douyin) publicHeaders() (map[string]string, error) {
 		UserAgent:       userAgent(),
 		Cookie:          cookie,
 	}, nil
-
 }
 
 // 下面的代码由Codex + https://github.com:JoeanAmier/TikTokDownloader 生成
