@@ -22,6 +22,33 @@ export interface DouyinDownloadProgress {
 
 type BackendTask = api.DouyinDownloadTask;
 
+const [downloading, setDownloading] = createSignal(false);
+const [downloadingByID, setDownloadingByID] = createSignal<Record<string, boolean>>({});
+const [progressByID, setProgressByID] = createSignal<Record<string, DouyinDownloadProgress>>({});
+
+let progressListenerReady = false;
+let activeToast: ShowToast | null = null;
+
+function notify(message: string, type?: ToastType): void {
+  activeToast?.(message, type);
+}
+
+function ensureProgressListener(): void {
+  if (progressListenerReady) return;
+  progressListenerReady = true;
+
+  EventsOn("douyin-download-progress", (payload: DouyinDownloadProgress) => {
+    if (!payload?.awemeId) return;
+    setProgressByID((prev) => ({
+      ...prev,
+      [payload.awemeId]: {
+        ...payload,
+        percent: Math.max(0, Math.min(100, Number(payload.percent) || 0)),
+      },
+    }));
+  });
+}
+
 export function formatDouyinSource(item: DouyinDownloadItem): string {
   if (!item.sourceName || item.sourceName === item.sourceKind) {
     return item.sourceKind || "抖音";
@@ -56,9 +83,14 @@ function toBackendTask(item: DouyinDownloadItem): BackendTask {
 }
 
 export function useDouyinDownloadQueue(showToast: ShowToast) {
-  const [downloading, setDownloading] = createSignal(false);
-  const [downloadingByID, setDownloadingByID] = createSignal<Record<string, boolean>>({});
-  const [progressByID, setProgressByID] = createSignal<Record<string, DouyinDownloadProgress>>({});
+  ensureProgressListener();
+  activeToast = showToast;
+
+  onCleanup(() => {
+    if (activeToast === showToast) {
+      activeToast = null;
+    }
+  });
 
   const listSourceSummary = () => {
     const labels = [...new Set(douyinVideoList().map(formatDouyinSource).filter(Boolean))];
@@ -68,18 +100,6 @@ export function useDouyinDownloadQueue(showToast: ShowToast) {
   };
 
   // 后端按 awemeId 推送实时进度；成功后该条会被移出列表，失败则留在列表供用户重试。
-  const offProgress = EventsOn("douyin-download-progress", (payload: DouyinDownloadProgress) => {
-    if (!payload?.awemeId) return;
-    setProgressByID((prev) => ({
-      ...prev,
-      [payload.awemeId]: {
-        ...payload,
-        percent: Math.max(0, Math.min(100, Number(payload.percent) || 0)),
-      },
-    }));
-  });
-  onCleanup(offProgress);
-
   function buildTasks(items: DouyinDownloadItem[]): BackendTask[] {
     const seen = new Set<string>();
     return items
@@ -96,7 +116,7 @@ export function useDouyinDownloadQueue(showToast: ShowToast) {
   async function runTasks(items: DouyinDownloadItem[]): Promise<{ success: number; failed: number }> {
     const tasks = buildTasks(items);
     if (tasks.length === 0) {
-      showToast("暂无可用下载地址，请稍后重试", "warning");
+      notify("暂无可用下载地址，请稍后重试", "warning");
       return {success: 0, failed: items.length};
     }
 
@@ -114,7 +134,7 @@ export function useDouyinDownloadQueue(showToast: ShowToast) {
         if (!item) continue;
 
         if (result.error) {
-          showToast(`下载失败：${item.title}，${result.error}`, "error");
+          notify(`下载失败：${item.title}，${result.error}`, "error");
         } else {
           removeDouyinVideo(item.awemeId);
         }
@@ -122,7 +142,7 @@ export function useDouyinDownloadQueue(showToast: ShowToast) {
 
       return {success: batch.success ?? 0, failed: batch.failed ?? 0};
     } catch (error) {
-      showToast(error instanceof Error ? error.message : String(error), "error");
+      notify(error instanceof Error ? error.message : String(error), "error");
       return {success: 0, failed: tasks.length};
     } finally {
       for (const task of tasks) {
@@ -140,17 +160,17 @@ export function useDouyinDownloadQueue(showToast: ShowToast) {
   async function startDownload(items = douyinVideoList()): Promise<void> {
     if (downloading()) return;
     if (items.length === 0) {
-      showToast("暂无可下载内容", "warning");
+      notify("暂无可下载内容", "warning");
       return;
     }
 
     setDownloading(true);
     const {success, failed} = await runTasks(items);
     if (failed === 0) {
-      showToast(`下载完成：成功 ${success} 个`, "success");
+      notify(`下载完成：成功 ${success} 个`, "success");
       return;
     }
-    showToast(`下载完成：成功 ${success} 个，失败 ${failed} 个`, "warning");
+    notify(`下载完成：成功 ${success} 个，失败 ${failed} 个`, "warning");
   }
 
   async function downloadOne(item: DouyinDownloadItem): Promise<void> {
@@ -158,7 +178,7 @@ export function useDouyinDownloadQueue(showToast: ShowToast) {
     setDownloading(true);
     const {failed} = await runTasks([item]);
     if (failed === 0) {
-      showToast(`下载完成：${item.title}`, "success");
+      notify(`下载完成：${item.title}`, "success");
     }
   }
 
