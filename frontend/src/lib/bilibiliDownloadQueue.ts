@@ -51,6 +51,35 @@ type DashDownloadTask = api.DashDownloadTask;
 
 // 解析播放地址是异步副作用。这个 Set 防止 Solid effect 重跑时对同一个 BV 重复发起解析请求。
 const playResolveInFlight = new Set<string>();
+const [playResolveByBvid, setPlayResolveByBvid] = createSignal<Record<string, PlayResolveEntry>>({});
+const [downloading, setDownloading] = createSignal<boolean>(false);
+const [downloadingByBvid, setDownloadingByBvid] = createSignal<Record<string, boolean>>({});
+const [progressByBvid, setProgressByBvid] = createSignal<Record<string, DownloadProgress>>({});
+
+let progressListenerReady = false;
+let activeToast: ShowToast | null = null;
+
+function notify(message: string, type?: ToastType): void {
+  activeToast?.(message, type);
+}
+
+function ensureProgressListener(): void {
+  if (progressListenerReady) return;
+  progressListenerReady = true;
+
+  EventsOn("bilibili-download-progress", (payload: DownloadProgress) => {
+    const key = bilibiliPlayResolveKey({bvid: payload?.bvid, cid: payload?.cid});
+    if (!key) return;
+
+    setProgressByBvid((p) => ({
+      ...p,
+      [key]: {
+        ...payload,
+        percent: Math.max(0, Math.min(100, Number(payload.percent) || 0)),
+      },
+    }));
+  });
+}
 
 function containsPlayKey(key: string): boolean {
   return videoList().some((v) => bilibiliPlayResolveKey(v) === key);
@@ -84,12 +113,16 @@ export function formatListSource(item: MediaCardItem): string {
 }
 
 export function useBilibiliDownloadQueue(showToast: ShowToast) {
+  ensureProgressListener();
+  activeToast = showToast;
+
+  onCleanup(() => {
+    if (activeToast === showToast) {
+      activeToast = null;
+    }
+  });
   // playResolveByBvid：每个 BV 的 DASH 解析状态，卡片会根据它显示 loading/error/画质音质选择器。
-  const [playResolveByBvid, setPlayResolveByBvid] = createSignal<Record<string, PlayResolveEntry>>({});
   // downloading 是整批下载的全局锁；downloadingByBvid 用来控制单张卡片的按钮和进度条。
-  const [downloading, setDownloading] = createSignal<boolean>(false);
-  const [downloadingByBvid, setDownloadingByBvid] = createSignal<Record<string, boolean>>({});
-  const [progressByBvid, setProgressByBvid] = createSignal<Record<string, DownloadProgress>>({});
 
   const listSourceSummary = createMemo(() => {
     const labels = [...new Set(videoList().map((i) => formatListSource(i)).filter(Boolean))];
@@ -152,20 +185,6 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
   });
 
   // 后端批量下载期间会持续推送事件；这里按 BV 归档，供每张卡片独立渲染进度条。
-  const offProgress = EventsOn("bilibili-download-progress", (payload: DownloadProgress) => {
-    const key = bilibiliPlayResolveKey({bvid: payload?.bvid, cid: payload?.cid});
-    if (!key) return;
-
-    setProgressByBvid((p) => ({
-      ...p,
-      [key]: {
-        ...payload,
-        percent: Math.max(0, Math.min(100, Number(payload.percent) || 0)),
-      },
-    }));
-  });
-  onCleanup(offProgress);
-
   // 后续 UI 操作都只通过 BV 读写解析状态，避免同一个视频在不同来源列表里 id 不一致。
   function entryForItem(item: MediaCardItem): PlayResolveEntry | undefined {
     const key = bilibiliPlayResolveKey(item);
@@ -182,7 +201,7 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
     const next = switchResolvedPlayAtQn(cur.data, qn);
     if (!next) {
       // 理论上选择器只会列出 dash 里已有的 qn；这里是防御式提示。
-      showToast("当前 DASH 数据中没有这个画质的流地址", "warning");
+      notify("当前 DASH 数据中没有这个画质的流地址", "warning");
       return;
     }
 
@@ -198,7 +217,7 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
 
     const next = switchResolvedAudio(cur.data, audioId);
     if (!next) {
-      showToast("当前 DASH 数据中没有这个音轨的流地址", "warning");
+      notify("当前 DASH 数据中没有这个音轨的流地址", "warning");
       return;
     }
 
@@ -283,7 +302,7 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
         if (!media) continue;
 
         if (item.error) {
-          showToast(`下载失败：${media.title}，${item.error}`, "error");
+          notify(`下载失败：${media.title}，${item.error}`, "error");
         } else {
           removeVideoAfterDownloadSuccess(media.bvid, item.cid);
         }
@@ -291,7 +310,7 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
 
       return {success: batch.success ?? 0, failed: batch.failed ?? 0};
     } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e), "error");
+      notify(e instanceof Error ? e.message : String(e), "error");
       return {success: 0, failed: tasks.length};
     } finally {
       // 批量调用结束后清理按钮态；失败项仍留在列表，但进度条回到待下载状态。
@@ -315,13 +334,13 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
     // 默认下载当前列表里的全部视频；单个卡片下载会传入只含一个 item 的数组。
     if (downloading()) return;
     if (items.length === 0) {
-      showToast("暂无可下载视频", "warning");
+      notify("暂无可下载视频", "warning");
       return;
     }
 
     const tasks = buildDownloadTasks(items);
     if (tasks.length === 0) {
-      showToast("暂无可用流地址，请稍候重试", "warning");
+      notify("暂无可用流地址，请稍候重试", "warning");
       return;
     }
 
@@ -329,10 +348,10 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
     const {success, failed} = await runDownloadTasks(tasks);
 
     if (failed === 0) {
-      showToast(`下载完成：成功 ${success} 个`, "success");
+      notify(`下载完成：成功 ${success} 个`, "success");
       return;
     }
-    showToast(`下载完成：成功 ${success} 个，失败 ${failed} 个`, "warning");
+    notify(`下载完成：成功 ${success} 个，失败 ${failed} 个`, "warning");
   }
 
   async function downloadOne(item: MediaCardItem): Promise<void> {
@@ -341,24 +360,24 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
 
     const entry = entryForItem(item);
     if (entry?.status === "loading") {
-      showToast("视频还在解析中，请稍候", "warning");
+      notify("视频还在解析中，请稍候", "warning");
       return;
     }
     if (entry?.status === "error") {
-      showToast(`解析失败：${entry.message}`, "error");
+      notify(`解析失败：${entry.message}`, "error");
       return;
     }
 
     const tasks = buildDownloadTasks([item]);
     if (tasks.length === 0) {
-      showToast("暂无可用流地址，请稍候重试", "warning");
+      notify("暂无可用流地址，请稍候重试", "warning");
       return;
     }
 
     setDownloading(true);
     const {failed} = await runDownloadTasks(tasks);
     if (failed === 0) {
-      showToast(`下载完成：${item.title}`, "success");
+      notify(`下载完成：${item.title}`, "success");
     }
   }
 
