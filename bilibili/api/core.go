@@ -38,7 +38,7 @@ func New(logger *logger.Logger, db *utils.Settings, ctxProvider ...func() contex
 	}
 	return &BiliBili{
 		ctxProvider: provider,
-		logger:      logger.WithName("BiliBili").WithCaller(2),
+		logger:      logger.WithName("BiliBili").WithCaller(3),
 		client: req.
 			C().
 			SetLogger(logger).

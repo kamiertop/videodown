@@ -34,6 +34,11 @@ func (d *Douyin) Profile() (model.MyInfoResponse, error) {
 		d.logger.Errorf("request info api error: %v", err)
 		return resp, err
 	}
+	if resp.StatusCode != 0 {
+		d.logger.Errorf("request info api error: %v", resp.StatusCode)
+		return resp, fmt.Errorf("请求信息接口错误: %d", resp.StatusCode)
+	}
+	d.secUserID = resp.User.SecUid
 
 	return resp, nil
 }

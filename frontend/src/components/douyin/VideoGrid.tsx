@@ -4,7 +4,7 @@ import IconLivePhoto from "../icons/IconLivePhoto.tsx";
 import NoCover from "../NoCover.tsx";
 
 const GRID_GAP = 8;
-const GRID_ROW_GAP = 16;
+const GRID_ROW_GAP = 24;
 const GRID_PADDING = 8;
 
 export interface DouyinVideoCardItem {
@@ -21,11 +21,12 @@ export interface DouyinVideoCardItem {
 
 // 与下方虚拟行的响应式列布局保持一致。
 function columnCount(width: number): number {
-  if (width >= 1536) return 8;
-  if (width >= 1280) return 7;
-  if (width >= 1024) return 6;
-  if (width >= 768) return 5;
-  if (width >= 640) return 3;
+  if (width >= 1500) return 8;
+  if (width >= 1240) return 7;
+  if (width >= 1040) return 6;
+  if (width >= 840) return 5;
+  if (width >= 620) return 4;
+  if (width >= 420) return 3;
   return 2;
 }
 

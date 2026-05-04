@@ -45,7 +45,7 @@ func New(logger *logger.Logger, settings *utils.Settings, ctxProvider ...func() 
 	}
 	return &Douyin{
 		ctxProvider: provider,
-		logger:      logger.WithName("Douyin").WithCaller(2),
+		logger:      logger.WithName("Douyin").WithCaller(3),
 		client: req.
 			C().
 			SetLogger(logger).
@@ -89,16 +89,20 @@ func (d *Douyin) cookieQuery() (cookieParams, error) {
 		}
 	}
 	if d.secUserID == "" {
-		rawSecUserId, ok := cookieToMap["FOLLOW_LIVE_POINT_INFO"]
-		if ok {
-			unescape, err := url.QueryUnescape(rawSecUserId)
-			if err != nil {
-				d.logger.Errorf("解析 FOLLOW_LIVE_POINT_INFO 失败: %v", err)
+		tryKeys := [2]string{"FOLLOW_LIVE_POINT_INFO", "FOLLOW_NUMBER_YELLOW_POINT_INFO"}
+		for _, key := range tryKeys {
+			if rawSecUserId, ok := cookieToMap[key]; ok {
+				d.logger.Infof("found %s: %s", key, rawSecUserId)
+				unescape, err := url.QueryUnescape(rawSecUserId)
+				if err != nil {
+					d.logger.Errorf("解析 %s 失败: %v", key, err)
+				} else {
+					d.secUserID = strings.Split(strings.Trim(unescape, `"`), "/")[0]
+				}
+				d.logger.Infof("secUserID: %s", d.secUserID)
 			} else {
-				d.secUserID = strings.Split(strings.Trim(unescape, `"`), "/")[0]
+				d.logger.Warningf("not found %s in cookie", key)
 			}
-		} else {
-			d.logger.Warning("not found sec user id in cookie, key: FOLLOW_LIVE_POINT_INFO")
 		}
 	}
 	if d.userID == "" {
