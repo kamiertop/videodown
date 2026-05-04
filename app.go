@@ -39,3 +39,11 @@ func (a *App) beforeClose(ctx context.Context) (prevent bool) {
 func (a *App) SetStorage() (string, error) {
 	return a.settings.SetStorage(a.ctx)
 }
+
+// Version is set by build flags, e.g. go build -ldflags="-X main.Version=1.0.0"
+var Version string
+
+// GetVersion returns the current version of the application.
+func (a *App) GetVersion() string {
+	return Version
+}

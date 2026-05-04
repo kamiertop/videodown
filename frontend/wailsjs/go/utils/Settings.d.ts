@@ -21,6 +21,8 @@ export function Close():Promise<void>;
 
 export function CloseDB():Promise<void>;
 
+export function DeleteKey(arg1:string):Promise<void>;
+
 export function DropAll():Promise<void>;
 
 export function DropPrefix(arg1:Array<any>):Promise<void>;

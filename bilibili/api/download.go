@@ -179,7 +179,7 @@ func (b *BiliBili) markDownloaded(task DashDownloadTask, path string) {
 
 // DownloadHistory 返回后端下载缓存记录；只读历史页使用，下载接口本身不暴露缓存命中细节。
 func (b *BiliBili) DownloadHistory() ([]DownloadHistoryItem, error) {
-	items := make([]DownloadHistoryItem, 0)
+	var items []DownloadHistoryItem
 	prefix := []byte(downloadedVideoCachePrefix)
 
 	err := b.settings.View(func(txn *badger.Txn) error {
@@ -208,6 +208,7 @@ func (b *BiliBili) DownloadHistory() ([]DownloadHistoryItem, error) {
 	sort.Slice(items, func(i, j int) bool {
 		return parseDownloadHistoryTime(items[i].Downloaded).After(parseDownloadHistoryTime(items[j].Downloaded))
 	})
+
 	return items, nil
 }
 
@@ -218,13 +219,7 @@ func (b *BiliBili) DeleteDownloadHistory(cid int64) error {
 		return errors.New("视频CID为空")
 	}
 
-	return b.settings.Update(func(txn *badger.Txn) error {
-		err := txn.Delete([]byte(key))
-		if errors.Is(err, badger.ErrKeyNotFound) {
-			return nil
-		}
-		return err
-	})
+	return b.settings.DeleteKey(key)
 }
 
 // ClearDownloadHistory 清空 B 站下载历史；只清理缓存记录，不删除已经保存到本地的视频文件。

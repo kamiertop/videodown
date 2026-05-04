@@ -30,6 +30,10 @@ export function CloseDB() {
   return window['go']['utils']['Settings']['CloseDB']();
 }
 
+export function DeleteKey(arg1) {
+  return window['go']['utils']['Settings']['DeleteKey'](arg1);
+}
+
 export function DropAll() {
   return window['go']['utils']['Settings']['DropAll']();
 }

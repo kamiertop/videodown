@@ -59,26 +59,6 @@ const (
 	concurrencyNumKey   = "concurrencyNum"
 )
 
-func (s *Settings) GetKey(key string) (string, error) {
-	var result string
-	err := s.DB.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(key))
-		if err != nil {
-			return err
-		}
-		err = item.Value(func(val []byte) error {
-			result = string(val)
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-
-	return result, err
-}
-
 func NewSettingsWithMemory(logger *logger.Logger) *Settings {
 	db, err := badger.Open(badger.
 		DefaultOptions("").
@@ -160,6 +140,32 @@ func (s *Settings) SetStorage(ctx context.Context) (string, error) {
 func (s *Settings) SetKey(key, value string) error {
 	return s.DB.Update(func(txn *badger.Txn) error {
 		return txn.Set([]byte(key), []byte(value))
+	})
+}
+
+func (s *Settings) GetKey(key string) (string, error) {
+	var result string
+	err := s.DB.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(key))
+		if err != nil {
+			return err
+		}
+		err = item.Value(func(val []byte) error {
+			result = string(val)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	return result, err
+}
+
+func (s *Settings) DeleteKey(key string) error {
+	return s.DB.Update(func(txn *badger.Txn) error {
+		return txn.Delete([]byte(key))
 	})
 }
 

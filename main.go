@@ -38,7 +38,7 @@ func main() {
 	})
 	// Create application with options
 	err = wails.Run(&options.App{
-		Title:             "videodown",
+		Title:             "",
 		Width:             1300,
 		Height:            1000,
 		MinWidth:          1024,
