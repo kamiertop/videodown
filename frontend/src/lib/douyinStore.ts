@@ -1,4 +1,5 @@
 import {createSignal} from "solid-js";
+import type {model} from "../../wailsjs/go/models";
 
 export interface DouyinVideoOption {
   id: string;
@@ -23,6 +24,7 @@ export interface DouyinDownloadItem {
   sourceName?: string;
   title: string;
   cover: string;
+  coverCandidates?: model.Cover[];
   duration: number;
   authorName: string;
   publishTime?: number;

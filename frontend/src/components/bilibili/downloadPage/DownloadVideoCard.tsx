@@ -10,10 +10,12 @@ import QualitySelectors from "./QualitySelectors.tsx";
 
 interface DownloadVideoCardProps {
     canDownload: boolean;
+    coverDownloading: boolean;
     downloading: boolean;
     item: MediaCardItem;
     entry: PlayResolveEntry | undefined;
     progress: DownloadProgress | undefined;
+    onDownloadCover: () => void;
     onDownload: () => void;
     onPickAudio: (audioId: number) => void;
     onPickQn: (qn: number) => void;
@@ -44,8 +46,8 @@ export default function DownloadVideoCard(props: DownloadVideoCardProps): JSXEle
     };
 
     return (
-        <article class="flex flex-row gap-3">
-            <div class="relative w-40 aspect-video object-cover">
+        <article class="flex flex-col gap-3 rounded-lg border border-base-200 bg-base-100 p-3 md:flex-row">
+            <div class="relative aspect-video w-full shrink-0 overflow-hidden rounded md:w-44">
                 <img
                     class="h-full w-full object-cover"
                     src={props.item.cover}
@@ -66,7 +68,7 @@ export default function DownloadVideoCard(props: DownloadVideoCardProps): JSXEle
                     </span>
                 </div>
             </div>
-            <div class="flex min-w-0 flex-1 flex-col gap-2">
+            <div class="flex min-w-0 flex-1 flex-col gap-3">
                 <h3 class="text-base font-semibold leading-snug text-base-content line-clamp-2">
                     {props.item.title}
                 </h3>
@@ -81,13 +83,13 @@ export default function DownloadVideoCard(props: DownloadVideoCardProps): JSXEle
                         </For>
                     </div>
                 </Show>
-                <div class="flex flex-row gap-3 justify-between">
-                    <div class="mt-4 w-64">
+                <div class="grid gap-3 lg:grid-cols-[minmax(14rem,1fr)_minmax(18rem,auto)]">
+                    <div class="min-w-0">
                         <Show when={listSrc()}>
-                            <p class="text-sm font-medium text-primary">{listSrc()}</p>
+                            <p class="truncate text-sm font-medium text-primary">{listSrc()}</p>
                         </Show>
-                        <div class="flex mt-6 items-center gap-x-2 gap-y-0.5 text-sm text-base-content/75">
-                            <span class="inline-flex items-center gap-1">
+                        <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-base-content/75">
+                            <span class="inline-flex min-w-0 items-center gap-1">
                                 <svg
                                     xmlns="http://www.w3.org/2000/svg"
                                     class="h-3 w-3 shrink-0"
@@ -100,7 +102,7 @@ export default function DownloadVideoCard(props: DownloadVideoCardProps): JSXEle
                                         clip-rule="evenodd"
                                     />
                                 </svg>
-                                {props.item.upperName}
+                                <span class="truncate">{props.item.upperName}</span>
                             </span>
                             <span class="text-base-content/35">|</span>
                             <span>{formatDate(props.item.pubtime)}</span>
@@ -111,19 +113,27 @@ export default function DownloadVideoCard(props: DownloadVideoCardProps): JSXEle
                         onPickAudio={props.onPickAudio}
                         onPickQn={props.onPickQn}
                     />
-                    <div class="flex flex-col gap-2">
-                        <button class="btn btn-warning btn-sm" type="button" onClick={props.onRemove}>
+                </div>
+                <div class="flex flex-wrap items-center justify-end gap-2 border-t border-base-200 pt-2">
+                    <button
+                        class="btn btn-ghost btn-sm"
+                        type="button"
+                        onClick={props.onDownloadCover}
+                        disabled={props.coverDownloading || !props.item.cover}
+                    >
+                        {props.coverDownloading ? "保存中..." : "封面"}
+                    </button>
+                    <button class="btn btn-warning btn-sm" type="button" onClick={props.onRemove}>
                             移除
-                        </button>
-                        <button
-                            class="btn btn-info btn-sm"
-                            type="button"
-                            onClick={props.onDownload}
-                            disabled={!props.canDownload || props.downloading}
-                        >
-                            {props.downloading ? "下载中..." : "下载"}
-                        </button>
-                    </div>
+                    </button>
+                    <button
+                        class="btn btn-info btn-sm"
+                        type="button"
+                        onClick={props.onDownload}
+                        disabled={!props.canDownload || props.downloading}
+                    >
+                        {props.downloading ? "下载中..." : "下载"}
+                    </button>
                 </div>
                 <Show when={props.downloading && props.progress}>
                     {(progress) => (

@@ -18,6 +18,10 @@ export function DeleteDownloadHistory(arg1) {
   return window['go']['api']['BiliBili']['DeleteDownloadHistory'](arg1);
 }
 
+export function DownloadCover(arg1, arg2) {
+  return window['go']['api']['BiliBili']['DownloadCover'](arg1, arg2);
+}
+
 export function DownloadHistory() {
   return window['go']['api']['BiliBili']['DownloadHistory']();
 }

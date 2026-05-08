@@ -23,10 +23,16 @@ type Settings struct {
 }
 
 func (s *Settings) init() error {
+	executable, err := os.Executable()
+	if err != nil {
+		s.logger.Errorf("Get VideoDown Executable Path Error: %v", err)
+		return err
+	}
+
 	return s.DB.Update(func(txn *badger.Txn) error {
 		defaultValue := map[string]string{
 			themeKey:            "light",
-			storageKey:          "./download",
+			storageKey:          filepath.Join(executable, "./download"),
 			allowGroupOnSaveKey: "true",
 			sleepTimeKey:        "60",
 			concurrencyNumKey:   "1",
