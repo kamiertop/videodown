@@ -15,6 +15,8 @@ export function DeleteDownloadHistory(arg1:string):Promise<void>;
 
 export function Download(arg1:string):Promise<void>;
 
+export function DownloadCover(arg1:Array<model.Cover>,arg2:string):Promise<string>;
+
 export function DownloadHistory():Promise<Array<api.DouyinDownloadHistoryItem>>;
 
 export function DownloadVideos(arg1:Array<api.DouyinDownloadTask>):Promise<api.DouyinDownloadBatchResult>;

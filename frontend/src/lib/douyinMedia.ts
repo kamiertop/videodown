@@ -89,6 +89,19 @@ export function douyinVideoURL(item: model.AwemeItem): string {
   return defaultDouyinVideoOption(douyinVideoOptions(item))?.url ?? "";
 }
 
+export function douyinCoverCandidates(item: model.AwemeItem): model.Cover[] {
+  const covers = [item.video?.origin_cover]
+    .filter((cover): cover is model.Cover => !!cover && (cover.url_list?.length ?? 0) > 0);
+
+  const seen = new Set<string>();
+  return covers.filter((cover) => {
+    const key = cover.uri || cover.url_list?.[0];
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function douyinImageURLs(item: model.AwemeItem): string[] {
   // 图片合集的无水印地址在 url_list
   return (item.images ?? [])
