@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"mime"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -83,6 +86,14 @@ func streamBaseURL(v string) string {
 	return strings.TrimSpace(v)
 }
 
+func normalizeHTTPURL(rawURL string) string {
+	rawURL = strings.TrimSpace(rawURL)
+	if strings.HasPrefix(rawURL, "//") {
+		return "https:" + rawURL
+	}
+	return rawURL
+}
+
 func downloadCacheKey(cid int64) string {
 	if cid <= 0 {
 		return ""
@@ -125,6 +136,32 @@ func uniqueFilePath(path string) string {
 			return candidate
 		}
 	}
+}
+
+func imageExtFromResponse(rawURL string, resp *http.Response) string {
+	if u, err := url.Parse(rawURL); err == nil {
+		if ext := strings.ToLower(filepath.Ext(u.Path)); ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp" || ext == ".gif" {
+			if ext == ".jpeg" {
+				return ".jpg"
+			}
+			return ext
+		}
+	}
+
+	if resp != nil {
+		contentType := resp.Header.Get("Content-Type")
+		if contentType != "" {
+			if exts, err := mime.ExtensionsByType(strings.Split(contentType, ";")[0]); err == nil && len(exts) > 0 {
+				ext := strings.ToLower(exts[0])
+				if ext == ".jpeg" || ext == ".jpe" {
+					return ".jpg"
+				}
+				return ext
+			}
+		}
+	}
+
+	return ".jpg"
 }
 
 // downloadedCachePath 返回已下载缓存中的文件路径；缓存只在后端使用，不增加前端协议字段。
@@ -366,6 +403,7 @@ func weightedPercent(start, weight float64, downloaded, total int64) float64 {
 	if ratio > 1 {
 		ratio = 1
 	}
+
 	return start + ratio*weight
 }
 
@@ -667,4 +705,68 @@ func (b *BiliBili) DownloadVideosByDash(tasks []DashDownloadTask) (DashDownloadB
 	}
 
 	return result, nil
+}
+
+// DownloadCover 下载视频封面到当前下载目录，返回保存后的文件路径。
+func (b *BiliBili) DownloadCover(cover, title string) (string, error) {
+	cover = normalizeHTTPURL(cover)
+	if !strings.HasPrefix(cover, "http://") && !strings.HasPrefix(cover, "https://") {
+		return "", errors.New("封面地址无效")
+	}
+
+	storagePath, err := b.settings.GetStorage()
+	if err != nil {
+		return "", err
+	}
+	if err = os.MkdirAll(storagePath, 0o755); err != nil {
+		return "", errors.New("创建下载目录失败")
+	}
+
+	resp, err := b.client.R().
+		DisableAutoReadResponse().
+		SetRetryCount(2).
+		SetHeader(UserAgent, userAgent()).
+		SetHeader(Referer, biliBiliUrl).
+		SetHeader(Accept, "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8").
+		Get(cover)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+	}()
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return "", fmt.Errorf("封面下载失败: %s", resp.Status)
+	}
+
+	ext := imageExtFromResponse(cover, resp.Response)
+	fileName := sanitizeFilename(title)
+	if fileName == "video" {
+		fileName = "cover"
+	}
+	outPath := uniqueFilePath(filepath.Join(storagePath, fileName+ext))
+	tmp, err := os.CreateTemp(storagePath, ".cover-*"+ext)
+	if err != nil {
+		return "", err
+	}
+	tmpPath := tmp.Name()
+	defer func() {
+		_ = os.Remove(tmpPath)
+	}()
+
+	if _, err = io.Copy(tmp, resp.Body); err != nil {
+		_ = tmp.Close()
+		return "", err
+	}
+	if err = tmp.Close(); err != nil {
+		return "", err
+	}
+	if err = os.Rename(tmpPath, outPath); err != nil {
+		return "", err
+	}
+
+	return outPath, nil
 }

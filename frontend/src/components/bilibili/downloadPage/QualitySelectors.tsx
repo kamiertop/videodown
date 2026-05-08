@@ -32,20 +32,20 @@ export default function QualitySelectors(props: QualitySelectorsProps): JSXEleme
     });
 
     return (
-        <div class="flex flex-row gap-1 mt-4 flex-1">
+        <div class="flex min-w-0 flex-wrap items-center justify-start gap-2 lg:justify-end">
             <Show when={done()}>
                 {(data) => (
                     <>
-                        <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+                        <div class="min-w-40">
                             <Show
                                 when={qualities().length > 0}
                                 fallback={<p class="text-sm text-base-content/70">暂无可用画质数据</p>}
                             >
-                                <label class="flex flex-col gap-1">
-                                    <div class="flex max-w-full items-center gap-2 sm:max-w-md">
-                                        <div>画质：</div>
+                                <label>
+                                    <div class="flex items-center gap-2">
+                                        <div class="shrink-0 text-sm text-base-content/70">画质</div>
                                         <select
-                                            class="select select-info max-w-30 flex-1 bg-base-100 font-medium text-base-content"
+                                            class="select select-info select-sm w-32 bg-base-100 font-medium text-base-content"
                                             value={String(data().selectedQn)}
                                             onChange={(ev) => {
                                                 const qn = Number(ev.currentTarget.value);
@@ -64,13 +64,13 @@ export default function QualitySelectors(props: QualitySelectorsProps): JSXEleme
                                 </label>
                             </Show>
                         </div>
-                        <div class="flex min-w-0 flex-1 flex-col gap-1.5">
+                        <div class="min-w-44">
                             <Show when={tracks().length > 0}>
-                                <label class="flex flex-col gap-1">
-                                    <div class="flex max-w-full items-center gap-2 sm:max-w-md">
-                                        <div>音质：</div>
+                                <label>
+                                    <div class="flex items-center gap-2">
+                                        <div class="shrink-0 text-sm text-base-content/70">音质</div>
                                         <select
-                                            class="select select-info max-w-35 flex-1 bg-base-100 font-medium text-base-content"
+                                            class="select select-info select-sm w-36 bg-base-100 font-medium text-base-content"
                                             value={String(data().bestAudio?.id ?? "")}
                                             onChange={(ev) => {
                                                 const id = Number(ev.currentTarget.value);

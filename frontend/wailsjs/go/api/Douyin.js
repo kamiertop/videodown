@@ -26,6 +26,10 @@ export function Download(arg1) {
   return window['go']['api']['Douyin']['Download'](arg1);
 }
 
+export function DownloadCover(arg1, arg2) {
+  return window['go']['api']['Douyin']['DownloadCover'](arg1, arg2);
+}
+
 export function DownloadHistory() {
   return window['go']['api']['Douyin']['DownloadHistory']();
 }
