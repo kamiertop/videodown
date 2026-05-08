@@ -4,6 +4,7 @@ import {createStore} from "solid-js/store";
 import {model} from "../../../wailsjs/go/models";
 import {
   defaultDouyinVideoOption,
+  douyinCoverCandidates,
   douyinDownloadAssets,
   douyinImageURLs,
   douyinMusicURL,
@@ -165,6 +166,7 @@ export default function VideoContentPanel(props: {
           sourceName: props.sourceName,
           title,
           cover,
+          coverCandidates: douyinCoverCandidates(item),
           duration,
           authorName: author,
           publishTime: item.create_time ?? 0,

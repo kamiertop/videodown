@@ -1,6 +1,6 @@
 import {createFileRoute} from '@tanstack/solid-router'
 import {createSignal, For, type JSXElement, Show} from "solid-js";
-import {ParseVideo, VideoDetail} from "../../../wailsjs/go/api/Douyin";
+import {DownloadCover, ParseVideo, VideoDetail} from "../../../wailsjs/go/api/Douyin";
 import {model} from "../../../wailsjs/go/models";
 import EmptyState from "../../components/EmptyState.tsx";
 import Toast from "../../components/Toast.tsx";
@@ -12,6 +12,7 @@ import {
 } from "../../lib/douyinDownloadQueue.ts";
 import {
   defaultDouyinVideoOption,
+  douyinCoverCandidates,
   douyinDownloadAssets,
   douyinImageURLs,
   douyinMusicURL,
@@ -66,6 +67,7 @@ function detailToDownloadItem(item: model.AwemeItem): DouyinDownloadItem {
     sourceName: "手动解析",
     title,
     cover,
+    coverCandidates: douyinCoverCandidates(item),
     duration,
     authorName,
     publishTime: item.create_time ?? 0,
@@ -98,6 +100,8 @@ function DouyinDownloadCard(props: {
   canDownload: boolean;
   downloading: boolean;
   progress: DouyinDownloadProgress | undefined;
+  coverDownloading: boolean;
+  onDownloadCover: () => void;
   onDownload: () => void;
 }): JSXElement {
   const mediaBadge = () => props.item.mediaBadge;
@@ -105,7 +109,7 @@ function DouyinDownloadCard(props: {
   const selectedOption = () => props.item.videoOptions?.find((option) => option.id === props.item.selectedVideoOptionId);
 
   return (
-    <article class="flex flex-row gap-3 rounded-lg border border-base-300 bg-base-100 p-1">
+    <article class="flex flex-col gap-3 rounded-lg border border-base-300 bg-base-100 p-2 md:flex-row">
       <div class="relative h-36 w-24 shrink-0 overflow-hidden rounded-lg bg-base-200">
         <Show
           when={props.item.cover}
@@ -160,7 +164,7 @@ function DouyinDownloadCard(props: {
         </Show>
       </div>
       {/*中间是视频信息*/}
-      <div class="flex min-w-0 flex-1 flex-col gap-2">
+      <div class="flex min-w-0 flex-1 flex-col gap-3">
         <div class="min-w-0">
           <h3 class="line-clamp-2 text-sm font-semibold leading-5 text-base-content" title={props.item.title}>
             {props.item.title}
@@ -219,11 +223,15 @@ function DouyinDownloadCard(props: {
             </div>
           )}
         </Show>
-
-
-      </div>
-      <div class="flex items-center gap-2">
-        <div class="flex items-center gap-2 flex-col">
+        <div class="flex flex-wrap items-center justify-end gap-2 border-t border-base-200 pt-2">
+          <button
+            class="btn btn-ghost btn-sm"
+            type="button"
+            onClick={props.onDownloadCover}
+            disabled={props.coverDownloading || (props.item.coverCandidates?.length ?? 0) === 0}
+          >
+            {props.coverDownloading ? "保存中..." : "封面"}
+          </button>
           <button class="btn btn-warning btn-sm" type="button"
                   onClick={() => removeDouyinVideo(props.item.awemeId)}
                   disabled={props.downloading}>
@@ -246,9 +254,38 @@ function DouyinDownloadCard(props: {
 function DouyinDownloadPage(): JSXElement {
   const [videoURL, setVideoURL] = createSignal("");
   const [parsing, setParsing] = createSignal(false);
+  const [coverDownloadingIDs, setCoverDownloadingIDs] = createSignal<string[]>([]);
   const {message, type, showToast} = useToast();
   // 下载状态集中在 hook 中，页面只负责渲染列表和把用户操作转发给队列。
   const queue = useDouyinDownloadQueue(showToast);
+
+  function setCoverDownloading(awemeId: string, downloading: boolean): void {
+    setCoverDownloadingIDs((prev) => {
+      const next = new Set(prev);
+      if (downloading) next.add(awemeId);
+      else next.delete(awemeId);
+      return [...next];
+    });
+  }
+
+  async function downloadCover(item: DouyinDownloadItem): Promise<void> {
+    const covers = item.coverCandidates ?? [];
+    if (covers.length === 0) {
+      showToast("当前内容没有可用封面", "warning");
+      return;
+    }
+    if (coverDownloadingIDs().includes(item.awemeId)) return;
+
+    setCoverDownloading(item.awemeId, true);
+    try {
+      const path = await DownloadCover(covers, item.title || item.awemeId || "cover");
+      showToast(`封面已保存：${path}`, "success");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : String(error), "error");
+    } finally {
+      setCoverDownloading(item.awemeId, false);
+    }
+  }
 
   async function parseVideo(): Promise<void> {
     if (parsing()) return;
@@ -352,6 +389,8 @@ function DouyinDownloadPage(): JSXElement {
                   canDownload={queue.canDownload(item)}
                   downloading={queue.isDownloading(item)}
                   progress={queue.progressFor(item)}
+                  coverDownloading={coverDownloadingIDs().includes(item.awemeId)}
+                  onDownloadCover={() => void downloadCover(item)}
                   onDownload={() => void queue.downloadOne(item)}
                 />
               )}

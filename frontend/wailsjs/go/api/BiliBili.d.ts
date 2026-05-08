@@ -11,6 +11,8 @@ export function CollectionItem(arg1:string,arg2:number,arg3:number):Promise<mode
 
 export function DeleteDownloadHistory(arg1:number):Promise<void>;
 
+export function DownloadCover(arg1:string,arg2:string):Promise<string>;
+
 export function DownloadHistory():Promise<Array<api.DownloadHistoryItem>>;
 
 export function DownloadVideoByDash(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;

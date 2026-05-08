@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
+	"mime"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -16,6 +19,7 @@ import (
 
 	"github.com/bytedance/sonic"
 	"github.com/dgraph-io/badger/v4"
+	"github.com/kamiertop/videodown/douyin/model"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
@@ -126,6 +130,63 @@ func uniqueDouyinFilePath(path string) string {
 	}
 }
 
+func normalizeDouyinHTTPURL(rawURL string) string {
+	rawURL = strings.TrimSpace(rawURL)
+	if strings.HasPrefix(rawURL, "//") {
+		return "https:" + rawURL
+	}
+	return rawURL
+}
+
+func douyinImageExtFromResponse(rawURL string, resp *http.Response) string {
+	if u, err := url.Parse(rawURL); err == nil {
+		if ext := strings.ToLower(filepath.Ext(u.Path)); ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp" || ext == ".gif" {
+			if ext == ".jpeg" {
+				return ".jpg"
+			}
+			return ext
+		}
+	}
+	if resp != nil {
+		contentType := resp.Header.Get("Content-Type")
+		if contentType != "" {
+			if exts, err := mime.ExtensionsByType(strings.Split(contentType, ";")[0]); err == nil && len(exts) > 0 {
+				ext := strings.ToLower(exts[0])
+				if ext == ".jpeg" || ext == ".jpe" {
+					return ".jpg"
+				}
+				return ext
+			}
+		}
+	}
+	return ".jpg"
+}
+
+func bestDouyinCoverURL(covers []model.Cover) string {
+	var best string
+	bestScore := -1
+	for _, cover := range covers {
+		if len(cover.UrlList) == 0 {
+			continue
+		}
+		score := cover.Width * cover.Height
+		if score <= 0 {
+			score = len(cover.UrlList)
+		}
+		for _, rawURL := range cover.UrlList {
+			rawURL = normalizeDouyinHTTPURL(rawURL)
+			if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
+				continue
+			}
+			if best == "" || score > bestScore {
+				best = rawURL
+				bestScore = score
+			}
+		}
+	}
+	return best
+}
+
 func clampDouyinPercent(percent float64) float64 {
 	if percent < 0 {
 		return 0
@@ -234,6 +295,7 @@ func (d *Douyin) DownloadHistory() ([]DouyinDownloadHistoryItem, error) {
 	sort.Slice(items, func(i, j int) bool {
 		return parseDouyinDownloadHistoryTime(items[i].Downloaded).After(parseDouyinDownloadHistoryTime(items[j].Downloaded))
 	})
+
 	return items, nil
 }
 
@@ -244,6 +306,7 @@ func parseDouyinDownloadHistoryTime(value string) time.Time {
 	if t, err := time.Parse(time.RFC3339, value); err == nil {
 		return t
 	}
+
 	return time.Time{}
 }
 
@@ -253,13 +316,8 @@ func (d *Douyin) DeleteDownloadHistory(awemeID string) error {
 	if key == "" {
 		return errors.New("视频ID为空")
 	}
-	return d.settings.Update(func(txn *badger.Txn) error {
-		err := txn.Delete([]byte(key))
-		if errors.Is(err, badger.ErrKeyNotFound) {
-			return nil
-		}
-		return err
-	})
+
+	return d.settings.DeleteKey(key)
 }
 
 // ClearDownloadHistory 清空抖音下载历史；不会删除已经下载到本地的文件。
@@ -363,6 +421,7 @@ func (d *Douyin) downloadURLToFile(rawURL, targetPath string, task DouyinDownloa
 		Total:      total,
 		Percent:    start + weight,
 	})
+
 	return nil
 }
 
@@ -394,6 +453,7 @@ func (d *Douyin) resolveDownloadDir(storagePath string, task DouyinDownloadTask)
 	if author == "" {
 		return storagePath, nil
 	}
+
 	return filepath.Join(storagePath, author), nil
 }
 
@@ -501,6 +561,7 @@ func (d *Douyin) downloadTask(task DouyinDownloadTask) (string, error) {
 	}
 	d.emitDownloadProgress(douyinDownloadProgress{AwemeID: task.AwemeID, Title: task.Title, Phase: "done", Percent: 100})
 	d.markDownloaded(task, outPath, false, 0)
+
 	return outPath, nil
 }
 
@@ -612,4 +673,70 @@ func (d *Douyin) Download(videoURL string) error {
 		return errors.New(result.Results[0].Error)
 	}
 	return nil
+}
+
+// DownloadCover 从多个抖音封面候选中选择最高质量的一张并保存到当前下载目录。
+func (d *Douyin) DownloadCover(covers []model.Cover, title string) (string, error) {
+	coverURL := bestDouyinCoverURL(covers)
+	if coverURL == "" {
+		return "", errors.New("封面地址无效")
+	}
+
+	storagePath, err := d.settings.GetStorage()
+	if err != nil {
+		return "", err
+	}
+	if err = os.MkdirAll(storagePath, 0o755); err != nil {
+		return "", errors.New("创建下载目录失败")
+	}
+
+	headers, err := d.publicHeaders()
+	if err != nil {
+		return "", err
+	}
+	headers[Accept] = "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"
+
+	resp, err := d.client.R().
+		DisableAutoReadResponse().
+		SetRetryCount(2).
+		SetHeaders(headers).
+		Get(coverURL)
+	if err != nil {
+		return "", err
+	}
+	defer func() {
+		if resp != nil && resp.Body != nil {
+			_ = resp.Body.Close()
+		}
+	}()
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return "", fmt.Errorf("封面下载失败: %s", resp.Status)
+	}
+
+	fileName := sanitizeDouyinFilename(title)
+	if fileName == "douyin" {
+		fileName = "cover"
+	}
+	ext := douyinImageExtFromResponse(coverURL, resp.Response)
+	outPath := uniqueDouyinFilePath(filepath.Join(storagePath, fileName+ext))
+	tmp, err := os.CreateTemp(storagePath, ".douyin-cover-*"+ext)
+	if err != nil {
+		return "", err
+	}
+	tmpPath := tmp.Name()
+	defer func() {
+		_ = os.Remove(tmpPath)
+	}()
+	if _, err = io.Copy(tmp, resp.Body); err != nil {
+		_ = tmp.Close()
+		return "", err
+	}
+	if err = tmp.Close(); err != nil {
+		return "", err
+	}
+	if err = os.Rename(tmpPath, outPath); err != nil {
+		return "", err
+	}
+
+	return outPath, nil
 }
