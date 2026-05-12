@@ -36,7 +36,7 @@ jobs:
           - name: macos-universal
             os: macos-latest
             platform: darwin/universal
-            archive: videodown-macos-universal.zip
+            archive: videodown-macos-universal.tar.gz
             build_tags: ""
 
     steps:
@@ -108,8 +108,9 @@ jobs:
         run: |
           package_dir="dist/package/${{ env.APP_NAME }}"
           mkdir -p "$package_dir"
-          cp -R "build/bin/${{ env.APP_NAME }}.app" "$package_dir/"
-          ditto -c -k --sequesterRsrc --keepParent "$package_dir" "dist/${{ matrix.archive }}"
+          cp "build/bin/${{ env.APP_NAME }}.app/Contents/MacOS/${{ env.APP_NAME }}" "$package_dir/"
+          chmod +x "$package_dir/${{ env.APP_NAME }}"
+          tar -czf "dist/${{ matrix.archive }}" -C "dist/package" "${{ env.APP_NAME }}"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v6
