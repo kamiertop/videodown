@@ -47,6 +47,8 @@ export function GetStorage():Promise<string>;
 
 export function GetTheme():Promise<string>;
 
+export function HasFFmpeg():Promise<boolean>;
+
 export function IndexCacheMetrics():Promise<ristretto.Metrics>;
 
 export function IsClosed():Promise<boolean>;

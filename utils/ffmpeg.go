@@ -105,3 +105,10 @@ func (f *FFmpeg) searchFFmpeg() error {
 
 	return errors.New("ffmpeg not found")
 }
+
+// HasFFmpeg 检查系统中是否可用 ffmpeg
+func (s *Settings) HasFFmpeg() bool {
+	ffmpeg := NewFFmpeg()
+
+	return ffmpeg.ensurePath() == nil
+}

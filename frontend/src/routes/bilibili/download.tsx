@@ -1,6 +1,7 @@
 import {createFileRoute} from "@tanstack/solid-router";
-import {createMemo, createSignal, For, type JSXElement, Show} from "solid-js";
+import {createMemo, createSignal, For, type JSXElement, onMount, Show} from "solid-js";
 import {DownloadCover, VideoDetailConciseBvid} from "../../../wailsjs/go/api/BiliBili";
+import {HasFFmpeg} from "../../../wailsjs/go/utils/Settings";
 import DownloadInputBar from "../../components/bilibili/downloadPage/DownloadInputBar.tsx";
 import DownloadSummaryBar from "../../components/bilibili/downloadPage/DownloadSummaryBar.tsx";
 import DownloadVideoCard from "../../components/bilibili/downloadPage/DownloadVideoCard.tsx";
@@ -262,6 +263,14 @@ function DownLoad(): JSXElement {
       setParsing(false);
     }
   }
+
+  onMount(async () => {
+    // 检测是否有FFmpeg，提示用户安装以支持更多功能。
+    const hasFFmpeg: boolean = await HasFFmpeg();
+    if (!hasFFmpeg) {
+      showToast("未检测到 FFmpeg，考虑到不同的网络环境，请自行安装 FFmpeg 以支持视频合并", "error");
+    }
+  })
 
   return (
       <div class="flex flex-col pt-4 pl-4 pr-4 pb-4 h-full">

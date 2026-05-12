@@ -104,6 +104,7 @@ func (b *BiliBili) PollQRCode(qrcodeKey string) (model.PollQRCodeData, error) {
 
 	switch res.Data.Code {
 	case model.PollQRCodeStatusSuccess:
+		// 扫码成功，保存 cookies 和 refresh_token
 		if err := b.saveCookies(resp.Cookies()); err != nil {
 			return model.PollQRCodeData{}, err
 		}
@@ -185,6 +186,8 @@ func (b *BiliBili) saveCookies(cookies []*http.Cookie) error {
 	return b.saveCookieMap(cookieMap)
 }
 
+// saveCookieMap 将 cookies 以键值对的形式保存到数据库中
+// 在保存登录信息时，需要将 cookies 中的必要字段提取出来并以特定的格式保存到数据库中，以便后续的登录状态检查和 Cookie 刷新操作能够正确地使用这些信息
 func (b *BiliBili) saveCookieMap(cookieMap map[string]string) error {
 	requiredCookies := []string{"SESSDATA", "bili_jct", "DedeUserID", "DedeUserID__ckMd5", "sid"}
 	parts := make([]string, 0, len(requiredCookies))
@@ -221,6 +224,7 @@ func (b *BiliBili) saveCookieMap(cookieMap map[string]string) error {
 	return nil
 }
 
+// parseCookieString 将 cookie 字符串解析为键值对的 map 结构，方便后续的合并和更新操作
 func parseCookieString(cookieStr string) map[string]string {
 	cookieMap := make(map[string]string)
 	for _, part := range strings.Split(cookieStr, ";") {
@@ -230,14 +234,17 @@ func parseCookieString(cookieStr string) map[string]string {
 		}
 		cookieMap[key] = value
 	}
+
 	return cookieMap
 }
 
+// mergeAndSaveCookies 合并新旧 cookies, 在刷新 Cookie 时，新的响应可能只包含部分 Cookie，因此需要将新的 Cookie 与旧的 Cookie 合并后再保存到数据库中，以确保所有必要的 Cookie 都被正确保存和更新
 func (b *BiliBili) mergeAndSaveCookies(storedCookies string, cookies []*http.Cookie) error {
 	cookieMap := parseCookieString(storedCookies)
 	for _, cookie := range cookies {
 		cookieMap[cookie.Name] = cookie.Value
 	}
+
 	return b.saveCookieMap(cookieMap)
 }
 
@@ -301,6 +308,7 @@ func (b *BiliBili) IsRefresh() (model.RefreshData, error) {
 	} else {
 		b.logger.Info("bilibili cookies need refresh")
 	}
+
 	return response.Data, nil
 }
 
@@ -360,9 +368,11 @@ func (b *BiliBili) RefreshCookie() (model.CookieRefreshData, error) {
 	}
 
 	refreshData.Refresh = true
+
 	return refreshData, nil
 }
 
+// refreshCSRF 获取刷新口令, 通过访问特定的页面来获取刷新所需的 CSRF 口令，该口令通常包含在页面的 HTML 中
 func (b *BiliBili) refreshCSRF(correspondPath, cookies string) (string, error) {
 	resp, err := b.client.
 		R().
@@ -389,6 +399,7 @@ func (b *BiliBili) refreshCSRF(correspondPath, cookies string) (string, error) {
 	return html.UnescapeString(strings.TrimSpace(matches[1])), nil
 }
 
+// refreshCookie 刷新 Cookie 和 refresh_token, 通过调用刷新接口来获取新的 Cookie 和 refresh_token，并保存到数据库中
 func (b *BiliBili) refreshCookie(csrf, refreshCSRF, refreshToken, cookies string) (model.CookieRefreshData, error) {
 	var response struct {
 		model.ApiResponse
@@ -432,6 +443,7 @@ func (b *BiliBili) refreshCookie(csrf, refreshCSRF, refreshToken, cookies string
 	return response.Data, nil
 }
 
+// confirmRefresh 刷新确认, 通过调用刷新确认接口来完成刷新流程的最后一步，确保新的 refresh_token 生效
 func (b *BiliBili) confirmRefresh(csrf, oldRefreshToken, cookies string) error {
 	var response model.ApiResponse
 	resp, err := b.client.
@@ -501,15 +513,15 @@ func (b *BiliBili) LogOut() (model.LogOut, error) {
 			b.logger.Errorf("failed to clear auth state: %v", err)
 		}
 	}()
+	var response model.LogOut
 	cookies, err := b.getCookies()
 	if err != nil {
-		return model.LogOut{}, err
+		return response, err
 	}
 	csrf, err := b.getCSRF()
 	if err != nil {
-		return model.LogOut{}, err
+		return response, err
 	}
-	var response model.LogOut
 	if err = b.client.
 		Post("https://passport.bilibili.com/login/exit/v2").
 		SetQueryParam("biliCSRF", csrf).
@@ -523,14 +535,14 @@ func (b *BiliBili) LogOut() (model.LogOut, error) {
 		Do().
 		Into(&response); err != nil {
 		b.logger.Errorf("logout request failed: %v", err)
-		return model.LogOut{}, errors.New("退出登录失败")
+		return response, errors.New("退出登录失败")
 	}
 	if response.Code == 2202 {
-		return model.LogOut{}, errors.New("CSRF请求非法，可能是因为登录状态无效或已过期")
+		return response, errors.New("CSRF请求非法，可能是因为登录状态无效或已过期")
 	}
 	if response.Code != model.SuccessCode {
 		b.logger.Errorf("logout request failed: code=%d", response.Code)
-		return model.LogOut{}, errors.New("退出登录失败")
+		return response, errors.New("退出登录失败")
 	}
 
 	return response, nil

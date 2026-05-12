@@ -82,6 +82,10 @@ export function GetTheme() {
   return window['go']['utils']['Settings']['GetTheme']();
 }
 
+export function HasFFmpeg() {
+  return window['go']['utils']['Settings']['HasFFmpeg']();
+}
+
 export function IndexCacheMetrics() {
   return window['go']['utils']['Settings']['IndexCacheMetrics']();
 }

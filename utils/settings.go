@@ -17,6 +17,19 @@ import (
 	"github.com/kamiertop/videodown/logger"
 )
 
+const (
+	// themeKey 主题设置，默认为 "light"
+	themeKey = "theme"
+	// storageKey 存储目录，默认为可执行文件所在目录的 download 子目录
+	storageKey = "storage"
+	// sleepTimeKey 下载完一个视频之后的随机休眠时间，单位为秒，默认为0-60 秒
+	sleepTimeKey = "sleepTime"
+	// allowGroupOnSaveKey 保存时是否自动分组，默认为 true
+	allowGroupOnSaveKey = "allowGroupOnSave"
+	// concurrencyNumKey 保存同时下载的视频数量，默认为 1
+	concurrencyNumKey = "concurrencyNum"
+)
+
 type Settings struct {
 	*badger.DB
 	logger *logger.Logger
@@ -56,14 +69,6 @@ func (s *Settings) init() error {
 func (s *Settings) CloseDB() error {
 	return s.DB.Close()
 }
-
-const (
-	themeKey            = "theme"
-	storageKey          = "storage"
-	sleepTimeKey        = "sleepTime"
-	allowGroupOnSaveKey = "allowGroupOnSave"
-	concurrencyNumKey   = "concurrencyNum"
-)
 
 func NewSettingsWithMemory(logger *logger.Logger) *Settings {
 	db, err := badger.Open(badger.
