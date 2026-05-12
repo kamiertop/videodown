@@ -618,17 +618,11 @@ func (d *Douyin) DownloadVideos(tasks []DouyinDownloadTask) (DouyinDownloadBatch
 	if err != nil {
 		return result, err
 	}
-	if workerCount < 1 {
-		workerCount = 1
-	}
-	if len(tasks) < workerCount {
-		workerCount = len(tasks)
-	}
 
-	jobs := make(chan DouyinDownloadTask)
+	jobs := make(chan DouyinDownloadTask, len(tasks))
 	results := make(chan DouyinDownloadResult, len(tasks))
 	var wg sync.WaitGroup
-	for i := 0; i < workerCount; i++ {
+	for range workerCount {
 		wg.Go(func() {
 			for task := range jobs {
 				path, err := d.downloadTask(task)

@@ -43,7 +43,7 @@ func (s *Settings) Startup(ctx context.Context) {
 }
 
 // DomReady is called after front-end resources have been loaded
-func (s *Settings) DomReady(ctx context.Context) {
+func (s *Settings) DomReady(_ context.Context) {
 	// Add your action here
 }
 
@@ -54,7 +54,7 @@ func (s *Settings) Context() context.Context {
 // BeforeClose is called when the application is about to quit,
 // either by clicking the window close button or calling runtime.Quit.
 // Returning true will cause the application to continue, false will continue shutdown as normal.
-func (s *Settings) BeforeClose(ctx context.Context) (prevent bool) {
+func (s *Settings) BeforeClose(_ context.Context) (prevent bool) {
 	return false
 }
 
@@ -338,7 +338,7 @@ func (s *Settings) GetVersion() string {
 }
 
 // OnShutdown is called when the application is shutting down
-func (s *Settings) OnShutdown(ctx context.Context) {
+func (s *Settings) OnShutdown(_ context.Context) {
 	if err := s.DB.Close(); err != nil {
 		log.Errorf("Failed to close settings DB: %v", err)
 		return

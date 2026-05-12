@@ -347,6 +347,8 @@ func clampPercent(percent float64) float64 {
 	return percent
 }
 
+// resetDownloadProgress 下载开始前重置进度缓存，避免同一 BV 多次下载时进度事件被旧任务覆盖
+// 单 P 直接按 BV 区分，多 P 按 BV:CID 区分，确保不同 P 之间的进度事件互不干扰。
 func (b *BiliBili) resetDownloadProgress(bvid string, cid int64) {
 	key := progressKey(bvid, cid)
 	if key == "" {
@@ -623,6 +625,7 @@ func (b *BiliBili) sleepAfterTask(task DashDownloadTask) {
 	b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
 }
 
+// dashDownloadDedupKey 生成下载去重键；同一 BV 单 P 只保留一个任务，多 P 按 cid 区分，避免进度事件互相覆盖
 func dashDownloadDedupKey(task DashDownloadTask) string {
 	bv := strings.ToUpper(strings.TrimSpace(task.Bvid))
 	if bv == "" {
@@ -634,6 +637,7 @@ func dashDownloadDedupKey(task DashDownloadTask) string {
 	return bv
 }
 
+// uniqueDashDownloadTasks 对下载任务列表去重；同一 BV 单 P 只保留一个任务，多 P 按 cid 区分，避免进度事件互相覆盖
 func uniqueDashDownloadTasks(tasks []DashDownloadTask) []DashDownloadTask {
 	seen := make(map[string]struct{}, len(tasks))
 	unique := make([]DashDownloadTask, 0, len(tasks))
@@ -648,6 +652,7 @@ func uniqueDashDownloadTasks(tasks []DashDownloadTask) []DashDownloadTask {
 		// 同一 BV 在单 P 时只保留一个任务；多 P 时按 cid 区分，避免进度事件互相覆盖。
 		unique = append(unique, task)
 	}
+
 	return unique
 }
 
@@ -665,24 +670,24 @@ func (b *BiliBili) DownloadVideosByDash(tasks []DashDownloadTask) (DashDownloadB
 	if err != nil {
 		return result, err
 	}
-	if len(tasks) < workerCount {
-		workerCount = len(tasks)
-	}
 
-	jobs := make(chan DashDownloadTask)
+	jobs := make(chan DashDownloadTask, len(tasks))
 	results := make(chan DashDownloadResult, len(tasks))
 	var wg sync.WaitGroup
-
-	for i := 0; i < workerCount; i++ {
+	// 启动固定数量的 worker 并发下载，worker 数量由设置项控制；每个 worker 从 jobs 通道接收任务，完成后把结果发送到 results 通道
+	for range workerCount {
 		wg.Go(func() {
 			for task := range jobs {
+				// 每个任务独立下载，失败不影响其他任务；下载完成后根据设置项休眠，避免连续请求过快；并发 worker 互不阻塞
 				path, err := b.downloadDashTask(task)
 				item := DashDownloadResult{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Path: path}
 				if err != nil {
 					item.Error = err.Error()
 				}
+				// 下载完成后把下载结果发送到 results 通道，供主协程统计成功失败数量和返回给前端
 				results <- item
 				if err == nil {
+					// 下载成功才休眠，下载失败立即开始下一个任务，避免连续下载失败时长时间无响应
 					b.sleepAfterTask(task)
 				}
 			}
