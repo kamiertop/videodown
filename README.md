@@ -1,13 +1,15 @@
 # VideoDown
 
+> ⚠️下载哔哩哔哩视频请安装FFmpeg
+
 VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.dev) 和 [SolidJS](https://www.solidjs.com/)
-开发的桌面视频下载工具（初期使用Tauri+Rust，但是tmd占用磁盘太多了😅，一看40多个G），目前主要支持哔哩哔哩和抖音。
+开发的桌面视频下载工具（初期使用Tauri+Rust，但是tmd占用磁盘太多了😅，一看40多个G），主要支持哔哩哔哩和抖音。
 
 > 本项目仍可能受到平台接口变化影响。如果接口返回结构、鉴权参数或风控策略变化，部分功能可能需要同步调整。
 
 ## 项目初衷🤓
 
-每逢月末流量不够😭无法观看助眠视频
+每逢月末流量不够😭
 
 大家自行使用😊，🫵**不要贩卖**😡
 
@@ -198,4 +200,4 @@ wails build
 - 视频流说明、接口签名等：[bilibili-API-collect](https://sessionhu.github.io/bilibili-API-collect/)
 - aBogus，提示不要使用二维码登录，用Cookie（我听劝）：[TikTokDownloader](https://github.com/JoeanAmier/TikTokDownloader)
 - 提示使用Cookie：[Douyin_TikTok_Download_API](https://github.com/Evil0ctal/Douyin_TikTok_Download_API)
-- Codex 和 ChatGPT 在代码生成和优化方面提供了巨大帮助。
+- Codex 和 ChatGPT 在代码生成和优化方面提供了巨大帮助
