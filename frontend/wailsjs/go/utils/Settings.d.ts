@@ -3,8 +3,8 @@
 import {io} from '../models';
 import {ristretto} from '../models';
 import {badger} from '../models';
-import {time} from '../models';
 import {context} from '../models';
+import {time} from '../models';
 import {pb} from '../models';
 
 export function Backup(arg1:io.Writer,arg2:number):Promise<number>;
@@ -19,7 +19,7 @@ export function CacheMaxCost(arg1:badger.CacheType,arg2:number):Promise<number>;
 
 export function Close():Promise<void>;
 
-export function CloseDB():Promise<void>;
+export function Context():Promise<context.Context>;
 
 export function DeleteKey(arg1:string):Promise<void>;
 
@@ -46,6 +46,8 @@ export function GetSleepTime():Promise<number>;
 export function GetStorage():Promise<string>;
 
 export function GetTheme():Promise<string>;
+
+export function GetVersion():Promise<string>;
 
 export function HasFFmpeg():Promise<boolean>;
 
@@ -105,7 +107,7 @@ export function SetSavePreference(arg1:boolean):Promise<void>;
 
 export function SetSleepTime(arg1:number):Promise<void>;
 
-export function SetStorage(arg1:context.Context):Promise<string>;
+export function SetStorage():Promise<string>;
 
 export function SetTheme(arg1:string):Promise<void>;
 

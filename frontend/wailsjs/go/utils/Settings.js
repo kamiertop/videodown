@@ -26,8 +26,8 @@ export function Close() {
   return window['go']['utils']['Settings']['Close']();
 }
 
-export function CloseDB() {
-  return window['go']['utils']['Settings']['CloseDB']();
+export function Context() {
+  return window['go']['utils']['Settings']['Context']();
 }
 
 export function DeleteKey(arg1) {
@@ -80,6 +80,10 @@ export function GetStorage() {
 
 export function GetTheme() {
   return window['go']['utils']['Settings']['GetTheme']();
+}
+
+export function GetVersion() {
+  return window['go']['utils']['Settings']['GetVersion']();
 }
 
 export function HasFFmpeg() {
@@ -198,8 +202,8 @@ export function SetSleepTime(arg1) {
   return window['go']['utils']['Settings']['SetSleepTime'](arg1);
 }
 
-export function SetStorage(arg1) {
-  return window['go']['utils']['Settings']['SetStorage'](arg1);
+export function SetStorage() {
+  return window['go']['utils']['Settings']['SetStorage']();
 }
 
 export function SetTheme(arg1) {

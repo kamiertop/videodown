@@ -19,7 +19,6 @@ const (
 )
 
 type Douyin struct {
-	ctxProvider  func() context.Context
 	logger       *logger.Logger
 	client       *req.Client
 	settings     *utils.Settings
@@ -37,15 +36,11 @@ type Douyin struct {
 	userID    string
 }
 
-func New(logger *logger.Logger, settings *utils.Settings, ctxProvider ...func() context.Context) *Douyin {
+func New(logger *logger.Logger, settings *utils.Settings) *Douyin {
 	logger = logger.WithName("Douyin")
-	var provider func() context.Context
-	if len(ctxProvider) > 0 {
-		provider = ctxProvider[0]
-	}
+
 	return &Douyin{
-		ctxProvider: provider,
-		logger:      logger.WithName("Douyin").WithCaller(3),
+		logger: logger.WithName("Douyin").WithCaller(3),
 		client: req.
 			C().
 			SetLogger(logger).
@@ -59,10 +54,7 @@ func New(logger *logger.Logger, settings *utils.Settings, ctxProvider ...func() 
 }
 
 func (d *Douyin) context() context.Context {
-	if d.ctxProvider == nil {
-		return nil
-	}
-	return d.ctxProvider()
+	return d.settings.Context()
 }
 
 type cookieParams struct {

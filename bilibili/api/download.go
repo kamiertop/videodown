@@ -361,6 +361,7 @@ func (b *BiliBili) resetDownloadProgress(bvid string, cid int64) {
 func (b *BiliBili) emitDownloadProgress(p downloadProgress) {
 	ctx := b.context()
 	if ctx == nil {
+		b.logger.Errorf("emitDownloadProgress failed: context is nil")
 		return
 	}
 	key := progressKey(p.Bvid, p.Cid)

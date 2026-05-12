@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"embed"
 
 	bilibiliapi "github.com/kamiertop/videodown/bilibili/api"
@@ -29,13 +28,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize settings: %v", err)
 	}
-	app := NewApp(settings)
-	bilibili := bilibiliapi.New(log, settings, func() context.Context {
-		return app.ctx
-	})
-	douyin := douyinapi.New(log, settings, func() context.Context {
-		return app.ctx
-	})
+
+	bilibili := bilibiliapi.New(log, settings)
+	douyin := douyinapi.New(log, settings)
 	// Create application with options
 	err = wails.Run(&options.App{
 		Title:             "",
@@ -54,22 +49,15 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		Menu:          nil,
-		Logger:        log.WithName("wails"),
-		LogLevel:      logger.DEBUG,
-		OnStartup:     app.startup,
-		OnDomReady:    app.domReady,
-		OnBeforeClose: app.beforeClose,
-		OnShutdown: func(ctx context.Context) {
-			if err := settings.CloseDB(); err != nil {
-				log.Errorf("Failed to close settings DB: %v", err)
-				return
-			}
-			log.Info("Close BadgerDB and shutdown application")
-		},
+		Menu:             nil,
+		Logger:           log.WithName("wails"),
+		LogLevel:         logger.DEBUG,
+		OnStartup:        settings.Startup,
+		OnDomReady:       settings.DomReady,
+		OnBeforeClose:    settings.BeforeClose,
+		OnShutdown:       settings.OnShutdown,
 		WindowStartState: options.Normal,
 		Bind: []any{
-			app,
 			bilibili,
 			douyin,
 			settings,

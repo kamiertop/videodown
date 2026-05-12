@@ -22,7 +22,6 @@ const (
 )
 
 type BiliBili struct {
-	ctxProvider    func() context.Context
 	logger         *logger.Logger
 	client         *req.Client
 	settings       *utils.Settings
@@ -31,15 +30,11 @@ type BiliBili struct {
 	progressByBvid map[string]float64
 }
 
-func New(logger *logger.Logger, db *utils.Settings, ctxProvider ...func() context.Context) *BiliBili {
+func New(logger *logger.Logger, settings *utils.Settings) *BiliBili {
 	logger = logger.WithName("BiliBili")
-	var provider func() context.Context
-	if len(ctxProvider) > 0 {
-		provider = ctxProvider[0]
-	}
+
 	return &BiliBili{
-		ctxProvider: provider,
-		logger:      logger.WithName("BiliBili").WithCaller(3),
+		logger: logger.WithName("BiliBili").WithCaller(3),
 		client: req.
 			C().
 			SetLogger(logger).
@@ -47,16 +42,13 @@ func New(logger *logger.Logger, db *utils.Settings, ctxProvider ...func() contex
 			EnableAutoDecompress().
 			SetJsonMarshal(sonic.Marshal).
 			SetJsonUnmarshal(sonic.Unmarshal),
-		settings:       db,
+		settings:       settings,
 		progressByBvid: make(map[string]float64),
 	}
 }
 
 func (b *BiliBili) context() context.Context {
-	if b.ctxProvider == nil {
-		return nil
-	}
-	return b.ctxProvider()
+	return b.settings.Context()
 }
 
 func (b *BiliBili) getCSRF() (string, error) {

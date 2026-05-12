@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/dgraph-io/badger/v4"
+	"github.com/labstack/gommon/log"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/kamiertop/videodown/logger"
@@ -33,6 +34,28 @@ const (
 type Settings struct {
 	*badger.DB
 	logger *logger.Logger
+	ctx    context.Context
+}
+
+// Startup is called at application Startup
+func (s *Settings) Startup(ctx context.Context) {
+	s.ctx = ctx
+}
+
+// DomReady is called after front-end resources have been loaded
+func (s *Settings) DomReady(ctx context.Context) {
+	// Add your action here
+}
+
+func (s *Settings) Context() context.Context {
+	return s.ctx
+}
+
+// BeforeClose is called when the application is about to quit,
+// either by clicking the window close button or calling runtime.Quit.
+// Returning true will cause the application to continue, false will continue shutdown as normal.
+func (s *Settings) BeforeClose(ctx context.Context) (prevent bool) {
+	return false
 }
 
 func (s *Settings) init() error {
@@ -64,10 +87,6 @@ func (s *Settings) init() error {
 
 		return errList
 	})
-}
-
-func (s *Settings) CloseDB() error {
-	return s.DB.Close()
 }
 
 func NewSettingsWithMemory(logger *logger.Logger) *Settings {
@@ -109,6 +128,7 @@ func (s *Settings) GetTheme() (string, error) {
 	return theme, nil
 }
 
+// SetTheme 设置主题，前端调用时会传入 "light"、"dark"等，落库保存供下次启动时加载使用
 func (s *Settings) SetTheme(theme string) error {
 	if err := s.DB.Update(func(txn *badger.Txn) error {
 		return txn.Set([]byte(themeKey), []byte(theme))
@@ -121,6 +141,7 @@ func (s *Settings) SetTheme(theme string) error {
 	return nil
 }
 
+// GetStorage 获取存储目录设置
 func (s *Settings) GetStorage() (string, error) {
 	path, err := s.GetKey(storageKey)
 	if err != nil {
@@ -131,9 +152,9 @@ func (s *Settings) GetStorage() (string, error) {
 	return path, nil
 }
 
-// SetStorage 前端不能使用这个，依赖App的ctx
-func (s *Settings) SetStorage(ctx context.Context) (string, error) {
-	dir, err := runtime.OpenDirectoryDialog(ctx, runtime.OpenDialogOptions{
+// SetStorage 设置存储目录，前端调用时会弹出目录选择对话框，用户选择后落库保存
+func (s *Settings) SetStorage() (string, error) {
+	dir, err := runtime.OpenDirectoryDialog(s.ctx, runtime.OpenDialogOptions{
 		Title: "选择下载目录",
 	})
 
@@ -228,6 +249,7 @@ func (s *Settings) SetSavePreference(allowGroup bool) error {
 	return s.SetKey(allowGroupOnSaveKey, b)
 }
 
+// GetConcurrencyNum 获取同时下载的视频数量
 func (s *Settings) GetConcurrencyNum() (int, error) {
 	val, err := s.GetKey(concurrencyNumKey)
 	if err != nil {
@@ -241,6 +263,7 @@ func (s *Settings) GetConcurrencyNum() (int, error) {
 	return num, nil
 }
 
+// SetConcurrencyNum 保存同时下载的视频数量
 func (s *Settings) SetConcurrencyNum(num int) error {
 	s.logger.Infof("Setting concurrency num to %d", num)
 	return s.SetKey(concurrencyNumKey, strconv.Itoa(num))
@@ -304,4 +327,21 @@ func (s *Settings) OpenLocalFile(path string) error {
 	}
 
 	return cmd.Start()
+}
+
+// Version is set by build flags, e.g. go build -ldflags="-X utils.Version=1.0.0"
+var Version string
+
+// GetVersion returns the current version of the application.
+func (s *Settings) GetVersion() string {
+	return Version
+}
+
+// OnShutdown is called when the application is shutting down
+func (s *Settings) OnShutdown(ctx context.Context) {
+	if err := s.DB.Close(); err != nil {
+		log.Errorf("Failed to close settings DB: %v", err)
+		return
+	}
+	log.Info("Close BadgerDB and shutdown application")
 }
