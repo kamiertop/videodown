@@ -5,7 +5,7 @@ import DetailLoading from "../../DetailLoading";
 import EmptyState from "../../EmptyState";
 import IconRefresh from "../../icons/IconRefresh";
 import SidebarList, {type SidebarListItem} from "../../SidebarList";
-import VideoListSection from "../../VideoListSection";
+import VideoListSection from "../VideoListSection";
 
 export type sidebarLabelType = "收藏夹" | "合集";
 

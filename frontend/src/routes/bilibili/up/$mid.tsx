@@ -12,7 +12,7 @@ import IconRefresh from "../../../components/icons/IconRefresh.tsx";
 import type {SidebarListItem} from "../../../components/SidebarList.tsx";
 import SidebarList from "../../../components/SidebarList.tsx";
 import Toast from "../../../components/Toast";
-import VideoListSection from "../../../components/VideoListSection.tsx";
+import VideoListSection from "../../../components/bilibili/VideoListSection.tsx";
 import {useToast} from "../../../hooks/useToast";
 import {parseBilibiliLengthToSeconds} from "../../../lib/format";
 import type {MediaCardItem} from "../../../lib/model.ts";

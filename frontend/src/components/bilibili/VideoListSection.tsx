@@ -1,8 +1,8 @@
 import {useNavigate} from "@tanstack/solid-router";
 import {createEffect, createMemo, createSignal, type JSXElement, Show} from "solid-js";
-import {addVideos} from "../lib/bilibiliStore.ts";
-import type {MediaCardItem} from "../lib/model.ts";
-import VideoCardGrid from "./VideoCardGrid";
+import {addVideos} from "../../lib/bilibiliStore.ts";
+import type {MediaCardItem} from "../../lib/model.ts";
+import VirtualVideoGrid from "./VirtualVideoGrid";
 
 /** 工具栏 + 卡片网格 + 多选；入队后跳转下载页。`selectionResetKey` 变则清空勾选。 */
 export default function VideoListSection(props: {
@@ -88,27 +88,16 @@ export default function VideoListSection(props: {
                         onClick={() => void enqueueAndGoDownload(props.medias())}>下载全部
                 </button>
             </div>
-            {/*视频卡片网格*/}
-            <div class="min-h-0 flex-1 overflow-auto p-4">
-                <VideoCardGrid
-                    medias={props.medias()}
-                    selectedSet={selectedSet}
-                    onToggleSelect={toggleSelectMedia}
-                    onDownloadOne={(m) => void enqueueAndGoDownload([m])}
-                />
-                <Show when={!!props.hasMore?.()}>
-                    <div class="mt-4 flex justify-center pb-2">
-                        <button
-                            type="button"
-                            class="btn btn-outline btn-sm"
-                            onClick={props.onLoadMore}
-                            disabled={props.loadingMore?.()}
-                        >
-                            {props.loadingMore?.() ? "加载中..." : "加载更多"}
-                        </button>
-                    </div>
-                </Show>
-            </div>
+            {/* 视频卡片网格 — 虚拟滚动，只渲染可见行 */}
+            <VirtualVideoGrid
+              medias={props.medias}
+              selectedSet={selectedSet}
+              onToggleSelect={toggleSelectMedia}
+              onDownloadOne={(m) => void enqueueAndGoDownload([m])}
+              hasMore={props.hasMore}
+              loadingMore={props.loadingMore}
+              onLoadMore={props.onLoadMore}
+            />
         </>
     );
 }
