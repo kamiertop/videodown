@@ -18,23 +18,23 @@ VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.d
 ### 总览
 
 | 首页                     | 设置                         |
-|------------------------|----------------------------|
+| ------------------------ | ---------------------------- |
 | ![首页](./docs/home.png) | ![设置](./docs/settings.png) |
 
 ### 哔哩哔哩
 
-| UP 主页面                              | 下载页                                              |
-|-------------------------------------|--------------------------------------------------|
-| ![UP 主页面](./docs/up.png)            | ![B 站下载页](./docs/bilibili_download.png)          |
-| 收藏夹                                 | 收藏夹合集                                            |
+| UP 主页面                               | 下载页                                                 |
+| --------------------------------------- | ------------------------------------------------------ |
+| ![UP 主页面](./docs/up.png)             | ![B 站下载页](./docs/bilibili_download.png)            |
+| 收藏夹                                  | 收藏夹合集                                             |
 | ![B 站收藏夹](./docs/bilibili_star.png) | ![B 站收藏夹合集](./docs/bilibili_star_collection.png) |
 
 ### 抖音
 
-| 用户页                              | 下载页                                       |
-|----------------------------------|-------------------------------------------|
-| ![抖音用户页](./docs/douyin_user.png) | ![抖音下载页](./docs/douyin_download.png)      |
-| 收藏页                              | 用户作品页                                     |
+| 用户页                                | 下载页                                           |
+| ------------------------------------- | ------------------------------------------------ |
+| ![抖音用户页](./docs/douyin_user.png) | ![抖音下载页](./docs/douyin_download.png)        |
+| 收藏页                                | 用户作品页                                       |
 | ![抖音收藏页](./docs/douyin_star.png) | ![抖音用户作品页](./docs/douyin_user_detail.png) |
 
 ## 功能特性🎉
@@ -91,6 +91,7 @@ VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.d
 - Node.js 和 npm
 - Wails CLI
 - ffmpeg
+- Fedora44下载libwebkit41, 开发时使用：`wails dev -tags webkit2_41`
 
 哔哩哔哩下载通常需要合并视频流和音频流，因此必须安装 `ffmpeg` 并确保命令行可以直接访问：
 
