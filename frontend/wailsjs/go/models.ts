@@ -2296,6 +2296,24 @@ export namespace model {
 	
 	
 	
+	export class CookieRefreshData {
+	    status: number;
+	    message: string;
+	    refresh_token: string;
+	    refresh: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new CookieRefreshData(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.status = source["status"];
+	        this.message = source["message"];
+	        this.refresh_token = source["refresh_token"];
+	        this.refresh = source["refresh"];
+	    }
+	}
 	
 	export class Flac {
 	    display: boolean;

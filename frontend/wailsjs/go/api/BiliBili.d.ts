@@ -39,6 +39,8 @@ export function PollQRCode(arg1:string):Promise<model.PollQRCodeData>;
 
 export function QRCode():Promise<model.QRCodeData>;
 
+export function RefreshCookie():Promise<model.CookieRefreshData>;
+
 export function SeasonsArchivesList(arg1:string,arg2:number,arg3:number,arg4:number):Promise<model.SeasonsArchivesData>;
 
 export function SeasonsSeriesList(arg1:string,arg2:number,arg3:number):Promise<model.SeasonsSeriesData>;

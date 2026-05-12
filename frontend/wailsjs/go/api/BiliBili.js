@@ -74,6 +74,10 @@ export function QRCode() {
   return window['go']['api']['BiliBili']['QRCode']();
 }
 
+export function RefreshCookie() {
+  return window['go']['api']['BiliBili']['RefreshCookie']();
+}
+
 export function SeasonsArchivesList(arg1, arg2, arg3, arg4) {
   return window['go']['api']['BiliBili']['SeasonsArchivesList'](arg1, arg2, arg3, arg4);
 }

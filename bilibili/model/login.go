@@ -25,6 +25,13 @@ type RefreshData struct {
 	Timestamp uint64 `json:"timestamp"`
 }
 
+type CookieRefreshData struct {
+	Status       int32  `json:"status"`
+	Message      string `json:"message"`
+	RefreshToken string `json:"refresh_token"`
+	Refresh      bool   `json:"refresh"`
+}
+
 type LogOut struct {
 	Code   int32      `json:"code"` // 0：成功，2202：csrf请求非法
 	Status bool       `json:"status"`

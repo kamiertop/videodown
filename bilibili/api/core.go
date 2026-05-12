@@ -15,9 +15,10 @@ import (
 )
 
 const (
-	bilibiliCookieKey = "bilibili_cookies"
-	bilibiliCSRFKey   = "bili_jct"
-	bilibiliMidKey    = "bilibili_mid"
+	bilibiliCookieKey       = "bilibili_cookies"
+	bilibiliCSRFKey         = "bili_jct"
+	bilibiliMidKey          = "bilibili_mid"
+	bilibiliRefreshTokenKey = "bilibili_refresh_token"
 )
 
 type BiliBili struct {
@@ -71,7 +72,7 @@ func (b *BiliBili) getMid() (string, error) {
 }
 
 func (b *BiliBili) clearAuthState() error {
-	keys := []string{bilibiliCookieKey, bilibiliCSRFKey, bilibiliMidKey}
+	keys := []string{bilibiliCookieKey, bilibiliCSRFKey, bilibiliMidKey, bilibiliRefreshTokenKey}
 
 	return b.settings.Update(func(txn *badger.Txn) error {
 		for _, key := range keys {
