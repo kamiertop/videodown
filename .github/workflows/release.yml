@@ -78,9 +78,9 @@ jobs:
           mode: prod
         run: |
           if [ -n "${{ matrix.build_tags }}" ]; then
-            wails build --clean --platform "${{ matrix.platform }}" -tags "${{ matrix.build_tags }}" -ldflags "-X main.Version=${{ github.ref_name }}"
+            wails build --clean --platform "${{ matrix.platform }}" -tags "${{ matrix.build_tags }}" -ldflags "-X github.com/kamiertop/videodown/utils.Version=${{ github.ref_name }}"
           else
-            wails build --clean --platform "${{ matrix.platform }}" -ldflags "-X main.Version=${{ github.ref_name }}"
+            wails build --clean --platform "${{ matrix.platform }}" -ldflags "-X github.com/kamiertop/videodown/utils.Version=${{ github.ref_name }}"
           fi
 
       - name: Package Linux artifact

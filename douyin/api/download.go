@@ -200,6 +200,7 @@ func clampDouyinPercent(percent float64) float64 {
 func (d *Douyin) emitDownloadProgress(p douyinDownloadProgress) {
 	ctx := d.context()
 	if ctx == nil {
+		d.logger.Errorf("emitDownloadProgress failed: context is nil")
 		return
 	}
 	if p.AwemeID != "" {
