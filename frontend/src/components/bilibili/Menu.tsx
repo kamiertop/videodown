@@ -1,9 +1,8 @@
 import {Link} from "@tanstack/solid-router";
 import type {JSXElement} from "solid-js";
 import {createSignal, For, onCleanup, onMount} from "solid-js";
-import {MyInfo} from "../../../wailsjs/go/api/BiliBili";
 import bilibiliAvatarFallback from "../../assets/bilibili_256_256.svg";
-import {getLoggedInDeduped} from "../../lib/bilibiliAuth.ts";
+import {getLoggedInDeduped, getMyInfoDeduped} from "../../lib/bilibiliAuth.ts";
 
 const menuItems = [
   {
@@ -74,7 +73,7 @@ export default function Menu(): JSXElement {
         return;
       }
 
-      const profile = await MyInfo();
+      const profile = await getMyInfoDeduped();
       setAvatar(profile.face?.trim() ? profile.face : bilibiliAvatarFallback);
     } catch {
       resetAvatar();

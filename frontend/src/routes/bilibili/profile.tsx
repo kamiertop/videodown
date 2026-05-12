@@ -1,12 +1,12 @@
 import {createFileRoute} from '@tanstack/solid-router'
 import {createResource, createSignal, type JSXElement, Match, onCleanup, onMount, Switch} from "solid-js";
-import {LogOut, MyInfo, PollQRCode} from "../../../wailsjs/go/api/BiliBili";
+import {LogOut, PollQRCode} from "../../../wailsjs/go/api/BiliBili";
 import type {model} from "../../../wailsjs/go/models";
 import ProfileCard from "../../components/bilibili/ProfileCard.tsx";
 import QRCode from "../../components/bilibili/QRCode.tsx";
 import Toast from "../../components/Toast";
 import {useToast} from "../../hooks/useToast";
-import {getLoggedInDeduped} from "../../lib/bilibiliAuth";
+import {getLoggedInDeduped, getMyInfoDeduped} from "../../lib/bilibiliAuth";
 
 
 export const Route = createFileRoute('/bilibili/profile')({
@@ -20,18 +20,18 @@ function Profile(): JSXElement {
   const {message, type, showToast} = useToast();
   const [qrExpired, setQRExpired] = createSignal(false);
   const [profile, {mutate: mutateProfile}] = createResource(
-    () => loggedIn(),
-    async (isLoggedIn) => {
-      if (!isLoggedIn) {
-        return undefined;
-      }
-      try {
-        return await MyInfo();
-      } catch (error) {
-        showToast(error instanceof Error ? error.message : String(error), 'error');
-        return undefined;
-      }
-    },
+      () => loggedIn(),
+      async (isLoggedIn) => {
+        if (!isLoggedIn) {
+          return undefined;
+        }
+        try {
+          return await getMyInfoDeduped();
+        } catch (error) {
+          showToast(error instanceof Error ? error.message : String(error), 'error');
+          return undefined;
+        }
+      },
   );
 
   let pollTimer: number | undefined;
@@ -56,7 +56,7 @@ function Profile(): JSXElement {
     }, 1200)
   }
 
-  const handleLogout = async () => {
+  async function handleLogout(): Promise<void> {
     if (logoutLoading()) {
       return;
     }
@@ -134,42 +134,42 @@ function Profile(): JSXElement {
   })
 
   return (
-    <section class="h-full overflow-hidden bg-base-200/40 px-4 py-3 md:px-6 md:py-4">
-      <Switch>
-        <Match when={checkingLogin()}>
-          <div class="flex h-full items-center justify-center">
-            <span class="loading loading-spinner loading-lg text-primary"></span>
-          </div>
-        </Match>
-
-        <Match when={loggedIn()}>
-          <ProfileCard
-            loading={profile.loading}
-            loggingOut={logoutLoading()}
-            onLogout={handleLogout}
-            profile={profile()}
-          />
-        </Match>
-
-        <Match when={!loggedIn()}>
-          <div class="flex h-full flex-col items-center justify-start gap-4 overflow-auto pt-2">
-            <div class="text-center space-y-1.5">
-              <h1 class="text-2xl font-black leading-tight text-base-content">先完成扫码登录，再进入下载流程</h1>
-              <p class="text-sm text-base-content/60">使用 B 站 App 扫描二维码即可登录</p>
+      <section class="h-full overflow-hidden bg-base-200/40 px-4 py-3 md:px-6 md:py-4">
+        <Switch>
+          <Match when={checkingLogin()}>
+            <div class="flex h-full items-center justify-center">
+              <span class="loading loading-spinner loading-lg text-primary"></span>
             </div>
+          </Match>
 
-            <QRCode
-              expired={qrExpired()}
-              onLoad={(data: model.QRCodeData) => {
-                showToast('二维码已就绪，请使用 B 站 App 扫码', 'info');
-                setQRExpired(false);
-                schedulePoll(data.qrcode_key);
-              }}
+          <Match when={loggedIn()}>
+            <ProfileCard
+                loading={profile.loading}
+                loggingOut={logoutLoading()}
+                onLogout={handleLogout}
+                profile={profile()}
             />
-          </div>
-        </Match>
-      </Switch>
-      <Toast message={message()} type={type()}/>
-    </section>
+          </Match>
+
+          <Match when={!loggedIn()}>
+            <div class="flex h-full flex-col items-center justify-start gap-4 overflow-auto pt-2">
+              <div class="text-center space-y-1.5">
+                <h1 class="text-2xl font-black leading-tight text-base-content">先完成扫码登录，再进入下载流程</h1>
+                <p class="text-sm text-base-content/60">使用 B 站 App 扫描二维码即可登录</p>
+              </div>
+
+              <QRCode
+                  expired={qrExpired()}
+                  onLoad={(data: model.QRCodeData) => {
+                    showToast('二维码已就绪，请使用 B 站 App 扫码', 'info');
+                    setQRExpired(false);
+                    schedulePoll(data.qrcode_key);
+                  }}
+              />
+            </div>
+          </Match>
+        </Switch>
+        <Toast message={message()} type={type()}/>
+      </section>
   )
 }

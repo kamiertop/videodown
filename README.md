@@ -195,7 +195,7 @@ wails build
 
 ## 致谢🤗
 
-- 视频流说明：[bilibili-API-collect](https://sessionhu.github.io/bilibili-API-collect/)
+- 视频流说明、接口签名等：[bilibili-API-collect](https://sessionhu.github.io/bilibili-API-collect/)
 - aBogus，提示不要使用二维码登录，用Cookie（我听劝）：[TikTokDownloader](https://github.com/JoeanAmier/TikTokDownloader)
 - 提示使用Cookie：[Douyin_TikTok_Download_API](https://github.com/Evil0ctal/Douyin_TikTok_Download_API)
 - Codex 和 ChatGPT 在代码生成和优化方面提供了巨大帮助。

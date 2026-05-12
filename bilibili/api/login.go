@@ -1,8 +1,17 @@
 package api
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha256"
+	"crypto/x509"
+	"encoding/hex"
+	"encoding/pem"
 	"errors"
+	"fmt"
+	"html"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"github.com/dgraph-io/badger/v4"
@@ -98,6 +107,11 @@ func (b *BiliBili) PollQRCode(qrcodeKey string) (model.PollQRCodeData, error) {
 		if err := b.saveCookies(resp.Cookies()); err != nil {
 			return model.PollQRCodeData{}, err
 		}
+		if res.Data.RefreshToken != "" {
+			if err := b.saveRefreshToken(res.Data.RefreshToken); err != nil {
+				return model.PollQRCodeData{}, err
+			}
+		}
 		return res.Data, nil
 	case model.PollQRCodeStatusNotScanned:
 		b.logger.Infof("bilibili qrcode not scanned yet: message=%s", res.Data.Message)
@@ -168,6 +182,10 @@ func (b *BiliBili) saveCookies(cookies []*http.Cookie) error {
 		cookieMap[cookie.Name] = cookie.Value
 	}
 
+	return b.saveCookieMap(cookieMap)
+}
+
+func (b *BiliBili) saveCookieMap(cookieMap map[string]string) error {
 	requiredCookies := []string{"SESSDATA", "bili_jct", "DedeUserID", "DedeUserID__ckMd5", "sid"}
 	parts := make([]string, 0, len(requiredCookies))
 	for _, key := range requiredCookies {
@@ -203,6 +221,53 @@ func (b *BiliBili) saveCookies(cookies []*http.Cookie) error {
 	return nil
 }
 
+func parseCookieString(cookieStr string) map[string]string {
+	cookieMap := make(map[string]string)
+	for _, part := range strings.Split(cookieStr, ";") {
+		key, value, ok := strings.Cut(strings.TrimSpace(part), "=")
+		if !ok || strings.TrimSpace(key) == "" {
+			continue
+		}
+		cookieMap[key] = value
+	}
+	return cookieMap
+}
+
+func (b *BiliBili) mergeAndSaveCookies(storedCookies string, cookies []*http.Cookie) error {
+	cookieMap := parseCookieString(storedCookies)
+	for _, cookie := range cookies {
+		cookieMap[cookie.Name] = cookie.Value
+	}
+	return b.saveCookieMap(cookieMap)
+}
+
+func (b *BiliBili) saveRefreshToken(refreshToken string) error {
+	refreshToken = strings.TrimSpace(refreshToken)
+	if refreshToken == "" {
+		b.logger.Error("bilibili refresh_token is empty")
+		return errors.New("保存刷新令牌失败")
+	}
+	if err := b.settings.SetKey(bilibiliRefreshTokenKey, refreshToken); err != nil {
+		b.logger.Errorf("failed to save bilibili refresh_token: %v", err)
+		return errors.New("保存刷新令牌失败")
+	}
+	return nil
+}
+
+func (b *BiliBili) getRefreshToken() (string, error) {
+	refreshToken, err := b.settings.GetKey(bilibiliRefreshTokenKey)
+	if errors.Is(err, badger.ErrKeyNotFound) || strings.TrimSpace(refreshToken) == "" {
+		return "", errors.New("缺少刷新令牌，请重新登录")
+	}
+	if err != nil {
+		b.logger.Errorf("failed to get bilibili refresh_token: %v", err)
+		return "", errors.New("获取刷新令牌失败")
+	}
+
+	return refreshToken, nil
+}
+
+// IsRefresh 是否需要刷新
 func (b *BiliBili) IsRefresh() (model.RefreshData, error) {
 	cookies, err := b.getCookies()
 	if err != nil {
@@ -212,7 +277,10 @@ func (b *BiliBili) IsRefresh() (model.RefreshData, error) {
 	if err != nil {
 		return model.RefreshData{}, err
 	}
-	var response model.RefreshResponse
+	var response struct {
+		model.ApiResponse
+		Data model.RefreshData `json:"data"`
+	}
 	if err = b.client.
 		Get("https://passport.bilibili.com/x/passport-login/web/cookie/info").
 		SetQueryParam(webLocation, "333.1387").
@@ -222,16 +290,211 @@ func (b *BiliBili) IsRefresh() (model.RefreshData, error) {
 		Do().
 		Into(&response); err != nil {
 		b.logger.Errorf("check if cookies need to be refreshed error: %v", err)
-		return model.RefreshData{}, errors.New("检查Cookie是否需要刷新失败")
+		return response.Data, errors.New("检查Cookie是否需要刷新失败")
 	}
 	if response.Code != model.SuccessCode {
 		b.logger.Errorf("refresh request failed: code=%d message=%s", response.Code, response.Message)
-		return model.RefreshData{}, errors.New("检查Cookie是否需要刷新失败")
+		return response.Data, errors.New("检查Cookie是否需要刷新失败")
+	}
+	if !response.Data.Refresh {
+		b.logger.Info("bilibili cookies do not need refresh")
+	} else {
+		b.logger.Info("bilibili cookies need refresh")
+	}
+	return response.Data, nil
+}
+
+// RefreshCookie 刷新登录 Cookie 和 refresh_token。
+func (b *BiliBili) RefreshCookie() (model.CookieRefreshData, error) {
+	refreshInfo, err := b.IsRefresh()
+	if err != nil {
+		return model.CookieRefreshData{}, err
+	}
+	if !refreshInfo.Refresh {
+		return model.CookieRefreshData{
+			Status:  0,
+			Message: "无需刷新",
+			Refresh: false,
+		}, nil
+	}
+
+	cookies, err := b.getCookies()
+	if err != nil {
+		return model.CookieRefreshData{}, err
+	}
+	csrf, err := b.getCSRF()
+	if err != nil {
+		return model.CookieRefreshData{}, err
+	}
+	oldRefreshToken, err := b.getRefreshToken()
+	if err != nil {
+		return model.CookieRefreshData{}, err
+	}
+
+	correspondPath, err := generateCorrespondPath(int64(refreshInfo.Timestamp))
+	if err != nil {
+		b.logger.Errorf("generate bilibili correspond path failed: %v", err)
+		return model.CookieRefreshData{}, errors.New("生成刷新凭证失败")
+	}
+
+	refreshCSRF, err := b.refreshCSRF(correspondPath, cookies)
+	if err != nil {
+		return model.CookieRefreshData{}, err
+	}
+
+	refreshData, err := b.refreshCookie(csrf, refreshCSRF, oldRefreshToken, cookies)
+	if err != nil {
+		return model.CookieRefreshData{}, err
+	}
+
+	newCookies, err := b.getCookies()
+	if err != nil {
+		return model.CookieRefreshData{}, err
+	}
+	newCSRF, err := b.getCSRF()
+	if err != nil {
+		return model.CookieRefreshData{}, err
+	}
+	if err := b.confirmRefresh(newCSRF, oldRefreshToken, newCookies); err != nil {
+		return model.CookieRefreshData{}, err
+	}
+
+	refreshData.Refresh = true
+	return refreshData, nil
+}
+
+func (b *BiliBili) refreshCSRF(correspondPath, cookies string) (string, error) {
+	resp, err := b.client.
+		R().
+		SetHeaders(publicHeaders()).
+		SetHeader(Cookie, cookies).
+		SetHeader(Referer, biliBiliUrl).
+		Get("https://www.bilibili.com/correspond/1/" + correspondPath)
+	if err != nil {
+		b.logger.Errorf("get bilibili refresh_csrf failed: %v", err)
+		return "", errors.New("获取刷新口令失败")
+	}
+	if !resp.IsSuccessState() {
+		b.logger.Errorf("get bilibili refresh_csrf failed: status=%s", resp.Status)
+		return "", errors.New("获取刷新口令失败")
+	}
+
+	body := resp.String()
+	matches := regexp.MustCompile(`(?s)<div[^>]*id=["']1-name["'][^>]*>(.*?)</div>`).FindStringSubmatch(body)
+	if len(matches) < 2 || strings.TrimSpace(matches[1]) == "" {
+		b.logger.Error("missing bilibili refresh_csrf in correspond response")
+		return "", errors.New("获取刷新口令失败")
+	}
+
+	return html.UnescapeString(strings.TrimSpace(matches[1])), nil
+}
+
+func (b *BiliBili) refreshCookie(csrf, refreshCSRF, refreshToken, cookies string) (model.CookieRefreshData, error) {
+	var response struct {
+		model.ApiResponse
+		Data model.CookieRefreshData `json:"data"`
+	}
+
+	resp, err := b.client.
+		R().
+		SetHeaders(publicHeaders()).
+		SetHeader(Cookie, cookies).
+		SetHeader(Origin, biliBiliUrl[:len(biliBiliUrl)-1]).
+		SetHeader(Referer, biliBiliUrl).
+		SetHeader("Content-Type", "application/x-www-form-urlencoded").
+		SetFormDataAnyType(map[string]any{
+			"csrf":          csrf,
+			"refresh_csrf":  refreshCSRF,
+			"source":        "main_web",
+			"refresh_token": refreshToken,
+		}).
+		Post("https://passport.bilibili.com/x/passport-login/web/cookie/refresh")
+	if err != nil {
+		b.logger.Errorf("refresh bilibili cookie failed: %v", err)
+		return model.CookieRefreshData{}, errors.New("刷新Cookie失败")
+	}
+	if err = resp.Into(&response); err != nil {
+		b.logger.Errorf("decode bilibili cookie refresh response failed: %v", err)
+		return model.CookieRefreshData{}, errors.New("解析刷新响应失败")
+	}
+	if response.Code != model.SuccessCode {
+		b.logger.Errorf("refresh bilibili cookie request failed: code=%d message=%s", response.Code, response.Message)
+		return model.CookieRefreshData{}, errors.New("刷新Cookie失败")
+	}
+
+	if err := b.mergeAndSaveCookies(cookies, resp.Cookies()); err != nil {
+		return model.CookieRefreshData{}, err
+	}
+	if err := b.saveRefreshToken(response.Data.RefreshToken); err != nil {
+		return model.CookieRefreshData{}, err
 	}
 
 	return response.Data, nil
 }
 
+func (b *BiliBili) confirmRefresh(csrf, oldRefreshToken, cookies string) error {
+	var response model.ApiResponse
+	resp, err := b.client.
+		R().
+		SetHeaders(publicHeaders()).
+		SetHeader(Cookie, cookies).
+		SetHeader(Origin, biliBiliUrl[:len(biliBiliUrl)-1]).
+		SetHeader(Referer, biliBiliUrl).
+		SetHeader("Content-Type", "application/x-www-form-urlencoded").
+		SetFormDataAnyType(map[string]any{
+			"csrf":          csrf,
+			"refresh_token": oldRefreshToken,
+		}).
+		Post("https://passport.bilibili.com/x/passport-login/web/confirm/refresh")
+	if err != nil {
+		b.logger.Errorf("confirm bilibili cookie refresh failed: %v", err)
+		return errors.New("确认Cookie刷新失败")
+	}
+	if err = resp.Into(&response); err != nil {
+		b.logger.Errorf("decode bilibili cookie refresh confirm response failed: %v", err)
+		return errors.New("解析刷新确认响应失败")
+	}
+	if response.Code != model.SuccessCode {
+		b.logger.Errorf("confirm bilibili cookie refresh request failed: code=%d message=%s", response.Code, response.Message)
+		return errors.New("确认Cookie刷新失败")
+	}
+
+	return nil
+}
+
+func generateCorrespondPath(timestamp int64) (string, error) {
+	const publicKeyPEM = `
+-----BEGIN PUBLIC KEY-----
+MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDLgd2OAkcGVtoE3ThUREbio0Eg
+Uc/prcajMKXvkCKFCWhJYJcLkcM2DKKcSeFpD/j6Boy538YXnR6VhcuUJOhH2x71
+nzPjfdTcqMz7djHum0qSZA0AyCBDABUqCrfNgCiJ00Ra7GmRj+YCK1NJEuewlb40
+JNrRuoEUXpabUzGB8QIDAQAB
+-----END PUBLIC KEY-----
+`
+
+	pubKeyBlock, _ := pem.Decode([]byte(publicKeyPEM))
+	if pubKeyBlock == nil {
+		return "", errors.New("invalid bilibili refresh public key")
+	}
+	pubInterface, err := x509.ParsePKIXPublicKey(pubKeyBlock.Bytes)
+	if err != nil {
+		return "", err
+	}
+	pub, ok := pubInterface.(*rsa.PublicKey)
+	if !ok {
+		return "", errors.New("invalid bilibili refresh public key type")
+	}
+
+	msg := []byte(fmt.Sprintf("refresh_%d", timestamp))
+	encryptedData, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, pub, msg, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return hex.EncodeToString(encryptedData), nil
+}
+
+// LogOut 退出登录, 通过调用退出登录接口并清除本地保存的 cookies 来实现退出登录功能
 func (b *BiliBili) LogOut() (model.LogOut, error) {
 	defer func() {
 		if err := b.clearAuthState(); err != nil {
