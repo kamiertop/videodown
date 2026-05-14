@@ -183,6 +183,18 @@ func (b *BiliBili) downloadedCachePath(cid int64) (string, bool) {
 	return cached.Path, true
 }
 
+// isDownloaded 检查缓存记录且确认文件仍存在于磁盘；缓存可能因手动删文件而过期。
+func (b *BiliBili) isDownloaded(cid int64) (string, bool) {
+	path, ok := b.downloadedCachePath(cid)
+	if !ok {
+		return "", false
+	}
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		return "", false
+	}
+	return path, true
+}
+
 // markDownloaded 写入下载成功缓存；写缓存失败不影响已经完成的文件保存。
 func (b *BiliBili) markDownloaded(task DashDownloadTask, path string) {
 	key := downloadCacheKey(task.Cid)
@@ -299,19 +311,39 @@ func (b *BiliBili) resolveTargetDir(storagePath string, task DashDownloadTask) (
 		return storagePath, nil
 	}
 
+	kind := strings.TrimSpace(task.SourceKind)
 	sourceName := sanitizeDirName(task.SourceName)
-	if sourceName == "" {
-		return storagePath, nil
-	}
+	upperName := sanitizeDirName(task.UpperName)
 
-	// 合集、分 P 列表需要更深一层分组：存储目录 / UP 主名 / 列表标题。
-	if task.SourceKind == "合集" || task.SourceKind == "分P" {
-		if upperName := sanitizeDirName(task.UpperName); upperName != "" {
+	// 前端只传来源元数据，不再拼目录。这里集中维护所有落盘分组规则。
+	switch kind {
+	case "解析结果":
+		return storagePath, nil
+	case "全部投稿":
+		if upperName != "" {
+			return filepath.Join(storagePath, upperName), nil
+		}
+	case "合集", "系列", "分P":
+		if upperName != "" && sourceName != "" {
 			return filepath.Join(storagePath, upperName, sourceName), nil
+		}
+		if sourceName != "" {
+			return filepath.Join(storagePath, sourceName), nil
+		}
+		if upperName != "" {
+			return filepath.Join(storagePath, upperName), nil
+		}
+	case "收藏夹":
+		if sourceName != "" {
+			return filepath.Join(storagePath, sourceName), nil
+		}
+	default:
+		if sourceName != "" {
+			return filepath.Join(storagePath, sourceName), nil
 		}
 	}
 
-	return filepath.Join(storagePath, sourceName), nil
+	return storagePath, nil
 }
 
 type downloadProgress struct {
@@ -410,13 +442,13 @@ func weightedPercent(start, weight float64, downloaded, total int64) float64 {
 	return start + ratio*weight
 }
 
-// downloadToFile 使用项目封装的 req client 流式读取响应体；手动 Read/Write 才能拿到实时字节进度。
+// downloadToFile 使用无总时长限制的 HTTP client 流式读取响应体；长视频下载不能复用接口请求的整体超时。
 func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title string, cid int64, phase, cookies string, start, weight float64) error {
 	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
 		return errors.New("流地址无效")
 	}
 
-	resp, err := b.client.R().
+	resp, err := b.downloadClient.R().
 		DisableAutoReadResponse().
 		SetHeader(UserAgent, userAgent()).
 		SetHeader(Referer, fmt.Sprintf("https://www.bilibili.com/video/%s", strings.TrimSpace(bvid))).
@@ -500,7 +532,8 @@ func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title string, cid in
 // downloadDashTask 下载一个 DASH 任务，供单个下载和批量下载复用。
 func (b *BiliBili) downloadDashTask(task DashDownloadTask) (string, error) {
 	b.resetDownloadProgress(task.Bvid, task.Cid)
-	if path, ok := b.downloadedCachePath(task.Cid); ok {
+	// 下载前先检查是否已下载，避免重复下载同一 CID 的视频
+	if path, ok := b.isDownloaded(task.Cid); ok {
 		b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
 		return path, nil
 	}
@@ -682,6 +715,7 @@ func (b *BiliBili) DownloadVideosByDash(tasks []DashDownloadTask) (DashDownloadB
 				path, err := b.downloadDashTask(task)
 				item := DashDownloadResult{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Path: path}
 				if err != nil {
+					b.logger.Errorf("download failed for BV %s CID %d: %v", task.Bvid, task.Cid, err)
 					item.Error = err.Error()
 				}
 				// 下载完成后把下载结果发送到 results 通道，供主协程统计成功失败数量和返回给前端
@@ -709,6 +743,53 @@ func (b *BiliBili) DownloadVideosByDash(tasks []DashDownloadTask) (DashDownloadB
 		}
 		result.Results = append(result.Results, item)
 	}
+
+	return result, nil
+}
+
+// FilterIncrementalTasks 将任务分为待下载和已下载两组；已下载项附带当时保存的文件路径。
+func (b *BiliBili) FilterIncrementalTasks(tasks []DashDownloadTask) (toDownload []DashDownloadTask, alreadyDone []DashDownloadResult) {
+	tasks = uniqueDashDownloadTasks(tasks)
+	for _, task := range tasks {
+		if path, ok := b.isDownloaded(task.Cid); ok {
+			alreadyDone = append(alreadyDone, DashDownloadResult{
+				Bvid:  task.Bvid,
+				Cid:   task.Cid,
+				Title: task.Title,
+				Path:  path,
+			})
+		} else {
+			toDownload = append(toDownload, task)
+		}
+	}
+	return
+}
+
+// DownloadVideosByDashIncremental 增量下载：跳过已下载的视频，只下载新增部分。
+func (b *BiliBili) DownloadVideosByDashIncremental(tasks []DashDownloadTask) (DashDownloadBatchResult, error) {
+	toDownload, alreadyDone := b.FilterIncrementalTasks(tasks)
+
+	result := DashDownloadBatchResult{
+		Results: make([]DashDownloadResult, 0, len(tasks)),
+	}
+
+	for _, item := range alreadyDone {
+		result.Results = append(result.Results, item)
+		result.Success += 1
+	}
+
+	if len(toDownload) == 0 {
+		return result, nil
+	}
+
+	batchResult, err := b.DownloadVideosByDash(toDownload)
+	if err != nil {
+		return result, err
+	}
+
+	result.Results = append(result.Results, batchResult.Results...)
+	result.Success += batchResult.Success
+	result.Failed += batchResult.Failed
 
 	return result, nil
 }

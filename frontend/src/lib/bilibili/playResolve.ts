@@ -1,5 +1,5 @@
-import {VideoDetailConciseBvid, VideoPlayURL} from "../../wailsjs/go/api/BiliBili";
-import {model} from "../../wailsjs/go/models";
+import {VideoDetailConciseBvid, VideoPlayURL} from "../../../wailsjs/go/api/BiliBili";
+import {model} from "../../../wailsjs/go/models";
 
 export function bvidCacheKey(bvid: string | undefined): string | null {
   const t = bvid?.trim();
@@ -142,9 +142,9 @@ export class BilibiliPlayResolveError extends Error {
 
 function videoAccessInfoFromView(view: model.VideoDetailView): VideoAccessInfo {
   const isPaid =
-    (view.rights?.pay ?? 0) > 0 ||
-    (view.rights?.ugc_pay ?? 0) > 0 ||
-    (view.rights?.arc_pay ?? 0) > 0;
+      (view.rights?.pay ?? 0) > 0 ||
+      (view.rights?.ugc_pay ?? 0) > 0 ||
+      (view.rights?.arc_pay ?? 0) > 0;
   const labels: string[] = [];
 
   if (view.is_upower_exclusive) labels.push("充电专属");
@@ -208,15 +208,15 @@ export function sortedDashVideoQualities(play: model.VideoURLData): VideoQuality
   }
 
   return [...qns]
-    .sort((a, b) => b - a)
-    .map((qn) => {
-      const fmt = supportFormatForQn(play, qn);
-      return {
-        qn,
-        label: fmt ? supportFormatSelectLabel(fmt) : qualityDescription(play, qn),
-        title: dashVideoQualityTitle(play, qn),
-      };
-    });
+      .sort((a, b) => b - a)
+      .map((qn) => {
+        const fmt = supportFormatForQn(play, qn);
+        return {
+          qn,
+          label: fmt ? supportFormatSelectLabel(fmt) : qualityDescription(play, qn),
+          title: dashVideoQualityTitle(play, qn),
+        };
+      });
 }
 
 export interface ResolvedPlayInfo {
@@ -235,11 +235,11 @@ export interface ResolvedPlayInfo {
 }
 
 function buildSummaryLine(
-  play: model.VideoURLData,
-  bestVideo: model.VideoItem,
-  bestAudio: model.AudioItem | undefined,
-  partCount: number,
-  qn: number,
+    play: model.VideoURLData,
+    bestVideo: model.VideoItem,
+    bestAudio: model.AudioItem | undefined,
+    partCount: number,
+    qn: number,
 ): string {
   const apiQualityLabel = qualityDescription(play, qn);
   const res = `${bestVideo.width}×${bestVideo.height}`;
@@ -254,14 +254,14 @@ function buildSummaryLine(
 }
 
 function buildResolvedPlayInfo(
-  ctx: { aid: number; cid: number; bvid: string; partCount: number },
-  play: model.VideoURLData,
-  accessInfo: VideoAccessInfo,
-  opts?: { preferredAudioId?: number },
+    ctx: { aid: number; cid: number; bvid: string; partCount: number },
+    play: model.VideoURLData,
+    accessInfo: VideoAccessInfo,
+    opts?: { preferredAudioId?: number },
 ): ResolvedPlayInfo {
   // 有些响应会返回多编码同档位，这里优先用 play.quality 对应档位内的“最佳视频流”。
   const bestVideo =
-    pickBestVideoAtQn(play.dash?.video, play.quality) ?? pickBestVideo(play.dash?.video);
+      pickBestVideoAtQn(play.dash?.video, play.quality) ?? pickBestVideo(play.dash?.video);
   if (!bestVideo) {
     throw new Error("未获取到 DASH 视频流（可能为特殊稿件或需登录）");
   }
@@ -321,11 +321,11 @@ export function switchResolvedAudio(current: ResolvedPlayInfo, audioId: number):
     ...current,
     bestAudio: hit,
     summaryLine: buildSummaryLine(
-      current.play,
-      current.bestVideo,
-      hit,
-      current.partCount,
-      current.selectedQn,
+        current.play,
+        current.bestVideo,
+        hit,
+        current.partCount,
+        current.selectedQn,
     ),
   };
 }
@@ -334,8 +334,8 @@ export function switchResolvedAudio(current: ResolvedPlayInfo, audioId: number):
  * 详情 + 一次 playurl；画质与音质切换只复用返回的 dash 字段，不重新请求。
  */
 export async function resolveBilibiliPlayUrl(
-  bvidRaw: string,
-  opts?: { cid?: number | null },
+    bvidRaw: string,
+    opts?: { cid?: number | null },
 ): Promise<ResolvedPlayInfo> {
   const trimmed = bvidRaw.trim();
   if (!trimmed) {
@@ -348,7 +348,7 @@ export async function resolveBilibiliPlayUrl(
   const aid = Number(view.aid);
   const cidOpt = opts?.cid;
   const cid =
-    cidOpt != null && Number.isFinite(cidOpt) && cidOpt > 0 ? Math.trunc(cidOpt) : Number(view.cid);
+      cidOpt != null && Number.isFinite(cidOpt) && cidOpt > 0 ? Math.trunc(cidOpt) : Number(view.cid);
   if (!Number.isFinite(aid) || !Number.isFinite(cid)) {
     throw new BilibiliPlayResolveError("稿件 aid/cid 无效", accessInfo);
   }

@@ -1,5 +1,5 @@
 import {createSignal} from "solid-js";
-import type {model} from "../../wailsjs/go/models";
+import type {model} from "../../../wailsjs/go/models";
 
 export interface DouyinVideoOption {
   id: string;

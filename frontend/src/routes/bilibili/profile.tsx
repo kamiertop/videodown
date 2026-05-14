@@ -6,7 +6,7 @@ import ProfileCard from "../../components/bilibili/ProfileCard.tsx";
 import QRCode from "../../components/bilibili/QRCode.tsx";
 import Toast from "../../components/Toast";
 import {useToast} from "../../hooks/useToast";
-import {getLoggedInDeduped, getMyInfoDeduped} from "../../lib/bilibiliAuth";
+import {getLoggedInDeduped, getMyInfoDeduped} from "../../lib/bilibili/auth";
 
 
 export const Route = createFileRoute('/bilibili/profile')({

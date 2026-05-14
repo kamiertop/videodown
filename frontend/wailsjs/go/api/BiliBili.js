@@ -34,12 +34,20 @@ export function DownloadVideosByDash(arg1) {
   return window['go']['api']['BiliBili']['DownloadVideosByDash'](arg1);
 }
 
+export function DownloadVideosByDashIncremental(arg1) {
+  return window['go']['api']['BiliBili']['DownloadVideosByDashIncremental'](arg1);
+}
+
 export function Favorites(arg1, arg2, arg3) {
   return window['go']['api']['BiliBili']['Favorites'](arg1, arg2, arg3);
 }
 
 export function FavoritesList() {
   return window['go']['api']['BiliBili']['FavoritesList']();
+}
+
+export function FilterIncrementalTasks(arg1) {
+  return window['go']['api']['BiliBili']['FilterIncrementalTasks'](arg1);
 }
 
 export function FollowList(arg1, arg2) {

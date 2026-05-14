@@ -11,8 +11,8 @@ import {
   douyinVideoOptions,
   isDouyinImageAlbum,
   isDouyinLivePhoto,
-} from "../../lib/douyinMedia.ts";
-import {addDouyinVideos, type DouyinDownloadItem} from "../../lib/douyinStore.ts";
+} from "../../lib/douyin/media.ts";
+import {addDouyinVideos, type DouyinDownloadItem} from "../../lib/douyin/store.ts";
 import {formatDate, formatDuration} from "../../lib/format.ts";
 import DetailError from "../DetailError.tsx";
 import DetailLoading from "../DetailLoading.tsx";
@@ -32,9 +32,9 @@ function awemeKey(item: model.AwemeItem, index: number): string {
 
 function awemeCover(item: model.AwemeItem): string {
   return item.video?.cover?.url_list?.[0]
-    ?? item.video?.origin_cover?.url_list?.[0]
-    ?? item.images?.[0]?.url_list?.[0]
-    ?? "";
+      ?? item.video?.origin_cover?.url_list?.[0]
+      ?? item.images?.[0]?.url_list?.[0]
+      ?? "";
 }
 
 function awemeTitle(item: model.AwemeItem): string {
@@ -42,11 +42,11 @@ function awemeTitle(item: model.AwemeItem): string {
 }
 
 export type DouyinVideoContentKind =
-  | "favorite-video"
-  | "user-video"
-  | "favorite-collection"
-  | "favorite-mix"
-  | "user-mix";
+    | "favorite-video"
+    | "user-video"
+    | "favorite-collection"
+    | "favorite-mix"
+    | "user-mix";
 
 // kind 是这个组件的核心入口：页面类型确定后，默认标题、空态、下载来源都可推导。
 function defaultTitle(kind: DouyinVideoContentKind): string {
@@ -138,52 +138,52 @@ export default function VideoContentPanel(props: {
   }
 
   const videoItems = createMemo<DouyinVideoCardItem[]>(() =>
-    props.items.map((item, index): DouyinVideoCardItem => {
-      // 后端 AwemeItem 很大，网格只需要轻量视图模型和下载任务。
-      const duration = normalizeDouyinDuration(item.video?.duration ?? item.duration ?? 0);
-      const awemeId = item.aweme_id || item.group_id || item.sec_item_id || `${item.author_user_id}-${index}`;
-      const title = awemeTitle(item);
-      const cover = awemeCover(item);
-      const author = item.author?.nickname || item.author?.uid || props.fallbackAuthor;
-      // 清晰度选项在进入下载页前就解析好，下载页只需要让用户切换最终 URL。
-      const videoOptions = douyinVideoOptions(item);
-      const selectedVideoOption = defaultDouyinVideoOption(videoOptions);
-      const imageURLs = douyinImageURLs(item);
-      const mediaBadge = isDouyinLivePhoto(item)
-        ? "live-photo"
-        : isDouyinImageAlbum(item) ? "image" : undefined;
+      props.items.map((item, index): DouyinVideoCardItem => {
+        // 后端 AwemeItem 很大，网格只需要轻量视图模型和下载任务。
+        const duration = normalizeDouyinDuration(item.video?.duration ?? item.duration ?? 0);
+        const awemeId = item.aweme_id || item.group_id || item.sec_item_id || `${item.author_user_id}-${index}`;
+        const title = awemeTitle(item);
+        const cover = awemeCover(item);
+        const author = item.author?.nickname || item.author?.uid || props.fallbackAuthor;
+        // 清晰度选项在进入下载页前就解析好，下载页只需要让用户切换最终 URL。
+        const videoOptions = douyinVideoOptions(item);
+        const selectedVideoOption = defaultDouyinVideoOption(videoOptions);
+        const imageURLs = douyinImageURLs(item);
+        const mediaBadge = isDouyinLivePhoto(item)
+            ? "live-photo"
+            : isDouyinImageAlbum(item) ? "image" : undefined;
 
-      return {
-        id: awemeKey(item, index),
-        cover,
-        title,
-        author,
-        publishText: formatDate(item.create_time ?? 0),
-        durationText: formatDuration(duration),
-        downloadItem: {
-          awemeId,
-          sourceKind: douyinSourceKind(props.kind),
-          sourceName: props.sourceName,
-          title,
+        return {
+          id: awemeKey(item, index),
           cover,
-          coverCandidates: douyinCoverCandidates(item),
-          duration,
-          authorName: author,
-          publishTime: item.create_time ?? 0,
-          diggCount: item.statistics?.digg_count ?? 0,
-          collectCount: item.statistics?.collect_count ?? 0,
-          link: awemeId ? `https://www.douyin.com/video/${awemeId}` : undefined,
-          videoURL: selectedVideoOption?.url,
-          videoOptions,
-          selectedVideoOptionId: selectedVideoOption?.id,
-          imageURLs,
-          assets: mediaBadge ? douyinDownloadAssets(item) : undefined,
-          musicURL: mediaBadge ? douyinMusicURL(item) : undefined,
+          title,
+          author,
+          publishText: formatDate(item.create_time ?? 0),
+          durationText: formatDuration(duration),
+          downloadItem: {
+            awemeId,
+            sourceKind: douyinSourceKind(props.kind),
+            sourceName: props.sourceName,
+            title,
+            cover,
+            coverCandidates: douyinCoverCandidates(item),
+            duration,
+            authorName: author,
+            publishTime: item.create_time ?? 0,
+            diggCount: item.statistics?.digg_count ?? 0,
+            collectCount: item.statistics?.collect_count ?? 0,
+            link: awemeId ? `https://www.douyin.com/video/${awemeId}` : undefined,
+            videoURL: selectedVideoOption?.url,
+            videoOptions,
+            selectedVideoOptionId: selectedVideoOption?.id,
+            imageURLs,
+            assets: mediaBadge ? douyinDownloadAssets(item) : undefined,
+            musicURL: mediaBadge ? douyinMusicURL(item) : undefined,
+            mediaBadge,
+          },
           mediaBadge,
-        },
-        mediaBadge,
-      };
-    }),
+        };
+      }),
   );
 
   // 翻页或刷新后剔除已经不存在的选择项，避免把旧页面的视频加入下载队列。
@@ -231,16 +231,16 @@ export default function VideoContentPanel(props: {
     // 全选模式下 selectedMap 表示排除项，因此排除项显示成未选/弱化样式。
     if (allSelected()) {
       return selectedMap[id]
-        ? "border-2 border-base-300 bg-base-100 opacity-70"
-        : "border-2 border-transparent bg-base-100 ring-1 ring-base-300";
+          ? "border-2 border-base-300 bg-base-100 opacity-70"
+          : "border-2 border-transparent bg-base-100 ring-1 ring-base-300";
     }
     return selectedMap[id]
-      ? "border-2 border-success bg-success/5 shadow-sm shadow-success/15"
-      : "border-2 border-transparent bg-base-100 ring-1 ring-base-300";
+        ? "border-2 border-success bg-success/5 shadow-sm shadow-success/15"
+        : "border-2 border-transparent bg-base-100 ring-1 ring-base-300";
   }
 
   const selectedDownloadItems = createMemo(() =>
-    videoItems().filter((item) => isVideoSelected(item.id)).map((item) => item.downloadItem),
+      videoItems().filter((item) => isVideoSelected(item.id)).map((item) => item.downloadItem),
   );
 
   async function enqueueAndGoDownload(items: DouyinDownloadItem[]): Promise<void> {
@@ -255,41 +255,41 @@ export default function VideoContentPanel(props: {
   }
 
   return (
-    <Switch>
-      <Match when={props.loading}>
-        {/* 外层正在拉第一页数据时，视频区域整体显示加载态。 */}
-        <DetailLoading/>
-      </Match>
-      <Match when={props.error}>
-        {/* 错误来源可能是收藏视频、用户作品或集合详情接口，由外层传入 retry。 */}
-        <DetailError message={props.error!} onRetry={props.onRetry ?? (() => undefined)}/>
-      </Match>
-      <Match when={videoItems().length === 0}>
-        {/* 空态文案从 kind 推导，调用方不用传重复字符串*/}
-        <div class="flex h-full min-h-0 flex-1 items-center justify-center p-6">
-          <EmptyState title={emptyTitle(props.kind)} description={emptyDescription(props.kind)}/>
-        </div>
-      </Match>
-      <Match when={true}>
-        {/* 具体网格只接收轻量卡片模型和选择回调，不知道后端 AwemeItem。 */}
-        <VideoGrid
-          title={props.title ?? defaultTitle(props.kind)}
-          items={videoItems()}
-          selectedCount={selectedCount()}
-          allSelected={allVideosSelected()}
-          selectedClass={videoCardClass}
-          onToggleItem={toggleSelect}
-          onToggleAll={toggleSelectAll}
-          onClearSelection={clearSelection}
-          onDownloadSelected={() => void enqueueAndGoDownload(selectedDownloadItems())}
-          onDownloadAll={() => void enqueueAndGoDownload(videoItems().map((item) => item.downloadItem))}
-          refreshing={props.refreshing}
-          onRefresh={props.onRefresh}
-          hasMore={props.hasMore}
-          loadingMore={props.loadingMore}
-          onLoadMore={props.onLoadMore}
-        />
-      </Match>
-    </Switch>
+      <Switch>
+        <Match when={props.loading}>
+          {/* 外层正在拉第一页数据时，视频区域整体显示加载态。 */}
+          <DetailLoading/>
+        </Match>
+        <Match when={props.error}>
+          {/* 错误来源可能是收藏视频、用户作品或集合详情接口，由外层传入 retry。 */}
+          <DetailError message={props.error!} onRetry={props.onRetry ?? (() => undefined)}/>
+        </Match>
+        <Match when={videoItems().length === 0}>
+          {/* 空态文案从 kind 推导，调用方不用传重复字符串*/}
+          <div class="flex h-full min-h-0 flex-1 items-center justify-center p-6">
+            <EmptyState title={emptyTitle(props.kind)} description={emptyDescription(props.kind)}/>
+          </div>
+        </Match>
+        <Match when={true}>
+          {/* 具体网格只接收轻量卡片模型和选择回调，不知道后端 AwemeItem。 */}
+          <VideoGrid
+              title={props.title ?? defaultTitle(props.kind)}
+              items={videoItems()}
+              selectedCount={selectedCount()}
+              allSelected={allVideosSelected()}
+              selectedClass={videoCardClass}
+              onToggleItem={toggleSelect}
+              onToggleAll={toggleSelectAll}
+              onClearSelection={clearSelection}
+              onDownloadSelected={() => void enqueueAndGoDownload(selectedDownloadItems())}
+              onDownloadAll={() => void enqueueAndGoDownload(videoItems().map((item) => item.downloadItem))}
+              refreshing={props.refreshing}
+              onRefresh={props.onRefresh}
+              hasMore={props.hasMore}
+              loadingMore={props.loadingMore}
+              onLoadMore={props.onLoadMore}
+          />
+        </Match>
+      </Switch>
   );
 }

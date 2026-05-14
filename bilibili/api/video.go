@@ -8,6 +8,7 @@ import (
 	"github.com/kamiertop/videodown/bilibili/model"
 )
 
+// VideoList 获取视频列表。mid 为用户 ID，ps 为每页数量，pn 为页码
 func (b *BiliBili) VideoList(mid uint, ps, pn int) (model.VideoListData, error) {
 	var resp struct {
 		model.ApiResponse
@@ -53,6 +54,7 @@ func (b *BiliBili) VideoList(mid uint, ps, pn int) (model.VideoListData, error) 
 	return resp.Data, nil
 }
 
+// VideoDetailConcise 通过 AV 号获取精简详情
 func (b *BiliBili) VideoDetailConcise(aid int) (model.VideoDetailConciseData, error) {
 	var resp struct {
 		model.ApiResponse

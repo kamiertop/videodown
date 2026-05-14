@@ -7,8 +7,8 @@ import DownloadSummaryBar from "../../components/bilibili/downloadPage/DownloadS
 import DownloadVideoCard from "../../components/bilibili/downloadPage/DownloadVideoCard.tsx";
 import Toast from "../../components/Toast";
 import {useToast} from "../../hooks/useToast";
-import {useBilibiliDownloadQueue} from "../../lib/bilibiliDownloadQueue.ts";
-import {addVideos, removeVideo, videoList} from "../../lib/bilibiliStore.ts";
+import {useBilibiliDownloadQueue} from "../../lib/bilibili/downloadQueue.ts";
+import {addVideos, removeVideo, videoList} from "../../lib/bilibili/store.ts";
 import {extractBilibiliPartIndex, extractBvid} from "../../lib/format";
 import type {MediaCardItem} from "../../lib/model.ts";
 
@@ -349,7 +349,6 @@ function DownLoad(): JSXElement {
         </Show>
         <DownloadSummaryBar
             count={videoList().length}
-            sourceSummary={queue.listSourceSummary()}
             downloading={queue.downloading()}
             onDownload={() => void queue.startDownload()}
         />

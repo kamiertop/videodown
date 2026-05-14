@@ -1,5 +1,5 @@
 import {createSignal} from "solid-js";
-import type {MediaCardItem} from "./model.ts";
+import type {MediaCardItem} from "../model.ts";
 
 const [videoList, setVideoList] = createSignal<MediaCardItem[]>([])
 
@@ -43,13 +43,13 @@ export function removeVideoAfterDownloadSuccess(bvid: string, cid?: number): voi
   if (!bv) return;
   const part = cid != null && cid > 0;
   setVideoList((prev) =>
-    prev.filter((item) => {
-      if (item.bvid?.trim().toUpperCase() !== bv) return true;
-      if (part) return item.cid != null && item.cid > 0 && Number(item.cid) !== cid;
-      const ic = item.cid;
+      prev.filter((item) => {
+        if (item.bvid?.trim().toUpperCase() !== bv) return true;
+        if (part) return item.cid != null && item.cid > 0 && Number(item.cid) !== cid;
+        const ic = item.cid;
 
-      return ic != null && ic > 0;
-    }),
+        return ic != null && ic > 0;
+      }),
   );
 }
 

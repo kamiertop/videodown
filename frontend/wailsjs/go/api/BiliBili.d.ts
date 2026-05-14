@@ -19,9 +19,13 @@ export function DownloadVideoByDash(arg1:string,arg2:string,arg3:string,arg4:str
 
 export function DownloadVideosByDash(arg1:Array<api.DashDownloadTask>):Promise<api.DashDownloadBatchResult>;
 
+export function DownloadVideosByDashIncremental(arg1:Array<api.DashDownloadTask>):Promise<api.DashDownloadBatchResult>;
+
 export function Favorites(arg1:number,arg2:number,arg3:number):Promise<model.FavoriteData>;
 
 export function FavoritesList():Promise<model.FavoritesData>;
+
+export function FilterIncrementalTasks(arg1:Array<api.DashDownloadTask>):Promise<Array<api.DashDownloadTask>|Array<api.DashDownloadResult>>;
 
 export function FollowList(arg1:number,arg2:number):Promise<model.FollowData>;
 

@@ -1,13 +1,13 @@
 import {createSignal, onCleanup} from "solid-js";
-import {DownloadVideos} from "../../wailsjs/go/api/Douyin";
-import {api} from "../../wailsjs/go/models";
-import {EventsOn} from "../../wailsjs/runtime";
-import {type DouyinDownloadItem, douyinVideoList, removeDouyinVideo} from "./douyinStore.ts";
+import {DownloadVideos} from "../../../wailsjs/go/api/Douyin";
+import {api} from "../../../wailsjs/go/models";
+import {EventsOn} from "../../../wailsjs/runtime";
+import {type DouyinDownloadItem, douyinVideoList, removeDouyinVideo} from "./store.ts";
 
 type ToastType = "error" | "success" | "info" | "warning";
 type ShowToast = (message: string, type?: ToastType) => void;
 
-export type DouyinDownloadPhase = "video" | "image" | "sleep" | "music"|"done" | "error";
+export type DouyinDownloadPhase = "video" | "image" | "sleep" | "music" | "done" | "error";
 
 export interface DouyinDownloadProgress {
   awemeId: string;
@@ -49,13 +49,6 @@ function ensureProgressListener(): void {
   });
 }
 
-export function formatDouyinSource(item: DouyinDownloadItem): string {
-  if (!item.sourceName || item.sourceName === item.sourceKind) {
-    return item.sourceKind || "抖音";
-  }
-  return `${item.sourceKind}「${item.sourceName}」`;
-}
-
 function hasDownloadURL(item: DouyinDownloadItem): boolean {
   // 普通视频走 videoURL；图文/动图走有序素材列表，配乐是附加资源。
   if (item.mediaBadge) return (item.assets?.length ?? 0) > 0 || (item.imageURLs?.length ?? 0) > 0;
@@ -63,7 +56,7 @@ function hasDownloadURL(item: DouyinDownloadItem): boolean {
 }
 
 function toBackendTask(item: DouyinDownloadItem): BackendTask {
-  // 前端只提交最终选择好的下载地址，后端不再重新解析清晰度，行为和 B 站下载队列保持一致。
+  // 前端只提交最终选择好的下载地址和来源元数据；落盘目录由后端统一判断。
   return api.DouyinDownloadTask.createFrom({
     awemeId: item.awemeId,
     sourceKind: item.sourceKind,
@@ -92,25 +85,18 @@ export function useDouyinDownloadQueue(showToast: ShowToast) {
     }
   });
 
-  const listSourceSummary = () => {
-    const labels = [...new Set(douyinVideoList().map(formatDouyinSource).filter(Boolean))];
-    if (labels.length === 0) return "";
-    if (labels.length === 1) return `来源：${labels[0]}`;
-    return `来源：${labels.join("、")}`;
-  };
-
   // 后端按 awemeId 推送实时进度；成功后该条会被移出列表，失败则留在列表供用户重试。
   function buildTasks(items: DouyinDownloadItem[]): BackendTask[] {
     const seen = new Set<string>();
     return items
-      .filter((item) => {
-        const key = item.awemeId.trim();
-        // 同一 awemeId 在同一批次只提交一次，避免并发下载同一个文件。
-        if (!key || seen.has(key) || !hasDownloadURL(item)) return false;
-        seen.add(key);
-        return true;
-      })
-      .map(toBackendTask);
+        .filter((item) => {
+          const key = item.awemeId.trim();
+          // 同一 awemeId 在同一批次只提交一次，避免并发下载同一个文件。
+          if (!key || seen.has(key) || !hasDownloadURL(item)) return false;
+          seen.add(key);
+          return true;
+        })
+        .map(toBackendTask);
   }
 
   async function runTasks(items: DouyinDownloadItem[]): Promise<{ success: number; failed: number }> {
@@ -200,7 +186,6 @@ export function useDouyinDownloadQueue(showToast: ShowToast) {
     downloading,
     isDownloading,
     progressFor,
-    listSourceSummary,
     startDownload,
   };
 }
