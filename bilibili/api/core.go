@@ -24,21 +24,31 @@ const (
 type BiliBili struct {
 	logger         *logger.Logger
 	client         *req.Client
+	downloadClient *req.Client
 	settings       *utils.Settings
 	wbiKey         *wbiKeys // lazy init
 	progressMu     sync.Mutex
 	progressByBvid map[string]float64
 }
 
-func New(logger *logger.Logger, settings *utils.Settings) *BiliBili {
-	logger = logger.WithName("BiliBili")
-
+func New(log *logger.Logger, settings *utils.Settings) *BiliBili {
+	log = log.WithName("BiliBili")
+	var client = req.C()
+	if logger.IsDevMode() {
+		client = client.EnableDebugLog()
+	}
 	return &BiliBili{
-		logger: logger.WithName("BiliBili").WithCaller(3),
-		client: req.
+		logger: log.WithName("BiliBili").WithCaller(3),
+		downloadClient: req.
 			C().
-			SetLogger(logger).
-			EnableDebugLog().
+			SetTimeout(0).
+			SetLogger(log).
+			EnableAutoDecompress().
+			SetJsonMarshal(sonic.Marshal).
+			SetJsonUnmarshal(sonic.Unmarshal),
+		// 普通接口请求使用有默认超时的 client；下载流单独走 downloadClient，避免长视频下载受接口超时影响。
+		client: client.
+			SetLogger(log).
 			EnableAutoDecompress().
 			SetJsonMarshal(sonic.Marshal).
 			SetJsonUnmarshal(sonic.Unmarshal),

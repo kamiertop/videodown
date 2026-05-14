@@ -2,26 +2,18 @@ import {Show, type JSXElement} from "solid-js";
 
 interface DownloadSummaryBarProps {
     count: number;
-    sourceSummary: string;
     downloading: boolean;
     onDownload: () => void;
 }
 
-// 下载列表顶部的汇总栏：显示待下载数量、来源摘要，并触发“下载全部”。
+// 下载列表顶部的汇总栏：显示待下载数量，并触发“下载全部”。
 export default function DownloadSummaryBar(props: DownloadSummaryBarProps): JSXElement {
     return (
         <Show when={props.count > 0}>
-            <section class="mt-2 rounded-lg p-3 flex flex-row justify-between items-center shadow-sm">
-                <div class="flex min-w-0 flex-1 flex-col gap-1">
-                    <div class="flex items-center gap-2">
-                        <div class="badge badge-primary">{props.count}</div>
-                        <span class="text-xs">个视频待下载</span>
-                    </div>
-                    <Show when={props.sourceSummary}>
-                        <p class="truncate text-sm text-base-content/80">
-                            {props.sourceSummary}
-                        </p>
-                    </Show>
+            <section class="mt-2 flex flex-row items-center justify-between rounded-lg border border-base-200 bg-base-100 p-3 shadow-sm">
+                <div class="flex min-w-0 flex-1 items-center gap-2">
+                    <div class="badge badge-primary">{props.count}</div>
+                    <span class="text-xs">个视频待下载</span>
                 </div>
                 <button
                     class="btn btn-success btn-xs gap-1.5"

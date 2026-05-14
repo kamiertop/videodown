@@ -18,11 +18,22 @@ import {parseBilibiliLengthToSeconds} from "../../../lib/format";
 import type {MediaCardItem} from "../../../lib/model.ts";
 
 export const Route = createFileRoute('/bilibili/up/$mid')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    // 只服务详情页顶部“返回”按钮；浏览器后退仍走原历史记录。
+    fromPage: normalizeFromPage(search.fromPage),
+  }),
   component: UpDetail,
 })
 
+function normalizeFromPage(value: unknown): number {
+  const page = Number(value);
+  if (!Number.isFinite(page)) return 1;
+  return Math.max(1, Math.floor(page));
+}
+
 function UpDetail(): JSXElement {
   const params = Route.useParams();
+  const search = Route.useSearch();
   const {message, type, showToast} = useToast();
   const logic = createUpDetailLogic(() => params().mid, showToast);
 
@@ -32,15 +43,16 @@ function UpDetail(): JSXElement {
 
   return (
     <UpCommonLayout
-      headerLeft={
-        <>
-          <Link
-            to="/bilibili/up"
-            class="btn btn-ghost btn-sm gap-1"
-          >
-            <IconChevronLeft class="h-4 w-4"/>
-            返回
-          </Link>
+	      headerLeft={
+	        <>
+	          <Link
+	            to="/bilibili/up"
+	            search={{page: search().fromPage}}
+	            class="btn btn-ghost btn-sm gap-1"
+	          >
+	            <IconChevronLeft class="h-4 w-4"/>
+	            返回
+	          </Link>
           <div class="h-5 w-px bg-base-300"></div>
           <h2 class="text-sm font-bold text-base-content">UP主详情</h2>
           <span class="rounded-full bg-base-200 px-2 py-0.5 text-xs tabular-nums text-base-content/60">
@@ -239,11 +251,11 @@ type VideoListResp = {
       bvid: string;
       title: string;
       pic: string;
-      length: string;
-      created: number;
-      play?: number;
-      meta?: { stat?: { danmaku?: number } };
-    }>
+	      length: string;
+	      created: number;
+	      play?: number;
+	      meta?: { stat?: { danmaku?: number } };
+	    }>
   };
   page: { pn: number; ps: number; count: number };
 };
@@ -326,23 +338,23 @@ function createUpDetailLogic(
     setListCards(prev => prev.map(c => (c.upperName === upperName ? c : {...c, upperName})));
   });
 
-  const mapVlistToCards = (vlist: VideoListResp["list"] extends { vlist?: infer V } ? V : any): MediaCardItem[] => {
-    const upperName = currentUpperName();
-    return (vlist ?? []).map((v: any) => ({
-      id: Number(v.aid) || 0,
-      title: v.title ?? '',
-      cover: normalizeBiliCover(v.pic),
-      duration: parseBilibiliLengthToSeconds(v.length ?? ''),
-      bvid: v.bvid ?? '',
-      upperName,
-      play: v.play,
-      danmaku: v.meta?.stat?.danmaku,
-      pubtime: v.created,
-      // 与「来源」摘要、下载目录逻辑一致；实际目录在下载页对「全部投稿」仍优先用 upperName
-      sourceListName: upperName,
-      sourceListKind: '全部投稿',
-    }));
-  };
+	  const mapVlistToCards = (vlist: VideoListResp["list"] extends { vlist?: infer V } ? V : any): MediaCardItem[] => {
+	    const upperName = currentUpperName();
+	    return (vlist ?? []).map((v: any) => ({
+	      id: Number(v.aid) || 0,
+	      title: v.title ?? '',
+	      cover: normalizeBiliCover(v.pic),
+	      duration: parseBilibiliLengthToSeconds(v.length ?? ''),
+	      bvid: v.bvid ?? '',
+	      upperName,
+	      play: v.play,
+	      danmaku: v.meta?.stat?.danmaku,
+	      pubtime: v.created,
+	      // 全部投稿只传作者名作来源；是否进一步展开分 P 由加入下载队列时的详情接口决定。
+	      sourceListName: upperName,
+	      sourceListKind: '全部投稿',
+	    }));
+	  };
 
   const loadVideoList = async (append = false) => {
     const mid = getMid();
@@ -359,15 +371,15 @@ function createUpDetailLogic(
 
     const seq = ++videoReqSeq;
     try {
-      const data = await VideoList(Number(mid), VIDEO_PAGE_SIZE, targetPage) as VideoListResp;
-      if (seq !== videoReqSeq) return;
-      const cards = mapVlistToCards(data.list?.vlist);
-      const total = Number(data.page.count) || 0;
-      setVideoTotal(total);
-      if (append) setVideoCards(prev => [...prev, ...cards]);
-      else setVideoCards(cards);
-      setVideoPage(targetPage);
-    } catch (error) {
+	      const data = await VideoList(Number(mid), VIDEO_PAGE_SIZE, targetPage) as VideoListResp;
+	      if (seq !== videoReqSeq) return;
+	      const cards = mapVlistToCards(data.list?.vlist);
+	      const total = Number(data.page.count) || 0;
+	      setVideoTotal(total);
+	      if (append) setVideoCards(prev => [...prev, ...cards]);
+	      else setVideoCards(cards);
+	      setVideoPage(targetPage);
+	    } catch (error) {
       if (seq !== videoReqSeq) return;
       const msg = error instanceof Error ? error.message : String(error);
       if (append) showToast(`加载更多失败: ${msg}`, 'warning');

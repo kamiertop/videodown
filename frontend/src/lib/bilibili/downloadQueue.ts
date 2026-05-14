@@ -1,7 +1,8 @@
-import {createEffect, createMemo, createSignal, onCleanup} from "solid-js";
-import {DownloadVideosByDash} from "../../wailsjs/go/api/BiliBili";
-import {api} from "../../wailsjs/go/models";
-import {EventsOn} from "../../wailsjs/runtime";
+import {createEffect, createSignal, onCleanup} from "solid-js";
+import {DownloadVideosByDash} from "../../../wailsjs/go/api/BiliBili";
+import {api} from "../../../wailsjs/go/models";
+import {EventsOn} from "../../../wailsjs/runtime";
+import type {MediaCardItem} from "../model.ts";
 import {
   BilibiliPlayResolveError,
   bilibiliPlayResolveKey,
@@ -11,17 +12,16 @@ import {
   switchResolvedAudio,
   switchResolvedPlayAtQn,
   type VideoAccessInfo,
-} from "./bilibiliPlayResolve.ts";
-import {removeVideoAfterDownloadSuccess, videoList} from "./bilibiliStore.ts";
-import type {MediaCardItem} from "./model.ts";
+} from "./playResolve.ts";
+import {removeVideoAfterDownloadSuccess, videoList} from "./store.ts";
 
 type ToastType = "error" | "success" | "info" | "warning";
 type ShowToast = (message: string, type?: ToastType) => void;
 
 export type PlayResolveEntry =
-  | { status: "loading" }
-  | { status: "done"; data: ResolvedPlayInfo }
-  | { status: "error"; message: string; accessInfo?: VideoAccessInfo };
+    | { status: "loading" }
+    | { status: "done"; data: ResolvedPlayInfo }
+    | { status: "error"; message: string; accessInfo?: VideoAccessInfo };
 
 export type DownloadPhase = "video" | "audio" | "merge" | "sleep" | "done" | "error";
 
@@ -85,33 +85,6 @@ function containsPlayKey(key: string): boolean {
   return videoList().some((v) => bilibiliPlayResolveKey(v) === key);
 }
 
-// 下载目录名的生成规则：
-// - 如果来源是「全部投稿」，目录名为 UP 主名字，方便用户区分不同 UP 的视频；
-// - 其他来源（合集、收藏夹等）则沿用原来的来源名称，保持和列表展示一致。
-function downloadDirName(item: MediaCardItem): string {
-  if (item.sourceListKind === "全部投稿") {
-    return item.upperName;
-  }
-  if (item.sourceListKind === "解析结果") {
-    return "";
-  }
-
-  return item.sourceListName ?? "";
-}
-
-export function formatListSource(item: MediaCardItem): string {
-  const kind = item.sourceListKind;
-  const name = item.sourceListName;
-  if (kind === "全部投稿") {
-    return kind;
-  }
-  if (kind === "分P") {
-    return `分P「${name}」`;
-  }
-
-  return `${kind}「${name}」`;
-}
-
 export function useBilibiliDownloadQueue(showToast: ShowToast) {
   ensureProgressListener();
   activeToast = showToast;
@@ -124,19 +97,12 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
   // playResolveByBvid：每个 BV 的 DASH 解析状态，卡片会根据它显示 loading/error/画质音质选择器。
   // downloading 是整批下载的全局锁；downloadingByBvid 用来控制单张卡片的按钮和进度条。
 
-  const listSourceSummary = createMemo(() => {
-    const labels = [...new Set(videoList().map((i) => formatListSource(i)).filter(Boolean))];
-    if (labels.length === 0) return "";
-    if (labels.length === 1) return `来源：${labels[0]}`;
-    return `来源：${labels.join("、")}`;
-  });
-
   createEffect(() => {
     // 这个 effect 是下载页的核心入口：
     // 只要全局 videoList 变化，就自动清理已移除视频的解析状态，并为新增视频解析 DASH。
     const list = videoList();
     const bvSet = new Set(
-      list.map((i) => bilibiliPlayResolveKey(i)).filter((k): k is string => !!k),
+        list.map((i) => bilibiliPlayResolveKey(i)).filter((k): k is string => !!k),
     );
 
     setPlayResolveByBvid((prev) => {
@@ -227,40 +193,40 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
   function buildDownloadTasks(items: MediaCardItem[]): DownloadTask[] {
     const seenKeys = new Set<string>();
     return items
-      .map((item) => {
-        // 同一解析键（BV 或 BV+cid）不重复提交；后端也会去重。
-        const key = bilibiliPlayResolveKey(item);
-        if (key) {
-          if (seenKeys.has(key)) return null;
-          seenKeys.add(key);
-        }
+        .map((item) => {
+          // 同一解析键（BV 或 BV+cid）不重复提交；后端也会去重。
+          const key = bilibiliPlayResolveKey(item);
+          if (key) {
+            if (seenKeys.has(key)) return null;
+            seenKeys.add(key);
+          }
 
-        const entry = entryForItem(item);
-        if (entry?.status !== "done") return null;
+          const entry = entryForItem(item);
+          if (entry?.status !== "done") return null;
 
-        // 这里已经是用户最终选择的视频/音频流地址；后端不再重新解析画质。
-        const videoURL = streamBaseUrl(entry.data.bestVideo);
-        if (!videoURL) return null;
+          // 这里已经是用户最终选择的视频/音频流地址；后端不再重新解析画质。
+          const videoURL = streamBaseUrl(entry.data.bestVideo);
+          if (!videoURL) return null;
 
-        const audioURL = entry.data.bestAudio ? streamBaseUrl(entry.data.bestAudio) : "";
-        const backendKey = bilibiliPlayResolveKey({bvid: entry.data.bvid, cid: entry.data.cid});
-        return {
-          item,
-          cid: entry.data.cid,
-          bvid: entry.data.bvid,
-          uiKey: key,
-          backendKey,
-          videoURL,
-          audioURL,
-        };
-      })
-      .filter((v): v is DownloadTask => v !== null);
+          const audioURL = entry.data.bestAudio ? streamBaseUrl(entry.data.bestAudio) : "";
+          const backendKey = bilibiliPlayResolveKey({bvid: entry.data.bvid, cid: entry.data.cid});
+          return {
+            item,
+            cid: entry.data.cid,
+            bvid: entry.data.bvid,
+            uiKey: key,
+            backendKey,
+            videoURL,
+            audioURL,
+          };
+        })
+        .filter((v): v is DownloadTask => v !== null);
   }
 
-  // 后端批量接口只需要稳定的下载参数；目录名仍沿用原来的来源规则。
+  // 后端批量接口只需要稳定的下载参数；目录规则由后端根据 kind/upperName/sourceName 统一判断。
   function toBackendTask(task: DownloadTask): DashDownloadTask {
     return {
-      sourceName: downloadDirName(task.item),
+      sourceName: task.item.sourceListName ?? "",
       sourceKind: task.item.sourceListKind ?? "",
       upperName: task.item.upperName ?? "",
       bvid: task.bvid,
@@ -406,7 +372,6 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
     handlePickAudio,
     handlePickQn,
     isDownloading,
-    listSourceSummary,
     progressFor,
     startDownload,
   };

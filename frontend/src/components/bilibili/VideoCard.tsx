@@ -25,15 +25,14 @@ export default function VideoCard(props: {
       <div
         class="relative aspect-video w-full cursor-pointer overflow-hidden rounded-t-lg bg-base-200"
         onClick={() => props.onToggleSelect(m.id)}>
-        <Show when={m.cover !== ""} fallback={<NoCover/>}>
-          <img src={m.cover} alt={m.title}
-               class="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+	        <Show when={m.cover !== ""} fallback={<NoCover/>}>
+	          <img src={m.cover} alt={m.title}
+	               class="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
                loading="lazy"
-               referrerpolicy="no-referrer"
-               decoding="async"/>
-        </Show>
-
-        {/* 封面底部叠加信息：播放量、弹幕、时长 */}
+	               referrerpolicy="no-referrer"
+	               decoding="async"/>
+	        </Show>
+	        {/* 封面底部叠加信息：播放量、弹幕、时长 */}
         <div
           class="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between bg-linear-to-t from-black/70 to-transparent px-2 pb-1.5 pt-5">
           <div class="flex items-center gap-2.5 text-white/90">

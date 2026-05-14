@@ -12,8 +12,17 @@ import {useToast} from "../../../hooks/useToast";
 const PAGE_SIZE = 30;
 
 export const Route = createFileRoute('/bilibili/up/')({
+  validateSearch: (search: Record<string, unknown>) => ({
+    page: normalizePage(search.page),
+  }),
   component: UpIndex,
 })
+
+function normalizePage(value: unknown): number {
+  const page = Number(value);
+  if (!Number.isFinite(page)) return 1;
+  return Math.max(1, Math.floor(page));
+}
 
 function readResource<T>(read: () => T | undefined): T | undefined {
   try {
@@ -25,11 +34,13 @@ function readResource<T>(read: () => T | undefined): T | undefined {
 
 function UpIndex(): JSXElement {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [parsing, setParsing] = createSignal<boolean>(false);
-  const [page, setPage] = createSignal<number>(1);
   const {message, type, showToast} = useToast();
   const [searchInput, setSearchInput] = createSignal<string>('');
   const [parsedInfo, setParsedInfo] = createSignal<model.UserInfoData | null>(null);
+  // 页码放在 URL search 里，进入 UP 详情再返回时不会因为组件重挂载回到第一页。
+  const page = () => search().page;
   const [followData, {refetch}] = createResource(
     page,
     async (pn) => await FollowList(pn, PAGE_SIZE),
@@ -44,7 +55,20 @@ function UpIndex(): JSXElement {
   }
 
   const goToUp = (mid: number) => {
-    void navigate({to: '/bilibili/up/$mid', params: {mid: String(mid)}});
+    void navigate({
+      to: '/bilibili/up/$mid',
+      params: {mid: String(mid)},
+      // 详情页自己的“返回”按钮没有浏览器历史栈语义，所以显式带回列表页码。
+      search: {fromPage: page()},
+    });
+  };
+
+  const goToPage = (nextPage: number) => {
+    void navigate({
+      to: '/bilibili/up',
+      search: {page: Math.min(Math.max(1, nextPage), totalPages())},
+      replace: true,
+    });
   };
 
   const handleSearch = async () => {
@@ -224,21 +248,21 @@ function UpIndex(): JSXElement {
             {/* 翻页 */}
             <Show when={totalPages() > 1}>
               <div class="mt-4 p-4 flex items-center justify-center gap-2">
-                <button
-                  class="btn btn-outline btn-sm"
-                  disabled={page() <= 1}
-                  onClick={() => setPage(page() - 1)}
-                >
-                  上一页
-                </button>
+	                <button
+	                  class="btn btn-outline btn-sm"
+	                  disabled={page() <= 1}
+	                  onClick={() => goToPage(page() - 1)}
+	                >
+	                  上一页
+	                </button>
                 <span class="text-sm tabular-nums text-base-content/70">
                     {page()} / {totalPages()}
                   </span>
-                <button
-                  class="btn btn-outline btn-sm"
-                  disabled={page() >= totalPages()}
-                  onClick={() => setPage(page() + 1)}
-                >
+	                <button
+	                  class="btn btn-outline btn-sm"
+	                  disabled={page() >= totalPages()}
+	                  onClick={() => goToPage(page() + 1)}
+	                >
                   下一页
                 </button>
               </div>

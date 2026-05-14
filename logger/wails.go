@@ -12,19 +12,14 @@ type Logger struct {
 	zerolog.Logger
 }
 
-const (
-	prodEnvKey   = "mode"
-	prodEnvValue = "prod"
-)
-
 func New() *Logger {
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
-	mode := os.Getenv(prodEnvKey)
-	if mode == prodEnvValue {
+
+	if IsProdMode() {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 	return &Logger{
-		zerolog.New(logWriter(mode)).With().Timestamp().Logger(),
+		zerolog.New(logWriter()).With().Timestamp().Logger(),
 	}
 }
 
@@ -34,8 +29,8 @@ func (l *Logger) WithName(name string) *Logger {
 	}
 }
 
-func logWriter(mode string) io.Writer {
-	if mode == prodEnvValue {
+func logWriter() io.Writer {
+	if IsProdMode() {
 		return &lumberjack.Logger{
 			Filename:   "videodown.log",
 			MaxSize:    10, // MB

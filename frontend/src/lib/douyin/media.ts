@@ -1,5 +1,5 @@
-import {model} from "../../wailsjs/go/models";
-import type {DouyinDownloadAsset, DouyinVideoOption} from "./douyinStore.ts";
+import {model} from "../../../wailsjs/go/models";
+import type {DouyinDownloadAsset, DouyinVideoOption} from "./store.ts";
 
 function firstURL(playAddr: model.PlayInfo | undefined): string {
   return playAddr?.url_list?.[0] ?? "";
@@ -80,8 +80,8 @@ export function douyinVideoOptions(item: model.AwemeItem): DouyinVideoOption[] {
 export function defaultDouyinVideoOption(options: DouyinVideoOption[]): DouyinVideoOption | undefined {
   // 默认优先选兼容性最好的 H.264 高码率项；如果没有 H.264，再退到接口返回的第一个可用项。
   const h264 = options
-    .filter((option) => option.codec === "H.264")
-    .sort((a, b) => (b.bitRate ?? 0) - (a.bitRate ?? 0) || b.dataSize - a.dataSize)[0];
+      .filter((option) => option.codec === "H.264")
+      .sort((a, b) => (b.bitRate ?? 0) - (a.bitRate ?? 0) || b.dataSize - a.dataSize)[0];
   return h264 ?? options[0];
 }
 
@@ -91,7 +91,7 @@ export function douyinVideoURL(item: model.AwemeItem): string {
 
 export function douyinCoverCandidates(item: model.AwemeItem): model.Cover[] {
   const covers = [item.video?.origin_cover]
-    .filter((cover): cover is model.Cover => !!cover && (cover.url_list?.length ?? 0) > 0);
+      .filter((cover): cover is model.Cover => !!cover && (cover.url_list?.length ?? 0) > 0);
 
   const seen = new Set<string>();
   return covers.filter((cover) => {
@@ -105,15 +105,15 @@ export function douyinCoverCandidates(item: model.AwemeItem): model.Cover[] {
 export function douyinImageURLs(item: model.AwemeItem): string[] {
   // 图片合集的无水印地址在 url_list
   return (item.images ?? [])
-    .map((image) => image.url_list?.[0] ?? "")
-    .filter((url) => url.length > 0);
+      .map((image) => image.url_list?.[0] ?? "")
+      .filter((url) => url.length > 0);
 }
 
 function imageVideoURL(image: model.ImageItem): string {
   return image.video?.play_addr_h264?.url_list?.[0]
-    ?? image.video?.play_addr?.url_list?.[0]
-    ?? image.video?.bit_rate?.[0]?.play_addr?.url_list?.[0]
-    ?? "";
+      ?? image.video?.play_addr?.url_list?.[0]
+      ?? image.video?.bit_rate?.[0]?.play_addr?.url_list?.[0]
+      ?? "";
 }
 
 export function douyinMusicURL(item: model.AwemeItem): string {
@@ -122,15 +122,15 @@ export function douyinMusicURL(item: model.AwemeItem): string {
 
 export function douyinDownloadAssets(item: model.AwemeItem): DouyinDownloadAsset[] {
   return (item.images ?? [])
-    .map((image): DouyinDownloadAsset | undefined => {
-      if (isLivePhotoImage(image)) {
-        const url = imageVideoURL(image);
-        return url ? {url, kind: "video", ext: ".mp4"} : undefined;
-      }
-      const url = image.url_list?.[0] ?? "";
-      return url ? {url, kind: "image", ext: ".jpg"} : undefined;
-    })
-    .filter((asset): asset is DouyinDownloadAsset => asset != null);
+      .map((image): DouyinDownloadAsset | undefined => {
+        if (isLivePhotoImage(image)) {
+          const url = imageVideoURL(image);
+          return url ? {url, kind: "video", ext: ".mp4"} : undefined;
+        }
+        const url = image.url_list?.[0] ?? "";
+        return url ? {url, kind: "image", ext: ".jpg"} : undefined;
+      })
+      .filter((asset): asset is DouyinDownloadAsset => asset != null);
 }
 
 function hasDouyinImages(item: model.AwemeItem): boolean {
@@ -141,8 +141,8 @@ function isLivePhotoImage(image: model.ImageItem): boolean {
   // image.video 是 ImageVideo 值类型（Go 非指针），即使静态图片也会序列化为非 null 对象，
   // 因此必须检查 video 是否有实质内容（play_addr 有 URL）而非判断 null。
   return image.live_photo_type === 1
-    || image.clip_type === 5
-    || (image.video?.play_addr?.url_list?.length ?? 0) > 0;
+      || image.clip_type === 5
+      || (image.video?.play_addr?.url_list?.length ?? 0) > 0;
 }
 
 function hasStaticImage(item: model.AwemeItem): boolean {
@@ -162,6 +162,6 @@ export function isDouyinImageAlbum(item: model.AwemeItem): boolean {
 // 是否是动图
 export function isDouyinLivePhoto(item: model.AwemeItem): boolean {
   return item.is_live_photo === 1
-    || hasOnlyLivePhotoImages(item)
-    || (!hasStaticImage(item) && (item.media_type === 42 || item.is_slides));
+      || hasOnlyLivePhotoImages(item)
+      || (!hasStaticImage(item) && (item.media_type === 42 || item.is_slides));
 }
