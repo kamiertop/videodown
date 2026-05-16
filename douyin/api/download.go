@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -20,10 +19,9 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kamiertop/videodown/douyin/model"
+	"github.com/kamiertop/videodown/utils"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
-
-var douyinInvalidFilenameChars = regexp.MustCompile(`[<>:"/\\|?*\x00-\x1f]`)
 
 const douyinDownloadedCachePrefix = "douyin:downloaded:"
 
@@ -101,19 +99,6 @@ func douyinDownloadCacheKey(awemeID string) string {
 		return ""
 	}
 	return douyinDownloadedCachePrefix + id
-}
-
-func sanitizeDouyinFilename(name string) string {
-	t := strings.TrimSpace(name)
-	if t == "" {
-		return "douyin"
-	}
-	t = douyinInvalidFilenameChars.ReplaceAllString(t, "_")
-	t = strings.Trim(t, " .")
-	if t == "" {
-		return "douyin"
-	}
-	return t
 }
 
 func uniqueDouyinFilePath(path string) string {
@@ -434,28 +419,19 @@ func (d *Douyin) resolveDownloadDir(storagePath string, task DouyinDownloadTask)
 	if !allowGroup {
 		return storagePath, nil
 	}
-	sourceName := sanitizeDouyinFilename(task.SourceName)
+	sourceName := utils.FileName(task.SourceName)
 	switch strings.TrimSpace(task.SourceKind) {
 	case "收藏合集", "用户合集":
-		if author := sanitizeDouyinFilename(task.AuthorName); author != "" && sourceName != "" {
-			return filepath.Join(storagePath, author, sourceName), nil
-		}
-		if sourceName != "" {
-			return filepath.Join(storagePath, sourceName), nil
-		}
+		author := utils.FileName(task.AuthorName)
+		return filepath.Join(storagePath, author, sourceName), nil
 	case "收藏视频":
 		return filepath.Join(storagePath, "收藏视频"), nil
 	case "用户作品":
-		if sourceName != "" {
-			return filepath.Join(storagePath, sourceName), nil
-		}
+		return filepath.Join(storagePath, sourceName), nil
+	default:
+		author := utils.FileName(task.AuthorName)
+		return filepath.Join(storagePath, author), nil
 	}
-	author := sanitizeDouyinFilename(task.AuthorName)
-	if author == "" {
-		return storagePath, nil
-	}
-
-	return filepath.Join(storagePath, author), nil
 }
 
 func douyinAssetExt(asset DouyinDownloadAsset) string {
@@ -510,7 +486,11 @@ func (d *Douyin) downloadTask(task DouyinDownloadTask) (string, error) {
 
 	if len(task.Assets) > 0 || len(task.ImageURLs) > 0 {
 		// 图文/动图保存为一个目录，素材按 001.jpg、002.mp4 顺序落盘，配乐单独保存为 music.mp3。
-		dir := uniqueDouyinFilePath(filepath.Join(targetDir, sanitizeDouyinFilename(task.Title)))
+		dirName := utils.FileName(task.Title)
+		if dirName == "" {
+			dirName = "douyin"
+		}
+		dir := uniqueDouyinFilePath(filepath.Join(targetDir, dirName))
 		if err = os.MkdirAll(dir, 0o755); err != nil {
 			return "", errors.New("创建素材目录失败")
 		}
@@ -555,7 +535,11 @@ func (d *Douyin) downloadTask(task DouyinDownloadTask) (string, error) {
 	if strings.TrimSpace(task.VideoURL) == "" {
 		return "", errors.New("视频下载地址为空")
 	}
-	outPath := uniqueDouyinFilePath(filepath.Join(targetDir, sanitizeDouyinFilename(task.Title)+".mp4"))
+	fileName := utils.FileName(task.Title)
+	if fileName == "" {
+		fileName = "douyin"
+	}
+	outPath := uniqueDouyinFilePath(filepath.Join(targetDir, fileName+".mp4"))
 	if err = d.downloadURLToFile(task.VideoURL, outPath, task, "video", 0, 100); err != nil {
 		d.emitDownloadProgress(douyinDownloadProgress{AwemeID: task.AwemeID, Title: task.Title, Phase: "error"})
 		return "", err
@@ -708,8 +692,8 @@ func (d *Douyin) DownloadCover(covers []model.Cover, title string) (string, erro
 		return "", fmt.Errorf("封面下载失败: %s", resp.Status)
 	}
 
-	fileName := sanitizeDouyinFilename(title)
-	if fileName == "douyin" {
+	fileName := utils.FileName(title)
+	if fileName == "" {
 		fileName = "cover"
 	}
 	ext := douyinImageExtFromResponse(coverURL, resp.Response)

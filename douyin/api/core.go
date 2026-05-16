@@ -19,12 +19,13 @@ const (
 )
 
 type Douyin struct {
-	logger       *logger.Logger
-	client       *req.Client
-	settings     *utils.Settings
-	progressMu   sync.Mutex
-	progressByID map[string]float64
-	webId        struct {
+	logger         *logger.Logger
+	client         *req.Client
+	downloadClient *req.Client
+	settings       *utils.Settings
+	progressMu     sync.Mutex
+	progressByID   map[string]float64
+	webId          struct {
 		value       string
 		lastUpdated time.Time
 	}
@@ -36,20 +37,18 @@ type Douyin struct {
 	userID    string
 }
 
-func New(logger *logger.Logger, settings *utils.Settings) *Douyin {
-	logger = logger.WithName("Douyin")
-
+func New(log *logger.Logger, settings *utils.Settings) *Douyin {
+	log = log.WithName("Douyin")
+	var client = req.C().SetLogger(log).EnableAutoDecompress().SetJsonMarshal(sonic.Marshal).SetJsonUnmarshal(sonic.Unmarshal)
+	if logger.IsDevMode() {
+		client = client.EnableDebugLog()
+	}
 	return &Douyin{
-		logger: logger.WithName("Douyin").WithCaller(3),
-		client: req.
-			C().
-			SetLogger(logger).
-			EnableDebugLog().
-			EnableAutoDecompress().
-			SetJsonUnmarshal(sonic.Unmarshal).
-			SetJsonMarshal(sonic.Marshal),
-		settings:     settings,
-		progressByID: make(map[string]float64),
+		logger:         log.WithName("Douyin").WithCaller(3),
+		client:         client,
+		downloadClient: client.Clone().SetTimeout(0), // 下载流单独走 downloadClient，避免长视频下载受超时影响
+		settings:       settings,
+		progressByID:   make(map[string]float64),
 	}
 }
 

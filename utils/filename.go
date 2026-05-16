@@ -2,17 +2,37 @@ package utils
 
 import "strings"
 
-// FileName 修改视频文件名为合法的文件名
+// isIllegalChar 判断是否为文件名中的非法字符。
+func isIllegalChar(r rune) bool {
+	if r <= 0x1f {
+		return true
+	}
+	switch r {
+	case '<', '>', ':', '"', '/', '\\', '|', '?', '*':
+		return true
+	}
+	return false
+}
+
+// FileName 清理文件名中的非法字符，返回合法的文件/目录名。
+// 空字符串输入或清理后为空时返回空字符串，由调用方决定默认值。
 func FileName(rawName string) string {
-	// 移除首尾空格
-	rawName = strings.TrimSpace(rawName)
-	strings.NewReplacer()
-	// 替换 '/'
-	rawName = strings.ReplaceAll(rawName, "/", " ")
+	s := strings.TrimSpace(rawName)
+	if s == "" {
+		return ""
+	}
 
-	rawName = strings.ReplaceAll(rawName, "\\", " ")
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		if isIllegalChar(r) {
+			b.WriteByte(' ')
+		} else {
+			b.WriteRune(r)
+		}
+	}
 
-	rawName = strings.Join(strings.Fields(rawName), "_")
-
-	return rawName
+	s = strings.Join(strings.Fields(b.String()), "_")
+	s = strings.Trim(s, " .")
+	return s
 }

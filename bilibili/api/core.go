@@ -33,25 +33,14 @@ type BiliBili struct {
 
 func New(log *logger.Logger, settings *utils.Settings) *BiliBili {
 	log = log.WithName("BiliBili")
-	var client = req.C()
+	var client = req.C().SetLogger(log).EnableAutoDecompress().SetJsonMarshal(sonic.Marshal).SetJsonUnmarshal(sonic.Unmarshal)
 	if logger.IsDevMode() {
 		client = client.EnableDebugLog()
 	}
 	return &BiliBili{
-		logger: log.WithName("BiliBili").WithCaller(3),
-		downloadClient: req.
-			C().
-			SetTimeout(0).
-			SetLogger(log).
-			EnableAutoDecompress().
-			SetJsonMarshal(sonic.Marshal).
-			SetJsonUnmarshal(sonic.Unmarshal),
-		// 普通接口请求使用有默认超时的 client；下载流单独走 downloadClient，避免长视频下载受接口超时影响。
-		client: client.
-			SetLogger(log).
-			EnableAutoDecompress().
-			SetJsonMarshal(sonic.Marshal).
-			SetJsonUnmarshal(sonic.Unmarshal),
+		logger:         log.WithName("BiliBili").WithCaller(3),
+		downloadClient: client.Clone().SetTimeout(0), // 下载流单独走 downloadClient，避免长视频下载受超时影响
+		client:         client,
 		settings:       settings,
 		progressByBvid: make(map[string]float64),
 	}

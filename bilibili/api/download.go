@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,8 +23,6 @@ import (
 
 	"github.com/kamiertop/videodown/utils"
 )
-
-var invalidFilenameChars = regexp.MustCompile(`[<>:"/\\|?*\x00-\x1f]`)
 
 const (
 	downloadedVideoCachePrefix = "bilibili:downloaded:"
@@ -102,25 +99,10 @@ func downloadCacheKey(cid int64) string {
 }
 
 func sanitizeFilename(name string) string {
-	t := strings.TrimSpace(name)
+	t := utils.FileName(name)
 	if t == "" {
 		return "video"
 	}
-	t = invalidFilenameChars.ReplaceAllString(t, "_")
-	t = strings.Trim(t, " .")
-	if t == "" {
-		return "video"
-	}
-	return t
-}
-
-func sanitizeDirName(name string) string {
-	t := strings.TrimSpace(name)
-	if t == "" {
-		return ""
-	}
-	t = invalidFilenameChars.ReplaceAllString(t, "_")
-	t = strings.Trim(t, " .")
 	return t
 }
 
@@ -312,38 +294,21 @@ func (b *BiliBili) resolveTargetDir(storagePath string, task DashDownloadTask) (
 	}
 
 	kind := strings.TrimSpace(task.SourceKind)
-	sourceName := sanitizeDirName(task.SourceName)
-	upperName := sanitizeDirName(task.UpperName)
+	sourceName := utils.FileName(task.SourceName)
+	upperName := utils.FileName(task.UpperName)
 
-	// 前端只传来源元数据，不再拼目录。这里集中维护所有落盘分组规则。
 	switch kind {
 	case "解析结果":
 		return storagePath, nil
 	case "全部投稿":
-		if upperName != "" {
-			return filepath.Join(storagePath, upperName), nil
-		}
+		return filepath.Join(storagePath, upperName), nil
 	case "合集", "系列", "分P":
-		if upperName != "" && sourceName != "" {
-			return filepath.Join(storagePath, upperName, sourceName), nil
-		}
-		if sourceName != "" {
-			return filepath.Join(storagePath, sourceName), nil
-		}
-		if upperName != "" {
-			return filepath.Join(storagePath, upperName), nil
-		}
+		return filepath.Join(storagePath, upperName, sourceName), nil
 	case "收藏夹":
-		if sourceName != "" {
-			return filepath.Join(storagePath, sourceName), nil
-		}
+		return filepath.Join(storagePath, sourceName), nil
 	default:
-		if sourceName != "" {
-			return filepath.Join(storagePath, sourceName), nil
-		}
+		return filepath.Join(storagePath, sourceName), nil
 	}
-
-	return storagePath, nil
 }
 
 type downloadProgress struct {
