@@ -48,10 +48,23 @@ func userAgent() string {
 	}
 }
 
+// osName 返回操作系统名称，首字母大写，例如 Windows、Linux
 func osName() string {
 	goOS := runtime.GOOS
 
 	return strings.ToUpper(goOS[:1]) + goOS[1:]
+}
+
+// browserPlatform 返回浏览器平台字符串，Windows 返回 Win32，Linux 返回 Linux x86_64
+func browserPlatform() string {
+	switch runtime.GOOS {
+	case "linux":
+		return "Linux x86_64"
+	case "windows":
+		return "Win32"
+	default:
+		return "Windows NT 10.0"
+	}
 }
 
 func (d *Douyin) publicQueryParams() (map[string]any, error) {
@@ -102,17 +115,6 @@ func (d *Douyin) publicQueryParams() (map[string]any, error) {
 		"fp":                  p.fp,
 		"msToken":             msToken,
 	}, nil
-}
-
-func browserPlatform() string {
-	switch runtime.GOOS {
-	case "linux":
-		return "Linux x86_64"
-	case "windows":
-		return "Win32"
-	default:
-		return "Windows NT 10.0"
-	}
 }
 
 func (d *Douyin) publicHeaders() (map[string]string, error) {

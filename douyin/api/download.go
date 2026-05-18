@@ -25,6 +25,12 @@ import (
 
 const douyinDownloadedCachePrefix = "douyin:downloaded:"
 
+const (
+	douyinDownloadKindVideo = "video"
+	douyinDownloadKindAlbum = "album"
+	douyinDownloadKindCover = "cover"
+)
+
 // DouyinDownloadTask 是前端提交给后端的最小任务协议。
 // 前端已经完成清晰度选择，所以后端只消费最终 videoURL；图片合集则使用 ImageURLs。
 type DouyinDownloadTask struct {
@@ -77,6 +83,7 @@ type DouyinDownloadHistoryItem struct {
 	Path         string `json:"path"`
 	IsImageAlbum bool   `json:"isImageAlbum"`
 	ImageCount   int    `json:"imageCount"`
+	DownloadKind string `json:"downloadKind"`
 	// Wails 绑定生成不支持直接暴露 time.Time，保存为 RFC3339 字符串给前端解析。
 	Downloaded string `json:"downloaded"`
 }
@@ -148,28 +155,16 @@ func douyinImageExtFromResponse(rawURL string, resp *http.Response) string {
 }
 
 func bestDouyinCoverURL(covers []model.Cover) string {
-	var best string
-	bestScore := -1
 	for _, cover := range covers {
-		if len(cover.UrlList) == 0 {
-			continue
-		}
-		score := cover.Width * cover.Height
-		if score <= 0 {
-			score = len(cover.UrlList)
-		}
 		for _, rawURL := range cover.UrlList {
 			rawURL = normalizeDouyinHTTPURL(rawURL)
 			if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
 				continue
 			}
-			if best == "" || score > bestScore {
-				best = rawURL
-				bestScore = score
-			}
+			return rawURL
 		}
 	}
-	return best
+	return ""
 }
 
 func clampDouyinPercent(percent float64) float64 {
@@ -219,10 +214,17 @@ func douyinWeightedPercent(start, weight float64, downloaded, total int64) float
 }
 
 // markDownloaded 写入下载成功历史；缓存失败不影响已经落盘的文件。
-func (d *Douyin) markDownloaded(task DouyinDownloadTask, path string, isImageAlbum bool, imageCount int) {
+func (d *Douyin) markDownloaded(task DouyinDownloadTask, path string, isImageAlbum bool, imageCount int, downloadKind string) {
 	key := douyinDownloadCacheKey(task.AwemeID)
 	if key == "" {
 		return
+	}
+	if downloadKind == "" {
+		if isImageAlbum {
+			downloadKind = douyinDownloadKindAlbum
+		} else {
+			downloadKind = douyinDownloadKindVideo
+		}
 	}
 
 	payload, err := sonic.Marshal(DouyinDownloadHistoryItem{
@@ -239,6 +241,7 @@ func (d *Douyin) markDownloaded(task DouyinDownloadTask, path string, isImageAlb
 		Path:         path,
 		IsImageAlbum: isImageAlbum,
 		ImageCount:   imageCount,
+		DownloadKind: downloadKind,
 		Downloaded:   time.Now().Format(time.RFC3339Nano),
 	})
 	if err != nil {
@@ -337,8 +340,10 @@ func (d *Douyin) downloadURLToFile(rawURL, targetPath string, task DouyinDownloa
 	if err != nil {
 		return err
 	}
-	resp, err := d.client.R().
+	resp, err := d.downloadClient.R().
 		DisableAutoReadResponse().
+		SetRetryCount(2).
+		SetRetryBackoffInterval(300*time.Millisecond, 2*time.Second).
 		SetHeaders(headers).
 		Get(rawURL)
 	if err != nil {
@@ -528,7 +533,7 @@ func (d *Douyin) downloadTask(task DouyinDownloadTask) (string, error) {
 			}
 		}
 		d.emitDownloadProgress(douyinDownloadProgress{AwemeID: task.AwemeID, Title: task.Title, Phase: "done", Percent: 100})
-		d.markDownloaded(task, dir, true, len(assets))
+		d.markDownloaded(task, dir, true, len(assets), douyinDownloadKindAlbum)
 		return dir, nil
 	}
 
@@ -545,7 +550,7 @@ func (d *Douyin) downloadTask(task DouyinDownloadTask) (string, error) {
 		return "", err
 	}
 	d.emitDownloadProgress(douyinDownloadProgress{AwemeID: task.AwemeID, Title: task.Title, Phase: "done", Percent: 100})
-	d.markDownloaded(task, outPath, false, 0)
+	d.markDownloaded(task, outPath, false, 0, douyinDownloadKindVideo)
 
 	return outPath, nil
 }
@@ -612,6 +617,7 @@ func (d *Douyin) DownloadVideos(tasks []DouyinDownloadTask) (DouyinDownloadBatch
 				path, err := d.downloadTask(task)
 				item := DouyinDownloadResult{AwemeID: task.AwemeID, Title: task.Title, Path: path}
 				if err != nil {
+					d.logger.Errorf("download task failed, task: %v, err: %v", task, err)
 					item.Error = err.Error()
 				}
 				results <- item
@@ -654,18 +660,28 @@ func (d *Douyin) Download(videoURL string) error {
 	return nil
 }
 
-// DownloadCover 从多个抖音封面候选中选择最高质量的一张并保存到当前下载目录。
-func (d *Douyin) DownloadCover(covers []model.Cover, title string) (string, error) {
+// DownloadCover 从多个抖音封面候选中选择最高质量的一张并保存到作者目录。
+func (d *Douyin) DownloadCover(covers []model.Cover, task DouyinDownloadTask) (string, error) {
 	coverURL := bestDouyinCoverURL(covers)
 	if coverURL == "" {
 		return "", errors.New("封面地址无效")
+	}
+	task.AwemeID = strings.TrimSpace(task.AwemeID)
+	task.AuthorName = strings.TrimSpace(task.AuthorName)
+	task.Title = strings.TrimSpace(task.Title)
+	if task.Title == "" {
+		task.Title = task.AwemeID
 	}
 
 	storagePath, err := d.settings.GetStorage()
 	if err != nil {
 		return "", err
 	}
-	if err = os.MkdirAll(storagePath, 0o755); err != nil {
+	targetDir := storagePath
+	if author := utils.FileName(task.AuthorName); author != "" {
+		targetDir = filepath.Join(storagePath, author)
+	}
+	if err = os.MkdirAll(targetDir, 0o755); err != nil {
 		return "", errors.New("创建下载目录失败")
 	}
 
@@ -692,13 +708,13 @@ func (d *Douyin) DownloadCover(covers []model.Cover, title string) (string, erro
 		return "", fmt.Errorf("封面下载失败: %s", resp.Status)
 	}
 
-	fileName := utils.FileName(title)
+	fileName := utils.FileName(task.Title)
 	if fileName == "" {
 		fileName = "cover"
 	}
 	ext := douyinImageExtFromResponse(coverURL, resp.Response)
-	outPath := uniqueDouyinFilePath(filepath.Join(storagePath, fileName+ext))
-	tmp, err := os.CreateTemp(storagePath, ".douyin-cover-*"+ext)
+	outPath := uniqueDouyinFilePath(filepath.Join(targetDir, fileName+ext))
+	tmp, err := os.CreateTemp(targetDir, ".douyin-cover-*"+ext)
 	if err != nil {
 		return "", err
 	}
@@ -715,6 +731,10 @@ func (d *Douyin) DownloadCover(covers []model.Cover, title string) (string, erro
 	}
 	if err = os.Rename(tmpPath, outPath); err != nil {
 		return "", err
+	}
+	if task.AwemeID != "" {
+		task.AwemeID += ":cover"
+		d.markDownloaded(task, outPath, false, 0, douyinDownloadKindCover)
 	}
 
 	return outPath, nil

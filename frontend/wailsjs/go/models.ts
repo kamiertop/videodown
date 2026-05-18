@@ -173,6 +173,7 @@ export namespace api {
 	    path: string;
 	    isImageAlbum: boolean;
 	    imageCount: number;
+	    downloadKind: string;
 	    downloaded: string;
 	
 	    static createFrom(source: any = {}) {
@@ -194,6 +195,7 @@ export namespace api {
 	        this.path = source["path"];
 	        this.isImageAlbum = source["isImageAlbum"];
 	        this.imageCount = source["imageCount"];
+	        this.downloadKind = source["downloadKind"];
 	        this.downloaded = source["downloaded"];
 	    }
 	}
@@ -253,42 +255,6 @@ export namespace api {
 		    }
 		    return a;
 		}
-	}
-	export class DownloadHistoryItem {
-	    bvid: string;
-	    cid: number;
-	    title: string;
-	    cover: string;
-	    duration: number;
-	    upperName: string;
-	    play: number;
-	    danmaku: number;
-	    pubtime: number;
-	    sourceName: string;
-	    sourceKind: string;
-	    path: string;
-	    downloaded: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new DownloadHistoryItem(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.bvid = source["bvid"];
-	        this.cid = source["cid"];
-	        this.title = source["title"];
-	        this.cover = source["cover"];
-	        this.duration = source["duration"];
-	        this.upperName = source["upperName"];
-	        this.play = source["play"];
-	        this.danmaku = source["danmaku"];
-	        this.pubtime = source["pubtime"];
-	        this.sourceName = source["sourceName"];
-	        this.sourceKind = source["sourceKind"];
-	        this.path = source["path"];
-	        this.downloaded = source["downloaded"];
-	    }
 	}
 
 }
@@ -1231,6 +1197,8 @@ export namespace model {
 	}
 	export class Video {
 	    cover: Cover;
+	    dynamic_cover: Cover;
+	    raw_cover: Cover;
 	    bit_rate: BitRateItem[];
 	    bit_rate_audio: BitRateAudioItem[];
 	    big_thumbs: BigThumbItem[];
@@ -1251,6 +1219,8 @@ export namespace model {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.cover = this.convertValues(source["cover"], Cover);
+	        this.dynamic_cover = this.convertValues(source["dynamic_cover"], Cover);
+	        this.raw_cover = this.convertValues(source["raw_cover"], Cover);
 	        this.bit_rate = this.convertValues(source["bit_rate"], BitRateItem);
 	        this.bit_rate_audio = this.convertValues(source["bit_rate_audio"], BitRateAudioItem);
 	        this.big_thumbs = this.convertValues(source["big_thumbs"], BigThumbItem);
@@ -2471,6 +2441,44 @@ export namespace model {
 	}
 	
 	
+	export class DownloadHistoryItem {
+	    bvid: string;
+	    cid: number;
+	    title: string;
+	    cover: string;
+	    duration: number;
+	    upperName: string;
+	    play: number;
+	    danmaku: number;
+	    pubtime: number;
+	    sourceName: string;
+	    sourceKind: string;
+	    path: string;
+	    downloadKind: string;
+	    downloaded: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DownloadHistoryItem(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bvid = source["bvid"];
+	        this.cid = source["cid"];
+	        this.title = source["title"];
+	        this.cover = source["cover"];
+	        this.duration = source["duration"];
+	        this.upperName = source["upperName"];
+	        this.play = source["play"];
+	        this.danmaku = source["danmaku"];
+	        this.pubtime = source["pubtime"];
+	        this.sourceName = source["sourceName"];
+	        this.sourceKind = source["sourceKind"];
+	        this.path = source["path"];
+	        this.downloadKind = source["downloadKind"];
+	        this.downloaded = source["downloaded"];
+	    }
+	}
 	export class UgcSeasonPageItem {
 	    cid: number;
 	    page: number;
@@ -5029,38 +5037,6 @@ export namespace model {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.view = this.convertValues(source["view"], VideoDetailView);
-	    }
-	
-		convertValues(a: any, classs: any, asMap: boolean = false): any {
-		    if (!a) {
-		        return a;
-		    }
-		    if (a.slice && a.map) {
-		        return (a as any[]).map(elem => this.convertValues(elem, classs));
-		    } else if ("object" === typeof a) {
-		        if (asMap) {
-		            for (const key of Object.keys(a)) {
-		                a[key] = new classs(a[key]);
-		            }
-		            return a;
-		        }
-		        return new classs(a);
-		    }
-		    return a;
-		}
-	}
-	export class VideoDetailResponse {
-	    status_code: number;
-	    aweme_detail: AwemeItem;
-	
-	    static createFrom(source: any = {}) {
-	        return new VideoDetailResponse(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.status_code = source["status_code"];
-	        this.aweme_detail = this.convertValues(source["aweme_detail"], AwemeItem);
 	    }
 	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {

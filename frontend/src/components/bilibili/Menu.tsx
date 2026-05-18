@@ -106,8 +106,7 @@ export default function Menu(): JSXElement {
             class="mb-0.5 select-none px-0.5 text-center text-[9px] font-semibold uppercase tracking-widest text-base-content/40">
           B 站
         </p>
-        <For each={menuItems}
-             fallback={<span class="px-1 text-center text-[10px] text-base-content/60">暂无</span>}>
+        <For each={menuItems} fallback={<span class="px-1 text-center text-[10px] text-base-content/60">暂无</span>}>
           {item => (
               <Link
                   title={item.name}
@@ -118,10 +117,10 @@ export default function Menu(): JSXElement {
                   }}
                   to={item.link}
               >
-                        <span
-                            class="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-primary to-secondary text-[0] shadow-inner transition-transform duration-200 group-hover:scale-[1.04] group-active:scale-[0.98] group-data-[status=active]:brightness-110">
-                            {item.icon}
-                        </span>
+                <span
+                    class="flex h-10 w-10 items-center justify-center rounded-2xl bg-linear-to-br from-primary to-secondary text-[0] shadow-inner transition-transform duration-200 group-hover:scale-[1.04] group-active:scale-[0.98] group-data-[status=active]:brightness-110">
+                  {item.icon}
+                </span>
                 <span
                     class="max-w-full truncate px-0.5 text-center text-[10px] font-semibold leading-tight tracking-tight text-base-content/90">
                             {item.name}

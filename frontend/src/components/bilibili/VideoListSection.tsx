@@ -87,10 +87,11 @@ export default function VideoListSection(props: {
               取消已选
             </button>
           </Show>
-          <button class="btn btn-outline btn-primary btn-sm" onClick={() => {
-            const picked = props.medias().filter(m => selectedSet().has(m.id));
-            void enqueueAndGoDownload(picked);
-          }}
+          <button class="btn btn-outline btn-primary btn-sm"
+                  onClick={() => {
+                    const picked = props.medias().filter(m => selectedSet().has(m.id));
+                    void enqueueAndGoDownload(picked);
+                  }}
                   disabled={selectedMediaIds().length === 0 || enqueueLoading()}>
             {enqueueLoading() ? "处理中..." : `下载已选 (${selectedMediaIds().length})`}
           </button>

@@ -62,6 +62,7 @@ type cookieParams struct {
 	uifid    string
 }
 
+// cookieQuery 从cookie中提取公共查询参数，主要是verifyFp和uifid
 func (d *Douyin) cookieQuery() (cookieParams, error) {
 	cookieToMap := map[string]string{}
 	cookie, err := d.GetCookie()
@@ -96,26 +97,27 @@ func (d *Douyin) cookieQuery() (cookieParams, error) {
 			}
 		}
 	}
-	if d.userID == "" {
-		rawUserId, ok := cookieToMap["PhoneResumeUidCacheV1"]
-		if !ok {
-			d.logger.Warning("not found user id in cookie, key: PhoneResumeUidCacheV1")
-		} else {
-			unescape, err := url.QueryUnescape(rawUserId)
-			if err != nil {
-				d.logger.Errorf("解析 FOLLOW_LIVE_POINT_INFO 失败: %v", err)
-			} else {
-				// 这个字段是个json字符串, 解析后取第一个key就是userID了
-				var userId map[string]any
-				err = sonic.Unmarshal([]byte(unescape), &userId)
-				if err == nil {
-					for value := range userId {
-						d.userID = value
-					}
-				}
-			}
-		}
-	}
+
+	//if d.userID == "" {
+	//	rawUserId, ok := cookieToMap["PhoneResumeUidCacheV1"]
+	//	if !ok {
+	//		d.logger.Warning("not found user id in cookie, key: PhoneResumeUidCacheV1")
+	//	} else {
+	//		unescape, err := url.QueryUnescape(rawUserId)
+	//		if err != nil {
+	//			d.logger.Errorf("解析 FOLLOW_LIVE_POINT_INFO 失败: %v", err)
+	//		} else {
+	//			// 这个字段是个json字符串, 解析后取第一个key就是userID了
+	//			var userId map[string]any
+	//			err = sonic.Unmarshal([]byte(unescape), &userId)
+	//			if err == nil {
+	//				for value := range userId {
+	//					d.userID = value
+	//				}
+	//			}
+	//		}
+	//	}
+	//}
 
 	return cookieParams{
 		verifyFp: cookieToMap["s_v_web_id"],

@@ -86,6 +86,10 @@ export function RefreshCookie() {
   return window['go']['api']['BiliBili']['RefreshCookie']();
 }
 
+export function SearchDownloadHistory(arg1) {
+  return window['go']['api']['BiliBili']['SearchDownloadHistory'](arg1);
+}
+
 export function SeasonsArchivesList(arg1, arg2, arg3, arg4) {
   return window['go']['api']['BiliBili']['SeasonsArchivesList'](arg1, arg2, arg3, arg4);
 }

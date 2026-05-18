@@ -14,12 +14,8 @@ function AboutComponent(): JSXElement {
   const [version, setVersion] = createSignal("");
 
   onMount(async () => {
-    try {
-      const v = await GetVersion();
-      setVersion(v || "dev");
-    } catch {
-      setVersion("dev");
-    }
+    const v = await GetVersion();
+    setVersion(v || "dev");
   });
 
   return (

@@ -9,6 +9,7 @@ require (
 	github.com/labstack/gommon v0.4.2
 	github.com/rs/zerolog v1.35.1
 	github.com/wailsapp/wails/v2 v2.12.0
+	golang.org/x/net v0.48.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
@@ -60,7 +61,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.37.0 // indirect
 	golang.org/x/arch v0.0.0-20210923205945-b76863e36670 // indirect
 	golang.org/x/crypto v0.46.0 // indirect
-	golang.org/x/net v0.48.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/text v0.32.0 // indirect
 	google.golang.org/protobuf v1.36.7 // indirect

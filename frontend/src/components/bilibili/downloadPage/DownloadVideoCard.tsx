@@ -24,13 +24,13 @@ interface DownloadVideoCardProps {
 // 下载列表里的单张视频卡片。
 // 它只负责展示和把用户操作抛给父层；解析状态、画质切换、下载进度都由 useBilibiliDownloadQueue 管。
 export default function DownloadVideoCard(props: DownloadVideoCardProps): JSXElement {
-  const accessLabels = () => {
+  function accessLabels(): string[] {
     // 充电专属、试看、付费等标签来自视频详情；即使解析失败也尽量展示原因。
     const entry = props.entry;
     if (entry?.status === "done") return entry.data.accessInfo.labels;
     if (entry?.status === "error") return entry.accessInfo?.labels ?? [];
     return [];
-  };
+  }
 
   const progressText = () => {
     // 后端把视频、音频、合并、休眠阶段映射成同一条 0-100 的进度。
@@ -57,16 +57,16 @@ export default function DownloadVideoCard(props: DownloadVideoCardProps): JSXEle
           <div
               class="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between bg-linear-to-t from-black/75 to-transparent px-2 pb-1.5 pt-6">
             <div class="flex items-center gap-2 text-white/90">
-            <span class="flex items-center gap-0.5 text-[11px]">
-              <IconEye class="h-3 w-3"/>{formatCount(props.item.play)}
-            </span>
+              <span class="flex items-center gap-0.5 text-[11px]">
+                <IconEye class="h-3 w-3"/>{formatCount(props.item.play)}
+              </span>
               <span class="flex items-center gap-0.5 text-[11px]">
               <IconChat class="h-3 w-3"/> {props.item.danmaku}
             </span>
             </div>
             <span class="rounded bg-black/65 px-1 py-0.5 text-[11px] tabular-nums text-white/95">
-            {formatDuration(props.item.duration)}
-          </span>
+              {formatDuration(props.item.duration)}
+            </span>
           </div>
         </div>
 
@@ -77,19 +77,19 @@ export default function DownloadVideoCard(props: DownloadVideoCardProps): JSXEle
                 {props.item.title}
               </h3>
               <div class="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-base-content/65">
-              <span class="inline-flex min-w-0 items-center gap-1">
+                <span class="inline-flex min-w-0 items-center gap-1">
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
                     class="h-3.5 w-3.5 shrink-0"
                     viewBox="0 0 20 20"
                     fill="currentColor"
                 >
-                  <path
-                      fill-rule="evenodd"
-                      d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                      clip-rule="evenodd"
-                  />
-                </svg>
+                    <path
+                        fill-rule="evenodd"
+                        d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                        clip-rule="evenodd"
+                    />
+                  </svg>
                 <span class="truncate">{props.item.upperName || "未知 UP"}</span>
               </span>
                 <span class="text-base-content/30">|</span>
@@ -97,11 +97,8 @@ export default function DownloadVideoCard(props: DownloadVideoCardProps): JSXEle
               </div>
             </div>
 
-            <Show
-                when={props.downloading && props.progress}
-                fallback={<div class="hidden h-14 w-14 lg:block"/>}
-            >
-              {(progress) => (
+            <Show when={props.downloading && props.progress} fallback={<div class="hidden h-14 w-14 lg:block"/>}>
+              {progress => (
                   // 固定宽度的右侧进度块占用标题区空白，避免下载状态改变时按钮行抖动。
                   <div
                       class="hidden w-14 shrink-0 justify-self-end text-center lg:grid lg:justify-items-center lg:gap-1">
@@ -115,14 +112,13 @@ export default function DownloadVideoCard(props: DownloadVideoCardProps): JSXEle
                         role="progressbar"
                         aria-label={progressText()}
                     >
-                  <span class="text-[0.6rem] font-medium tabular-nums text-base-content">
-                    {Math.round(progress().percent)}
-                  </span>
+                      <span class="text-[0.6rem] font-medium tabular-nums text-base-content">
+                        {Math.round(progress().percent)}
+                      </span>
                     </div>
-                    <span class="max-w-14 truncate text-[0.65rem] leading-none text-base-content/65"
-                          title={progressText()}>
-                  {progressText()}
-                </span>
+                    <span class="max-w-14 truncate text-[0.65rem] leading-none text-base-content/65">
+                      {progressText()}
+                    </span>
                   </div>
               )}
             </Show>
@@ -140,11 +136,7 @@ export default function DownloadVideoCard(props: DownloadVideoCardProps): JSXEle
 
           <div class="flex flex-wrap items-center justify-end gap-2 border-t border-base-200 pt-2">
             <div class="mr-auto min-w-0">
-              <QualitySelectors
-                  entry={props.entry}
-                  onPickAudio={props.onPickAudio}
-                  onPickQn={props.onPickQn}
-              />
+              <QualitySelectors entry={props.entry} onPickAudio={props.onPickAudio} onPickQn={props.onPickQn}/>
             </div>
             <button
                 class="btn btn-ghost btn-xs"

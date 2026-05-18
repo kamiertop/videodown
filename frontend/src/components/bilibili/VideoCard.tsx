@@ -14,75 +14,72 @@ export default function VideoCard(props: {
 }): JSXElement {
   const m = props.media;
   return (
-    <div
-      class={`group relative flex flex-col rounded-lg transition-all duration-150 hover:shadow-md [content-visibility:auto] [contain-intrinsic-size:auto_220px] ${
-        props.isSelected
-          ? 'border-2 border-success bg-success/5 shadow-sm shadow-success/20'
-          : 'border border-base-300 bg-base-100 hover:border-base-content/20'
-      }`}
-    >
-      {/* 封面区域 */}
       <div
-        class="relative aspect-video w-full cursor-pointer overflow-hidden rounded-t-lg bg-base-200"
-        onClick={() => props.onToggleSelect(m.id)}>
-	        <Show when={m.cover !== ""} fallback={<NoCover/>}>
-	          <img src={m.cover} alt={m.title}
-	               class="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
-               loading="lazy"
-	               referrerpolicy="no-referrer"
-	               decoding="async"/>
-	        </Show>
-	        {/* 封面底部叠加信息：播放量、弹幕、时长 */}
+          class="group relative flex flex-col rounded-lg transition-all duration-150 hover:shadow-md [content-visibility:auto] [contain-intrinsic-size:auto_220px]"
+          classList={{
+            "border-2 border-primary bg-primary/5 shadow-sm shadow-primary/20": props.isSelected,
+            "border border-base-300 bg-base-100 hover:border-base-content/20": !props.isSelected,
+          }}
+      >
+        {/* 封面区域 */}
         <div
-          class="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between bg-linear-to-t from-black/70 to-transparent px-2 pb-1.5 pt-5">
-          <div class="flex items-center gap-2.5 text-white/90">
+            class="relative aspect-video w-full cursor-pointer overflow-hidden rounded-t-lg bg-base-200"
+            onClick={() => props.onToggleSelect(m.id)}>
+          <Show when={m.cover !== ""} fallback={<NoCover/>}>
+            <img src={m.cover} alt={m.title}
+                 class="h-full w-full object-cover transition-transform duration-200 group-hover:scale-105"
+                 loading="lazy"
+                 referrerpolicy="no-referrer"
+                 decoding="async"/>
+          </Show>
+          {/* 封面底部叠加信息：播放量、弹幕、时长 */}
+          <div
+              class="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between bg-linear-to-t from-black/70 to-transparent px-2 pb-1.5 pt-5">
+            <div class="flex items-center gap-2.5 text-white/90">
             <span class="flex items-center gap-0.5 text-xs">
               <IconEye class="h-3 w-3"/> {formatCount(m.play)}
             </span>
-            <span class="flex items-center gap-0.5 text-xs">
+              <span class="flex items-center gap-0.5 text-xs">
               <IconChat class="h-3 w-3"/>{formatCount(m.danmaku)}
             </span>
-          </div>
-          <span class="rounded bg-black/60 px-1 py-0.5 text-xs tabular-nums text-white/90">
+            </div>
+            <span class="rounded bg-black/60 px-1 py-0.5 text-xs tabular-nums text-white/90">
             {formatDuration(m.duration)}
           </span>
+          </div>
         </div>
-      </div>
 
-      {/* 标题 + UP主 + 日期 */}
-      <div class="flex min-h-0 flex-1 cursor-pointer flex-col px-2.5 pb-2.5 pt-2"
-           onClick={() => props.onToggleSelect(m.id)}>
-        <p
-          class="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-base-content"
-          title={m.title}
-        >
-          {m.title}
-        </p>
-        <div class="mt-1.5 flex items-center justify-between">
-          <p class="flex min-w-0 flex-1 items-center gap-1 truncate text-xs text-base-content/55">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 shrink-0"
-                 viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd"
-                    d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
-                    clip-rule="evenodd"/>
-            </svg>
-            <span class="truncate">{m.upperName}</span>
+        {/* 标题 + UP主 + 日期 */}
+        <div class="flex min-h-0 flex-1 cursor-pointer flex-col px-2.5 pb-2.5 pt-2"
+             onClick={() => props.onToggleSelect(m.id)}>
+          <p class="line-clamp-2 min-h-10 text-sm font-semibold leading-5 text-base-content" title={m.title}>
+            {m.title}
           </p>
-          <div class="flex shrink-0 items-center gap-1.5">
-            <Show when={m.pubtime}>
-              <span class="text-xs tabular-nums text-base-content/45">{formatDate(m.pubtime)}</span>
-            </Show>
-            <button class="btn btn-ghost btn-xs opacity-0 transition-opacity group-hover:opacity-100"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      props.onDownloadOne(m);
-                    }}
-            >
-              下载
-            </button>
+          <div class="mt-1.5 flex items-center justify-between">
+            <p class="flex min-w-0 flex-1 items-center gap-1 truncate text-xs text-base-content/55">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 shrink-0"
+                   viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd"
+                      d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                      clip-rule="evenodd"/>
+              </svg>
+              <span class="truncate">{m.upperName}</span>
+            </p>
+            <div class="flex shrink-0 items-center gap-1.5">
+              <Show when={m.pubtime}>
+                <span class="text-xs tabular-nums text-base-content/45">{formatDate(m.pubtime)}</span>
+              </Show>
+              <button class="btn btn-ghost btn-xs opacity-0 transition-opacity group-hover:opacity-100"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        props.onDownloadOne(m);
+                      }}
+              >
+                下载
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
   );
 }

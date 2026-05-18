@@ -11,9 +11,9 @@ export function CollectionItem(arg1:string,arg2:number,arg3:number):Promise<mode
 
 export function DeleteDownloadHistory(arg1:number):Promise<void>;
 
-export function DownloadCover(arg1:string,arg2:string):Promise<string>;
+export function DownloadCover(arg1:string,arg2:api.DashDownloadTask):Promise<string>;
 
-export function DownloadHistory():Promise<Array<api.DownloadHistoryItem>>;
+export function DownloadHistory():Promise<Array<model.DownloadHistoryItem>>;
 
 export function DownloadVideoByDash(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string):Promise<string>;
 
@@ -44,6 +44,8 @@ export function PollQRCode(arg1:string):Promise<model.PollQRCodeData>;
 export function QRCode():Promise<model.QRCodeData>;
 
 export function RefreshCookie():Promise<model.CookieRefreshData>;
+
+export function SearchDownloadHistory(arg1:string):Promise<Array<model.DownloadHistoryItem>>;
 
 export function SeasonsArchivesList(arg1:string,arg2:number,arg3:number,arg4:number):Promise<model.SeasonsArchivesData>;
 

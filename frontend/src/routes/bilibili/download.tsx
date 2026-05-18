@@ -1,6 +1,7 @@
 import {createFileRoute} from "@tanstack/solid-router";
 import {createMemo, createSignal, For, type JSXElement, onMount, Show} from "solid-js";
 import {DownloadCover, VideoDetailConciseBvid} from "../../../wailsjs/go/api/BiliBili";
+import {api} from "../../../wailsjs/go/models.ts";
 import {HasFFmpeg} from "../../../wailsjs/go/utils/Settings";
 import DownloadInputBar from "../../components/bilibili/downloadPage/DownloadInputBar.tsx";
 import DownloadSummaryBar from "../../components/bilibili/downloadPage/DownloadSummaryBar.tsx";
@@ -219,7 +220,19 @@ function DownLoad(): JSXElement {
 
     setCoverDownloading(item.id, true);
     try {
-      const path = await DownloadCover(cover, item.title || item.bvid || "cover");
+      const path = await DownloadCover(cover, api.DashDownloadTask.createFrom({
+        sourceName: item.sourceListName ?? "",
+        sourceKind: item.sourceListKind ?? "",
+        upperName: item.upperName ?? "",
+        bvid: item.bvid,
+        cid: item.cid ?? item.id,
+        title: item.title || item.bvid || "cover",
+        cover: item.cover ?? "",
+        duration: item.duration ?? 0,
+        play: item.play ?? 0,
+        danmaku: item.danmaku ?? 0,
+        pubtime: item.pubtime ?? 0,
+      }));
       showToast(`封面已保存：${path}`, "success");
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), "error");
