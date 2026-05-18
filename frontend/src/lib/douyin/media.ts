@@ -89,9 +89,14 @@ export function douyinVideoURL(item: model.AwemeItem): string {
   return defaultDouyinVideoOption(douyinVideoOptions(item))?.url ?? "";
 }
 
+// TODO: 简化逻辑，直接返回一个字符串
 export function douyinCoverCandidates(item: model.AwemeItem): model.Cover[] {
-  const covers = [item.video?.origin_cover]
-      .filter((cover): cover is model.Cover => !!cover && (cover.url_list?.length ?? 0) > 0);
+  const covers = [
+    item.video?.dynamic_cover,
+    item.video?.raw_cover,
+    item.video?.cover,
+    item.video?.origin_cover,
+  ].filter((cover): cover is model.Cover => !!cover && (cover.url_list?.length ?? 0) > 0);
 
   const seen = new Set<string>();
   return covers.filter((cover) => {

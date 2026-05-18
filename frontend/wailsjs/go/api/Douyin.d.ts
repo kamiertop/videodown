@@ -15,7 +15,7 @@ export function DeleteDownloadHistory(arg1:string):Promise<void>;
 
 export function Download(arg1:string):Promise<void>;
 
-export function DownloadCover(arg1:Array<model.Cover>,arg2:string):Promise<string>;
+export function DownloadCover(arg1:Array<model.Cover>,arg2:api.DouyinDownloadTask):Promise<string>;
 
 export function DownloadHistory():Promise<Array<api.DouyinDownloadHistoryItem>>;
 
@@ -43,4 +43,4 @@ export function UserSeries(arg1:string,arg2:number,arg3:number):Promise<model.Us
 
 export function UserVideoList(arg1:string,arg2:number,arg3:number):Promise<model.UserVideoListResponse>;
 
-export function VideoDetail(arg1:string):Promise<model.VideoDetailResponse>;
+export function VideoDetail(arg1:string):Promise<model.AwemeItem>;

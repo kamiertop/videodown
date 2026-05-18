@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -11,14 +10,13 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/bytedance/sonic"
-	"github.com/dgraph-io/badger/v4"
+	"github.com/kamiertop/videodown/bilibili/model"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/kamiertop/videodown/utils"
@@ -26,6 +24,11 @@ import (
 
 const (
 	downloadedVideoCachePrefix = "bilibili:downloaded:"
+)
+
+const (
+	bilibiliDownloadKindVideo = "video"
+	bilibiliDownloadKindCover = "cover"
 )
 
 // DashDownloadTask 是前端提交给后端的最小下载任务；流地址已经由前端按用户选择的画质/音质确定。
@@ -62,23 +65,6 @@ type DashDownloadBatchResult struct {
 	Failed  int                  `json:"failed"`
 }
 
-type DownloadHistoryItem struct {
-	Bvid       string `json:"bvid"`
-	Cid        int64  `json:"cid"`
-	Title      string `json:"title"`
-	Cover      string `json:"cover"`
-	Duration   int    `json:"duration"`
-	UpperName  string `json:"upperName"`
-	Play       int    `json:"play"`
-	Danmaku    int    `json:"danmaku"`
-	Pubtime    int    `json:"pubtime"`
-	SourceName string `json:"sourceName"`
-	SourceKind string `json:"sourceKind"`
-	Path       string `json:"path"`
-	// Wails 绑定生成不支持直接暴露 time.Time，保存为 RFC3339 字符串给前端解析。
-	Downloaded string `json:"downloaded"`
-}
-
 func streamBaseURL(v string) string {
 	return strings.TrimSpace(v)
 }
@@ -92,8 +78,11 @@ func normalizeHTTPURL(rawURL string) string {
 }
 
 func downloadCacheKey(cid int64) string {
-	if cid <= 0 {
+	if cid == 0 {
 		return ""
+	}
+	if cid < 0 {
+		return downloadedVideoCachePrefix + "cover:" + strconv.FormatInt(-cid, 10)
 	}
 	return downloadedVideoCachePrefix + strconv.FormatInt(cid, 10)
 }
@@ -158,7 +147,7 @@ func (b *BiliBili) downloadedCachePath(cid int64) (string, bool) {
 		return "", false
 	}
 
-	var cached DownloadHistoryItem
+	var cached model.DownloadHistoryItem
 	if err = sonic.Unmarshal([]byte(raw), &cached); err != nil {
 		return "", false
 	}
@@ -178,26 +167,30 @@ func (b *BiliBili) isDownloaded(cid int64) (string, bool) {
 }
 
 // markDownloaded 写入下载成功缓存；写缓存失败不影响已经完成的文件保存。
-func (b *BiliBili) markDownloaded(task DashDownloadTask, path string) {
+func (b *BiliBili) markDownloaded(task DashDownloadTask, path string, downloadKind string) {
 	key := downloadCacheKey(task.Cid)
 	if key == "" {
 		return
 	}
+	if downloadKind == "" {
+		downloadKind = bilibiliDownloadKindVideo
+	}
 
-	payload, err := sonic.Marshal(DownloadHistoryItem{
-		Bvid:       strings.TrimSpace(task.Bvid),
-		Cid:        task.Cid,
-		Title:      strings.TrimSpace(task.Title),
-		Cover:      strings.TrimSpace(task.Cover),
-		Duration:   task.Duration,
-		UpperName:  strings.TrimSpace(task.UpperName),
-		Play:       task.Play,
-		Danmaku:    task.Danmaku,
-		Pubtime:    task.Pubtime,
-		SourceName: strings.TrimSpace(task.SourceName),
-		SourceKind: strings.TrimSpace(task.SourceKind),
-		Path:       path,
-		Downloaded: time.Now().Format(time.RFC3339Nano),
+	payload, err := sonic.Marshal(model.DownloadHistoryItem{
+		Bvid:         strings.TrimSpace(task.Bvid),
+		Cid:          task.Cid,
+		Title:        strings.TrimSpace(task.Title),
+		Cover:        strings.TrimSpace(task.Cover),
+		Duration:     task.Duration,
+		UpperName:    strings.TrimSpace(task.UpperName),
+		Play:         task.Play,
+		Danmaku:      task.Danmaku,
+		Pubtime:      task.Pubtime,
+		SourceName:   strings.TrimSpace(task.SourceName),
+		SourceKind:   strings.TrimSpace(task.SourceKind),
+		Path:         path,
+		DownloadKind: downloadKind,
+		Downloaded:   time.Now().Format(time.RFC3339Nano),
 	})
 	if err != nil {
 		b.logger.Errorf("marshal downloaded cache failed: %v", err)
@@ -206,71 +199,6 @@ func (b *BiliBili) markDownloaded(task DashDownloadTask, path string) {
 	if err = b.settings.SetKey(key, string(payload)); err != nil {
 		b.logger.Errorf("save downloaded cache failed: %v", err)
 	}
-}
-
-// DownloadHistory 返回后端下载缓存记录；只读历史页使用，下载接口本身不暴露缓存命中细节。
-func (b *BiliBili) DownloadHistory() ([]DownloadHistoryItem, error) {
-	var items []DownloadHistoryItem
-	prefix := []byte(downloadedVideoCachePrefix)
-
-	err := b.settings.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			item := it.Item()
-			if err := item.Value(func(val []byte) error {
-				var history DownloadHistoryItem
-				if err := sonic.Unmarshal(bytes.Clone(val), &history); err != nil {
-					return nil
-				}
-				items = append(items, history)
-				return nil
-			}); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	sort.Slice(items, func(i, j int) bool {
-		return parseDownloadHistoryTime(items[i].Downloaded).After(parseDownloadHistoryTime(items[j].Downloaded))
-	})
-
-	return items, nil
-}
-
-// DeleteDownloadHistory 删除单条下载历史；只清理缓存记录，不删除已经保存到本地的视频文件。
-func (b *BiliBili) DeleteDownloadHistory(cid int64) error {
-	key := downloadCacheKey(cid)
-	if key == "" {
-		return errors.New("视频CID为空")
-	}
-
-	return b.settings.DeleteKey(key)
-}
-
-// ClearDownloadHistory 清空 B 站下载历史；只清理缓存记录，不删除已经保存到本地的视频文件。
-func (b *BiliBili) ClearDownloadHistory() error {
-	prefix := []byte(downloadedVideoCachePrefix)
-	return b.settings.Update(func(txn *badger.Txn) error {
-		keys := make([][]byte, 0)
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			keys = append(keys, it.Item().KeyCopy(nil))
-		}
-		for _, key := range keys {
-			if err := txn.Delete(key); err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
-				return err
-			}
-		}
-		return nil
-	})
 }
 
 func parseDownloadHistoryTime(value string) time.Time {
@@ -560,7 +488,7 @@ func (b *BiliBili) downloadDashTask(task DashDownloadTask) (string, error) {
 			b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "error"})
 			return "", err
 		}
-		b.markDownloaded(task, outPath)
+		b.markDownloaded(task, outPath, bilibiliDownloadKindVideo)
 		b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
 		return outPath, nil
 	}
@@ -576,7 +504,7 @@ func (b *BiliBili) downloadDashTask(task DashDownloadTask) (string, error) {
 		return "", err
 	}
 
-	b.markDownloaded(task, outPath)
+	b.markDownloaded(task, outPath, bilibiliDownloadKindVideo)
 	b.emitDownloadProgress(downloadProgress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
 	return outPath, nil
 }
@@ -760,17 +688,26 @@ func (b *BiliBili) DownloadVideosByDashIncremental(tasks []DashDownloadTask) (Da
 }
 
 // DownloadCover 下载视频封面到当前下载目录，返回保存后的文件路径。
-func (b *BiliBili) DownloadCover(cover, title string) (string, error) {
+func (b *BiliBili) DownloadCover(cover string, task DashDownloadTask) (string, error) {
 	cover = normalizeHTTPURL(cover)
 	if !strings.HasPrefix(cover, "http://") && !strings.HasPrefix(cover, "https://") {
 		return "", errors.New("封面地址无效")
+	}
+	task.Bvid = strings.TrimSpace(task.Bvid)
+	task.Title = strings.TrimSpace(task.Title)
+	if task.Title == "" {
+		task.Title = task.Bvid
 	}
 
 	storagePath, err := b.settings.GetStorage()
 	if err != nil {
 		return "", err
 	}
-	if err = os.MkdirAll(storagePath, 0o755); err != nil {
+	targetDir := storagePath
+	if upperName := utils.FileName(task.UpperName); upperName != "" {
+		targetDir = filepath.Join(storagePath, upperName)
+	}
+	if err = os.MkdirAll(targetDir, 0o755); err != nil {
 		return "", errors.New("创建下载目录失败")
 	}
 
@@ -795,12 +732,12 @@ func (b *BiliBili) DownloadCover(cover, title string) (string, error) {
 	}
 
 	ext := imageExtFromResponse(cover, resp.Response)
-	fileName := sanitizeFilename(title)
+	fileName := sanitizeFilename(task.Title)
 	if fileName == "video" {
 		fileName = "cover"
 	}
-	outPath := uniqueFilePath(filepath.Join(storagePath, fileName+ext))
-	tmp, err := os.CreateTemp(storagePath, ".cover-*"+ext)
+	outPath := uniqueFilePath(filepath.Join(targetDir, fileName+ext))
+	tmp, err := os.CreateTemp(targetDir, ".cover-*"+ext)
 	if err != nil {
 		return "", err
 	}
@@ -818,6 +755,10 @@ func (b *BiliBili) DownloadCover(cover, title string) (string, error) {
 	}
 	if err = os.Rename(tmpPath, outPath); err != nil {
 		return "", err
+	}
+	if task.Cid > 0 {
+		task.Cid = -task.Cid
+		b.markDownloaded(task, outPath, bilibiliDownloadKindCover)
 	}
 
 	return outPath, nil

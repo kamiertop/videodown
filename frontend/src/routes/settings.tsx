@@ -27,7 +27,7 @@ function SettingsComponent(): JSXElement {
         <StorageDirectory/>
         <ConcurrencyNum/>
         <SleepAfterDownLoad/>
-        <SavePreferences/>
+        {/*<SavePreferences/>*/}
         <ThemeChange/>
         <div class="flex flex-2">
           <AutoUpdate/>
@@ -98,6 +98,7 @@ function StorageDirectory(): JSXElement {
 }
 
 // 保存偏好，每个UP主下的视频单独存储，合集|系列视频也单独存储
+// @ts-ignore
 function SavePreferences(): JSXElement {
   const [allowGroup, setAllowGroup] = createSignal<boolean>(true);
   const {message, type, showToast} = useToast();
@@ -397,37 +398,35 @@ function ThemeChange(): JSXElement {
   }
 
   return (
-      <section>
+      <div class="card bg-base-100 shadow-xl">
         {/* 主题设置 */}
-        <div class="card bg-base-100 shadow-xl">
-          <div class="card-body">
-            <h2 class="card-title mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-warning" fill="none"
-                   viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
-              </svg>
-              界面主题
-            </h2>
-            <div class="form-control">
-              <label class="label cursor-pointer justify-between">
-                <span class="label-text">主题模式</span>
-                <select value={theme()} onchange={handleThemeChange} class="select select-accent">
-                  <option value="dark">dark - 深色模式</option>
-                  <option value="light">light - 浅色模式</option>
-                  <option value="cupcake">cupcake - 纸杯蛋糕</option>
-                  <option value="caramellatte">caramellatte 焦糖</option>
-                </select>
-              </label>
-              <label class="label">
+        <div class="card-body">
+          <h2 class="card-title mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-warning" fill="none"
+                 viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+            </svg>
+            界面主题
+          </h2>
+          <div class="form-control">
+            <label class="label cursor-pointer justify-between">
+              <span class="label-text">主题模式</span>
+              <select value={theme()} onchange={handleThemeChange} class="select select-accent">
+                <option value="dark">dark - 深色模式</option>
+                <option value="light">light - 浅色模式</option>
+                <option value="cupcake">cupcake - 纸杯蛋糕</option>
+                <option value="caramellatte">caramellatte 焦糖</option>
+              </select>
+            </label>
+            <label class="label">
                 <span class="label-text-alt pl-2">当前主题：
                     <span class="text-accent font-semibold">{theme()}</span>
                 </span>
-              </label>
-            </div>
+            </label>
           </div>
         </div>
         <Toast message={message()} type={type()}/>
-      </section>
+      </div>
   )
 }

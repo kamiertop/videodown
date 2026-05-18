@@ -1,8 +1,9 @@
 import {createFileRoute} from '@tanstack/solid-router'
 import {createSignal, For, type JSXElement, Show} from "solid-js";
 import {DownloadCover, ParseVideo, VideoDetail} from "../../../wailsjs/go/api/Douyin";
-import {model} from "../../../wailsjs/go/models";
+import {api, model} from "../../../wailsjs/go/models";
 import EmptyState from "../../components/EmptyState.tsx";
+import NoCover from "../../components/NoCover.tsx";
 import Toast from "../../components/Toast.tsx";
 import {useToast} from "../../hooks/useToast.ts";
 import {type DouyinDownloadProgress, useDouyinDownloadQueue} from "../../lib/douyin/downloadQueue.ts";
@@ -25,6 +26,7 @@ import {
   updateDouyinVideoOption,
 } from "../../lib/douyin/store.ts";
 import {formatCount, formatDate, formatDuration} from "../../lib/format.ts";
+import AwemeItem = model.AwemeItem;
 
 export const Route = createFileRoute('/douyin/download')({
   component: DouyinDownloadPage,
@@ -83,9 +85,9 @@ function detailToDownloadItem(item: model.AwemeItem): DouyinDownloadItem {
 function progressText(progress: DouyinDownloadProgress | undefined): string {
   // 后端把视频和图片合集都归一成同一条 0-100 进度，前端只区分阶段文案。
   if (!progress) return "";
-  if (progress.phase === "video") return `视频下载 ${Math.round(progress.percent)}%`;
-  if (progress.phase === "image") return `图片下载 ${Math.round(progress.percent)}%`;
-  if (progress.phase === "music") return `音乐下载 ${Math.round(progress.percent)}%`;
+  if (progress.phase === "video") return "视频下载";
+  if (progress.phase === "image") return "图片下载";
+  if (progress.phase === "music") return "音乐下载";
   if (progress.phase === "sleep") return `休眠中 ${Math.max(0, Math.ceil(progress.sleepRemaining ?? 0))}s`;
   if (progress.phase === "done") return "完成";
   return "下载失败";
@@ -105,13 +107,9 @@ function DouyinDownloadCard(props: {
   const selectedOption = () => props.item.videoOptions?.find((option) => option.id === props.item.selectedVideoOptionId);
 
   return (
-      <article class="flex flex-col gap-3 rounded-lg border border-base-300 bg-base-100 p-2 md:flex-row">
+      <article class="grid gap-3 rounded-lg border border-base-200 bg-base-100 p-2.5 shadow-sm md:grid-cols-[6rem_minmax(0,1fr)]">
         <div class="relative h-36 w-24 shrink-0 overflow-hidden rounded-lg bg-base-200">
-          <Show
-              when={props.item.cover}
-              fallback={<div
-                  class="absolute inset-0 flex items-center justify-center text-xs text-base-content/35">无封面</div>}
-          >
+          <Show when={props.item.cover} fallback={<NoCover/>}>
             <img
                 src={props.item.cover}
                 alt={props.item.title}
@@ -159,13 +157,39 @@ function DouyinDownloadCard(props: {
             </span>
           </Show>
         </div>
-        {/*中间是视频信息*/}
-        <div class="flex min-w-0 flex-1 flex-col gap-3">
-          <div class="min-w-0">
-            <h3 class="line-clamp-2 text-sm font-semibold leading-5 text-base-content" title={props.item.title}>
-              {props.item.title}
-            </h3>
-            <p class="mt-1 line-clamp-1 text-xs text-base-content/50">@{props.item.authorName}</p>
+        <div class="grid min-w-0 content-between gap-2">
+          <div class="grid grid-cols-[minmax(0,1fr)_3.5rem] items-start gap-2">
+            <div class="min-w-0">
+              <h3 class="line-clamp-2 text-sm font-semibold leading-5 text-base-content" title={props.item.title}>
+                {props.item.title}
+              </h3>
+              <p class="mt-1 line-clamp-1 text-xs text-base-content/50">@{props.item.authorName}</p>
+            </div>
+
+            <Show when={props.downloading && props.progress} fallback={<div class="h-14 w-14"/>}>
+              {(progress) => (
+                  <div
+                      class="grid w-14 shrink-0 justify-self-end text-center justify-items-center gap-1">
+                    <div
+                        class="radial-progress text-info"
+                        style={{
+                          "--value": String(Math.round(progress().percent)),
+                          "--size": "2.25rem",
+                          "--thickness": "3px",
+                        }}
+                        role="progressbar"
+                        aria-label={progressText(progress())}
+                    >
+                      <span class="text-[0.6rem] font-medium tabular-nums text-base-content">
+                        {Math.round(progress().percent)}
+                      </span>
+                    </div>
+                    <span class="max-w-14 truncate text-[0.65rem] leading-none text-base-content/65">
+                      {progressText(progress())}
+                    </span>
+                  </div>
+              )}
+            </Show>
           </div>
 
           <div class="flex flex-wrap items-center gap-2 text-xs text-base-content/55">
@@ -180,60 +204,50 @@ function DouyinDownloadCard(props: {
             <p class="text-xs text-warning">没有可用下载地址，可能需要重新进入详情页刷新数据。</p>
           </Show>
 
-          <Show when={isStandardVideo()}>
-            <div class="flex items-center gap-3 text-xs">
-              {/* 清晰度选项来自 bit_rate/play_addr；切换后会更新队列里的 videoURL，下载时使用当前选择。 */}
-              <Show when={(props.item.videoOptions?.length ?? 0) > 0}>
-                <span class="text-base-content/55 shrink-0">清晰度</span>
-                <select
-                    class="select select-bordered select-xs min-w-0 w-44"
-                    value={props.item.selectedVideoOptionId ?? ""}
-                    disabled={props.downloading}
-                    onChange={(event) => updateDouyinVideoOption(props.item.awemeId, event.currentTarget.value)}
-                >
-                  <For each={props.item.videoOptions ?? []}>
-                    {(option) => (
-                        <option value={option.id}>
-                          {option.gearName} · {formatDataSize(option.dataSize)}
-                        </option>
-                    )}
-                  </For>
-                </select>
-              </Show>
-              <span class="text-base-content/55 shrink-0">编码</span>
-              <span class="truncate text-base-content/70">
-              {selectedOption()?.codec ?? "-"}
-                <Show when={selectedOption()?.bitRate}>
-                {(bitRate) => ` · ${Math.round(bitRate() / 1000)} kbps`}
-              </Show>
-            </span>
-            </div>
-          </Show>
-
-          <Show when={props.downloading && props.progress}>
-            {(progress) => (
-                <div class="flex items-center gap-2">
-                  <progress class="progress progress-info h-2 flex-1" value={progress().percent} max="100"/>
-                  <span class="w-24 text-right text-xs text-base-content/70">{progressText(progress())}</span>
-                </div>
-            )}
-          </Show>
           <div class="flex flex-wrap items-center justify-end gap-2 border-t border-base-200 pt-2">
+            <Show when={isStandardVideo()}>
+              <div class="mr-auto flex min-w-0 flex-wrap items-center gap-3 text-xs">
+                <Show when={(props.item.videoOptions?.length ?? 0) > 0}>
+                  <span class="shrink-0 text-base-content/55">清晰度</span>
+                  <select
+                      class="select select-bordered select-xs w-44 min-w-0"
+                      value={props.item.selectedVideoOptionId ?? ""}
+                      disabled={props.downloading}
+                      onChange={(event) => updateDouyinVideoOption(props.item.awemeId, event.currentTarget.value)}
+                  >
+                    <For each={props.item.videoOptions ?? []}>
+                      {(option) => (
+                          <option value={option.id}>
+                            {option.gearName} · {formatDataSize(option.dataSize)}
+                          </option>
+                      )}
+                    </For>
+                  </select>
+                </Show>
+                <span class="shrink-0 text-base-content/55">编码</span>
+                <span class="truncate text-base-content/70">
+                  {selectedOption()?.codec ?? "-"}
+                  <Show when={selectedOption()?.bitRate}>
+                    {(bitRate) => ` · ${Math.round(bitRate() / 1000)} kbps`}
+                  </Show>
+                </span>
+              </div>
+            </Show>
             <button
-                class="btn btn-ghost btn-sm"
+                class="btn btn-ghost btn-xs"
                 type="button"
                 onClick={props.onDownloadCover}
                 disabled={props.coverDownloading || (props.item.coverCandidates?.length ?? 0) === 0}
             >
               {props.coverDownloading ? "保存中..." : "封面"}
             </button>
-            <button class="btn btn-warning btn-sm" type="button"
+            <button class="btn btn-warning btn-xs" type="button"
                     onClick={() => removeDouyinVideo(props.item.awemeId)}
                     disabled={props.downloading}>
               移除
             </button>
             <button
-                class="btn btn-info btn-sm"
+                class="btn btn-info btn-xs"
                 type="button"
                 onClick={props.onDownload}
                 disabled={!props.canDownload || props.downloading}
@@ -273,7 +287,18 @@ function DouyinDownloadPage(): JSXElement {
 
     setCoverDownloading(item.awemeId, true);
     try {
-      const path = await DownloadCover(covers, item.title || item.awemeId || "cover");
+      const path = await DownloadCover(covers, api.DouyinDownloadTask.createFrom({
+        awemeId: item.awemeId,
+        sourceKind: item.sourceKind,
+        sourceName: item.sourceName ?? "",
+        title: item.title || item.awemeId || "cover",
+        cover: item.cover,
+        duration: item.duration,
+        authorName: item.authorName,
+        publishTime: item.publishTime ?? 0,
+        diggCount: item.diggCount ?? 0,
+        collectCount: item.collectCount ?? 0,
+      }));
       showToast(`封面已保存：${path}`, "success");
     } catch (error) {
       showToast(error instanceof Error ? error.message : String(error), "error");
@@ -300,8 +325,8 @@ function DouyinDownloadPage(): JSXElement {
         return;
       }
 
-      const detail = await VideoDetail(awemeId);
-      const item = detailToDownloadItem(detail.aweme_detail);
+      const detail: AwemeItem = await VideoDetail(awemeId);
+      const item = detailToDownloadItem(detail);
       if (!item.awemeId) {
         showToast("解析成功，但详情中没有视频 ID", "error");
         return;
@@ -322,7 +347,7 @@ function DouyinDownloadPage(): JSXElement {
         <section class="flex flex-row join gap-2">
           <input
               type="text"
-              placeholder="请输入抖音视频分享链接、分享文案或视频 ID，可按回车直接解析"
+              placeholder="请输入抖音视频分享链接、视频 ID、精选链接，可按回车直接解析"
               value={videoURL()}
               onInput={(event) => setVideoURL(event.currentTarget.value)}
               onKeyDown={(event) => {

@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/imroc/req/v3"
 
 	"github.com/kamiertop/videodown/douyin/model"
@@ -24,23 +25,44 @@ func (d *Douyin) User(secUserId string) (model.UserResponse, error) {
 		d.logger.Errorf("request user info public headers error: %v", err)
 		return resp, fmt.Errorf("获取公共请求头失败: %w", err)
 	}
+	publicHeaders[Referer] = fmt.Sprintf("https://www.douyin.com/user/%s", secUserId)
 
-	err = d.client.Get("https://www-hj.douyin.com/aweme/v1/web/user/profile/other/").
-		SetQueryParamsAnyType(queryParams).
-		SetQueryParamsAnyType(map[string]any{
-			"sec_user_id":                 secUserId,
-			"personal_center_strategy":    1,
-			"profile_other_record_enable": 1,
-			"land_to":                     1,
-		}).
+	values := url.Values{}
+	for key, value := range queryParams {
+		values.Set(key, fmt.Sprint(value))
+	}
+	values.Set("sec_user_id", secUserId)
+	values.Set("personal_center_strategy", "1")
+	values.Set("profile_other_record_enable", "1")
+	values.Set("land_to", "1")
+	params := values.Encode()
+	aBogus := GenerateABogus(params)
+
+	apiResp := d.client.
+		Get(fmt.Sprintf("https://www-hj.douyin.com/aweme/v1/web/user/profile/other/?%s&a_bogus=%s", params, url.QueryEscape(aBogus))).
 		SetHeaders(publicHeaders).
 		SetHeader("Uifid", queryParams["uifid"].(string)).
-		Do().
-		Into(&resp)
-
+		Do()
+	if apiResp.Err != nil {
+		d.logger.Errorf("request info api error: %v", apiResp.Err)
+		return resp, apiResp.Err
+	}
+	if apiResp.IsErrorState() {
+		d.logger.Errorf("request user info http error, status code: %d", apiResp.StatusCode)
+		return resp, fmt.Errorf("请求用户信息失败, status_code=%d", apiResp.StatusCode)
+	}
+	body, err := apiResp.ToBytes()
 	if err != nil {
-		d.logger.Errorf("request info api error: %v", err)
-		return resp, err
+		d.logger.Errorf("read user info response failed: %v", err)
+		return resp, fmt.Errorf("读取用户信息响应失败: %w", err)
+	}
+	if strings.TrimSpace(string(body)) == "" {
+		d.logger.Errorf("request user info api returned empty body, status code: %d", apiResp.StatusCode)
+		return resp, errors.New("请求用户信息失败：接口返回空响应")
+	}
+	if err = sonic.Unmarshal(body, &resp); err != nil {
+		d.logger.Errorf("unmarshal user info response failed: %v", err)
+		return resp, fmt.Errorf("解析用户信息失败: %w", err)
 	}
 	if resp.StatusCode != 0 {
 		d.logger.Errorf("request user info api error, status code: %d", resp.StatusCode)

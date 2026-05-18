@@ -7,17 +7,18 @@ export const Route = createFileRoute('/')({
   component: HomeComponent,
 })
 
+// 首页，提供平台入口链接
 function HomeComponent(): JSXElement {
   return (
-    <div class="flex h-full w-full flex-1 items-center justify-center">
-      <div class="flex w-full flex-row items-center justify-center gap-6">
-        <Link to="/bilibili/profile" preload="intent" class="flex items-center gap-4 px-8 py-6">
-          <img src={bilibili} alt="Bilibili" class="w-64 h-64"/>
-        </Link>
-        <Link to="/douyin" preload="intent" class="flex items-center gap-4 px-8 py-6">
-          <img src={douyin} alt="Douyin" class="w-64 h-64"/>
-        </Link>
+      <div class="flex h-full w-full flex-1 items-center justify-center">
+        <div class="flex w-full flex-row items-center justify-center gap-6">
+          <Link to="/bilibili/profile" preload="intent" class="flex items-center gap-4 px-8 py-6">
+            <img src={bilibili} alt="Bilibili" class="w-64 h-64"/>
+          </Link>
+          <Link to="/douyin" preload="intent" class="flex items-center gap-4 px-8 py-6">
+            <img src={douyin} alt="Douyin" class="w-64 h-64"/>
+          </Link>
+        </div>
       </div>
-    </div>
   )
 }
