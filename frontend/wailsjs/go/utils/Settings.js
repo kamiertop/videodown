@@ -22,6 +22,10 @@ export function CacheMaxCost(arg1, arg2) {
   return window['go']['utils']['Settings']['CacheMaxCost'](arg1, arg2);
 }
 
+export function ClearDownloadHistory(arg1) {
+  return window['go']['utils']['Settings']['ClearDownloadHistory'](arg1);
+}
+
 export function Close() {
   return window['go']['utils']['Settings']['Close']();
 }

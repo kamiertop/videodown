@@ -17,6 +17,8 @@ export function BlockCacheMetrics():Promise<ristretto.Metrics>;
 
 export function CacheMaxCost(arg1:badger.CacheType,arg2:number):Promise<number>;
 
+export function ClearDownloadHistory(arg1:string):Promise<void>;
+
 export function Close():Promise<void>;
 
 export function Context():Promise<context.Context>;

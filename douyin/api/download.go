@@ -6,9 +6,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"mime"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -108,50 +106,12 @@ func douyinDownloadCacheKey(awemeID string) string {
 	return douyinDownloadedCachePrefix + id
 }
 
-func uniqueDouyinFilePath(path string) string {
-	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		return path
-	}
-	ext := filepath.Ext(path)
-	base := strings.TrimSuffix(path, ext)
-	for i := 1; ; i++ {
-		candidate := fmt.Sprintf("%s(%d)%s", base, i, ext)
-		if _, err := os.Stat(candidate); errors.Is(err, os.ErrNotExist) {
-			return candidate
-		}
-	}
-}
-
 func normalizeDouyinHTTPURL(rawURL string) string {
 	rawURL = strings.TrimSpace(rawURL)
 	if strings.HasPrefix(rawURL, "//") {
 		return "https:" + rawURL
 	}
 	return rawURL
-}
-
-func douyinImageExtFromResponse(rawURL string, resp *http.Response) string {
-	if u, err := url.Parse(rawURL); err == nil {
-		if ext := strings.ToLower(filepath.Ext(u.Path)); ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp" || ext == ".gif" {
-			if ext == ".jpeg" {
-				return ".jpg"
-			}
-			return ext
-		}
-	}
-	if resp != nil {
-		contentType := resp.Header.Get("Content-Type")
-		if contentType != "" {
-			if exts, err := mime.ExtensionsByType(strings.Split(contentType, ";")[0]); err == nil && len(exts) > 0 {
-				ext := strings.ToLower(exts[0])
-				if ext == ".jpeg" || ext == ".jpe" {
-					return ".jpg"
-				}
-				return ext
-			}
-		}
-	}
-	return ".jpg"
 }
 
 func bestDouyinCoverURL(covers []model.Cover) string {
@@ -311,31 +271,11 @@ func (d *Douyin) DeleteDownloadHistory(awemeID string) error {
 
 // ClearDownloadHistory 清空抖音下载历史；不会删除已经下载到本地的文件。
 func (d *Douyin) ClearDownloadHistory() error {
-	prefix := []byte(douyinDownloadedCachePrefix)
-	return d.settings.Update(func(txn *badger.Txn) error {
-		keys := make([][]byte, 0)
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			keys = append(keys, it.Item().KeyCopy(nil))
-		}
-		for _, key := range keys {
-			if err := txn.Delete(key); err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
-				return err
-			}
-		}
-		return nil
-	})
+	return d.settings.ClearDownloadHistory(douyinDownloadedCachePrefix)
 }
 
 // downloadURLToFile 手动流式读取响应体，这样才能持续把字节进度推给前端。
 func (d *Douyin) downloadURLToFile(rawURL, targetPath string, task DouyinDownloadTask, phase string, start, weight float64) error {
-	rawURL = strings.TrimSpace(rawURL)
-	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
-		return errors.New("下载地址无效")
-	}
-
 	headers, err := d.publicHeaders()
 	if err != nil {
 		return err
@@ -495,7 +435,7 @@ func (d *Douyin) downloadTask(task DouyinDownloadTask) (string, error) {
 		if dirName == "" {
 			dirName = "douyin"
 		}
-		dir := uniqueDouyinFilePath(filepath.Join(targetDir, dirName))
+		dir := utils.UniqueFilePath(filepath.Join(targetDir, dirName))
 		if err = os.MkdirAll(dir, 0o755); err != nil {
 			return "", errors.New("创建素材目录失败")
 		}
@@ -544,7 +484,7 @@ func (d *Douyin) downloadTask(task DouyinDownloadTask) (string, error) {
 	if fileName == "" {
 		fileName = "douyin"
 	}
-	outPath := uniqueDouyinFilePath(filepath.Join(targetDir, fileName+".mp4"))
+	outPath := utils.UniqueFilePath(filepath.Join(targetDir, fileName+".mp4"))
 	if err = d.downloadURLToFile(task.VideoURL, outPath, task, "video", 0, 100); err != nil {
 		d.emitDownloadProgress(douyinDownloadProgress{AwemeID: task.AwemeID, Title: task.Title, Phase: "error"})
 		return "", err
@@ -666,12 +606,6 @@ func (d *Douyin) DownloadCover(covers []model.Cover, task DouyinDownloadTask) (s
 	if coverURL == "" {
 		return "", errors.New("封面地址无效")
 	}
-	task.AwemeID = strings.TrimSpace(task.AwemeID)
-	task.AuthorName = strings.TrimSpace(task.AuthorName)
-	task.Title = strings.TrimSpace(task.Title)
-	if task.Title == "" {
-		task.Title = task.AwemeID
-	}
 
 	storagePath, err := d.settings.GetStorage()
 	if err != nil {
@@ -692,18 +626,12 @@ func (d *Douyin) DownloadCover(covers []model.Cover, task DouyinDownloadTask) (s
 	headers[Accept] = "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"
 
 	resp, err := d.client.R().
-		DisableAutoReadResponse().
 		SetRetryCount(2).
 		SetHeaders(headers).
 		Get(coverURL)
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		if resp != nil && resp.Body != nil {
-			_ = resp.Body.Close()
-		}
-	}()
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return "", fmt.Errorf("封面下载失败: %s", resp.Status)
 	}
@@ -712,24 +640,9 @@ func (d *Douyin) DownloadCover(covers []model.Cover, task DouyinDownloadTask) (s
 	if fileName == "" {
 		fileName = "cover"
 	}
-	ext := douyinImageExtFromResponse(coverURL, resp.Response)
-	outPath := uniqueDouyinFilePath(filepath.Join(targetDir, fileName+ext))
-	tmp, err := os.CreateTemp(targetDir, ".douyin-cover-*"+ext)
-	if err != nil {
-		return "", err
-	}
-	tmpPath := tmp.Name()
-	defer func() {
-		_ = os.Remove(tmpPath)
-	}()
-	if _, err = io.Copy(tmp, resp.Body); err != nil {
-		_ = tmp.Close()
-		return "", err
-	}
-	if err = tmp.Close(); err != nil {
-		return "", err
-	}
-	if err = os.Rename(tmpPath, outPath); err != nil {
+	ext := utils.ImageExtFromResponse(coverURL, resp.Response)
+	outPath := utils.UniqueFilePath(filepath.Join(targetDir, fileName+ext))
+	if err = os.WriteFile(outPath, resp.Bytes(), 0o644); err != nil {
 		return "", err
 	}
 	if task.AwemeID != "" {

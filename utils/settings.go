@@ -349,3 +349,22 @@ func (s *Settings) OnShutdown(_ context.Context) {
 	}
 	s.logger.Info("Close BadgerDB and shutdown application")
 }
+
+func (s *Settings) ClearDownloadHistory(prefixKey string) error {
+	prefix := []byte(prefixKey)
+	return s.Update(func(txn *badger.Txn) error {
+		keys := make([][]byte, 0)
+		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		defer it.Close()
+
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			keys = append(keys, it.Item().KeyCopy(nil))
+		}
+		for _, key := range keys {
+			if err := txn.Delete(key); err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
+				return err
+			}
+		}
+		return nil
+	})
+}
