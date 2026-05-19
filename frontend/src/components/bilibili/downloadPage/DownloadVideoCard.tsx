@@ -71,7 +71,7 @@ export default function DownloadVideoCard(props: DownloadVideoCardProps): JSXEle
         </div>
 
         <div class="grid min-w-0 content-between gap-2">
-          <div class="grid gap-2 lg:grid-cols-[minmax(0,1fr)_3.5rem] lg:items-start">
+          <div class="grid grid-cols-[minmax(0,1fr)_3.5rem] items-start gap-2">
             <div class="min-w-0">
               <h3 class="line-clamp-2 text-sm font-semibold leading-5 text-base-content">
                 {props.item.title}
@@ -97,11 +97,11 @@ export default function DownloadVideoCard(props: DownloadVideoCardProps): JSXEle
               </div>
             </div>
 
-            <Show when={props.downloading && props.progress} fallback={<div class="hidden h-14 w-14 lg:block"/>}>
-              {progress => (
+            <Show when={props.downloading && props.progress} fallback={<div class="h-14 w-14"/>}>
+              {(progress): JSXElement => (
                   // 固定宽度的右侧进度块占用标题区空白，避免下载状态改变时按钮行抖动。
                   <div
-                      class="hidden w-14 shrink-0 justify-self-end text-center lg:grid lg:justify-items-center lg:gap-1">
+                      class="grid w-14 shrink-0 justify-self-end text-center justify-items-center gap-1">
                     <div
                         class="radial-progress text-info"
                         style={{

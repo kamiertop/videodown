@@ -5,9 +5,7 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"mime"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -65,10 +63,6 @@ type DashDownloadBatchResult struct {
 	Failed  int                  `json:"failed"`
 }
 
-func streamBaseURL(v string) string {
-	return strings.TrimSpace(v)
-}
-
 func normalizeHTTPURL(rawURL string) string {
 	rawURL = strings.TrimSpace(rawURL)
 	if strings.HasPrefix(rawURL, "//") {
@@ -93,46 +87,6 @@ func sanitizeFilename(name string) string {
 		return "video"
 	}
 	return t
-}
-
-func uniqueFilePath(path string) string {
-	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
-		return path
-	}
-	ext := filepath.Ext(path)
-	base := strings.TrimSuffix(path, ext)
-	for i := 1; ; i++ {
-		candidate := fmt.Sprintf("%s(%d)%s", base, i, ext)
-		if _, err := os.Stat(candidate); errors.Is(err, os.ErrNotExist) {
-			return candidate
-		}
-	}
-}
-
-func imageExtFromResponse(rawURL string, resp *http.Response) string {
-	if u, err := url.Parse(rawURL); err == nil {
-		if ext := strings.ToLower(filepath.Ext(u.Path)); ext == ".jpg" || ext == ".jpeg" || ext == ".png" || ext == ".webp" || ext == ".gif" {
-			if ext == ".jpeg" {
-				return ".jpg"
-			}
-			return ext
-		}
-	}
-
-	if resp != nil {
-		contentType := resp.Header.Get("Content-Type")
-		if contentType != "" {
-			if exts, err := mime.ExtensionsByType(strings.Split(contentType, ";")[0]); err == nil && len(exts) > 0 {
-				ext := strings.ToLower(exts[0])
-				if ext == ".jpeg" || ext == ".jpe" {
-					return ".jpg"
-				}
-				return ext
-			}
-		}
-	}
-
-	return ".jpg"
 }
 
 // downloadedCachePath 返回已下载缓存中的文件路径；缓存只在后端使用，不增加前端协议字段。
@@ -336,13 +290,10 @@ func weightedPercent(start, weight float64, downloaded, total int64) float64 {
 }
 
 // downloadToFile 使用无总时长限制的 HTTP client 流式读取响应体；长视频下载不能复用接口请求的整体超时。
-func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title string, cid int64, phase, cookies string, start, weight float64) error {
-	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
-		return errors.New("流地址无效")
-	}
-
+func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title string, cid int64, phase, cookies string, start, weight float64) (err error) {
 	resp, err := b.downloadClient.R().
 		DisableAutoReadResponse().
+		SetRetryCount(2).
 		SetHeader(UserAgent, userAgent()).
 		SetHeader(Referer, fmt.Sprintf("https://www.bilibili.com/video/%s", strings.TrimSpace(bvid))).
 		SetHeader(Origin, biliBiliUrl).
@@ -352,7 +303,7 @@ func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title string, cid in
 		return err
 	}
 	defer func() {
-		_ = resp.Body.Close()
+		err = resp.Body.Close()
 	}()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -364,7 +315,7 @@ func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title string, cid in
 		return err
 	}
 	defer func() {
-		_ = f.Close()
+		err = f.Close()
 	}()
 
 	total := resp.ContentLength
@@ -431,8 +382,6 @@ func (b *BiliBili) downloadDashTask(task DashDownloadTask) (string, error) {
 		return path, nil
 	}
 
-	task.VideoURL = streamBaseURL(task.VideoURL)
-	task.AudioURL = streamBaseURL(task.AudioURL)
 	if task.VideoURL == "" {
 		return "", errors.New("视频流地址为空")
 	}
@@ -461,7 +410,7 @@ func (b *BiliBili) downloadDashTask(task DashDownloadTask) (string, error) {
 		task.Bvid = "BV_UNKNOWN"
 	}
 
-	outPath := uniqueFilePath(filepath.Join(targetDir, fileName+".mp4"))
+	outPath := utils.UniqueFilePath(filepath.Join(targetDir, fileName+".mp4"))
 
 	tmpDir := filepath.Join(storagePath, ".tmp", fmt.Sprintf("%s-%d", task.Bvid, time.Now().UnixNano()))
 	if err = os.MkdirAll(tmpDir, 0o755); err != nil {
@@ -693,11 +642,6 @@ func (b *BiliBili) DownloadCover(cover string, task DashDownloadTask) (string, e
 	if !strings.HasPrefix(cover, "http://") && !strings.HasPrefix(cover, "https://") {
 		return "", errors.New("封面地址无效")
 	}
-	task.Bvid = strings.TrimSpace(task.Bvid)
-	task.Title = strings.TrimSpace(task.Title)
-	if task.Title == "" {
-		task.Title = task.Bvid
-	}
 
 	storagePath, err := b.settings.GetStorage()
 	if err != nil {
@@ -712,7 +656,6 @@ func (b *BiliBili) DownloadCover(cover string, task DashDownloadTask) (string, e
 	}
 
 	resp, err := b.client.R().
-		DisableAutoReadResponse().
 		SetRetryCount(2).
 		SetHeader(UserAgent, userAgent()).
 		SetHeader(Referer, biliBiliUrl).
@@ -721,39 +664,17 @@ func (b *BiliBili) DownloadCover(cover string, task DashDownloadTask) (string, e
 	if err != nil {
 		return "", err
 	}
-	defer func() {
-		if resp != nil && resp.Body != nil {
-			_ = resp.Body.Close()
-		}
-	}()
-
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
 		return "", fmt.Errorf("封面下载失败: %s", resp.Status)
 	}
 
-	ext := imageExtFromResponse(cover, resp.Response)
+	ext := utils.ImageExtFromResponse(cover, resp.Response)
 	fileName := sanitizeFilename(task.Title)
 	if fileName == "video" {
 		fileName = "cover"
 	}
-	outPath := uniqueFilePath(filepath.Join(targetDir, fileName+ext))
-	tmp, err := os.CreateTemp(targetDir, ".cover-*"+ext)
-	if err != nil {
-		return "", err
-	}
-	tmpPath := tmp.Name()
-	defer func() {
-		_ = os.Remove(tmpPath)
-	}()
-
-	if _, err = io.Copy(tmp, resp.Body); err != nil {
-		_ = tmp.Close()
-		return "", err
-	}
-	if err = tmp.Close(); err != nil {
-		return "", err
-	}
-	if err = os.Rename(tmpPath, outPath); err != nil {
+	outPath := utils.UniqueFilePath(filepath.Join(targetDir, fileName+ext))
+	if err = os.WriteFile(outPath, resp.Bytes(), 0o644); err != nil {
 		return "", err
 	}
 	if task.Cid > 0 {

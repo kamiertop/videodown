@@ -89,22 +89,7 @@ func (b *BiliBili) DownloadHistory() ([]model.DownloadHistoryItem, error) {
 
 // ClearDownloadHistory 清空 B 站下载历史；只清理缓存记录，不删除已经保存到本地的视频文件。
 func (b *BiliBili) ClearDownloadHistory() error {
-	prefix := []byte(downloadedVideoCachePrefix)
-	return b.settings.Update(func(txn *badger.Txn) error {
-		keys := make([][]byte, 0)
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			keys = append(keys, it.Item().KeyCopy(nil))
-		}
-		for _, key := range keys {
-			if err := txn.Delete(key); err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
-				return err
-			}
-		}
-		return nil
-	})
+	return b.settings.ClearDownloadHistory(downloadedVideoCachePrefix)
 }
 
 // DeleteDownloadHistory 删除单条下载历史；只清理缓存记录，不删除已经保存到本地的视频文件。
