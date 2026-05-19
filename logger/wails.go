@@ -3,6 +3,7 @@ package logger
 import (
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/rs/zerolog"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -31,8 +32,12 @@ func (l *Logger) WithName(name string) *Logger {
 
 func logWriter() io.Writer {
 	if IsProdMode() {
+		logPath := "videodown.log"
+		if execPath, err := os.Executable(); err == nil {
+			logPath = filepath.Join(filepath.Dir(execPath), "videodown.log")
+		}
 		return &lumberjack.Logger{
-			Filename:   "videodown.log",
+			Filename:   logPath,
 			MaxSize:    10, // MB
 			MaxAge:     0,
 			MaxBackups: 100,

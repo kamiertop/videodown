@@ -1,15 +1,10 @@
 package logger
 
-import "os"
+// Mode is set at build time via ldflags, e.g. -ldflags="-X github.com/kamiertop/videodown/logger.Mode=prod"
+var Mode = "dev"
 
-const (
-	prodEnvKey   = "mode"
-	prodEnvValue = "prod"
-)
-
-// mode=prod 时写文件并收敛日志级别；其它情况按开发模式输出到 stdout。
 func IsProdMode() bool {
-	return os.Getenv(prodEnvKey) == prodEnvValue
+	return Mode == "prod"
 }
 
 func IsDevMode() bool {

@@ -22,7 +22,7 @@ import (
 var assets embed.FS
 
 //go:embed build/appicon.png
-var macIcon []byte
+var icon []byte
 
 const appName = "videodown"
 
@@ -96,11 +96,11 @@ func main() {
 			About: &mac.AboutInfo{
 				Title:   appName,
 				Message: "",
-				Icon:    macIcon,
+				Icon:    icon,
 			},
 		},
 		Linux: &linux.Options{
-			Icon:                macIcon,
+			Icon:                icon,
 			WindowIsTranslucent: false,
 			Messages:            nil,
 			WebviewGpuPolicy:    linux.WebviewGpuPolicyAlways,
