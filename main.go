@@ -2,11 +2,13 @@ package main
 
 import (
 	"embed"
+	"os"
 
 	bilibiliapi "github.com/kamiertop/videodown/bilibili/api"
 	douyinapi "github.com/kamiertop/videodown/douyin/api"
 	mylogger "github.com/kamiertop/videodown/logger"
 	"github.com/kamiertop/videodown/utils"
+	"github.com/wailsapp/wails/v2/pkg/options/linux"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/logger"
@@ -22,8 +24,15 @@ var assets embed.FS
 //go:embed build/appicon.png
 var macIcon []byte
 
+const appName = "videodown"
+
 func main() {
 	log := mylogger.New()
+	if err := os.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "1"); err != nil {
+		//	https://github.com/tauri-apps/tauri/issues/10702
+		// 设置webgpu相关环境变量，解决Linux平台下WebView2渲染问题
+		log.Fatalf("Failed to set environment variable: %v", err)
+	}
 	settings, err := utils.NewSettings(log)
 	if err != nil {
 		log.Fatalf("Failed to initialize settings: %v", err)
@@ -85,10 +94,17 @@ func main() {
 			WebviewIsTransparent: true,
 			WindowIsTranslucent:  true,
 			About: &mac.AboutInfo{
-				Title:   "videodown",
+				Title:   appName,
 				Message: "",
 				Icon:    macIcon,
 			},
+		},
+		Linux: &linux.Options{
+			Icon:                macIcon,
+			WindowIsTranslucent: false,
+			Messages:            nil,
+			WebviewGpuPolicy:    linux.WebviewGpuPolicyAlways,
+			ProgramName:         appName,
 		},
 	})
 
