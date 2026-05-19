@@ -68,12 +68,13 @@ func (s *Settings) init() error {
 	return s.DB.Update(func(txn *badger.Txn) error {
 		defaultValue := map[string]string{
 			themeKey:            "light",
-			storageKey:          filepath.Join(executable, "./download"),
+			storageKey:          filepath.Join(filepath.Dir(executable), "download"),
 			allowGroupOnSaveKey: "true",
 			sleepTimeKey:        "60",
 			concurrencyNumKey:   "1",
 			// 其他设置项的默认值
 		}
+		s.logger.Infof("set default storage path: %s", defaultValue[storageKey])
 		var errList error
 		for key, value := range defaultValue {
 			if _, err := txn.Get([]byte(key)); errors.Is(err, badger.ErrKeyNotFound) {
@@ -107,7 +108,11 @@ func NewSettingsWithMemory(logger *logger.Logger) *Settings {
 }
 
 func NewSettings(logger *logger.Logger) (*Settings, error) {
-	db, err := badger.Open(badger.DefaultOptions("videodown.db").WithLogger(logger).WithLoggingLevel(badger.ERROR))
+	dbPath := "videodown.db"
+	if execPath, err := os.Executable(); err == nil {
+		dbPath = filepath.Join(filepath.Dir(execPath), dbPath)
+	}
+	db, err := badger.Open(badger.DefaultOptions(dbPath).WithLogger(logger).WithLoggingLevel(badger.ERROR))
 	if err != nil {
 		panic(err)
 	}

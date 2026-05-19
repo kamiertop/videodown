@@ -77,10 +77,11 @@ jobs:
         env:
           mode: prod
         run: |
+          LDFLAGS="-X github.com/kamiertop/videodown/utils.Version=${{ github.ref_name }} -X github.com/kamiertop/videodown/logger.Mode=prod"
           if [ -n "${{ matrix.build_tags }}" ]; then
-            wails build --clean --platform "${{ matrix.platform }}" -tags "${{ matrix.build_tags }}" -ldflags "-X github.com/kamiertop/videodown/utils.Version=${{ github.ref_name }}"
+            wails build --clean --platform "${{ matrix.platform }}" -tags "${{ matrix.build_tags }}" -ldflags "$LDFLAGS"
           else
-            wails build --clean --platform "${{ matrix.platform }}" -ldflags "-X github.com/kamiertop/videodown/utils.Version=${{ github.ref_name }}"
+            wails build --clean --platform "${{ matrix.platform }}" -ldflags "$LDFLAGS"
           fi
 
       - name: Package Linux artifact
