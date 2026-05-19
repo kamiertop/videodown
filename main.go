@@ -42,11 +42,11 @@ func main() {
 	douyin := douyinapi.New(log, settings)
 	// Create application with options
 	err = wails.Run(&options.App{
-		Title:             "",
-		Width:             1300,
-		Height:            1000,
-		MinWidth:          1024,
-		MinHeight:         800,
+		Title:             appName,
+		Width:             1000,
+		Height:            780,
+		MinWidth:          760,
+		MinHeight:         600,
 		MaxWidth:          2560,
 		MaxHeight:         1440,
 		DisableResize:     false,
