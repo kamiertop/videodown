@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/dgraph-io/badger/v4"
-	"github.com/labstack/gommon/log"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/kamiertop/videodown/logger"
@@ -345,8 +344,8 @@ func (s *Settings) GetVersion() string {
 // OnShutdown is called when the application is shutting down
 func (s *Settings) OnShutdown(_ context.Context) {
 	if err := s.DB.Close(); err != nil {
-		log.Errorf("Failed to close settings DB: %v", err)
+		s.logger.Errorf("Failed to close settings DB: %v", err)
 		return
 	}
-	log.Info("Close BadgerDB and shutdown application")
+	s.logger.Info("Close BadgerDB and shutdown application")
 }
