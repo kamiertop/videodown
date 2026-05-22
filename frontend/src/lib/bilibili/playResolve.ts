@@ -1,5 +1,6 @@
 import {VideoDetailConciseBvid, VideoPlayURL} from "../../../wailsjs/go/api/BiliBili";
 import {model} from "../../../wailsjs/go/models";
+import {GetKey} from "../../../wailsjs/go/utils/Settings";
 
 export function bvidCacheKey(bvid: string | undefined): string | null {
   const t = bvid?.trim();
@@ -140,7 +141,7 @@ export class BilibiliPlayResolveError extends Error {
   }
 }
 
-function videoAccessInfoFromView(view: model.VideoDetailView): VideoAccessInfo {
+export function videoAccessInfoFromView(view: model.VideoDetailView): VideoAccessInfo {
   const isPaid =
       (view.rights?.pay ?? 0) > 0 ||
       (view.rights?.ugc_pay ?? 0) > 0 ||
@@ -165,7 +166,7 @@ function videoAccessInfoFromView(view: model.VideoDetailView): VideoAccessInfo {
   };
 }
 
-function shouldSkipPlayUrl(accessInfo: VideoAccessInfo): boolean {
+export function shouldSkipPlayUrl(accessInfo: VideoAccessInfo): boolean {
   // 充电专属且当前账号没有播放/试看权限时，playurl 通常不会返回可下载 DASH 流。
   // 在详情阶段直接标记失败，避免用户选中多个视频时多打无效的播放地址请求。
   return accessInfo.isUpowerExclusive && !accessInfo.isUpowerPlay && !accessInfo.isUpowerPreview;
@@ -253,7 +254,7 @@ function buildSummaryLine(
   return line;
 }
 
-function buildResolvedPlayInfo(
+export function buildResolvedPlayInfo(
     ctx: { aid: number; cid: number; bvid: string; partCount: number },
     play: model.VideoURLData,
     accessInfo: VideoAccessInfo,
@@ -360,7 +361,9 @@ export async function resolveBilibiliPlayUrl(
   }
 
   try {
-    const play = await VideoPlayURL(aid, bvid, cid, 80);
+    const savedQn = await GetKey("bilibili_default_qn").catch(() => "");
+    const qn = parseInt(savedQn) || 80;
+    const play = await VideoPlayURL(aid, bvid, cid, qn);
     return buildResolvedPlayInfo({aid, cid, bvid, partCount}, play, accessInfo);
   } catch (e) {
     throw new BilibiliPlayResolveError(errorMessage(e), accessInfo);

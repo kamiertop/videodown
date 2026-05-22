@@ -50,6 +50,10 @@ export function EstimateSize(arg1) {
   return window['go']['utils']['Settings']['EstimateSize'](arg1);
 }
 
+export function FFmpegPath() {
+  return window['go']['utils']['Settings']['FFmpegPath']();
+}
+
 export function Flatten(arg1) {
   return window['go']['utils']['Settings']['Flatten'](arg1);
 }
@@ -64,6 +68,22 @@ export function GetKey(arg1) {
 
 export function GetMergeOperator(arg1, arg2, arg3) {
   return window['go']['utils']['Settings']['GetMergeOperator'](arg1, arg2, arg3);
+}
+
+export function GetParsePlayURLNum() {
+  return window['go']['utils']['Settings']['GetParsePlayURLNum']();
+}
+
+export function GetParsePlayURLNumSafe() {
+  return window['go']['utils']['Settings']['GetParsePlayURLNumSafe']();
+}
+
+export function GetParsePlayURLSleep() {
+  return window['go']['utils']['Settings']['GetParsePlayURLSleep']();
+}
+
+export function GetParsePlayURLSleepSafe() {
+  return window['go']['utils']['Settings']['GetParsePlayURLSleepSafe']();
 }
 
 export function GetSavePreference() {
@@ -96,6 +116,10 @@ export function HasFFmpeg() {
 
 export function IndexCacheMetrics() {
   return window['go']['utils']['Settings']['IndexCacheMetrics']();
+}
+
+export function IsAutoUpdate() {
+  return window['go']['utils']['Settings']['IsAutoUpdate']();
 }
 
 export function IsClosed() {
@@ -186,6 +210,14 @@ export function RunValueLogGC(arg1) {
   return window['go']['utils']['Settings']['RunValueLogGC'](arg1);
 }
 
+export function SelectFFmpegPath() {
+  return window['go']['utils']['Settings']['SelectFFmpegPath']();
+}
+
+export function SetAutoUpdate(arg1) {
+  return window['go']['utils']['Settings']['SetAutoUpdate'](arg1);
+}
+
 export function SetConcurrencyNum(arg1) {
   return window['go']['utils']['Settings']['SetConcurrencyNum'](arg1);
 }
@@ -194,8 +226,20 @@ export function SetDiscardTs(arg1) {
   return window['go']['utils']['Settings']['SetDiscardTs'](arg1);
 }
 
+export function SetFFmpegPath(arg1) {
+  return window['go']['utils']['Settings']['SetFFmpegPath'](arg1);
+}
+
 export function SetKey(arg1, arg2) {
   return window['go']['utils']['Settings']['SetKey'](arg1, arg2);
+}
+
+export function SetParsePlayURLNum(arg1) {
+  return window['go']['utils']['Settings']['SetParsePlayURLNum'](arg1);
+}
+
+export function SetParsePlayURLSleep(arg1) {
+  return window['go']['utils']['Settings']['SetParsePlayURLSleep'](arg1);
 }
 
 export function SetSavePreference(arg1) {

@@ -66,11 +66,14 @@ func (s *Settings) init() error {
 
 	return s.DB.Update(func(txn *badger.Txn) error {
 		defaultValue := map[string]string{
-			themeKey:            "light",
-			storageKey:          filepath.Join(filepath.Dir(executable), "download"),
-			allowGroupOnSaveKey: "true",
-			sleepTimeKey:        "60",
-			concurrencyNumKey:   "1",
+			themeKey:             "light",
+			storageKey:           filepath.Join(filepath.Dir(executable), "download"),
+			allowGroupOnSaveKey:  "true",
+			sleepTimeKey:         "60",
+			concurrencyNumKey:    "1",
+			autoUpdateKey:        "false",
+			parsePlayURLNumKey:   "3",
+			parsePlayURLSleepKey: "5",
 			// 其他设置项的默认值
 		}
 		s.logger.Infof("set default storage path: %s", defaultValue[storageKey])

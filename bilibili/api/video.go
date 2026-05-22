@@ -118,10 +118,12 @@ func (b *BiliBili) VideoDetailConciseBvid(bvid string) (model.VideoDetailConcise
 	}
 	cookies, err := b.getCookies()
 	if err != nil {
+		b.logger.Errorf("get cookies before video detail failed, bvid: %s, err: %v", bvid, err)
 		return resp.Data, err
 	}
 	params, err = b.encWbiParams(params)
 	if err != nil {
+		b.logger.Errorf("encode video detail params failed, bvid: %s, err: %v", bvid, err)
 		return resp.Data, err
 	}
 
@@ -136,10 +138,11 @@ func (b *BiliBili) VideoDetailConciseBvid(bvid string) (model.VideoDetailConcise
 		Do().
 		Into(&resp)
 	if err != nil {
+		b.logger.Errorf("request video detail api error, bvid: %s, err: %v", bvid, err)
 		return resp.Data, err
 	}
 	if resp.Code != model.SuccessCode {
-		b.logger.Errorf("request video detail error, code: %d, message: %s", resp.Code, resp.Message)
+		b.logger.Errorf("request video detail error, bvid: %s, code: %d, message: %s", bvid, resp.Code, resp.Message)
 		return resp.Data, errors.New("请求视频详情接口错误: " + resp.Message)
 	}
 

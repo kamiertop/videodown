@@ -31,6 +31,8 @@ export function DropPrefix(arg1:Array<any>):Promise<void>;
 
 export function EstimateSize(arg1:Array<number>):Promise<number|number>;
 
+export function FFmpegPath():Promise<string>;
+
 export function Flatten(arg1:number):Promise<void>;
 
 export function GetConcurrencyNum():Promise<number>;
@@ -38,6 +40,14 @@ export function GetConcurrencyNum():Promise<number>;
 export function GetKey(arg1:string):Promise<string>;
 
 export function GetMergeOperator(arg1:Array<number>,arg2:badger.MergeFunc,arg3:time.Duration):Promise<badger.MergeOperator>;
+
+export function GetParsePlayURLNum():Promise<number>;
+
+export function GetParsePlayURLNumSafe():Promise<number>;
+
+export function GetParsePlayURLSleep():Promise<number>;
+
+export function GetParsePlayURLSleepSafe():Promise<number>;
 
 export function GetSavePreference():Promise<boolean>;
 
@@ -54,6 +64,8 @@ export function GetVersion():Promise<string>;
 export function HasFFmpeg():Promise<boolean>;
 
 export function IndexCacheMetrics():Promise<ristretto.Metrics>;
+
+export function IsAutoUpdate():Promise<boolean>;
 
 export function IsClosed():Promise<boolean>;
 
@@ -99,11 +111,21 @@ export function Ranges(arg1:Array<number>,arg2:number):Promise<Array<badger.keyR
 
 export function RunValueLogGC(arg1:number):Promise<void>;
 
+export function SelectFFmpegPath():Promise<string>;
+
+export function SetAutoUpdate(arg1:boolean):Promise<void>;
+
 export function SetConcurrencyNum(arg1:number):Promise<void>;
 
 export function SetDiscardTs(arg1:number):Promise<void>;
 
+export function SetFFmpegPath(arg1:string):Promise<void>;
+
 export function SetKey(arg1:string,arg2:string):Promise<void>;
+
+export function SetParsePlayURLNum(arg1:number):Promise<void>;
+
+export function SetParsePlayURLSleep(arg1:number):Promise<void>;
 
 export function SetSavePreference(arg1:boolean):Promise<void>;
 

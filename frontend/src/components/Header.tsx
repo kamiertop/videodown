@@ -5,14 +5,13 @@ import {BrowserOpenURL} from "../../wailsjs/runtime";
 import app from "../assets/pixel.png";
 
 // Simple, data-driven Header: desktop-only, flat nav with emojis
-type RoutePath = '/' | '/bilibili' | '/douyin' | '/settings' | '/about';
+type RoutePath = '/' | '/bilibili' | '/douyin' | '/settings';
 
 const NAV_ITEMS: { to: RoutePath; label: string; emoji: string }[] = [
   {to: '/', label: '首页', emoji: '🏠'},
   {to: '/bilibili', label: 'B 站', emoji: '📺'},
   {to: '/douyin', label: '抖音', emoji: '🎵'},
   {to: '/settings', label: '设置', emoji: '⚙️'},
-  {to: '/about', label: '关于', emoji: '💡'},
 ];
 
 const GITHUB_REPO_URL = 'https://github.com/kamiertop/videodown';

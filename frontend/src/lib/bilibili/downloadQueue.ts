@@ -1,20 +1,23 @@
 import {createEffect, createSignal, onCleanup} from "solid-js";
-import {DownloadVideosByDash} from "../../../wailsjs/go/api/BiliBili";
+import {BatchResolvePlayUrl, DownloadVideosByDash} from "../../../wailsjs/go/api/BiliBili";
 import {api} from "../../../wailsjs/go/models";
 import {EventsOn} from "../../../wailsjs/runtime";
 import type {MediaCardItem} from "../model.ts";
-import {Semaphore} from "../semaphore.ts";
 import {
-  BilibiliPlayResolveError,
   bilibiliPlayResolveKey,
-  resolveBilibiliPlayUrl,
+  buildResolvedPlayInfo,
   type ResolvedPlayInfo,
+  shouldSkipPlayUrl,
   streamBaseUrl,
   switchResolvedAudio,
   switchResolvedPlayAtQn,
   type VideoAccessInfo,
+  videoAccessInfoFromView,
 } from "./playResolve.ts";
 import {removeVideoAfterDownloadSuccess, videoList} from "./store.ts";
+
+type PlayUrlRequest = api.PlayUrlRequest;
+type PlayUrlResult = api.PlayUrlResult;
 
 type ToastType = "error" | "success" | "info" | "warning";
 type ShowToast = (message: string, type?: ToastType) => void;
@@ -52,7 +55,6 @@ type DashDownloadTask = api.DashDownloadTask;
 
 // 解析播放地址是异步副作用。这个 Set 防止 Solid effect 重跑时对同一个 BV 重复发起解析请求。
 const playResolveInFlight = new Set<string>();
-const playResolveSemaphore = new Semaphore(3);
 const [playResolveByBvid, setPlayResolveByBvid] = createSignal<Record<string, PlayResolveEntry>>({});
 const [downloading, setDownloading] = createSignal<boolean>(false);
 const [downloadingByBvid, setDownloadingByBvid] = createSignal<Record<string, boolean>>({});
@@ -100,8 +102,7 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
   // downloading 是整批下载的全局锁；downloadingByBvid 用来控制单张卡片的按钮和进度条。
 
   createEffect(() => {
-    // 这个 effect 是下载页的核心入口：
-    // 只要全局 videoList 变化，就自动清理已移除视频的解析状态，并为新增视频解析 DASH。
+    // 只要全局 videoList 变化，就清理已移除视频的解析状态，并为新增视频批量解析 DASH。
     const list = videoList();
     const bvSet = new Set(
         list.map((i) => bilibiliPlayResolveKey(i)).filter((k): k is string => !!k),
@@ -111,7 +112,6 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
       const next: Record<string, PlayResolveEntry> = {...prev};
       for (const k of Object.keys(next)) {
         if (!bvSet.has(k)) {
-          // 视频被用户移出列表后，解析缓存和 in-flight 标记都要同步清掉。
           playResolveInFlight.delete(k);
           delete next[k];
         }
@@ -121,37 +121,87 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
 
     const map = playResolveByBvid();
 
+    // 收集所有待解析的视频
+    const pending: Array<{ item: MediaCardItem; key: string }> = [];
     for (const item of list) {
       const key = bilibiliPlayResolveKey(item);
       if (!key || playResolveInFlight.has(key)) continue;
 
       const cur = map[key];
       if (cur?.status === "loading" || cur?.status === "done" || cur?.status === "error") {
-        // done/error 都先保留，避免用户只是滚动或列表重渲染时重新打播放地址接口。
         continue;
       }
 
       playResolveInFlight.add(key);
       setPlayResolveByBvid((p) => ({...p, [key]: {status: "loading"}}));
-
-      void (async () => {
-        try {
-          await playResolveSemaphore.acquire();
-          // resolveBilibiliPlayUrl 内部只请求一次 playurl；画质/音质切换复用返回的 dash 字段。
-          const data = await resolveBilibiliPlayUrl(item.bvid, {cid: item.cid});
-          if (!containsPlayKey(key)) return;
-          setPlayResolveByBvid((p) => ({...p, [key]: {status: "done", data}}));
-        } catch (e) {
-          if (!containsPlayKey(key)) return;
-          const message = e instanceof Error ? e.message : String(e);
-          const accessInfo = e instanceof BilibiliPlayResolveError ? e.accessInfo : undefined;
-          setPlayResolveByBvid((p) => ({...p, [key]: {status: "error", message, accessInfo}}));
-        } finally {
-          playResolveInFlight.delete(key);
-          playResolveSemaphore.release();
-        }
-      })();
+      pending.push({item, key});
     }
+
+    if (pending.length === 0) return;
+
+    void (async () => {
+      try {
+        const requests = pending.map(({item}) => ({
+          bvid: item.bvid!,
+          cid: item.cid || 0,
+          qn: 0,
+        } as PlayUrlRequest));
+        const results = await BatchResolvePlayUrl(requests);
+
+        for (let i = 0; i < pending.length; i += 1) {
+          const {item, key} = pending[i];
+          const result: PlayUrlResult | undefined = results?.[i];
+
+          if (!containsPlayKey(key)) continue;
+
+          if (!result) {
+            setPlayResolveByBvid((p) => ({...p, [key]: {status: "error", message: "解析接口未返回结果"}}));
+            continue;
+          }
+          if (result.error) {
+            setPlayResolveByBvid((p) => ({...p, [key]: {status: "error", message: result.error || "未知错误"}}));
+            continue;
+          }
+          if (!result.detail?.view || !result.play_url) {
+            setPlayResolveByBvid((p) => ({...p, [key]: {status: "error", message: "解析接口返回数据不完整"}}));
+            continue;
+          }
+
+          const view = result.detail.view;
+          const accessInfo = videoAccessInfoFromView(view);
+
+          if (shouldSkipPlayUrl(accessInfo)) {
+            setPlayResolveByBvid((p) => ({
+              ...p,
+              [key]: {
+                status: "error",
+                message: "充电专属视频，当前账号不可直接下载",
+                accessInfo,
+              },
+            }));
+            continue;
+          }
+
+          const aid = Number(view.aid);
+          const cid = item.cid && item.cid > 0 ? item.cid : Number(view.cid);
+          const bvid = view.bvid?.trim() || item.bvid!;
+          const partCount = Math.max(1, Number(view.videos || view.pages?.length || 1));
+
+          const data = buildResolvedPlayInfo({aid, cid, bvid, partCount}, result.play_url, accessInfo);
+          setPlayResolveByBvid((p) => ({...p, [key]: {status: "done", data}}));
+        }
+      } catch (e) {
+        const message = e instanceof Error ? (e.message ?? String(e)) : String(e);
+        for (const {key} of pending) {
+          if (!containsPlayKey(key)) continue;
+          setPlayResolveByBvid((p) => ({...p, [key]: {status: "error", message}}));
+        }
+      } finally {
+        for (const {key} of pending) {
+          playResolveInFlight.delete(key);
+        }
+      }
+    })();
   });
 
   // 后端批量下载期间会持续推送事件；这里按 BV 归档，供每张卡片独立渲染进度条。

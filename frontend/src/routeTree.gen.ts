@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as AboutRouteImport } from './routes/about'
 import { Route as DouyinRouteRouteImport } from './routes/douyin/route'
 import { Route as BilibiliRouteRouteImport } from './routes/bilibili/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -34,11 +33,6 @@ import { Route as BilibiliUpMidRouteImport } from './routes/bilibili/up/$mid'
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AboutRoute = AboutRouteImport.update({
-  id: '/about',
-  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DouyinRouteRoute = DouyinRouteRouteImport.update({
@@ -141,7 +135,6 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/bilibili': typeof BilibiliRouteRouteWithChildren
   '/douyin': typeof DouyinRouteRouteWithChildren
-  '/about': typeof AboutRoute
   '/settings': typeof SettingsRoute
   '/bilibili/up': typeof BilibiliUpRouteRouteWithChildren
   '/douyin/user': typeof DouyinUserRouteRouteWithChildren
@@ -162,7 +155,6 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/about': typeof AboutRoute
   '/settings': typeof SettingsRoute
   '/bilibili/download': typeof BilibiliDownloadRoute
   '/bilibili/favorite': typeof BilibiliFavoriteRoute
@@ -184,7 +176,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/bilibili': typeof BilibiliRouteRouteWithChildren
   '/douyin': typeof DouyinRouteRouteWithChildren
-  '/about': typeof AboutRoute
   '/settings': typeof SettingsRoute
   '/bilibili/up': typeof BilibiliUpRouteRouteWithChildren
   '/douyin/user': typeof DouyinUserRouteRouteWithChildren
@@ -209,7 +200,6 @@ export interface FileRouteTypes {
     | '/'
     | '/bilibili'
     | '/douyin'
-    | '/about'
     | '/settings'
     | '/bilibili/up'
     | '/douyin/user'
@@ -230,7 +220,6 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/about'
     | '/settings'
     | '/bilibili/download'
     | '/bilibili/favorite'
@@ -251,7 +240,6 @@ export interface FileRouteTypes {
     | '/'
     | '/bilibili'
     | '/douyin'
-    | '/about'
     | '/settings'
     | '/bilibili/up'
     | '/douyin/user'
@@ -275,7 +263,6 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BilibiliRouteRoute: typeof BilibiliRouteRouteWithChildren
   DouyinRouteRoute: typeof DouyinRouteRouteWithChildren
-  AboutRoute: typeof AboutRoute
   SettingsRoute: typeof SettingsRoute
 }
 
@@ -286,13 +273,6 @@ declare module '@tanstack/solid-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/douyin': {
@@ -507,7 +487,6 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BilibiliRouteRoute: BilibiliRouteRouteWithChildren,
   DouyinRouteRoute: DouyinRouteRouteWithChildren,
-  AboutRoute: AboutRoute,
   SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
