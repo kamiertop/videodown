@@ -79,7 +79,12 @@ export async function expandBilibiliDownloadItems(items: MediaCardItem[]): Promi
       const current = items[index];
       index += 1;
       if (!current) return;
-      result[currentIndex] = await expandBilibiliDownloadItem(current);
+      try {
+        result[currentIndex] = await expandBilibiliDownloadItem(current);
+      } catch {
+        // 失效稿件可能在入队前详情展开阶段失败；保留原始条目，让后续播放地址解析按单条结果显示错误。
+        result[currentIndex] = [current];
+      }
     }
   }
 

@@ -43,7 +43,7 @@ func main() {
 	// Create application with options
 	err = wails.Run(&options.App{
 		Title:             appName,
-		Width:             1100,
+		Width:             1200,
 		Height:            880,
 		MinWidth:          760,
 		MinHeight:         600,
