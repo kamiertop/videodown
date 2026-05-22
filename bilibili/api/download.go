@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/bytedance/sonic"
+	"github.com/imroc/req/v3"
 	"github.com/kamiertop/videodown/bilibili/model"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -155,16 +156,6 @@ func (b *BiliBili) markDownloaded(task DashDownloadTask, path string, downloadKi
 	}
 }
 
-func parseDownloadHistoryTime(value string) time.Time {
-	if t, err := time.Parse(time.RFC3339Nano, value); err == nil {
-		return t
-	}
-	if t, err := time.Parse(time.RFC3339, value); err == nil {
-		return t
-	}
-	return time.Time{}
-}
-
 // resolveTargetDir 只在后端决定落盘目录，避免前端把目录规则写死。
 func (b *BiliBili) resolveTargetDir(storagePath string, task DashDownloadTask) (string, error) {
 	allowGroup, err := b.settings.GetSavePreference()
@@ -216,16 +207,6 @@ func progressKey(bvid string, cid int64) string {
 	return bv
 }
 
-func clampPercent(percent float64) float64 {
-	if percent < 0 {
-		return 0
-	}
-	if percent > 100 {
-		return 100
-	}
-	return percent
-}
-
 // resetDownloadProgress 下载开始前重置进度缓存，避免同一 BV 多次下载时进度事件被旧任务覆盖
 // 单 P 直接按 BV 区分，多 P 按 BV:CID 区分，确保不同 P 之间的进度事件互不干扰。
 func (b *BiliBili) resetDownloadProgress(bvid string, cid int64) {
@@ -247,7 +228,7 @@ func (b *BiliBili) emitDownloadProgress(p downloadProgress) {
 	}
 	key := progressKey(p.Bvid, p.Cid)
 	if key != "" {
-		p.Percent = clampPercent(p.Percent)
+		p.Percent = utils.ClampPercent(p.Percent)
 
 		b.progressMu.Lock()
 		prev, ok := b.progressByBvid[key]
@@ -273,25 +254,10 @@ func (b *BiliBili) emitDownloadProgress(p downloadProgress) {
 	wailsRuntime.EventsEmit(ctx, "bilibili-download-progress", p)
 }
 
-// weightedPercent 把单个阶段的字节进度映射到整条任务进度，便于前端展示统一进度条。
-func weightedPercent(start, weight float64, downloaded, total int64) float64 {
-	if total <= 0 {
-		return start
-	}
-	ratio := float64(downloaded) / float64(total)
-	if ratio < 0 {
-		ratio = 0
-	}
-	if ratio > 1 {
-		ratio = 1
-	}
-
-	return start + ratio*weight
-}
-
 // downloadToFile 使用无总时长限制的 HTTP client 流式读取响应体；长视频下载不能复用接口请求的整体超时。
 func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title string, cid int64, phase, cookies string, start, weight float64) (err error) {
-	resp, err := b.downloadClient.R().
+	var resp *req.Response
+	resp, err = b.downloadClient.R().
 		DisableAutoReadResponse().
 		SetRetryCount(2).
 		SetHeader(UserAgent, userAgent()).
@@ -322,6 +288,7 @@ func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title string, cid in
 	var downloaded int64
 	buf := make([]byte, 256*1024)
 	lastEmit := time.Time{}
+	// 下载开始时先发一次事件，确保前端能及时更新状态；后续按时间间隔或下载完成时发事件
 	b.emitDownloadProgress(downloadProgress{
 		Bvid:    bvid,
 		Cid:     cid,
@@ -348,7 +315,7 @@ func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title string, cid in
 					Phase:      phase,
 					Downloaded: downloaded,
 					Total:      total,
-					Percent:    weightedPercent(start, weight, downloaded, total),
+					Percent:    utils.WeightedPercent(start, weight, downloaded, total),
 				})
 				lastEmit = now
 			}

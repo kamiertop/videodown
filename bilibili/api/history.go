@@ -9,6 +9,7 @@ import (
 	"github.com/bytedance/sonic"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/utils"
 )
 
 // SearchDownloadHistory 获取历史搜索记录
@@ -46,7 +47,7 @@ func (b *BiliBili) SearchDownloadHistory(upperNameOrTitle string) ([]model.Downl
 	}
 
 	sort.Slice(results, func(i, j int) bool {
-		return parseDownloadHistoryTime(results[i].Downloaded).After(parseDownloadHistoryTime(results[j].Downloaded))
+		return utils.ParseDownloadHistoryTime(results[i].Downloaded).After(utils.ParseDownloadHistoryTime(results[j].Downloaded))
 	})
 
 	return results, nil
@@ -81,7 +82,7 @@ func (b *BiliBili) DownloadHistory() ([]model.DownloadHistoryItem, error) {
 	}
 
 	sort.Slice(items, func(i, j int) bool {
-		return parseDownloadHistoryTime(items[i].Downloaded).After(parseDownloadHistoryTime(items[j].Downloaded))
+		return utils.ParseDownloadHistoryTime(items[i].Downloaded).After(utils.ParseDownloadHistoryTime(items[j].Downloaded))
 	})
 
 	return items, nil

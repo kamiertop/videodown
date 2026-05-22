@@ -121,6 +121,22 @@ func NewSettings(logger *logger.Logger) (*Settings, error) {
 	return s, s.init()
 }
 
+func NewSettingsForDebug(logger *logger.Logger, path string) (*Settings, error) {
+	db, err := badger.Open(badger.
+		DefaultOptions(path).
+		WithLogger(logger).
+		WithLoggingLevel(badger.ERROR),
+	)
+
+	if err != nil {
+		panic(err)
+	}
+
+	s := &Settings{DB: db, logger: logger.WithName("Settings")}
+
+	return s, s.init()
+}
+
 // GetTheme 获取主题设置
 func (s *Settings) GetTheme() (string, error) {
 	theme, err := s.GetKey(themeKey)
