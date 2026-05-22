@@ -3,6 +3,7 @@ import {DownloadVideosByDash} from "../../../wailsjs/go/api/BiliBili";
 import {api} from "../../../wailsjs/go/models";
 import {EventsOn} from "../../../wailsjs/runtime";
 import type {MediaCardItem} from "../model.ts";
+import {Semaphore} from "../semaphore.ts";
 import {
   BilibiliPlayResolveError,
   bilibiliPlayResolveKey,
@@ -51,6 +52,7 @@ type DashDownloadTask = api.DashDownloadTask;
 
 // 解析播放地址是异步副作用。这个 Set 防止 Solid effect 重跑时对同一个 BV 重复发起解析请求。
 const playResolveInFlight = new Set<string>();
+const playResolveSemaphore = new Semaphore(3);
 const [playResolveByBvid, setPlayResolveByBvid] = createSignal<Record<string, PlayResolveEntry>>({});
 const [downloading, setDownloading] = createSignal<boolean>(false);
 const [downloadingByBvid, setDownloadingByBvid] = createSignal<Record<string, boolean>>({});
@@ -134,6 +136,7 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
 
       void (async () => {
         try {
+          await playResolveSemaphore.acquire();
           // resolveBilibiliPlayUrl 内部只请求一次 playurl；画质/音质切换复用返回的 dash 字段。
           const data = await resolveBilibiliPlayUrl(item.bvid, {cid: item.cid});
           if (!containsPlayKey(key)) return;
@@ -145,6 +148,7 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
           setPlayResolveByBvid((p) => ({...p, [key]: {status: "error", message, accessInfo}}));
         } finally {
           playResolveInFlight.delete(key);
+          playResolveSemaphore.release();
         }
       })();
     }

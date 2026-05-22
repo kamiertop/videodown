@@ -127,16 +127,6 @@ func bestDouyinCoverURL(covers []model.Cover) string {
 	return ""
 }
 
-func clampDouyinPercent(percent float64) float64 {
-	if percent < 0 {
-		return 0
-	}
-	if percent > 100 {
-		return 100
-	}
-	return percent
-}
-
 func (d *Douyin) emitDownloadProgress(p douyinDownloadProgress) {
 	ctx := d.context()
 	if ctx == nil {
@@ -144,7 +134,7 @@ func (d *Douyin) emitDownloadProgress(p douyinDownloadProgress) {
 		return
 	}
 	if p.AwemeID != "" {
-		p.Percent = clampDouyinPercent(p.Percent)
+		p.Percent = utils.ClampPercent(p.Percent)
 		d.progressMu.Lock()
 		prev, ok := d.progressByID[p.AwemeID]
 		// 并发下载时避免旧事件把同一任务的进度条回退；错误事件仍允许透传给前端。
@@ -156,21 +146,6 @@ func (d *Douyin) emitDownloadProgress(p douyinDownloadProgress) {
 		d.progressMu.Unlock()
 	}
 	wailsRuntime.EventsEmit(ctx, "douyin-download-progress", p)
-}
-
-// douyinWeightedPercent 用于图片合集：每张图片占一段权重，拼成整条 0-100 进度。
-func douyinWeightedPercent(start, weight float64, downloaded, total int64) float64 {
-	if total <= 0 {
-		return start
-	}
-	ratio := float64(downloaded) / float64(total)
-	if ratio < 0 {
-		ratio = 0
-	}
-	if ratio > 1 {
-		ratio = 1
-	}
-	return start + ratio*weight
 }
 
 // markDownloaded 写入下载成功历史；缓存失败不影响已经落盘的文件。
@@ -242,21 +217,10 @@ func (d *Douyin) DownloadHistory() ([]DouyinDownloadHistoryItem, error) {
 	}
 
 	sort.Slice(items, func(i, j int) bool {
-		return parseDouyinDownloadHistoryTime(items[i].Downloaded).After(parseDouyinDownloadHistoryTime(items[j].Downloaded))
+		return utils.ParseDownloadHistoryTime(items[i].Downloaded).After(utils.ParseDownloadHistoryTime(items[j].Downloaded))
 	})
 
 	return items, nil
-}
-
-func parseDouyinDownloadHistoryTime(value string) time.Time {
-	if t, err := time.Parse(time.RFC3339Nano, value); err == nil {
-		return t
-	}
-	if t, err := time.Parse(time.RFC3339, value); err == nil {
-		return t
-	}
-
-	return time.Time{}
 }
 
 // DeleteDownloadHistory 删除单条历史记录；不会删除已经下载到本地的文件。
@@ -331,7 +295,7 @@ func (d *Douyin) downloadURLToFile(rawURL, targetPath string, task DouyinDownloa
 					Phase:      phase,
 					Downloaded: downloaded,
 					Total:      total,
-					Percent:    douyinWeightedPercent(start, weight, downloaded, total),
+					Percent:    utils.WeightedPercent(start, weight, downloaded, total),
 				})
 				lastEmit = now
 			}
