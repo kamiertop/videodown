@@ -95,14 +95,13 @@ func (s *Settings) init() error {
 func NewSettingsWithMemory(logger *logger.Logger) *Settings {
 	db, err := badger.Open(badger.
 		DefaultOptions("").
-		WithInMemory(true).
-		WithLoggingLevel(badger.ERROR))
+		WithInMemory(true))
 	if err != nil {
 		panic(err)
 	}
 	s := &Settings{DB: db, logger: logger.WithName("Settings")}
 
-	if err := s.init(); err != nil {
+	if err = s.init(); err != nil {
 		panic(err)
 	}
 
@@ -114,7 +113,9 @@ func NewSettings(logger *logger.Logger) (*Settings, error) {
 	if execPath, err := os.Executable(); err == nil {
 		dbPath = filepath.Join(filepath.Dir(execPath), dbPath)
 	}
-	db, err := badger.Open(badger.DefaultOptions(dbPath).WithLogger(logger).WithLoggingLevel(badger.ERROR))
+	db, err := badger.Open(badger.
+		DefaultOptions(dbPath).
+		WithLogger(logger))
 	if err != nil {
 		panic(err)
 	}
@@ -127,8 +128,7 @@ func NewSettings(logger *logger.Logger) (*Settings, error) {
 func NewSettingsForDebug(logger *logger.Logger, path string) (*Settings, error) {
 	db, err := badger.Open(badger.
 		DefaultOptions(path).
-		WithLogger(logger).
-		WithLoggingLevel(badger.ERROR),
+		WithLogger(logger),
 	)
 
 	if err != nil {
