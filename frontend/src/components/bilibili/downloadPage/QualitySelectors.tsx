@@ -11,6 +11,7 @@ interface QualitySelectorsProps {
   entry: PlayResolveEntry | undefined;
   onPickAudio: (audioId: number) => void;
   onPickQn: (qn: number) => void;
+  onRetry?: () => void;
 }
 
 // 画质/音质选择器只展示已经解析好的 DASH 数据。
@@ -97,7 +98,16 @@ export default function QualitySelectors(props: QualitySelectorsProps): JSXEleme
           <span class="loading loading-spinner loading-sm shrink-0 text-primary"/>
         </Show>
         <Show when={props.entry?.status === "error"}>
-          <p class="text-xs text-error">{props.entry?.status === "error" ? props.entry.message : ""}</p>
+          <div class="flex items-center gap-2">
+            <p class="text-xs text-error">{props.entry?.status === "error" ? props.entry.message : ""}</p>
+            <button
+                class="btn btn-outline btn-error btn-xs"
+                type="button"
+                onClick={() => props.onRetry?.()}
+            >
+              重试
+            </button>
+          </div>
         </Show>
       </div>
   );

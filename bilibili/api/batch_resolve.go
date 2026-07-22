@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/kamiertop/videodown/bilibili/model"
+	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type PlayUrlRequest struct {
@@ -15,11 +16,12 @@ type PlayUrlRequest struct {
 }
 
 type PlayUrlResult struct {
-	Bvid    string                        `json:"bvid"`
-	Cid     int64                         `json:"cid"`
-	Error   string                        `json:"error,omitempty"`
-	Detail  *model.VideoDetailConciseData `json:"detail,omitempty"`
-	PlayURL *model.VideoURLData           `json:"play_url,omitempty"`
+	Bvid       string                        `json:"bvid"`
+	Cid        int64                         `json:"cid"`
+	RequestCid int64                         `json:"requestCid"`
+	Error      string                        `json:"error,omitempty"`
+	Detail     *model.VideoDetailConciseData `json:"detail,omitempty"`
+	PlayURL    *model.VideoURLData           `json:"play_url,omitempty"`
 }
 
 // playUrlSem 是模块级的并发控制通道，由 ensureSem 懒初始化
@@ -41,17 +43,28 @@ func (b *BiliBili) releaseSem() {
 	<-playUrlSem
 }
 
+// emitPlayUrlResolved 通过 Wails 事件把单条解析结果推送给前端，
+// 前端按 bvid+cid 更新对应卡片的解析状态，无需等待整批解析完成。
+func (b *BiliBili) emitPlayUrlResolved(r PlayUrlResult) {
+	ctx := b.context()
+	if ctx == nil {
+		b.logger.Errorf("emitPlayUrlResolved failed: context is nil")
+		return
+	}
+	wailsRuntime.EventsEmit(ctx, "bilibili-playurl-resolved", r)
+}
+
 // BatchResolvePlayUrl 批量解析播放地址。单条失败只写入该条结果，不中断整批解析。
+// 每条结果解析完成后会通过 bilibili-playurl-resolved 事件推送给前端，实现渐进式 UI 更新。
 func (b *BiliBili) BatchResolvePlayUrl(reqs []PlayUrlRequest) []PlayUrlResult {
 	results := make([]PlayUrlResult, len(reqs))
 	var wg sync.WaitGroup
 	for i, req := range reqs {
-		i, req := i, req
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			results[i] = b.ResolvePlayUrl(req)
-		}()
+			// 每条解析完成后立即推送事件，前端逐条更新卡片状态
+			b.emitPlayUrlResolved(results[i])
+		})
 	}
 	wg.Wait()
 
@@ -69,7 +82,7 @@ func (b *BiliBili) ResolvePlayUrl(req PlayUrlRequest) PlayUrlResult {
 		time.Sleep(time.Duration(d * float64(time.Second)))
 	}
 
-	r := PlayUrlResult{Bvid: req.Bvid, Cid: req.Cid}
+	r := PlayUrlResult{Bvid: req.Bvid, Cid: req.Cid, RequestCid: req.Cid}
 
 	detail, err := b.VideoDetailConciseBvid(req.Bvid)
 	if err != nil {
@@ -84,6 +97,7 @@ func (b *BiliBili) ResolvePlayUrl(req PlayUrlRequest) PlayUrlResult {
 	if cid <= 0 {
 		cid = view.Cid
 	}
+	r.Cid = cid
 	qn := req.Qn
 	if qn <= 0 {
 		qn = 80

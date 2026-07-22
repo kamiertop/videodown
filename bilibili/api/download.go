@@ -254,6 +254,16 @@ func (b *BiliBili) emitDownloadProgress(p downloadProgress) {
 	wailsRuntime.EventsEmit(ctx, "bilibili-download-progress", p)
 }
 
+// emitDownloadCompleted 下载+休眠全部完成后推送给前端，前端收到后立即从列表移除该视频卡片。
+func (b *BiliBili) emitDownloadCompleted(item DashDownloadResult) {
+	ctx := b.context()
+	if ctx == nil {
+		b.logger.Errorf("emitDownloadCompleted failed: context is nil")
+		return
+	}
+	wailsRuntime.EventsEmit(ctx, "bilibili-download-completed", item)
+}
+
 // downloadToFile 使用无总时长限制的 HTTP client 流式读取响应体；长视频下载不能复用接口请求的整体超时。
 func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title string, cid int64, phase, cookies string, start, weight float64) (err error) {
 	var resp *req.Response
@@ -286,7 +296,7 @@ func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title string, cid in
 
 	total := resp.ContentLength
 	var downloaded int64
-	buf := make([]byte, 256*1024)
+	buf := make([]byte, 1024*1024)
 	lastEmit := time.Time{}
 	// 下载开始时先发一次事件，确保前端能及时更新状态；后续按时间间隔或下载完成时发事件
 	b.emitDownloadProgress(downloadProgress{
@@ -532,6 +542,8 @@ func (b *BiliBili) DownloadVideosByDash(tasks []DashDownloadTask) (DashDownloadB
 				if err == nil {
 					// 下载成功才休眠，下载失败立即开始下一个任务，避免连续下载失败时长时间无响应
 					b.sleepAfterTask(task)
+					// 休眠完成后逐条推送完成事件，前端收到后立即从列表移除该视频
+					b.emitDownloadCompleted(item)
 				}
 			}
 		})

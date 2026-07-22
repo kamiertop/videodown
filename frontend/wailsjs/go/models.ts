@@ -275,6 +275,7 @@ export namespace api {
 	export class PlayUrlResult {
 	    bvid: string;
 	    cid: number;
+	    requestCid: number;
 	    error?: string;
 	    detail?: model.VideoDetailConciseData;
 	    play_url?: model.VideoURLData;
@@ -287,6 +288,7 @@ export namespace api {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.bvid = source["bvid"];
 	        this.cid = source["cid"];
+	        this.requestCid = source["requestCid"];
 	        this.error = source["error"];
 	        this.detail = this.convertValues(source["detail"], model.VideoDetailConciseData);
 	        this.play_url = this.convertValues(source["play_url"], model.VideoURLData);

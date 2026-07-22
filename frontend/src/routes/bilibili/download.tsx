@@ -364,6 +364,7 @@ function DownLoad(): JSXElement {
             count={videoList().length}
             downloading={queue.downloading()}
             onDownload={() => void queue.startDownload()}
+            resolveProgress={queue.resolveProgress()}
         />
         <section class="mt-3 flex flex-1 flex-col gap-3 overflow-y-auto pr-4">
           <For each={videoList()}>
@@ -381,6 +382,7 @@ function DownLoad(): JSXElement {
                     onPickAudio={(audioId) => queue.handlePickAudio(item, audioId)}
                     onRemove={() => removeVideo(item.id)}
                     onDownload={() => void queue.downloadOne(item)}
+                    onRetry={() => queue.retryResolve(item)}
                 />
             )}
           </For>

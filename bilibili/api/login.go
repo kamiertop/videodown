@@ -227,7 +227,7 @@ func (b *BiliBili) saveCookieMap(cookieMap map[string]string) error {
 // parseCookieString 将 cookie 字符串解析为键值对的 map 结构，方便后续的合并和更新操作
 func parseCookieString(cookieStr string) map[string]string {
 	cookieMap := make(map[string]string)
-	for _, part := range strings.Split(cookieStr, ";") {
+	for part := range strings.SplitSeq(cookieStr, ";") {
 		key, value, ok := strings.Cut(strings.TrimSpace(part), "=")
 		if !ok || strings.TrimSpace(key) == "" {
 			continue

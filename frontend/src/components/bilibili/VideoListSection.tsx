@@ -1,6 +1,5 @@
 import {useNavigate} from "@tanstack/solid-router";
 import {createEffect, createMemo, createSignal, type JSXElement, Show} from "solid-js";
-import {expandBilibiliDownloadItems} from "../../lib/bilibili/downloadExpand.ts";
 import {addVideos} from "../../lib/bilibili/store.ts";
 import type {MediaCardItem} from "../../lib/model.ts";
 import VirtualVideoGrid from "./VirtualVideoGrid";
@@ -62,9 +61,10 @@ export default function VideoListSection(props: {
     }
     setEnqueueLoading(true);
     try {
-      // 入队前才查详情展开分 P；列表渲染阶段不做额外请求。
-      const expanded = await expandBilibiliDownloadItems(list);
-      addVideos(expanded);
+      // 不再预展开分 P 视频（expandBilibiliDownloadItems），直接将原始列表加入下载队列。
+      // 后端 BatchResolvePlayUrl 会在解析播放地址时一并获取视频详情，避免重复请求。
+      // 后端逐条推送 bilibili-playurl-resolved 事件，前端渐进式更新每张卡片的解析状态。
+      addVideos(list);
       await navigate({to: "/bilibili/download"});
     } finally {
       setEnqueueLoading(false);

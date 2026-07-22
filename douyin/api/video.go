@@ -17,8 +17,8 @@ func (d *Douyin) ParseVideo(link string) (string, error) {
 		return d.parseJingXuanAwemeID(link)
 	}
 	link = strings.TrimSpace(link)
-	split := strings.Split(link, " ")
-	for _, item := range split {
+	split := strings.SplitSeq(link, " ")
+	for item := range split {
 		if strings.Contains(item, "https") {
 			link = item
 			break
@@ -43,7 +43,7 @@ func (d *Douyin) ParseVideo(link string) (string, error) {
 	if len(parts) < 2 {
 		return "", errors.New("未能从重定向地址中提取视频ID")
 	}
-	videoID := strings.Split(parts[1], "?")[0]
+	videoID, _, _ := strings.Cut(parts[1], "?")
 
 	return strings.TrimSuffix(videoID, "/"), nil
 }

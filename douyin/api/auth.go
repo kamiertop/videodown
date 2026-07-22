@@ -25,7 +25,7 @@ func (d *Douyin) getMsToken() (string, error) {
 
 	var b strings.Builder
 	b.Grow(length)
-	for i := 0; i < length; i++ {
+	for range length {
 		b.WriteByte(letters[rand.Intn(len(letters))])
 	}
 
