@@ -15,6 +15,7 @@ import { Route as DouyinRouteRouteImport } from './routes/douyin/route'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as BilibiliIndexRouteImport } from './routes/bilibili/index'
 import { Route as BilibiliDownloadRouteImport } from './routes/bilibili/download'
+import { Route as BilibiliDynamicRouteImport } from './routes/bilibili/dynamic'
 import { Route as BilibiliFavoriteRouteImport } from './routes/bilibili/favorite'
 import { Route as BilibiliHistoryRouteImport } from './routes/bilibili/history'
 import { Route as BilibiliProfileRouteImport } from './routes/bilibili/profile'
@@ -58,6 +59,11 @@ const BilibiliIndexRoute = BilibiliIndexRouteImport.update({
 const BilibiliDownloadRoute = BilibiliDownloadRouteImport.update({
   id: '/download',
   path: '/download',
+  getParentRoute: () => BilibiliRouteRoute,
+} as any)
+const BilibiliDynamicRoute = BilibiliDynamicRouteImport.update({
+  id: '/dynamic',
+  path: '/dynamic',
   getParentRoute: () => BilibiliRouteRoute,
 } as any)
 const BilibiliFavoriteRoute = BilibiliFavoriteRouteImport.update({
@@ -139,6 +145,7 @@ export interface FileRoutesByFullPath {
   '/bilibili/up': typeof BilibiliUpRouteRouteWithChildren
   '/douyin/user': typeof DouyinUserRouteRouteWithChildren
   '/bilibili/download': typeof BilibiliDownloadRoute
+  '/bilibili/dynamic': typeof BilibiliDynamicRoute
   '/bilibili/favorite': typeof BilibiliFavoriteRoute
   '/bilibili/history': typeof BilibiliHistoryRoute
   '/bilibili/profile': typeof BilibiliProfileRoute
@@ -157,6 +164,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/settings': typeof SettingsRoute
   '/bilibili/download': typeof BilibiliDownloadRoute
+  '/bilibili/dynamic': typeof BilibiliDynamicRoute
   '/bilibili/favorite': typeof BilibiliFavoriteRoute
   '/bilibili/history': typeof BilibiliHistoryRoute
   '/bilibili/profile': typeof BilibiliProfileRoute
@@ -180,6 +188,7 @@ export interface FileRoutesById {
   '/bilibili/up': typeof BilibiliUpRouteRouteWithChildren
   '/douyin/user': typeof DouyinUserRouteRouteWithChildren
   '/bilibili/download': typeof BilibiliDownloadRoute
+  '/bilibili/dynamic': typeof BilibiliDynamicRoute
   '/bilibili/favorite': typeof BilibiliFavoriteRoute
   '/bilibili/history': typeof BilibiliHistoryRoute
   '/bilibili/profile': typeof BilibiliProfileRoute
@@ -204,6 +213,7 @@ export interface FileRouteTypes {
     | '/bilibili/up'
     | '/douyin/user'
     | '/bilibili/download'
+    | '/bilibili/dynamic'
     | '/bilibili/favorite'
     | '/bilibili/history'
     | '/bilibili/profile'
@@ -222,6 +232,7 @@ export interface FileRouteTypes {
     | '/'
     | '/settings'
     | '/bilibili/download'
+    | '/bilibili/dynamic'
     | '/bilibili/favorite'
     | '/bilibili/history'
     | '/bilibili/profile'
@@ -244,6 +255,7 @@ export interface FileRouteTypes {
     | '/bilibili/up'
     | '/douyin/user'
     | '/bilibili/download'
+    | '/bilibili/dynamic'
     | '/bilibili/favorite'
     | '/bilibili/history'
     | '/bilibili/profile'
@@ -308,6 +320,13 @@ declare module '@tanstack/solid-router' {
       path: '/download'
       fullPath: '/bilibili/download'
       preLoaderRoute: typeof BilibiliDownloadRouteImport
+      parentRoute: typeof BilibiliRouteRoute
+    }
+    '/bilibili/dynamic': {
+      id: '/bilibili/dynamic'
+      path: '/dynamic'
+      fullPath: '/bilibili/dynamic'
+      preLoaderRoute: typeof BilibiliDynamicRouteImport
       parentRoute: typeof BilibiliRouteRoute
     }
     '/bilibili/favorite': {
@@ -428,6 +447,7 @@ const BilibiliUpRouteRouteWithChildren = BilibiliUpRouteRoute._addFileChildren(
 interface BilibiliRouteRouteChildren {
   BilibiliUpRouteRoute: typeof BilibiliUpRouteRouteWithChildren
   BilibiliDownloadRoute: typeof BilibiliDownloadRoute
+  BilibiliDynamicRoute: typeof BilibiliDynamicRoute
   BilibiliFavoriteRoute: typeof BilibiliFavoriteRoute
   BilibiliHistoryRoute: typeof BilibiliHistoryRoute
   BilibiliProfileRoute: typeof BilibiliProfileRoute
@@ -437,6 +457,7 @@ interface BilibiliRouteRouteChildren {
 const BilibiliRouteRouteChildren: BilibiliRouteRouteChildren = {
   BilibiliUpRouteRoute: BilibiliUpRouteRouteWithChildren,
   BilibiliDownloadRoute: BilibiliDownloadRoute,
+  BilibiliDynamicRoute: BilibiliDynamicRoute,
   BilibiliFavoriteRoute: BilibiliFavoriteRoute,
   BilibiliHistoryRoute: BilibiliHistoryRoute,
   BilibiliProfileRoute: BilibiliProfileRoute,

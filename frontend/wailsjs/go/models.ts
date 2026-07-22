@@ -2535,6 +2535,64 @@ export namespace model {
 	        this.downloaded = source["downloaded"];
 	    }
 	}
+	export class DynamicArchiveItem {
+	    bvid: string;
+	    title: string;
+	    cover: string;
+	    duration_text: string;
+	    author_name: string;
+	    pub_time: string;
+	    pub_ts: number;
+
+	    static createFrom(source: any = {}) {
+	        return new DynamicArchiveItem(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.bvid = source["bvid"];
+	        this.title = source["title"];
+	        this.cover = source["cover"];
+	        this.duration_text = source["duration_text"];
+	        this.author_name = source["author_name"];
+	        this.pub_time = source["pub_time"];
+	        this.pub_ts = source["pub_ts"];
+	    }
+	}
+	export class DynamicArchivePage {
+	    items: DynamicArchiveItem[];
+	    offset: string;
+	    has_more: boolean;
+
+	    static createFrom(source: any = {}) {
+	        return new DynamicArchivePage(source);
+	    }
+
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.items = this.convertValues(source["items"], DynamicArchiveItem);
+	        this.offset = source["offset"];
+	        this.has_more = source["has_more"];
+	    }
+
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class UgcSeasonPageItem {
 	    cid: number;
 	    page: number;
@@ -5387,4 +5445,3 @@ export namespace ristretto {
 	}
 
 }
-

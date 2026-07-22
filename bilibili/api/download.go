@@ -166,22 +166,20 @@ func (b *BiliBili) resolveTargetDir(storagePath string, task DashDownloadTask) (
 		return storagePath, nil
 	}
 
-	kind := strings.TrimSpace(task.SourceKind)
-	sourceName := utils.FileName(task.SourceName)
 	upperName := utils.FileName(task.UpperName)
-
-	switch kind {
-	case "解析结果":
-		return storagePath, nil
-	case "全部投稿":
-		return filepath.Join(storagePath, upperName), nil
-	case "合集", "系列", "分P":
-		return filepath.Join(storagePath, upperName, sourceName), nil
-	case "收藏夹":
-		return filepath.Join(storagePath, sourceName), nil
-	default:
-		return filepath.Join(storagePath, sourceName), nil
+	if upperName == "" {
+		upperName = "未知作者"
 	}
+
+	authorDir := filepath.Join(storagePath, upperName)
+	switch strings.TrimSpace(task.SourceKind) {
+	case "收藏夹", "合集", "系列":
+		if sourceName := utils.FileName(task.SourceName); sourceName != "" {
+			return filepath.Join(authorDir, sourceName), nil
+		}
+	}
+
+	return authorDir, nil
 }
 
 type downloadProgress struct {
@@ -626,9 +624,9 @@ func (b *BiliBili) DownloadCover(cover string, task DashDownloadTask) (string, e
 	if err != nil {
 		return "", err
 	}
-	targetDir := storagePath
-	if upperName := utils.FileName(task.UpperName); upperName != "" {
-		targetDir = filepath.Join(storagePath, upperName)
+	targetDir, err := b.resolveTargetDir(storagePath, task)
+	if err != nil {
+		return "", err
 	}
 	if err = os.MkdirAll(targetDir, 0o755); err != nil {
 		return "", errors.New("创建下载目录失败")
