@@ -23,6 +23,10 @@ export function DownloadVideosByDash(arg1:Array<api.DashDownloadTask>):Promise<a
 
 export function DownloadVideosByDashIncremental(arg1:Array<api.DashDownloadTask>):Promise<api.DashDownloadBatchResult>;
 
+export function DynamicVideos():Promise<Array<model.DynamicArchiveItem>>;
+
+export function DynamicVideosPage(arg1:string):Promise<model.DynamicArchivePage>;
+
 export function Favorites(arg1:number,arg2:number,arg3:number):Promise<model.FavoriteData>;
 
 export function FavoritesList():Promise<model.FavoritesData>;

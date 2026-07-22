@@ -62,7 +62,7 @@ function detailToDownloadItem(item: model.AwemeItem): DouyinDownloadItem {
   return {
     awemeId,
     sourceKind: "解析结果",
-    sourceName: "手动解析",
+    sourceName: "",
     title,
     cover,
     coverCandidates: douyinCoverCandidates(item),

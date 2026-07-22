@@ -42,6 +42,14 @@ export function DownloadVideosByDashIncremental(arg1) {
   return window['go']['api']['BiliBili']['DownloadVideosByDashIncremental'](arg1);
 }
 
+export function DynamicVideos() {
+  return window['go']['api']['BiliBili']['DynamicVideos']();
+}
+
+export function DynamicVideosPage(arg1) {
+  return window['go']['api']['BiliBili']['DynamicVideosPage'](arg1);
+}
+
 export function Favorites(arg1, arg2, arg3) {
   return window['go']['api']['BiliBili']['Favorites'](arg1, arg2, arg3);
 }

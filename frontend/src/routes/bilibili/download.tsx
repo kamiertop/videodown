@@ -32,7 +32,7 @@ function normalizeBiliCover(url: string | undefined): string {
 }
 
 // 后端视频详情结构很大，下载列表只需要统一的 MediaCardItem。
-// 手动解析进来的条目 sourceListKind 固定为“解析结果”，后端据此不会再按来源创建子目录。
+// 手动解析进来的条目没有具体来源名；后端只按作者目录保存。
 function detailToMediaCard(view: VideoDetailView): MediaCardItem {
   return {
     id: Number(view.aid) || Date.now(),
@@ -45,7 +45,7 @@ function detailToMediaCard(view: VideoDetailView): MediaCardItem {
     play: view.stat?.view,
     danmaku: view.stat?.danmaku,
     pubtime: view.pubdate,
-    sourceListName: "手动解析",
+    sourceListName: "",
     sourceListKind: "解析结果",
   };
 }

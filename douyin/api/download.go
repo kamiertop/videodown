@@ -328,19 +328,20 @@ func (d *Douyin) resolveDownloadDir(storagePath string, task DouyinDownloadTask)
 	if !allowGroup {
 		return storagePath, nil
 	}
-	sourceName := utils.FileName(task.SourceName)
-	switch strings.TrimSpace(task.SourceKind) {
-	case "收藏合集", "用户合集":
-		author := utils.FileName(task.AuthorName)
-		return filepath.Join(storagePath, author, sourceName), nil
-	case "收藏视频":
-		return filepath.Join(storagePath, "收藏视频"), nil
-	case "用户作品":
-		return filepath.Join(storagePath, sourceName), nil
-	default:
-		author := utils.FileName(task.AuthorName)
-		return filepath.Join(storagePath, author), nil
+	author := utils.FileName(task.AuthorName)
+	if author == "" {
+		author = "未知作者"
 	}
+
+	authorDir := filepath.Join(storagePath, author)
+	switch strings.TrimSpace(task.SourceKind) {
+	case "收藏夹", "合集", "收藏合集", "用户合集":
+		if sourceName := utils.FileName(task.SourceName); sourceName != "" {
+			return filepath.Join(authorDir, sourceName), nil
+		}
+	}
+
+	return authorDir, nil
 }
 
 func douyinAssetExt(asset DouyinDownloadAsset) string {
@@ -575,9 +576,9 @@ func (d *Douyin) DownloadCover(covers []model.Cover, task DouyinDownloadTask) (s
 	if err != nil {
 		return "", err
 	}
-	targetDir := storagePath
-	if author := utils.FileName(task.AuthorName); author != "" {
-		targetDir = filepath.Join(storagePath, author)
+	targetDir, err := d.resolveDownloadDir(storagePath, task)
+	if err != nil {
+		return "", err
 	}
 	if err = os.MkdirAll(targetDir, 0o755); err != nil {
 		return "", errors.New("创建下载目录失败")

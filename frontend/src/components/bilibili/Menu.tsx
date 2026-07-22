@@ -28,6 +28,18 @@ const menuItems = [
     </svg>,
   },
   {
+    name: "动态",
+    link: "/bilibili/dynamic",
+    icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 6.5H14.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M4 12H10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M4 17.5H9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path
+          d="M15 11.25C15 10.6533 15.637 10.2739 16.1615 10.558L20.3128 12.8073C20.8626 13.1052 20.8626 13.8948 20.3128 14.1927L16.1615 16.442C15.637 16.7261 15 16.3467 15 15.75V11.25Z"
+          fill="currentColor"/>
+    </svg>,
+  },
+  {
     name: "收藏|合集",
     link: "/bilibili/favorite",
     icon: <svg width="18" height="19" viewBox="0 0 20 21" fill="none" xmlns="http://www.w3.org/2000/svg"
