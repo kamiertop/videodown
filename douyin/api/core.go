@@ -70,8 +70,8 @@ func (d *Douyin) cookieQuery() (cookieParams, error) {
 		return cookieParams{}, err
 	}
 
-	cookies := strings.Split(cookie, ";")
-	for _, v := range cookies {
+	cookies := strings.SplitSeq(cookie, ";")
+	for v := range cookies {
 		v = strings.TrimSpace(v)
 		if strings.Contains(v, "=") {
 			parts := strings.SplitN(v, "=", 2)

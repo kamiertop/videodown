@@ -366,14 +366,14 @@ func (a *ABogus) fill(length int) {
 	for len(a.chunk) < length {
 		a.chunk = append(a.chunk, 0)
 	}
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		a.chunk = append(a.chunk, byte((size>>(8*(3-i)))&255))
 	}
 }
 
 func regToArray(reg []uint32) []int {
 	out := make([]int, 32)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		c := reg[i]
 		out[4*i+3] = int(255 & c)
 		c >>= 8
@@ -390,7 +390,7 @@ func (a *ABogus) compress(block []byte) {
 	f := generateF(block)
 	i := initRegCopy()
 	copy(i, a.reg)
-	for o := 0; o < 64; o++ {
+	for o := range 64 {
 		c := de(i[0], 12) + i[4] + de(pe(o), uint(o))
 		c &= 0xFFFFFFFF
 		c = de(c, 7)
@@ -408,14 +408,14 @@ func (a *ABogus) compress(block []byte) {
 		i[5] = i[4]
 		i[4] = (b ^ de(b, 9) ^ de(b, 17)) & 0xFFFFFFFF
 	}
-	for l := 0; l < 8; l++ {
+	for l := range 8 {
 		a.reg[l] = (a.reg[l] ^ i[l]) & 0xFFFFFFFF
 	}
 }
 
 func generateF(e []byte) []uint32 {
 	r := make([]uint32, 132)
-	for t := 0; t < 16; t++ {
+	for t := range 16 {
 		r[t] = uint32(e[4*t])<<24 | uint32(e[4*t+1])<<16 | uint32(e[4*t+2])<<8 | uint32(e[4*t+3])
 		r[t] &= 0xFFFFFFFF
 	}
@@ -489,7 +489,7 @@ func sm3Digest(data []byte) []int {
 func compressSM3(reg []uint32, block []byte) {
 	w := make([]uint32, 68)
 	w1 := make([]uint32, 64)
-	for i := 0; i < 16; i++ {
+	for i := range 16 {
 		w[i] = uint32(block[4*i])<<24 | uint32(block[4*i+1])<<16 | uint32(block[4*i+2])<<8 | uint32(block[4*i+3])
 	}
 	for i := 16; i < 68; i++ {
@@ -497,13 +497,13 @@ func compressSM3(reg []uint32, block []byte) {
 		x = x ^ de(x, 15) ^ de(x, 23)
 		w[i] = (x ^ de(w[i-13], 7) ^ w[i-6]) & 0xFFFFFFFF
 	}
-	for i := 0; i < 64; i++ {
+	for i := range 64 {
 		w1[i] = w[i] ^ w[i+4]
 	}
 
 	a, b, c, d := reg[0], reg[1], reg[2], reg[3]
 	e, f, g, h := reg[4], reg[5], reg[6], reg[7]
-	for j := 0; j < 64; j++ {
+	for j := range 64 {
 		ss1 := de((de(a, 12)+e+de(pe(j), uint(j)))&0xFFFFFFFF, 7)
 		ss2 := ss1 ^ de(a, 12)
 		tt1 := (he(j, a, b, c) + d + ss2 + w1[j]) & 0xFFFFFFFF
@@ -560,11 +560,11 @@ func generateBrowserInfo(platform string, rng *rand.Rand) string {
 
 func rc4Encrypt(plaintext, key string) string {
 	s := make([]int, 256)
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		s[i] = i
 	}
 	j := 0
-	for i := 0; i < 256; i++ {
+	for i := range 256 {
 		j = (j + s[i] + int(key[i%len(key)])) % 256
 		s[i], s[j] = s[j], s[i]
 	}
@@ -596,7 +596,7 @@ func generateResult(s, alphabetName string) string {
 		}
 		shifts := []int{18, 12, 6, 0}
 		masks := []int{0xFC0000, 0x03F000, 0x0FC0, 0x3F}
-		for j := 0; j < 4; j++ {
+		for j := range 4 {
 			if shifts[j] == 6 && i+1 >= len(s) {
 				break
 			}

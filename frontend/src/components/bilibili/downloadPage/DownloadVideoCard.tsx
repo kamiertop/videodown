@@ -19,6 +19,7 @@ interface DownloadVideoCardProps {
   onPickAudio: (audioId: number) => void;
   onPickQn: (qn: number) => void;
   onRemove: () => void;
+  onRetry?: () => void;
 }
 
 // 下载列表里的单张视频卡片。
@@ -136,7 +137,7 @@ export default function DownloadVideoCard(props: DownloadVideoCardProps): JSXEle
 
           <div class="flex flex-wrap items-center justify-end gap-2 border-t border-base-200 pt-2">
             <div class="mr-auto min-w-0">
-              <QualitySelectors entry={props.entry} onPickAudio={props.onPickAudio} onPickQn={props.onPickQn}/>
+              <QualitySelectors entry={props.entry} onPickAudio={props.onPickAudio} onPickQn={props.onPickQn} onRetry={props.onRetry}/>
             </div>
             <button
                 class="btn btn-ghost btn-xs"

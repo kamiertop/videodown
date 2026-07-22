@@ -186,7 +186,7 @@ func (d *Douyin) ParseSecUserID(URLOrSecUserID string) (string, error) {
 		}
 		// 从路径 /share/user/{sec_uid} 中提取
 		if pathParts := strings.Split(parsed.Path, "/share/user/"); len(pathParts) == 2 {
-			secUID := strings.Split(pathParts[1], "?")[0]
+			secUID, _, _ := strings.Cut(pathParts[1], "?")
 			if strings.Contains(secUID, secUserIDPrefix) {
 				return secUID, nil
 			}

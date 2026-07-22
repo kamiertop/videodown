@@ -61,7 +61,7 @@ export function BilibiliSection(): JSXElement {
                 <input
                     type="range"
                     min={1}
-                    max={20}
+                    max={5}
                     step={1}
                     value={num()}
                     onInput={(e) => setNum(Number(e.currentTarget.value))}
@@ -69,7 +69,7 @@ export function BilibiliSection(): JSXElement {
                     class="range range-secondary w-full"
                 />
                 <div class="flex justify-between px-2.5 mt-2 text-xs pointer-events-none select-none">
-                  {Array.from({length: 20}).map((_, i) => (
+                  {Array.from({length: 5}).map((_, i) => (
                       <span>{i + 1}</span>
                   ))}
                 </div>
@@ -77,7 +77,7 @@ export function BilibiliSection(): JSXElement {
             </div>
           </div>
 
-{/* 请求间隔随机休眠 */}
+          {/* 请求间隔随机休眠 */}
           <div class="card bg-base-100 shadow-xl">
             <div class="card-body">
               <div class="flex items-start justify-between gap-4">
@@ -91,9 +91,9 @@ export function BilibiliSection(): JSXElement {
                     请求间隔随机休眠
                   </h2>
                   <p class="text-sm text-base-content/70">
-                    发起 B 站 API 请求前随机等待&nbsp;
-                    <span class="text-secondary font-bold">[0-{sleep()}]</span>
-                    &nbsp;秒，打散请求间隔，避开风控
+                    每个播放地址解析任务请求前随机等待 <span
+                      class="text-secondary font-bold">[0-{sleep()}]</span> 秒，打散批量解析节奏，降低风控概率
+
                   </p>
                 </div>
                 <div class="badge badge-primary badge-outline shrink-0">
@@ -102,7 +102,9 @@ export function BilibiliSection(): JSXElement {
               </div>
               <div class="flex items-center gap-3">
                 <input
-                    type="range" min="0" max="10" step="1"
+                    type="range"
+                    min="0"
+                    max="60" step="1"
                     value={sleep()}
                     onInput={(e) => setSleep(Number(e.currentTarget.value))}
                     onChange={(e) => saveSleep(Number(e.currentTarget.value))}
@@ -110,7 +112,7 @@ export function BilibiliSection(): JSXElement {
                 />
               </div>
               <div class="flex flex-wrap gap-2">
-                <For each={[0, 1, 2, 3, 5]}>
+                <For each={[0, 1, 2, 3, 5, 10, 15, 20, 30, 60]}>
                   {(v) => (
                       <button
                           type="button"
