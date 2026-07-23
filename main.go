@@ -6,6 +6,7 @@ import (
 
 	bilibiliapi "github.com/kamiertop/videodown/bilibili/api"
 	douyinapi "github.com/kamiertop/videodown/douyin/api"
+	"github.com/kamiertop/videodown/internal/tray"
 	mylogger "github.com/kamiertop/videodown/logger"
 	"github.com/kamiertop/videodown/utils"
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
@@ -37,6 +38,13 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize settings: %v", err)
 	}
+
+	trayCtrl := tray.New(log, icon)
+	trayCtrl.SetForceQuitCallback(func() {
+		settings.ForceQuit()
+	})
+	settings.SetTray(trayCtrl)
+	trayCtrl.Start()
 
 	bilibili := bilibiliapi.New(log, settings)
 	douyin := douyinapi.New(log, settings)

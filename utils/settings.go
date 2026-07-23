@@ -28,17 +28,40 @@ const (
 	allowGroupOnSaveKey = "allowGroupOnSave"
 	// concurrencyNumKey 保存同时下载的视频数量，默认为 1
 	concurrencyNumKey = "concurrencyNum"
+	// closeToTrayKey 关闭按钮行为，无默认值。用户首次点击关闭时弹窗选择后才写入。
+	closeToTrayKey = "closeToTray"
 )
+
+// TrayController 是托盘控制器需要实现的接口，避免 utils 与 internal/tray 产生循环引用。
+type TrayController interface {
+	SetContext(ctx context.Context)
+	Stop()
+}
 
 type Settings struct {
 	*badger.DB
-	logger *logger.Logger
-	ctx    context.Context
+	logger    *logger.Logger
+	ctx       context.Context
+	tray      TrayController
+	forceQuit bool // 由 ForceQuit() 设置，区分托盘退出和窗口关闭
+}
+
+// ForceQuit 标记本次退出为用户主动触发，BeforeClose 将被跳过。
+func (s *Settings) ForceQuit() {
+	s.forceQuit = true
+}
+
+// SetTray 注入托盘控制器，供生命周期回调使用。
+func (s *Settings) SetTray(t TrayController) {
+	s.tray = t
 }
 
 // Startup is called at application Startup
 func (s *Settings) Startup(ctx context.Context) {
 	s.ctx = ctx
+	if s.tray != nil {
+		s.tray.SetContext(ctx)
+	}
 }
 
 // DomReady is called after front-end resources have been loaded
@@ -50,11 +73,30 @@ func (s *Settings) Context() context.Context {
 	return s.ctx
 }
 
-// BeforeClose is called when the application is about to quit,
-// either by clicking the window close button or calling runtime.Quit.
+// BeforeClose is called when the application is about to close.
 // Returning true will cause the application to continue, false will continue shutdown as normal.
 func (s *Settings) BeforeClose(_ context.Context) (prevent bool) {
+	if s.forceQuit {
+		s.forceQuit = false
+		return false
+	}
+
+	closeToTray, err := s.GetCloseToTray()
+	if err != nil {
+		runtime.EventsEmit(s.ctx, "before-close-prompt")
+		return true
+	}
+	if closeToTray {
+		runtime.WindowHide(s.ctx)
+		return true
+	}
 	return false
+}
+
+// HideWindow hides the main window. It is used after the user chooses tray mode
+// from the first-close prompt because that initial close has already been prevented.
+func (s *Settings) HideWindow() {
+	runtime.WindowHide(s.ctx)
 }
 
 func (s *Settings) init() error {
@@ -360,8 +402,43 @@ func (s *Settings) GetVersion() string {
 	return Version
 }
 
+// HasCloseToTrayChoice 检查用户是否已对关闭行为做出选择（key 是否存在）。
+func (s *Settings) HasCloseToTrayChoice() bool {
+	_, err := s.GetKey(closeToTrayKey)
+	return err == nil
+}
+
+// IsCloseToTray 返回用户选择：true=缩小到托盘，false=退出程序。未选择时默认返回 true。
+func (s *Settings) IsCloseToTray() bool {
+	v, err := s.GetCloseToTray()
+	if err != nil {
+		return true // 未选择时默认缩小到托盘
+	}
+	return v
+}
+
+// GetCloseToTray 获取关闭按钮行为设置。
+func (s *Settings) GetCloseToTray() (bool, error) {
+	val, err := s.GetKey(closeToTrayKey)
+	if err != nil {
+		return false, err
+	}
+	return val == "true", nil
+}
+
+// SetCloseToTray 设置关闭按钮行为：false=退出程序，true=缩小到托盘。
+func (s *Settings) SetCloseToTray(v bool) error {
+	if v {
+		return s.SetKey(closeToTrayKey, "true")
+	}
+	return s.SetKey(closeToTrayKey, "false")
+}
+
 // OnShutdown is called when the application is shutting down
 func (s *Settings) OnShutdown(_ context.Context) {
+	if s.tray != nil {
+		s.tray.Stop()
+	}
 	if err := s.DB.Close(); err != nil {
 		s.logger.Errorf("Failed to close settings DB: %v", err)
 		return

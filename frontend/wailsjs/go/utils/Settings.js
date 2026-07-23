@@ -58,6 +58,14 @@ export function Flatten(arg1) {
   return window['go']['utils']['Settings']['Flatten'](arg1);
 }
 
+export function ForceQuit() {
+  return window['go']['utils']['Settings']['ForceQuit']();
+}
+
+export function GetCloseToTray() {
+  return window['go']['utils']['Settings']['GetCloseToTray']();
+}
+
 export function GetConcurrencyNum() {
   return window['go']['utils']['Settings']['GetConcurrencyNum']();
 }
@@ -110,8 +118,16 @@ export function GetVersion() {
   return window['go']['utils']['Settings']['GetVersion']();
 }
 
+export function HasCloseToTrayChoice() {
+  return window['go']['utils']['Settings']['HasCloseToTrayChoice']();
+}
+
 export function HasFFmpeg() {
   return window['go']['utils']['Settings']['HasFFmpeg']();
+}
+
+export function HideWindow() {
+  return window['go']['utils']['Settings']['HideWindow']();
 }
 
 export function IndexCacheMetrics() {
@@ -120,6 +136,10 @@ export function IndexCacheMetrics() {
 
 export function IsAutoUpdate() {
   return window['go']['utils']['Settings']['IsAutoUpdate']();
+}
+
+export function IsCloseToTray() {
+  return window['go']['utils']['Settings']['IsCloseToTray']();
 }
 
 export function IsClosed() {
@@ -218,6 +238,10 @@ export function SetAutoUpdate(arg1) {
   return window['go']['utils']['Settings']['SetAutoUpdate'](arg1);
 }
 
+export function SetCloseToTray(arg1) {
+  return window['go']['utils']['Settings']['SetCloseToTray'](arg1);
+}
+
 export function SetConcurrencyNum(arg1) {
   return window['go']['utils']['Settings']['SetConcurrencyNum'](arg1);
 }
@@ -256,6 +280,10 @@ export function SetStorage() {
 
 export function SetTheme(arg1) {
   return window['go']['utils']['Settings']['SetTheme'](arg1);
+}
+
+export function SetTray(arg1) {
+  return window['go']['utils']['Settings']['SetTray'](arg1);
 }
 
 export function Size() {

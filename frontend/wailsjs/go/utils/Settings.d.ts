@@ -5,6 +5,7 @@ import {ristretto} from '../models';
 import {badger} from '../models';
 import {context} from '../models';
 import {time} from '../models';
+import {utils} from '../models';
 import {pb} from '../models';
 
 export function Backup(arg1:io.Writer,arg2:number):Promise<number>;
@@ -35,6 +36,10 @@ export function FFmpegPath():Promise<string>;
 
 export function Flatten(arg1:number):Promise<void>;
 
+export function ForceQuit():Promise<void>;
+
+export function GetCloseToTray():Promise<boolean>;
+
 export function GetConcurrencyNum():Promise<number>;
 
 export function GetKey(arg1:string):Promise<string>;
@@ -61,11 +66,17 @@ export function GetTheme():Promise<string>;
 
 export function GetVersion():Promise<string>;
 
+export function HasCloseToTrayChoice():Promise<boolean>;
+
 export function HasFFmpeg():Promise<boolean>;
+
+export function HideWindow():Promise<void>;
 
 export function IndexCacheMetrics():Promise<ristretto.Metrics>;
 
 export function IsAutoUpdate():Promise<boolean>;
+
+export function IsCloseToTray():Promise<boolean>;
 
 export function IsClosed():Promise<boolean>;
 
@@ -115,6 +126,8 @@ export function SelectFFmpegPath():Promise<string>;
 
 export function SetAutoUpdate(arg1:boolean):Promise<void>;
 
+export function SetCloseToTray(arg1:boolean):Promise<void>;
+
 export function SetConcurrencyNum(arg1:number):Promise<void>;
 
 export function SetDiscardTs(arg1:number):Promise<void>;
@@ -134,6 +147,8 @@ export function SetSleepTime(arg1:number):Promise<void>;
 export function SetStorage():Promise<string>;
 
 export function SetTheme(arg1:string):Promise<void>;
+
+export function SetTray(arg1:utils.TrayController):Promise<void>;
 
 export function Size():Promise<number|number>;
 

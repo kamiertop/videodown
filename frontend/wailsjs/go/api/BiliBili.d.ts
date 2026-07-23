@@ -51,7 +51,7 @@ export function QRCode():Promise<model.QRCodeData>;
 
 export function RefreshCookie():Promise<model.CookieRefreshData>;
 
-export function ResolvePlayUrl(arg1:api.PlayUrlRequest):Promise<api.PlayUrlResult>;
+export function ResolvePlayUrl(arg1:api.PlayUrlRequest,arg2:number):Promise<api.PlayUrlResult>;
 
 export function SearchDownloadHistory(arg1:string):Promise<Array<model.DownloadHistoryItem>>;
 
