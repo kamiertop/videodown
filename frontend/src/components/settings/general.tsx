@@ -1,5 +1,13 @@
 import {createSignal, type JSXElement, onMount} from "solid-js";
-import {GetStorage, GetTheme, SetStorage, SetTheme} from "../../../wailsjs/go/utils/Settings";
+import {
+  GetCloseToTray,
+  GetStorage,
+  GetTheme,
+  HasCloseToTrayChoice,
+  SetCloseToTray,
+  SetStorage,
+  SetTheme
+} from "../../../wailsjs/go/utils/Settings";
 import {useToast} from "../../hooks/useToast.ts";
 import Toast from "../Toast";
 
@@ -8,7 +16,100 @@ export function GeneralSection(): JSXElement {
       <div class="space-y-6 max-w-2xl mx-auto">
         <StorageDirectory/>
         <ThemeChange/>
+        <CloseToTray/>
       </div>
+  )
+}
+
+function CloseToTray(): JSXElement {
+  const [enabled, setEnabled] = createSignal(true); // 默认隐藏到托盘
+  const [configured, setConfigured] = createSignal(true);
+  const {message, type, showToast} = useToast();
+
+  onMount(async () => {
+    try {
+      const hasChoice = await HasCloseToTrayChoice();
+      setConfigured(hasChoice);
+      if (!hasChoice) {
+        setEnabled(true);
+        return;
+      }
+      const val = await GetCloseToTray();
+      setEnabled(val);
+    } catch {
+      // key 不存在 = 用户从未选择 = 默认隐藏到托盘
+      setEnabled(true);
+    }
+  });
+
+  async function handleToggle() {
+    const next = !enabled();
+    setEnabled(next);
+    try {
+      await SetCloseToTray(next);
+      setConfigured(true);
+    } catch (e) {
+      setEnabled(!next);
+      showToast("保存失败: " + (e instanceof Error ? e.message : String(e)), "error");
+    }
+  }
+
+  async function saveCurrentChoice() {
+    try {
+      await SetCloseToTray(enabled());
+      setConfigured(true);
+      showToast("保存成功", "success");
+    } catch (e) {
+      showToast("保存失败: " + (e instanceof Error ? e.message : String(e)), "error");
+    }
+  }
+
+  return (
+      <>
+        <div class="card bg-base-100 shadow-xl">
+          <div class="card-body">
+            <div class="flex items-start gap-3">
+              <div class="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-info/10 text-info">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
+                     viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+                </svg>
+              </div>
+              <div class="min-w-0 flex-1">
+                <h2 class="text-lg font-semibold leading-8">窗口关闭行为</h2>
+                <div class="mt-4 flex items-center justify-between gap-6 rounded-md border border-base-300 bg-base-200/40 px-4 py-3">
+                  <div class="min-w-0">
+                    <p class="font-medium leading-6">关闭时缩小到任务栏托盘</p>
+                    <p class="text-sm leading-6 text-base-content/60">
+                      关闭时隐藏窗口到系统托盘，下载不受影响
+                    </p>
+                    {!configured() && (
+                        <p class="text-sm leading-6 text-warning">
+                          当前未设置，首次关闭窗口时仍会询问
+                        </p>
+                    )}
+                  </div>
+                  <div class="flex h-8 w-16 shrink-0 items-center justify-end">
+                    <input
+                        type="checkbox"
+                        class="toggle toggle-info"
+                        checked={enabled()}
+                        onChange={handleToggle}
+                    />
+                  </div>
+                </div>
+                {!configured() && (
+                    <button class="btn btn-sm btn-outline btn-warning mt-3" onClick={saveCurrentChoice}>
+                      保存当前选择
+                    </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+        <Toast message={message()} type={type()}/>
+      </>
   )
 }
 

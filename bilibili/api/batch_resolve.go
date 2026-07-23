@@ -61,7 +61,7 @@ func (b *BiliBili) BatchResolvePlayUrl(reqs []PlayUrlRequest) []PlayUrlResult {
 	var wg sync.WaitGroup
 	for i, req := range reqs {
 		wg.Go(func() {
-			results[i] = b.ResolvePlayUrl(req)
+			results[i] = b.ResolvePlayUrl(req, len(reqs))
 			// 每条解析完成后立即推送事件，前端逐条更新卡片状态
 			b.emitPlayUrlResolved(results[i])
 		})
@@ -71,15 +71,19 @@ func (b *BiliBili) BatchResolvePlayUrl(reqs []PlayUrlRequest) []PlayUrlResult {
 	return results
 }
 
-// ResolvePlayUrl 解析单个视频的播放地址，内部由模块级信号量控制并发
-func (b *BiliBili) ResolvePlayUrl(req PlayUrlRequest) PlayUrlResult {
+// ResolvePlayUrl 解析单个视频的播放地址，内部由模块级信号量控制并发。
+// totalCount 为本次批量解析的总视频数，当数量不超过并发上限时跳过休眠以提升体验。
+func (b *BiliBili) ResolvePlayUrl(req PlayUrlRequest, totalCount int) PlayUrlResult {
 	b.acquireSem()
 	defer b.releaseSem()
-	// 休眠放在 API 调用之前，拉开不同请求的时间间隔，防止风控连坐
-	if maxSleep := b.settings.GetParsePlayURLSleepSafe(); maxSleep > 0 {
-		d := rand.Float64() * float64(maxSleep)
-		b.logger.Infof("Sleeping for %vs before resolving %s", d, req.Bvid)
-		time.Sleep(time.Duration(d * float64(time.Second)))
+	// 仅当批量视频数超过并发上限时才休眠，拉开不同请求的时间间隔，防止风控连坐。
+	// 少量视频（≤ 并发数）全部在同一窗口内发出，睡不睡效果相同，直接跳过。
+	if totalCount > b.settings.GetParsePlayURLNumSafe() {
+		if maxSleep := b.settings.GetParsePlayURLSleepSafe(); maxSleep > 0 {
+			d := rand.Float64() * float64(maxSleep)
+			b.logger.Infof("Sleeping for %.1fs before resolving %s", d, req.Bvid)
+			time.Sleep(time.Duration(d * float64(time.Second)))
+		}
 	}
 
 	r := PlayUrlResult{Bvid: req.Bvid, Cid: req.Cid, RequestCid: req.Cid}

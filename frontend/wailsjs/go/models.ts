@@ -2543,11 +2543,11 @@ export namespace model {
 	    author_name: string;
 	    pub_time: string;
 	    pub_ts: number;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new DynamicArchiveItem(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.bvid = source["bvid"];
@@ -2563,18 +2563,18 @@ export namespace model {
 	    items: DynamicArchiveItem[];
 	    offset: string;
 	    has_more: boolean;
-
+	
 	    static createFrom(source: any = {}) {
 	        return new DynamicArchivePage(source);
 	    }
-
+	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.items = this.convertValues(source["items"], DynamicArchiveItem);
 	        this.offset = source["offset"];
 	        this.has_more = source["has_more"];
 	    }
-
+	
 		convertValues(a: any, classs: any, asMap: boolean = false): any {
 		    if (!a) {
 		        return a;
@@ -5445,3 +5445,4 @@ export namespace ristretto {
 	}
 
 }
+

@@ -98,8 +98,8 @@ export function RefreshCookie() {
   return window['go']['api']['BiliBili']['RefreshCookie']();
 }
 
-export function ResolvePlayUrl(arg1) {
-  return window['go']['api']['BiliBili']['ResolvePlayUrl'](arg1);
+export function ResolvePlayUrl(arg1, arg2) {
+  return window['go']['api']['BiliBili']['ResolvePlayUrl'](arg1, arg2);
 }
 
 export function SearchDownloadHistory(arg1) {
