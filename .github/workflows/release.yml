@@ -11,7 +11,7 @@ permissions:
 
 env:
   APP_NAME: videodown
-  WAILS_VERSION: v2.12.0
+  WAILS_VERSION: v2.13.0
   NODE_OPTIONS: --max-old-space-size=4096
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
