@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: cross-compile-check
+        name: cross-compile + vet
+        entry: just check
+        language: system
+        pass_filenames: false
+        always_run: true
