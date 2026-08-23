@@ -160,6 +160,7 @@ export default function VideoContentPanel(props: {
           author,
           publishText: formatDate(item.create_time ?? 0),
           durationText: formatDuration(duration),
+          isTop: item.is_top === 1,
           downloadItem: {
             awemeId,
             sourceKind: douyinSourceKind(props.kind),

@@ -1,8 +1,10 @@
 package api
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 
 	"github.com/kamiertop/videodown/douyin/model"
 )
@@ -50,4 +52,73 @@ func (d *Douyin) FollowList(offset int) (model.FollowResponse, error) {
 	}
 
 	return resp, nil
+}
+
+// SearchFollow 通过昵称或抖音号搜索关注列表，返回的结果不一定是关注列表中的用户，需要二次过滤
+func (d *Douyin) SearchFollow(keyword string) ([]model.SearchFollowResponse, error) {
+	var resp struct {
+		Msg  string `json:"msg"` // 请求成功时返回："success"
+		Data []struct {
+			Words []struct {
+				ID     string `json:"id"`
+				Word   string `json:"word"` // 通过搜索返回的昵称或抖音号
+				Params struct {
+					Info string `json:"info"` // 需要UnMarshal
+				} `json:"params"`
+			} `json:"words"`
+		} `json:"data"`
+	}
+	followList := make([]model.SearchFollowResponse, 0)
+	queryParams, err := d.publicQueryParams()
+	if err != nil {
+		return followList, fmt.Errorf("获取公共查询参数失败: %w", err)
+	}
+	publicHeaders, err := d.publicHeaders()
+	if err != nil {
+		return followList, fmt.Errorf("获取公共请求头失败: %w", err)
+	}
+	publicHeaders["Referer"] = "https://www.douyin.com/user/self?from_tab_name=main&showTab=like"
+	publicHeaders["Sec-Fetch-Site"] = "same-origin"
+	publicHeaders["Uifid"] = queryParams["uifid"].(string)
+	values := make(url.Values)
+	for key, value := range queryParams {
+		values.Set(key, fmt.Sprint(value))
+	}
+	values.Add("count", "100")
+	values.Add("query", keyword) // 搜索关键词
+	values.Add("business_id", "90062")
+	values.Add("pd", "aweme_at_user")
+	values.Add("words_source", "aweme_at_user")
+	values.Add("category_name", "aweme_at_user")
+	params := values.Encode()
+	aBogus := GenerateABogus(params)
+	err = d.client.
+		Get(fmt.Sprintf("https://www.douyin.com/aweme/v1/web/api/suggest_words/?%s&a_bogus=%s", params, url.QueryEscape(aBogus))).
+		SetHeaders(publicHeaders).
+		Do().
+		Into(&resp)
+	if err != nil {
+		return followList, fmt.Errorf("请求搜索接口失败: %w", err)
+	}
+	if resp.Msg != "success" {
+		d.logger.Errorf("request search follow failed, msg=%s", resp.Msg)
+		return followList, errors.New("搜索失败")
+	}
+	if len(resp.Data) != 1 {
+		return followList, nil
+	}
+	// 当前只返回一条数据，words是一个数组，里面包含了搜索结果
+	words := resp.Data[0]
+	for _, word := range words.Words {
+		var infoMap model.SearchFollowResponse
+		if err = json.Unmarshal([]byte(word.Params.Info), &infoMap); err != nil {
+			d.logger.Errorf("unmarshal search follow info failed: %v", err)
+			continue
+		}
+		if infoMap.FollowStatus == "follow" || infoMap.RelationType == "关注" {
+			followList = append(followList, infoMap)
+		}
+	}
+
+	return followList, nil
 }

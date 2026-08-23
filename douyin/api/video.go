@@ -75,5 +75,10 @@ func (d *Douyin) VideoDetail(awemeID string) (model.AwemeItem, error) {
 	}
 
 	return resp.AwemeItem, nil
-
 }
+
+/*
+
+https://www.douyin.com/aweme/v1/web/aweme/post/ 也可以获取用户的视频列表，但只有前20条，后面还是会用上面的接口获取
+
+*/

@@ -31,3 +31,13 @@ type Avatar struct {
 	Uri     string   `json:"uri"`
 	UrlList []string `json:"url_list"`
 }
+
+type SearchFollowResponse struct {
+	NickName     string `json:"rich_sug_nickname"`      // 昵称
+	UserID       string `json:"rich_sug_user_id"`       // 用户ID
+	SecUid       string `json:"rich_sug_sec_uid"`       // 用户sec_uid
+	FollowStatus string `json:"rich_sug_follow_status"` // 关注状态，follow表示已关注
+	RelationType string `json:"rich_sug_relation_type"` // 关系类型，关注
+	AvatarURI    string `json:"rich_sug_avatar_uri"`    // 头像URI
+	ShortID      string `json:"rich_sug_short_id"`      // 抖音号
+}

@@ -1626,6 +1626,7 @@ export namespace model {
 	    images: ImageItem[];
 	    origin_duet_resource_uri: string;
 	    is_image_beat: boolean;
+	    is_top: number;
 	    is_life_item: boolean;
 	    author_mask_tag: number;
 	    user_recommend_status: number;
@@ -1670,6 +1671,7 @@ export namespace model {
 	        this.images = this.convertValues(source["images"], ImageItem);
 	        this.origin_duet_resource_uri = source["origin_duet_resource_uri"];
 	        this.is_image_beat = source["is_image_beat"];
+	        this.is_top = source["is_top"];
 	        this.is_life_item = source["is_life_item"];
 	        this.author_mask_tag = source["author_mask_tag"];
 	        this.user_recommend_status = source["user_recommend_status"];
@@ -3705,6 +3707,30 @@ export namespace model {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.refresh = source["refresh"];
 	        this.timestamp = source["timestamp"];
+	    }
+	}
+	export class SearchFollowResponse {
+	    rich_sug_nickname: string;
+	    rich_sug_user_id: string;
+	    rich_sug_sec_uid: string;
+	    rich_sug_follow_status: string;
+	    rich_sug_relation_type: string;
+	    rich_sug_avatar_uri: string;
+	    rich_sug_short_id: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SearchFollowResponse(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.rich_sug_nickname = source["rich_sug_nickname"];
+	        this.rich_sug_user_id = source["rich_sug_user_id"];
+	        this.rich_sug_sec_uid = source["rich_sug_sec_uid"];
+	        this.rich_sug_follow_status = source["rich_sug_follow_status"];
+	        this.rich_sug_relation_type = source["rich_sug_relation_type"];
+	        this.rich_sug_avatar_uri = source["rich_sug_avatar_uri"];
+	        this.rich_sug_short_id = source["rich_sug_short_id"];
 	    }
 	}
 	export class SeasonsSeriesArchivesStat {

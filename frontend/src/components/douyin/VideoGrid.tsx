@@ -17,6 +17,7 @@ export interface DouyinVideoCardItem {
   durationText: string;
   downloadItem: DouyinDownloadItem;
   mediaBadge?: "image" | "live-photo";
+  isTop?: boolean;
 }
 
 // 与下方虚拟行的响应式列布局保持一致。
@@ -52,6 +53,11 @@ function VideoCard(props: {
                 decoding="async"
                 referrerPolicy="no-referrer"
             />
+          </Show>
+          <Show when={props.item.isTop}>
+            <span class="absolute left-1.5 top-1.5 z-10 rounded bg-yellow-400 px-1.5 py-0.5 text-[0.65rem] font-semibold leading-none text-black shadow-sm">
+              置顶
+            </span>
           </Show>
           <Show when={props.item.mediaBadge === "image"}>
             <svg

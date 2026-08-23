@@ -35,6 +35,8 @@ export function ParseVideo(arg1:string):Promise<string>;
 
 export function Profile():Promise<model.MyInfoResponse>;
 
+export function SearchFollow(arg1:string):Promise<Array<model.SearchFollowResponse>>;
+
 export function SetCookie(arg1:string):Promise<void>;
 
 export function User(arg1:string):Promise<model.UserResponse>;

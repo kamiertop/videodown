@@ -66,6 +66,10 @@ export function Profile() {
   return window['go']['api']['Douyin']['Profile']();
 }
 
+export function SearchFollow(arg1) {
+  return window['go']['api']['Douyin']['SearchFollow'](arg1);
+}
+
 export function SetCookie(arg1) {
   return window['go']['api']['Douyin']['SetCookie'](arg1);
 }
