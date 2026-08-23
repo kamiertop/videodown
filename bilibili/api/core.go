@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/bytedance/sonic"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/imroc/req/v3"
 
@@ -33,7 +32,7 @@ type BiliBili struct {
 
 func New(log *logger.Logger, settings *utils.Settings) *BiliBili {
 	log = log.WithName("BiliBili")
-	var client = req.C().SetLogger(log).EnableAutoDecompress().SetJsonMarshal(sonic.Marshal).SetJsonUnmarshal(sonic.Unmarshal)
+	var client = req.C().SetLogger(log).EnableAutoDecompress()
 	if logger.IsDevMode() {
 		client = client.EnableDebugLog()
 	}

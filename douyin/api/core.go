@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/imroc/req/v3"
 
 	"github.com/kamiertop/videodown/logger"
@@ -39,7 +38,7 @@ type Douyin struct {
 
 func New(log *logger.Logger, settings *utils.Settings) *Douyin {
 	log = log.WithName("Douyin")
-	var client = req.C().SetLogger(log).EnableAutoDecompress().SetJsonMarshal(sonic.Marshal).SetJsonUnmarshal(sonic.Unmarshal)
+	var client = req.C().SetLogger(log).EnableAutoDecompress()
 	if logger.IsDevMode() {
 		client = client.EnableDebugLog()
 	}

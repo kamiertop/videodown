@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -13,7 +14,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/imroc/req/v3"
 	"github.com/kamiertop/videodown/bilibili/model"
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -103,7 +103,7 @@ func (b *BiliBili) downloadedCachePath(cid int64) (string, bool) {
 	}
 
 	var cached model.DownloadHistoryItem
-	if err = sonic.Unmarshal([]byte(raw), &cached); err != nil {
+	if err = json.Unmarshal([]byte(raw), &cached); err != nil {
 		return "", false
 	}
 	return cached.Path, true
@@ -131,7 +131,7 @@ func (b *BiliBili) markDownloaded(task DashDownloadTask, path string, downloadKi
 		downloadKind = bilibiliDownloadKindVideo
 	}
 
-	payload, err := sonic.Marshal(model.DownloadHistoryItem{
+	payload, err := json.Marshal(model.DownloadHistoryItem{
 		Bvid:         strings.TrimSpace(task.Bvid),
 		Cid:          task.Cid,
 		Title:        strings.TrimSpace(task.Title),
