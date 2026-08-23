@@ -35,6 +35,7 @@ type AwemeItem struct {
 	Images                   []ImageItem     `json:"images"` // 图文类型视频使用这个字段中的图片列表
 	OriginDuetResourceUri    string          `json:"origin_duet_resource_uri"`
 	IsImageBeat              bool            `json:"is_image_beat"`
+	IsTop                    int8            `json:"is_top"` // 视频置顶状态，1是置顶，0不是
 	IsLifeItem               bool            `json:"is_life_item"`
 	AuthorMaskTag            int             `json:"author_mask_tag"`
 	UserRecommendStatus      int             `json:"user_recommend_status"`
