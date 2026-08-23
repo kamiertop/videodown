@@ -4,10 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"strings"
 
 	"github.com/bytedance/sonic"
-	"github.com/kamiertop/videodown/douyin/model"
 	"golang.org/x/net/html"
 )
 
@@ -90,18 +88,4 @@ func (d *Douyin) parseJingXuanAwemeID(urlValue string) (string, error) {
 	}
 
 	return renderData.App.VideoDetail.AwemeID, nil
-}
-
-// parseJingXuanVideo 解析精选页链接
-// Deprecated: 解析HTML中的内容，返回值结构和之前的不同，所以不再使用
-func (d *Douyin) parseJingXuanVideo(link string) (model.JingXuan, error) {
-	if !strings.Contains(link, "douyin.com/jingxuan?modal_id=") {
-		return model.JingXuan{}, errors.New("链接格式不正确")
-	}
-	var resp struct {
-		App struct {
-			VideoDetail model.JingXuan `json:"videoDetail"`
-		} `json:"app"`
-	}
-	return resp.App.VideoDetail, nil
 }
