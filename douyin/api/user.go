@@ -1,12 +1,12 @@
 package api
 
 import (
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/url"
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/imroc/req/v3"
 
 	"github.com/kamiertop/videodown/douyin/model"
@@ -60,7 +60,7 @@ func (d *Douyin) User(secUserId string) (model.UserResponse, error) {
 		d.logger.Errorf("request user info api returned empty body, status code: %d", apiResp.StatusCode)
 		return resp, errors.New("请求用户信息失败：接口返回空响应")
 	}
-	if err = sonic.Unmarshal(body, &resp); err != nil {
+	if err = json.Unmarshal(body, &resp); err != nil {
 		d.logger.Errorf("unmarshal user info response failed: %v", err)
 		return resp, fmt.Errorf("解析用户信息失败: %w", err)
 	}

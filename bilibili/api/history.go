@@ -2,11 +2,11 @@ package api
 
 import (
 	"bytes"
+	"encoding/json/v2"
 	"errors"
 	"sort"
 	"strings"
 
-	"github.com/bytedance/sonic"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kamiertop/videodown/bilibili/model"
 	"github.com/kamiertop/videodown/utils"
@@ -25,7 +25,7 @@ func (b *BiliBili) SearchDownloadHistory(upperNameOrTitle string) ([]model.Downl
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			if err := it.Item().Value(func(val []byte) error {
 				var history model.DownloadHistoryItem
-				if err := sonic.Unmarshal(bytes.Clone(val), &history); err != nil {
+				if err := json.Unmarshal(bytes.Clone(val), &history); err != nil {
 					return err
 				}
 				kw := strings.ToLower(upperNameOrTitle)
@@ -66,7 +66,7 @@ func (b *BiliBili) DownloadHistory() ([]model.DownloadHistoryItem, error) {
 			item := it.Item()
 			if err := item.Value(func(val []byte) error {
 				var history model.DownloadHistoryItem
-				if err := sonic.Unmarshal(bytes.Clone(val), &history); err != nil {
+				if err := json.Unmarshal(bytes.Clone(val), &history); err != nil {
 					return err
 				}
 				items = append(items, history)

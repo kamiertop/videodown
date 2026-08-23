@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -14,7 +15,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bytedance/sonic"
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kamiertop/videodown/douyin/model"
 	"github.com/kamiertop/videodown/utils"
@@ -162,7 +162,7 @@ func (d *Douyin) markDownloaded(task DouyinDownloadTask, path string, isImageAlb
 		}
 	}
 
-	payload, err := sonic.Marshal(DouyinDownloadHistoryItem{
+	payload, err := json.Marshal(DouyinDownloadHistoryItem{
 		AwemeID:      strings.TrimSpace(task.AwemeID),
 		Title:        strings.TrimSpace(task.Title),
 		Cover:        strings.TrimSpace(task.Cover),
@@ -201,7 +201,7 @@ func (d *Douyin) DownloadHistory() ([]DouyinDownloadHistoryItem, error) {
 			item := it.Item()
 			if err := item.Value(func(val []byte) error {
 				var history DouyinDownloadHistoryItem
-				if err := sonic.Unmarshal(bytes.Clone(val), &history); err != nil {
+				if err := json.Unmarshal(bytes.Clone(val), &history); err != nil {
 					return nil
 				}
 				items = append(items, history)

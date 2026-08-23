@@ -1,11 +1,11 @@
 package api
 
 import (
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/url"
 
-	"github.com/bytedance/sonic"
 	"golang.org/x/net/html"
 )
 
@@ -78,7 +78,7 @@ func (d *Douyin) parseJingXuanAwemeID(urlValue string) (string, error) {
 			} `json:"videoDetail"`
 		} `json:"app"`
 	}
-	if err = sonic.Unmarshal([]byte(unescape), &renderData); err != nil {
+	if err = json.Unmarshal([]byte(unescape), &renderData); err != nil {
 		d.logger.Errorf("unmarshal script content failed: %v", err)
 		return "", errRetry
 	}
