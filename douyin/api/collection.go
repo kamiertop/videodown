@@ -2,8 +2,10 @@ package api
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/kamiertop/videodown/douyin/model"
+	"github.com/kamiertop/videodown/douyin/websign"
 )
 
 // Collection 收藏的合集
@@ -19,18 +21,26 @@ func (d *Douyin) Collection(count, cursor int) (model.CollectionResponse, error)
 	if err != nil {
 		return resp, fmt.Errorf("获取公共请求头失败: %w", err)
 	}
-	err = d.client.
-		Get("https://www-hj.douyin.com/aweme/v1/web/mix/listcollection/").
-		SetQueryParamsAnyType(queryParams).
-		SetQueryParamsAnyType(map[string]any{
-			"count":  count,  // 每次请求返回的数据条数，默认12
-			"cursor": cursor, // 偏移量，默认是0，即从第0条数据开始返回
-		}).
-		SetHeaders(publicHeaders).
-		SetHeader("Uifid", queryParams["uifid"].(string)).
-		Do().
-		Into(&resp)
+	publicHeaders["Uifid"] = queryParams["uifid"].(string)
+	queryParams["count"] = count
+	queryParams["cursor"] = cursor
+
+	params := url.Values{}
+	for key, value := range queryParams {
+		params.Set(key, fmt.Sprint(value))
+	}
+	aBogus := GenerateABogus(params.Encode())
+	params.Set("a_bogus", aBogus)
+
+	signed, err := websign.XSecSdkWebSignature(
+		"https://www-hj.douyin.com/aweme/v1/web/mix/listcollection/?"+params.Encode(),
+		queryParams["uifid"].(string),
+	)
 	if err != nil {
+		return resp, fmt.Errorf("生成 SecSDK 签名失败: %w", err)
+	}
+
+	if err = d.client.Get(signed).SetHeaders(publicHeaders).Do().Into(&resp); err != nil {
 		d.logger.Errorf("request collection list failed: %v", err)
 		return resp, fmt.Errorf("请求合集列表失败: %w", err)
 	}
@@ -54,38 +64,45 @@ func (d *Douyin) CollectionList(secUserID, seriesID string, cursor, count int) (
 	if err != nil {
 		return resp, fmt.Errorf("获取公共请求头失败: %w", err)
 	}
-	err = d.client.
-		Get("https://www.douyin.com/aweme/v1/web/series/aweme/").
-		SetQueryParamsAnyType(queryParams).
-		SetQueryParamsAnyType(map[string]any{
-			"count":     count,    // 每次请求返回的数据条数，默认12
-			"cursor":    cursor,   // 偏移量，默认是0，即从第0条数据开始返回
-			"series_id": seriesID, // 合集ID
-			"pull_type": 2,
-		}).
-		SetHeaders(map[string]string{
-			"Pragma":        "no-cache",
-			Priority:        "u=1, i",
-			Referer:         fmt.Sprintf("https://www.douyin.com/user/%s?from_tab_name=main&showSubTab=compilation", secUserID),
-			"Uifid":         queryParams["uifid"].(string),
-			"User-Agent":    userAgent(),
-			SecChFetchSite:  "same-origin",
-			SecChFetchMode:  "cors",
-			SecChFetchDest:  "empty",
-			"Sec-Ch-Ua":     `"Google Chrome";v="147", "Not:A-Brand";v="8", "Chromium";v="147"`,
-			SecCHUAMobile:   "?0",
-			SecCHUAPlatform: fmt.Sprintf(`"%s"`, osName()),
-			"Cookie":        cookie,
-			"Cache-Control": "no-cache",
-			Accept:          "application/json, text/plain, */*",
-			AcceptEncoding:  "gzip, deflate, br, zstd",
-			AcceptLanguage:  "zh-CN,zh;q=0.9",
-		}).
-		SetHeader(Referer, "https://www.douyin.com/user/self").
-		SetHeader("Uifid", queryParams["uifid"].(string)).
-		Do().
-		Into(&resp)
+	queryParams["count"] = count
+	queryParams["cursor"] = cursor
+	queryParams["series_id"] = seriesID
+	queryParams["pull_type"] = 2
+
+	params := url.Values{}
+	for key, value := range queryParams {
+		params.Set(key, fmt.Sprint(value))
+	}
+	aBogus := GenerateABogus(params.Encode())
+	params.Set("a_bogus", aBogus)
+
+	signed, err := websign.XSecSdkWebSignature(
+		"https://www.douyin.com/aweme/v1/web/series/aweme/?"+params.Encode(),
+		queryParams["uifid"].(string),
+	)
 	if err != nil {
+		return resp, fmt.Errorf("生成 SecSDK 签名失败: %w", err)
+	}
+	headers := map[string]string{
+		"Pragma":        "no-cache",
+		Priority:        "u=1, i",
+		Referer:         fmt.Sprintf("https://www.douyin.com/user/%s?from_tab_name=main&showSubTab=compilation", secUserID),
+		"Uifid":         queryParams["uifid"].(string),
+		"User-Agent":    userAgent(),
+		SecChFetchSite:  "same-origin",
+		SecChFetchMode:  "cors",
+		SecChFetchDest:  "empty",
+		"Sec-Ch-Ua":     `"Google Chrome";v="147", "Not:A-Brand";v="8", "Chromium";v="147"`,
+		SecCHUAMobile:   "?0",
+		SecCHUAPlatform: fmt.Sprintf(`"%s"`, osName()),
+		"Cookie":        cookie,
+		"Cache-Control": "no-cache",
+		Accept:          "application/json, text/plain, */*",
+		AcceptEncoding:  "gzip, deflate, br, zstd",
+		AcceptLanguage:  "zh-CN,zh;q=0.9",
+	}
+
+	if err = d.client.Get(signed).SetHeaders(headers).Do().Into(&resp); err != nil {
 		d.logger.Errorf("request collection list failed: %v", err)
 		return resp, fmt.Errorf("请求合集视频列表失败: %w", err)
 	}

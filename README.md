@@ -202,3 +202,4 @@ wails build
 - aBogus，提示不要使用二维码登录，用Cookie（我听劝）：[TikTokDownloader](https://github.com/JoeanAmier/TikTokDownloader)
 - 提示使用Cookie：[Douyin_TikTok_Download_API](https://github.com/Evil0ctal/Douyin_TikTok_Download_API)
 - Codex 和 ChatGPT 在代码生成和优化方面提供了巨大帮助
+- 借助 Codex-5.6-Sol 和 [js-reverse-mcp](https://github.com/zhizhuodemao/js-reverse-mcp) 实现了 `x-secsdk-web-signature`
