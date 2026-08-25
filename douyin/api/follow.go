@@ -84,12 +84,12 @@ func (d *Douyin) SearchFollow(keyword string) ([]model.SearchFollowResponse, err
 	for key, value := range queryParams {
 		values.Set(key, fmt.Sprint(value))
 	}
-	values.Add("count", "100")
-	values.Add("query", keyword) // 搜索关键词
-	values.Add("business_id", "90062")
-	values.Add("pd", "aweme_at_user")
-	values.Add("words_source", "aweme_at_user")
-	values.Add("category_name", "aweme_at_user")
+	values.Set("count", "100")
+	values.Set("query", keyword) // 搜索关键词
+	values.Set("business_id", "90062")
+	values.Set("pd", "aweme_at_user")
+	values.Set("words_source", "aweme_at_user")
+	values.Set("category_name", "aweme_at_user")
 	params := values.Encode()
 	aBogus := GenerateABogus(params)
 	err = d.client.

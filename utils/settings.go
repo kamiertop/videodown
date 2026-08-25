@@ -155,9 +155,11 @@ func NewSettings(logger *logger.Logger) (*Settings, error) {
 	if execPath, err := os.Executable(); err == nil {
 		dbPath = filepath.Join(filepath.Dir(execPath), dbPath)
 	}
-	db, err := badger.Open(badger.
-		DefaultOptions(dbPath).
-		WithLogger(logger))
+	db, err := badger.Open(
+		badger.
+			DefaultOptions(dbPath).
+			WithLoggingLevel(badger.ERROR),
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -168,9 +170,10 @@ func NewSettings(logger *logger.Logger) (*Settings, error) {
 }
 
 func NewSettingsForDebug(logger *logger.Logger, path string) (*Settings, error) {
-	db, err := badger.Open(badger.
-		DefaultOptions(path).
-		WithLogger(logger),
+	db, err := badger.Open(
+		badger.
+			DefaultOptions(path).
+			WithLoggingLevel(badger.ERROR),
 	)
 
 	if err != nil {
