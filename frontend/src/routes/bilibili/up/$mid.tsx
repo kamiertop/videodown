@@ -1,7 +1,7 @@
 import {createFileRoute, Link} from '@tanstack/solid-router'
 import {createEffect, createMemo, createResource, createSignal, type JSXElement, Match, onMount, Show, Switch} from "solid-js";
-import {Info, SeasonsArchivesList, SeasonsSeriesList, SeriesList, VideoList} from "../../../../wailsjs/go/api/BiliBili";
-import {model} from "../../../../wailsjs/go/models";
+import {Info, SeasonsArchivesList, SeasonsSeriesList, SeriesList, VideoList} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
+import * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
 import UpCommonLayout from "../../../components/bilibili/up/UpCommonLayout.tsx";
 import DetailError from "../../../components/DetailError.tsx";
 import DetailLoading from "../../../components/DetailLoading.tsx";
@@ -481,7 +481,7 @@ function createUpDetailLogic(
       if (item.kind === 'season') {
         const data = await SeasonsArchivesList(mid, 20, targetPage, item.id) as unknown as model.SeasonsArchivesData;
         if (seq !== listReqSeq) return;
-        const cards = mapArchivesToCards(data.archives, upperName, item.title, item.subtitle);
+        const cards = mapArchivesToCards(data.archives ?? undefined, upperName, item.title, item.subtitle);
         const total = Number(data.meta?.total ?? data.page?.Total ?? item.count ?? 0) || 0;
         setListTotal(total);
         if (append) setListCards(prev => [...prev, ...cards]); else setListCards(cards);

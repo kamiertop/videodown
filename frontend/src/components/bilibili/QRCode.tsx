@@ -1,7 +1,7 @@
 import QRCodeGenerator from "qrcode";
 import {createSignal, type JSXElement, onMount, Show} from "solid-js";
-import {QRCode as GetQRCode} from "../../../wailsjs/go/api/BiliBili";
-import type {model} from "../../../wailsjs/go/models.ts";
+import {QRCode as GetQRCode} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
+import type * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
 import {useToast} from "../../hooks/useToast";
 import Toast from "../Toast";
 

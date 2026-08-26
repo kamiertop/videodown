@@ -1,6 +1,6 @@
 import {createEffect, createSignal, type JSXElement} from "solid-js";
-import {Favorites, FavoritesList} from "../../../../wailsjs/go/api/BiliBili";
-import {model} from "../../../../wailsjs/go/models";
+import {Favorites, FavoritesList} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
+import * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
 import type {MediaCardItem} from "../../../lib/model.ts";
 import {StarIcon} from "../../icons/IconStar";
 import {type SidebarListItem} from "../../SidebarList";
@@ -108,7 +108,7 @@ export default function FavoritePanel(props: {
         // 追加模式：把新一页拼接到末尾
         setDetail(prev => {
           const prevMedias = prev?.medias ?? [];
-          return model.FavoriteData.createFrom({...data, medias: [...prevMedias, ...(data.medias ?? [])]});
+          return ({...data, medias: [...prevMedias, ...(data.medias ?? [])]});
         });
       } else {
         setDetail(data);

@@ -29,7 +29,7 @@ export default function QualitySelectors(props: QualitySelectorsProps): JSXEleme
   const tracks = createMemo(() => {
     const data = done();
     // 音频同理：按 dash.audio 里的真实音轨展示，不额外请求。
-    return data ? sortedAudioTracks(data.play.dash?.audio) : [];
+    return data ? sortedAudioTracks(data.play.dash?.audio ?? undefined) : [];
   });
 
   return (

@@ -9,7 +9,6 @@ import (
 	"runtime"
 
 	"github.com/dgraph-io/badger/v4"
-	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type FFmpeg struct {
@@ -119,11 +118,11 @@ func (s *Settings) HasFFmpeg() bool {
 func (s *Settings) FFmpegPath() (string, error) {
 	ffmpeg := NewFFmpeg()
 	// 优先使用设置中保存的路径
-	if path, err := s.GetKey(ffmpegPathKey); err == nil && path != "" {
+	if path, err := s.store.Get(ffmpegPathKey); err == nil && path != "" {
 		ffmpeg.path = path
 		return path, nil
 	}
-	path, err := s.GetKey(ffmpegPathKey)
+	path, err := s.store.Get(ffmpegPathKey)
 	if err != nil {
 		if errors.Is(err, badger.ErrKeyNotFound) {
 			s.logger.Error("ffmpeg path not set in settings, will try to search")
@@ -165,29 +164,5 @@ func (s *Settings) SetFFmpegPath(path string) error {
 	ffmpeg := NewFFmpeg()
 	ffmpeg.path = path
 
-	return s.SetKey(ffmpegPathKey, path)
-}
-
-func (s *Settings) SelectFFmpegPath() (string, error) {
-	path, err := wailsRuntime.OpenFileDialog(s.ctx, wailsRuntime.OpenDialogOptions{
-		Title: "选择 FFmpeg 可执行文件",
-		Filters: []wailsRuntime.FileFilter{
-			{
-				DisplayName: "可执行文件",
-				Pattern:     "ffmpeg;ffmpeg.exe;*",
-			},
-		},
-	})
-	if err != nil {
-		return "", fmt.Errorf("打开文件选择对话框失败: %w", err)
-	}
-	if path == "" {
-		return "", errors.New("未选择文件")
-	}
-
-	if err := s.SetFFmpegPath(path); err != nil {
-		return "", err
-	}
-
-	return path, nil
+	return s.store.Set(ffmpegPathKey, path)
 }

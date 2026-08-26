@@ -11,7 +11,7 @@ import (
 func TestResolveDownloadDirGroupsByAuthor(t *testing.T) {
 	settings := utils.NewSettingsWithMemory(logger.New())
 	defer func() {
-		_ = settings.Close()
+		_ = settings.ServiceShutdown()
 	}()
 	d := &Douyin{settings: settings}
 	root := t.TempDir()

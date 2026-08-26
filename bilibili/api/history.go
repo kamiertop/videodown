@@ -18,7 +18,7 @@ func (b *BiliBili) SearchDownloadHistory(upperNameOrTitle string) ([]model.Downl
 	var results []model.DownloadHistoryItem
 	prefix := []byte(downloadedVideoCachePrefix)
 
-	err := b.settings.View(func(txn *badger.Txn) error {
+	err := b.store.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
 
@@ -58,7 +58,7 @@ func (b *BiliBili) DownloadHistory() ([]model.DownloadHistoryItem, error) {
 	var items []model.DownloadHistoryItem
 	prefix := []byte(downloadedVideoCachePrefix)
 
-	err := b.settings.View(func(txn *badger.Txn) error {
+	err := b.store.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
 
@@ -90,7 +90,7 @@ func (b *BiliBili) DownloadHistory() ([]model.DownloadHistoryItem, error) {
 
 // ClearDownloadHistory 清空 B 站下载历史；只清理缓存记录，不删除已经保存到本地的视频文件。
 func (b *BiliBili) ClearDownloadHistory() error {
-	return b.settings.ClearDownloadHistory(downloadedVideoCachePrefix)
+	return b.store.DeletePrefix(downloadedVideoCachePrefix)
 }
 
 // DeleteDownloadHistory 删除单条下载历史；只清理缓存记录，不删除已经保存到本地的视频文件。
@@ -100,5 +100,5 @@ func (b *BiliBili) DeleteDownloadHistory(cid int64) error {
 		return errors.New("视频CID为空")
 	}
 
-	return b.settings.DeleteKey(key)
+	return b.store.Delete(key)
 }

@@ -1,7 +1,7 @@
 import {Link, useLocation} from "@tanstack/solid-router";
 import type {JSXElement} from "solid-js";
 import {createMemo, For} from "solid-js";
-import {BrowserOpenURL} from "../../wailsjs/runtime";
+import {Browser} from "@wailsio/runtime";
 import app from "../assets/pixel.png";
 
 // Simple, data-driven Header: desktop-only, flat nav with emojis
@@ -34,7 +34,7 @@ export default function HomeHeader(): JSXElement {
 
   const openGitHubRepo = () => {
     try {
-      BrowserOpenURL(GITHUB_REPO_URL);
+      Browser.OpenURL(GITHUB_REPO_URL);
     } catch {
       window.open(GITHUB_REPO_URL, '_blank', 'noopener,noreferrer');
     }

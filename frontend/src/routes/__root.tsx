@@ -1,7 +1,8 @@
 import {createRootRoute, Outlet} from '@tanstack/solid-router'
 import {createSignal, type JSXElement, onMount, Show} from "solid-js";
-import {ForceQuit, GetTheme, HideWindow, SetCloseToTray} from "../../wailsjs/go/utils/Settings";
-import {EventsOn, Quit} from "../../wailsjs/runtime";
+import {GetTheme, SetCloseToTray} from "@bindings/github.com/kamiertop/videodown/utils/settings";
+import {ForceQuit, HideWindow} from "@bindings/github.com/kamiertop/videodown/internal/app/controller";
+import {Application, Events} from "@wailsio/runtime";
 import HomeHeader from "../components/Header.tsx";
 
 export const Route = createRootRoute({
@@ -16,7 +17,7 @@ function RootComponent(): JSXElement {
     const theme: string = await GetTheme().catch(() => 'light');
     document.documentElement.setAttribute('data-theme', theme);
 
-    EventsOn("before-close-prompt", () => {
+    Events.On("before-close-prompt", () => {
       setRememberChoice(false);
       setShowChoice(true);
     });
@@ -31,7 +32,7 @@ function RootComponent(): JSXElement {
       if (!rememberChoice()) {
         await ForceQuit();
       }
-      Quit();
+      Application.Quit();
       return;
     }
     HideWindow();

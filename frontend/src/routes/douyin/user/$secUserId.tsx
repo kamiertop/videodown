@@ -1,7 +1,7 @@
 import {createFileRoute, Link} from '@tanstack/solid-router'
 import {createResource, createSignal, type JSXElement, Match, Show, Switch} from "solid-js";
-import {CollectionList, User, UserSeries, UserVideoList} from "../../../../wailsjs/go/api/Douyin";
-import {model} from "../../../../wailsjs/go/models";
+import {CollectionList, User, UserSeries, UserVideoList} from "@bindings/github.com/kamiertop/videodown/douyin/api/douyin";
+import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
 import CollectionVideoPanel, {
   type DouyinListItem,
   type ListPage,
@@ -149,7 +149,7 @@ function DouyinUserPage(): JSXElement {
     setLoadingMore(true);
     try {
       const next = await UserVideoList(secUserId(), USER_VIDEO_PAGE_SIZE, current.max_cursor ?? videos().length);
-      mutateVideos(model.UserVideoListResponse.createFrom({
+      mutateVideos(({
         ...next,
         aweme_list: [...videos(), ...(next.aweme_list ?? [])],
       }));

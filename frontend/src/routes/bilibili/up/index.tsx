@@ -1,7 +1,7 @@
 import {createFileRoute, Link, useNavigate} from '@tanstack/solid-router'
 import {createResource, createSignal, For, type JSXElement, Match, Show, Switch} from "solid-js";
-import {FollowList, Info} from "../../../../wailsjs/go/api/BiliBili";
-import {model} from "../../../../wailsjs/go/models";
+import {FollowList, Info} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
+import * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
 import UpCommonLayout from "../../../components/bilibili/up/UpCommonLayout";
 import DetailError from "../../../components/DetailError.tsx";
 import IconRefresh from "../../../components/icons/IconRefresh";
