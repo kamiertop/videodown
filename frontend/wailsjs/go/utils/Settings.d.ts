@@ -92,6 +92,8 @@ export function MaxBatchSize():Promise<number>;
 
 export function MaxVersion():Promise<number>;
 
+export function NeedUpdate():Promise<boolean>;
+
 export function NewKVLoader(arg1:number):Promise<badger.KVLoader>;
 
 export function NewManagedWriteBatch():Promise<badger.WriteBatch>;

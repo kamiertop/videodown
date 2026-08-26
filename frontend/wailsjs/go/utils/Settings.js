@@ -170,6 +170,10 @@ export function MaxVersion() {
   return window['go']['utils']['Settings']['MaxVersion']();
 }
 
+export function NeedUpdate() {
+  return window['go']['utils']['Settings']['NeedUpdate']();
+}
+
 export function NewKVLoader(arg1) {
   return window['go']['utils']['Settings']['NewKVLoader'](arg1);
 }

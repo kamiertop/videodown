@@ -9,6 +9,7 @@ require (
 	github.com/imroc/req/v3 v3.59.0
 	github.com/rs/zerolog v1.35.1
 	github.com/wailsapp/wails/v2 v2.13.0
+	golang.org/x/mod v0.40.0
 	golang.org/x/net v0.57.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
