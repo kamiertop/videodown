@@ -9,26 +9,24 @@ import (
 )
 
 // Slog returns a slog.Logger that writes through this package's zerolog
-// configuration. It is intended for libraries, such as Wails v3, that use
-// the standard library logging API.
-func (l *Logger) Slog() *slog.Logger {
-	return slog.New(&slogHandler{logger: l.Logger})
+// configuration. The level is supplied by the caller so libraries such as
+// Wails can filter their own verbose logs before they reach zerolog.
+func (l *Logger) Slog(level slog.Level) *slog.Logger {
+	return slog.New(&slogHandler{logger: l.Logger, level: level})
 }
 
 type slogHandler struct {
 	logger zerolog.Logger
+	level  slog.Level
 	groups []string
 }
 
 func (h *slogHandler) Enabled(_ context.Context, level slog.Level) bool {
-	return slogLevel(level) >= h.logger.GetLevel()
+	return level >= h.level
 }
 
 func (h *slogHandler) Handle(_ context.Context, record slog.Record) error {
 	event := h.logger.WithLevel(slogLevel(record.Level))
-	if !record.Time.IsZero() {
-		event = event.Time("time", record.Time)
-	}
 	record.Attrs(func(attr slog.Attr) bool {
 		appendSlogAttr(event, h.groups, attr)
 		return true
@@ -45,7 +43,7 @@ func (h *slogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 		}
 		logger = appendSlogContextAttr(logger, h.groups, attr)
 	}
-	return &slogHandler{logger: logger.Logger(), groups: h.groups}
+	return &slogHandler{logger: logger.Logger(), level: h.level, groups: h.groups}
 }
 
 func (h *slogHandler) WithGroup(name string) slog.Handler {
@@ -53,7 +51,7 @@ func (h *slogHandler) WithGroup(name string) slog.Handler {
 		return h
 	}
 	groups := append(append([]string(nil), h.groups...), name)
-	return &slogHandler{logger: h.logger, groups: groups}
+	return &slogHandler{logger: h.logger, level: h.level, groups: groups}
 }
 
 func slogLevel(level slog.Level) zerolog.Level {

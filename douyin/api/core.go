@@ -39,13 +39,12 @@ type Douyin struct {
 }
 
 func New(log *logger.Logger, settings *utils.Settings, store *storage.Store, events utils.EventEmitter) *Douyin {
-	log = log.WithName("Douyin")
-	var client = req.C().SetLogger(log).EnableAutoDecompress()
+	var client = req.C().EnableAutoDecompress()
 	if logger.IsDevMode() {
-		client = client.EnableDebugLog()
+		client.SetLogger(log).EnableDebugLog()
 	}
 	return &Douyin{
-		logger:         log.WithName("Douyin").WithCaller(3),
+		logger:         log.WithName("Douyin"),
 		client:         client,
 		downloadClient: client.Clone().SetTimeout(0), // 下载流单独走 downloadClient，避免长视频下载受超时影响
 		settings:       settings,

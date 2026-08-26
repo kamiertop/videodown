@@ -32,13 +32,12 @@ type BiliBili struct {
 }
 
 func New(log *logger.Logger, settings *utils.Settings, store *storage.Store, events utils.EventEmitter) *BiliBili {
-	log = log.WithName("BiliBili")
-	var client = req.C().SetLogger(log).EnableAutoDecompress()
+	var client = req.C().EnableAutoDecompress()
 	if logger.IsDevMode() {
-		client = client.EnableDebugLog()
+		client.SetLogger(log).EnableDebugLog()
 	}
 	return &BiliBili{
-		logger:         log.WithName("BiliBili").WithCaller(3),
+		logger:         log.WithName("BiliBili"),
 		downloadClient: client.Clone().SetTimeout(0), // 下载流单独走 downloadClient，避免长视频下载受超时影响
 		client:         client,
 		settings:       settings,

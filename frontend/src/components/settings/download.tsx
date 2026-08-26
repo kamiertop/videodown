@@ -22,6 +22,7 @@ export function DownloadSection(): JSXElement {
 
 function ConcurrencyNum(): JSXElement {
   const [num, setNum] = createSignal<number>(0);
+  const [loaded, setLoaded] = createSignal(false);
   const {message, type, showToast} = useToast();
 
   onMount(async () => {
@@ -30,6 +31,8 @@ function ConcurrencyNum(): JSXElement {
       setNum(config);
     } catch (error) {
       showToast("获取并发下载数量配置失败" + error, 'error');
+    } finally {
+      setLoaded(true);
     }
   })
 
@@ -44,7 +47,7 @@ function ConcurrencyNum(): JSXElement {
   }
 
   return (
-      <div class="card bg-base-100 shadow-xl">
+      <div class="card bg-base-100 shadow-xl" classList={{invisible: !loaded()}}>
         <div class="card-body">
           <h2 class="card-title mb-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-accent" fill="none"
@@ -86,6 +89,7 @@ function ConcurrencyNum(): JSXElement {
 
 function SleepAfterDownLoad(): JSXElement {
   const [seconds, setSeconds] = createSignal<number>(0);
+  const [loaded, setLoaded] = createSignal(false);
   const {message, type, showToast} = useToast();
   const presets = [0, 10, 30, 60, 120, 300];
 
@@ -130,6 +134,8 @@ function SleepAfterDownLoad(): JSXElement {
       setSeconds(loaded);
     } catch (error) {
       showToast("获取下载后休眠时间失败" + error, 'error');
+    } finally {
+      setLoaded(true);
     }
   })
 
@@ -141,7 +147,7 @@ function SleepAfterDownLoad(): JSXElement {
 
   return (
       <>
-        <div class="card bg-base-100 shadow-xl">
+        <div class="card bg-base-100 shadow-xl" classList={{invisible: !loaded()}}>
           <div class="card-body">
             <div class="flex items-start justify-between gap-4">
               <div>

@@ -112,6 +112,10 @@ export function IsCloseToTray(): $CancellablePromise<boolean> {
     return $Call.ByID(1155197624);
 }
 
+export function NeedUpdate(): $CancellablePromise<boolean> {
+    return $Call.ByID(3828115834);
+}
+
 /**
  * OpenDownloadLocation 打开下载历史中的文件位置.
  */

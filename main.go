@@ -25,21 +25,24 @@ const appName = "videodown"
 
 func main() {
 	log := mylogger.New()
+
 	store, err := storage.OpenDefault()
 	if err != nil {
 		log.Fatalf("Failed to initialize storage: %v", err)
 	}
+
 	settings, err := utils.NewSettings(log, store)
 	if err != nil {
 		log.Fatalf("Failed to initialize settings: %v", err)
 	}
+
 	controller := app.New(settings)
 	bilibili := bilibiliapi.New(log, settings, store, app.EventEmitter(controller))
 	douyin := douyinapi.New(log, settings, store, app.EventEmitter(controller))
 
 	wailsApp := application.New(application.Options{
 		Name:     appName,
-		Logger:   log.Slog(),
+		Logger:   log.Slog(slog.LevelError),
 		LogLevel: slog.LevelError,
 		Services: []application.Service{
 			application.NewService(bilibili),
@@ -69,5 +72,7 @@ func main() {
 		}
 	})
 
-	panic(wailsApp.Run())
+	if err := wailsApp.Run(); err != nil {
+		log.Fatalf("Application exited with error: %v", err)
+	}
 }

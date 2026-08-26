@@ -99,11 +99,21 @@ function SettingsComponent(): JSXElement {
         </nav>
 
         <div class="flex-1 overflow-y-auto p-6">
-          {active() === 'general' && <GeneralSection/>}
-          {active() === 'bilibili' && <BilibiliSection/>}
-          {active() === 'download' && <DownloadSection/>}
-          {active() === 'FFmpeg' && <FFmpegSection/>}
-          {active() === 'about' && <AboutSection/>}
+          <div classList={{hidden: active() !== 'general'}}>
+            <GeneralSection/>
+          </div>
+          <div classList={{hidden: active() !== 'bilibili'}}>
+            <BilibiliSection/>
+          </div>
+          <div classList={{hidden: active() !== 'download'}}>
+            <DownloadSection/>
+          </div>
+          <div classList={{hidden: active() !== 'FFmpeg'}}>
+            <FFmpegSection/>
+          </div>
+          <div classList={{hidden: active() !== 'about'}}>
+            <AboutSection/>
+          </div>
         </div>
       </div>
   )
