@@ -274,14 +274,6 @@ func (s *Settings) OpenLocalFile(path string) error {
 	return cmd.Start()
 }
 
-// Version is set by build flags, e.g. go build -ldflags="-X utils.Version=1.0.0"
-var Version string
-
-// GetVersion returns the current version of the application.
-func (s *Settings) GetVersion() string {
-	return Version
-}
-
 // HasCloseToTrayChoice 检查用户是否已对关闭行为做出选择（key 是否存在）。
 func (s *Settings) HasCloseToTrayChoice() bool {
 	_, err := s.store.Get(closeToTrayKey)
