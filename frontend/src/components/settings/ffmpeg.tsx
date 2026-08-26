@@ -1,6 +1,7 @@
 import {createSignal, type JSXElement, onMount, Show} from "solid-js";
-import {FFmpegPath, HasFFmpeg, SelectFFmpegPath} from "../../../wailsjs/go/utils/Settings";
-import {BrowserOpenURL} from "../../../wailsjs/runtime";
+import {FFmpegPath, HasFFmpeg} from "@bindings/github.com/kamiertop/videodown/utils/settings";
+import {SelectFFmpegPath} from "@bindings/github.com/kamiertop/videodown/internal/app/controller";
+import {Browser} from "@wailsio/runtime";
 import {useToast} from "../../hooks/useToast";
 import Toast from "../Toast";
 
@@ -138,7 +139,7 @@ export function FFmpegSection(): JSXElement {
                   <h3 class="font-semibold text-base-content mb-1">Windows</h3>
                   <p>
                     访问 <span class="link link-primary cursor-pointer"
-                              onClick={() => BrowserOpenURL("https://ffmpeg.org/download.html")}>ffmpeg.org</span> 下载，
+                              onClick={() => Browser.OpenURL("https://ffmpeg.org/download.html")}>ffmpeg.org</span> 下载，
                     将 ffmpeg.exe 放到应用同目录或 <code class="text-xs bg-base-200 px-1 rounded">bin/</code> 子目录下，
                     或添加到系统 PATH 环境变量。
                   </p>

@@ -1,7 +1,7 @@
 import {createFileRoute} from '@tanstack/solid-router'
 import {createSignal, For, type JSXElement, Show} from "solid-js";
-import {DownloadCover, ParseVideo, VideoDetail} from "../../../wailsjs/go/api/Douyin";
-import {api, model} from "../../../wailsjs/go/models";
+import {DownloadCover, ParseVideo, VideoDetail} from "@bindings/github.com/kamiertop/videodown/douyin/api/douyin";
+import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
 import EmptyState from "../../components/EmptyState.tsx";
 import NoCover from "../../components/NoCover.tsx";
 import Toast from "../../components/Toast.tsx";
@@ -26,7 +26,7 @@ import {
   updateDouyinVideoOption,
 } from "../../lib/douyin/store.ts";
 import {formatCount, formatDate, formatDuration} from "../../lib/format.ts";
-import AwemeItem = model.AwemeItem;
+type AwemeItem = model.AwemeItem;
 
 export const Route = createFileRoute('/douyin/download')({
   component: DouyinDownloadPage,
@@ -287,7 +287,7 @@ function DouyinDownloadPage(): JSXElement {
 
     setCoverDownloading(item.awemeId, true);
     try {
-      const path = await DownloadCover(covers, api.DouyinDownloadTask.createFrom({
+      const path = await DownloadCover(covers, ({
         awemeId: item.awemeId,
         sourceKind: item.sourceKind,
         sourceName: item.sourceName ?? "",
@@ -298,6 +298,10 @@ function DouyinDownloadPage(): JSXElement {
         publishTime: item.publishTime ?? 0,
         diggCount: item.diggCount ?? 0,
         collectCount: item.collectCount ?? 0,
+		videoURL: "",
+		imageURLs: [],
+		assets: [],
+		musicURL: "",
       }));
       showToast(`封面已保存：${path}`, "success");
     } catch (error) {

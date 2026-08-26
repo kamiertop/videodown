@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"net/url"
 	"strings"
 	"sync"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/imroc/req/v3"
 
+	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/logger"
 	"github.com/kamiertop/videodown/utils"
 )
@@ -22,6 +22,8 @@ type Douyin struct {
 	client         *req.Client
 	downloadClient *req.Client
 	settings       *utils.Settings
+	store          *storage.Store
+	events         utils.EventEmitter
 	progressMu     sync.Mutex
 	progressByID   map[string]float64
 	webId          struct {
@@ -36,7 +38,7 @@ type Douyin struct {
 	userID    string
 }
 
-func New(log *logger.Logger, settings *utils.Settings) *Douyin {
+func New(log *logger.Logger, settings *utils.Settings, store *storage.Store, events utils.EventEmitter) *Douyin {
 	log = log.WithName("Douyin")
 	var client = req.C().SetLogger(log).EnableAutoDecompress()
 	if logger.IsDevMode() {
@@ -47,12 +49,10 @@ func New(log *logger.Logger, settings *utils.Settings) *Douyin {
 		client:         client,
 		downloadClient: client.Clone().SetTimeout(0), // 下载流单独走 downloadClient，避免长视频下载受超时影响
 		settings:       settings,
+		store:          store,
+		events:         events,
 		progressByID:   make(map[string]float64),
 	}
-}
-
-func (d *Douyin) context() context.Context {
-	return d.settings.Context()
 }
 
 type cookieParams struct {

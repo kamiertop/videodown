@@ -1,6 +1,6 @@
-import {VideoDetailConciseBvid, VideoPlayURL} from "../../../wailsjs/go/api/BiliBili";
-import {model} from "../../../wailsjs/go/models";
-import {GetKey} from "../../../wailsjs/go/utils/Settings";
+import {VideoDetailConciseBvid, VideoPlayURL} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
+import * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
+import {GetBilibiliDefaultQN} from "@bindings/github.com/kamiertop/videodown/utils/settings";
 
 export function bvidCacheKey(bvid: string | undefined): string | null {
   const t = bvid?.trim();
@@ -262,15 +262,15 @@ export function buildResolvedPlayInfo(
 ): ResolvedPlayInfo {
   // 有些响应会返回多编码同档位，这里优先用 play.quality 对应档位内的“最佳视频流”。
   const bestVideo =
-      pickBestVideoAtQn(play.dash?.video, play.quality) ?? pickBestVideo(play.dash?.video);
+      pickBestVideoAtQn(play.dash?.video ?? undefined, play.quality) ?? pickBestVideo(play.dash?.video ?? undefined);
   if (!bestVideo) {
     throw new Error("未获取到 DASH 视频流（可能为特殊稿件或需登录）");
   }
-  let bestAudio = pickBestAudio(play.dash?.audio);
+	let bestAudio = pickBestAudio(play.dash?.audio ?? undefined);
   const prefId = opts?.preferredAudioId;
   if (prefId != null) {
     // 切清晰度后尽量保留用户之前选过的音轨。
-    const pref = pickAudioById(play.dash?.audio, prefId);
+		const pref = pickAudioById(play.dash?.audio ?? undefined, prefId);
     if (pref) bestAudio = pref;
   }
   // 如果接口降级了 play.quality，但 dash.video 已经带了实际可用流，用真实选中的流档位作为初始值。
@@ -301,7 +301,7 @@ export function switchResolvedPlayAtQn(current: ResolvedPlayInfo, qn: number): R
   if (qn === current.selectedQn) return current;
 
   // 只在本地 dash.video 中找目标 qn，不发请求。
-  const bestVideo = pickBestVideoAtQn(current.play.dash?.video, qn);
+	const bestVideo = pickBestVideoAtQn(current.play.dash?.video ?? undefined, qn);
   if (!bestVideo) return null;
 
   return {
@@ -316,7 +316,7 @@ export function switchResolvedPlayAtQn(current: ResolvedPlayInfo, qn: number): R
 /** 本地切换音轨：仅复用当前 play.dash.audio */
 export function switchResolvedAudio(current: ResolvedPlayInfo, audioId: number): ResolvedPlayInfo | null {
   // 只切换音轨，不改清晰度。
-  const hit = pickAudioById(current.play.dash?.audio, audioId);
+	const hit = pickAudioById(current.play.dash?.audio ?? undefined, audioId);
   if (!hit) return null;
   return {
     ...current,
@@ -361,7 +361,7 @@ export async function resolveBilibiliPlayUrl(
   }
 
   try {
-    const savedQn = await GetKey("bilibili_default_qn").catch(() => "");
+    const savedQn = await GetBilibiliDefaultQN().catch(() => "");
     const qn = parseInt(savedQn) || 80;
     const play = await VideoPlayURL(aid, bvid, cid, qn);
     return buildResolvedPlayInfo({aid, cid, bvid, partCount}, play, accessInfo);

@@ -3,7 +3,7 @@ package utils
 const autoUpdateKey = "auto_update"
 
 func (s *Settings) IsAutoUpdate() (bool, error) {
-	key, err := s.GetKey(autoUpdateKey)
+	key, err := s.store.Get(autoUpdateKey)
 	if err != nil {
 		return false, err
 	}
@@ -22,5 +22,5 @@ func (s *Settings) SetAutoUpdate(enable bool) error {
 		value = "false"
 	}
 
-	return s.SetKey(autoUpdateKey, value)
+	return s.store.Set(autoUpdateKey, value)
 }

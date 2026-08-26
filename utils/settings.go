@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -12,8 +11,7 @@ import (
 	"strings"
 
 	"github.com/dgraph-io/badger/v4"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
-
+	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/logger"
 )
 
@@ -32,71 +30,9 @@ const (
 	closeToTrayKey = "closeToTray"
 )
 
-// TrayController 是托盘控制器需要实现的接口，避免 utils 与 internal/tray 产生循环引用。
-type TrayController interface {
-	SetContext(ctx context.Context)
-	Stop()
-}
-
 type Settings struct {
-	*badger.DB
-	logger    *logger.Logger
-	ctx       context.Context
-	tray      TrayController
-	forceQuit bool // 由 ForceQuit() 设置，区分托盘退出和窗口关闭
-}
-
-// ForceQuit 标记本次退出为用户主动触发，BeforeClose 将被跳过。
-func (s *Settings) ForceQuit() {
-	s.forceQuit = true
-}
-
-// SetTray 注入托盘控制器，供生命周期回调使用。
-func (s *Settings) SetTray(t TrayController) {
-	s.tray = t
-}
-
-// Startup is called at application Startup
-func (s *Settings) Startup(ctx context.Context) {
-	s.ctx = ctx
-	if s.tray != nil {
-		s.tray.SetContext(ctx)
-	}
-}
-
-// DomReady is called after front-end resources have been loaded
-func (s *Settings) DomReady(_ context.Context) {
-	// Add your action here
-}
-
-func (s *Settings) Context() context.Context {
-	return s.ctx
-}
-
-// BeforeClose is called when the application is about to close.
-// Returning true will cause the application to continue, false will continue shutdown as normal.
-func (s *Settings) BeforeClose(_ context.Context) (prevent bool) {
-	if s.forceQuit {
-		s.forceQuit = false
-		return false
-	}
-
-	closeToTray, err := s.GetCloseToTray()
-	if err != nil {
-		runtime.EventsEmit(s.ctx, "before-close-prompt")
-		return true
-	}
-	if closeToTray {
-		runtime.WindowHide(s.ctx)
-		return true
-	}
-	return false
-}
-
-// HideWindow hides the main window. It is used after the user chooses tray mode
-// from the first-close prompt because that initial close has already been prevented.
-func (s *Settings) HideWindow() {
-	runtime.WindowHide(s.ctx)
+	store  *storage.Store
+	logger *logger.Logger
 }
 
 func (s *Settings) init() error {
@@ -106,7 +42,7 @@ func (s *Settings) init() error {
 		return err
 	}
 
-	return s.DB.Update(func(txn *badger.Txn) error {
+	return s.store.Update(func(txn *badger.Txn) error {
 		defaultValue := map[string]string{
 			themeKey:             "light",
 			storageKey:           filepath.Join(filepath.Dir(executable), "download"),
@@ -135,59 +71,40 @@ func (s *Settings) init() error {
 }
 
 func NewSettingsWithMemory(logger *logger.Logger) *Settings {
-	db, err := badger.Open(badger.
-		DefaultOptions("").
-		WithInMemory(true))
+	store, err := storage.OpenMemory()
 	if err != nil {
 		panic(err)
 	}
-	s := &Settings{DB: db, logger: logger.WithName("Settings")}
+	s := &Settings{store: store, logger: logger.WithName("Settings")}
 
 	if err = s.init(); err != nil {
+		_ = store.Close()
 		panic(err)
 	}
 
 	return s
 }
 
-func NewSettings(logger *logger.Logger) (*Settings, error) {
-	dbPath := "videodown.db"
-	if execPath, err := os.Executable(); err == nil {
-		dbPath = filepath.Join(filepath.Dir(execPath), dbPath)
+func NewSettings(logger *logger.Logger, store *storage.Store) (*Settings, error) {
+	s := &Settings{store: store, logger: logger.WithName("Settings")}
+	if err := s.init(); err != nil {
+		_ = store.Close()
+		return nil, err
 	}
-	db, err := badger.Open(
-		badger.
-			DefaultOptions(dbPath).
-			WithLoggingLevel(badger.ERROR),
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	s := &Settings{DB: db, logger: logger.WithName("Settings")}
-
-	return s, s.init()
+	return s, nil
 }
 
 func NewSettingsForDebug(logger *logger.Logger, path string) (*Settings, error) {
-	db, err := badger.Open(
-		badger.
-			DefaultOptions(path).
-			WithLoggingLevel(badger.ERROR),
-	)
-
+	store, err := storage.Open(path)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-
-	s := &Settings{DB: db, logger: logger.WithName("Settings")}
-
-	return s, s.init()
+	return NewSettings(logger, store)
 }
 
 // GetTheme 获取主题设置
 func (s *Settings) GetTheme() (string, error) {
-	theme, err := s.GetKey(themeKey)
+	theme, err := s.store.Get(themeKey)
 	if err != nil {
 		s.logger.Errorf("failed to get theme: %v", err)
 		return "", errors.New("获取主题设置失败")
@@ -198,9 +115,7 @@ func (s *Settings) GetTheme() (string, error) {
 
 // SetTheme 设置主题，前端调用时会传入 "light"、"dark"等，落库保存供下次启动时加载使用
 func (s *Settings) SetTheme(theme string) error {
-	if err := s.DB.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte(themeKey), []byte(theme))
-	}); err != nil {
+	if err := s.store.Set(themeKey, theme); err != nil {
 		s.logger.Errorf("Failed to set new theme [%s], err: %v", theme, err)
 		return errors.New("设置主题失败")
 	}
@@ -211,7 +126,7 @@ func (s *Settings) SetTheme(theme string) error {
 
 // GetStorage 获取存储目录设置
 func (s *Settings) GetStorage() (string, error) {
-	path, err := s.GetKey(storageKey)
+	path, err := s.store.Get(storageKey)
 	if err != nil {
 		s.logger.Errorf("failed to get storage path: %v", err)
 		return "", errors.New("获取存储目录失败")
@@ -220,58 +135,20 @@ func (s *Settings) GetStorage() (string, error) {
 	return path, nil
 }
 
-// SetStorage 设置存储目录，前端调用时会弹出目录选择对话框，用户选择后落库保存
-func (s *Settings) SetStorage() (string, error) {
-	dir, err := runtime.OpenDirectoryDialog(s.ctx, runtime.OpenDialogOptions{
-		Title: "选择下载目录",
-	})
-
-	if err = s.DB.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte(storageKey), []byte(dir))
-	}); err != nil {
+// SetStoragePath 保存存储目录。
+func (s *Settings) SetStoragePath(dir string) error {
+	if err := s.store.Set(storageKey, dir); err != nil {
 		s.logger.Errorf("Failed to set new storage path [%s], err: %v", dir, err)
-		return "", errors.New("设置存储目录失败")
+		return errors.New("设置存储目录失败")
 	}
 	s.logger.Infof("Storage path set to: %s", dir)
 
-	return dir, nil
-}
-
-func (s *Settings) SetKey(key, value string) error {
-	return s.DB.Update(func(txn *badger.Txn) error {
-		return txn.Set([]byte(key), []byte(value))
-	})
-}
-
-func (s *Settings) GetKey(key string) (string, error) {
-	var result string
-	err := s.DB.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(key))
-		if err != nil {
-			return err
-		}
-		err = item.Value(func(val []byte) error {
-			result = string(val)
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-
-	return result, err
-}
-
-func (s *Settings) DeleteKey(key string) error {
-	return s.DB.Update(func(txn *badger.Txn) error {
-		return txn.Delete([]byte(key))
-	})
+	return nil
 }
 
 // GetSleepTime 下载完一个视频之后的休眠时间；配置值按“秒”保存，避免把默认值 60 误解释成 60 纳秒。
 func (s *Settings) GetSleepTime() (int64, error) {
-	value, err := s.GetKey(sleepTimeKey)
+	value, err := s.store.Get(sleepTimeKey)
 	if err != nil {
 		s.logger.Errorf("failed to get sleep time: %v", err)
 		return 0, errors.New("获取休眠时间失败")
@@ -289,11 +166,11 @@ func (s *Settings) GetSleepTime() (int64, error) {
 func (s *Settings) SetSleepTime(d int64) error {
 	s.logger.Infof("setting sleep time: %d", d)
 
-	return s.SetKey(sleepTimeKey, strconv.FormatInt(d, 10))
+	return s.store.Set(sleepTimeKey, strconv.FormatInt(d, 10))
 }
 
 func (s *Settings) GetSavePreference() (bool, error) {
-	key, err := s.GetKey(allowGroupOnSaveKey)
+	key, err := s.store.Get(allowGroupOnSaveKey)
 	if err != nil {
 		return true, err
 	}
@@ -314,12 +191,12 @@ func (s *Settings) SetSavePreference(allowGroup bool) error {
 	}
 	s.logger.Infof("Setting save preference to: %s", b)
 
-	return s.SetKey(allowGroupOnSaveKey, b)
+	return s.store.Set(allowGroupOnSaveKey, b)
 }
 
 // GetConcurrencyNum 获取同时下载的视频数量
 func (s *Settings) GetConcurrencyNum() (int, error) {
-	val, err := s.GetKey(concurrencyNumKey)
+	val, err := s.store.Get(concurrencyNumKey)
 	if err != nil {
 		return 1, err
 	}
@@ -334,7 +211,7 @@ func (s *Settings) GetConcurrencyNum() (int, error) {
 // SetConcurrencyNum 保存同时下载的视频数量
 func (s *Settings) SetConcurrencyNum(num int) error {
 	s.logger.Infof("Setting concurrency num to %d", num)
-	return s.SetKey(concurrencyNumKey, strconv.Itoa(num))
+	return s.store.Set(concurrencyNumKey, strconv.Itoa(num))
 }
 
 // OpenDownloadLocation 打开下载历史中的文件位置.
@@ -407,7 +284,7 @@ func (s *Settings) GetVersion() string {
 
 // HasCloseToTrayChoice 检查用户是否已对关闭行为做出选择（key 是否存在）。
 func (s *Settings) HasCloseToTrayChoice() bool {
-	_, err := s.GetKey(closeToTrayKey)
+	_, err := s.store.Get(closeToTrayKey)
 	return err == nil
 }
 
@@ -422,7 +299,7 @@ func (s *Settings) IsCloseToTray() bool {
 
 // GetCloseToTray 获取关闭按钮行为设置。
 func (s *Settings) GetCloseToTray() (bool, error) {
-	val, err := s.GetKey(closeToTrayKey)
+	val, err := s.store.Get(closeToTrayKey)
 	if err != nil {
 		return false, err
 	}
@@ -432,38 +309,17 @@ func (s *Settings) GetCloseToTray() (bool, error) {
 // SetCloseToTray 设置关闭按钮行为：false=退出程序，true=缩小到托盘。
 func (s *Settings) SetCloseToTray(v bool) error {
 	if v {
-		return s.SetKey(closeToTrayKey, "true")
+		return s.store.Set(closeToTrayKey, "true")
 	}
-	return s.SetKey(closeToTrayKey, "false")
+	return s.store.Set(closeToTrayKey, "false")
 }
 
-// OnShutdown is called when the application is shutting down
-func (s *Settings) OnShutdown(_ context.Context) {
-	if s.tray != nil {
-		s.tray.Stop()
-	}
-	if err := s.DB.Close(); err != nil {
+// ServiceShutdown closes resources when the Wails application shuts down.
+func (s *Settings) ServiceShutdown() error {
+	if err := s.store.Close(); err != nil {
 		s.logger.Errorf("Failed to close settings DB: %v", err)
-		return
+		return err
 	}
 	s.logger.Info("Close BadgerDB and shutdown application")
-}
-
-func (s *Settings) ClearDownloadHistory(prefixKey string) error {
-	prefix := []byte(prefixKey)
-	return s.Update(func(txn *badger.Txn) error {
-		keys := make([][]byte, 0)
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			keys = append(keys, it.Item().KeyCopy(nil))
-		}
-		for _, key := range keys {
-			if err := txn.Delete(key); err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
-				return err
-			}
-		}
-		return nil
-	})
+	return nil
 }

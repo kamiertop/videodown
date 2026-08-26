@@ -1,4 +1,4 @@
-import {model} from "../../../wailsjs/go/models";
+import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
 import type {DouyinDownloadAsset, DouyinVideoOption} from "./store.ts";
 
 function firstURL(playAddr: model.PlayInfo | undefined): string {

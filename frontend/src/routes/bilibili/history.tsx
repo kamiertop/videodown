@@ -1,8 +1,8 @@
 import {createFileRoute} from '@tanstack/solid-router'
 import {createMemo, createResource, createSignal, For, type JSXElement, Match, Show, Switch} from "solid-js";
-import {ClearDownloadHistory, DeleteDownloadHistory, DownloadHistory} from "../../../wailsjs/go/api/BiliBili";
-import {model} from "../../../wailsjs/go/models.ts";
-import {OpenDownloadLocation, OpenLocalFile} from "../../../wailsjs/go/utils/Settings";
+import {ClearDownloadHistory, DeleteDownloadHistory, DownloadHistory} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
+import * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
+import {OpenDownloadLocation, OpenLocalFile} from "@bindings/github.com/kamiertop/videodown/utils/settings";
 import DetailError from "../../components/DetailError.tsx";
 import IconChat from "../../components/icons/IconChat";
 import IconEye from "../../components/icons/IconEye";
@@ -13,7 +13,7 @@ import Toast from "../../components/Toast.tsx";
 import {useToast} from "../../hooks/useToast.ts";
 import {formatCount, formatDate, formatDuration} from "../../lib/format";
 import {formatDownloadedAt} from "../../utils/format.ts";
-import DownloadHistoryItem = model.DownloadHistoryItem;
+type DownloadHistoryItem = model.DownloadHistoryItem;
 
 export const Route = createFileRoute('/bilibili/history')({
   component: History,

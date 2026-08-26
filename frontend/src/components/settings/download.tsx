@@ -6,7 +6,7 @@ import {
   SetConcurrencyNum,
   SetSavePreference,
   SetSleepTime,
-} from "../../../wailsjs/go/utils/Settings";
+} from "@bindings/github.com/kamiertop/videodown/utils/settings";
 import {useToast} from "../../hooks/useToast";
 import Toast from "../Toast";
 

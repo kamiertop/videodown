@@ -5,9 +5,9 @@ import {
   GetTheme,
   HasCloseToTrayChoice,
   SetCloseToTray,
-  SetStorage,
   SetTheme
-} from "../../../wailsjs/go/utils/Settings";
+} from "@bindings/github.com/kamiertop/videodown/utils/settings";
+import {SetStorage} from "@bindings/github.com/kamiertop/videodown/internal/app/controller";
 import {useToast} from "../../hooks/useToast.ts";
 import Toast from "../Toast";
 
