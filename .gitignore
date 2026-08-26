@@ -10,7 +10,8 @@ node_modules
 
 dist
 
-videodown.db
+*.db
+*.db-*
 
 .codex
 
@@ -31,3 +32,8 @@ tests
 .agents
 
 .claude
+
+.task/
+
+# iOS is not currently supported by this project.
+build/ios/

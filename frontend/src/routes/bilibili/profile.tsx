@@ -1,7 +1,7 @@
 import {createFileRoute} from '@tanstack/solid-router'
 import {createResource, createSignal, type JSXElement, Match, onCleanup, onMount, Switch} from "solid-js";
-import {LogOut, PollQRCode} from "../../../wailsjs/go/api/BiliBili";
-import type {model} from "../../../wailsjs/go/models";
+import {LogOut, PollQRCode} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
+import type * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
 import ProfileCard from "../../components/bilibili/ProfileCard.tsx";
 import QRCode from "../../components/bilibili/QRCode.tsx";
 import Toast from "../../components/Toast";

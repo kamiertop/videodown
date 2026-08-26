@@ -1,6 +1,6 @@
 import {createEffect, createSignal, type JSXElement} from "solid-js";
-import {Collection, CollectionItem} from "../../../../wailsjs/go/api/BiliBili";
-import {model} from "../../../../wailsjs/go/models";
+import {Collection, CollectionItem} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
+import * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
 import type {MediaCardItem} from "../../../lib/model.ts";
 import {StackIcon} from "../../icons/IconStack";
 import {type SidebarListItem} from "../../SidebarList";
@@ -97,7 +97,7 @@ export default function CollectionPanel(props: {
       const receivedCount = data.medias?.length ?? 0;
       if (append) {
         const prevMedias = detail()?.medias ?? [];
-        const next = model.CollectionItemData.createFrom({...data, medias: [...prevMedias, ...(data.medias ?? [])]});
+        const next = ({...data, medias: [...prevMedias, ...(data.medias ?? [])]});
         setDetail(next);
         updateDetailHasMore(next, receivedCount);
       } else {
@@ -134,7 +134,7 @@ export default function CollectionPanel(props: {
       const data = await Collection(targetPage, COLLECTION_PAGE_SIZE);
       if (seq !== collectionRequestSeq) return;
       if (append) {
-        setCollections(prev => model.CollectionData.createFrom({
+        setCollections(prev => ({
           ...data,
           list: [...(prev?.list ?? []), ...(data.list ?? [])],
         }));

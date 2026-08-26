@@ -1,0 +1,16 @@
+version: '3'
+
+tasks:
+  build:
+    env:
+      GOCACHE: /tmp/videodown-go-cache
+    cmds:
+      - wails3 task common:build:frontend
+      - go build -buildvcs=false -o "{{.BIN_DIR}}/{{.APP_NAME}}"
+
+  package:
+    deps: [build]
+
+  run:
+    cmds:
+      - "{{.BIN_DIR}}/{{.APP_NAME}}"

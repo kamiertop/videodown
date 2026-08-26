@@ -20,7 +20,7 @@ func New() *Logger {
 		zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	}
 	return &Logger{
-		zerolog.New(logWriter()).With().Timestamp().Logger(),
+		zerolog.New(logWriter()).With().Timestamp().CallerWithSkipFrameCount(3).Logger(),
 	}
 }
 
@@ -46,12 +46,6 @@ func logWriter() io.Writer {
 	}
 
 	return os.Stdout
-}
-
-func (l *Logger) WithCaller(skipFrameCount int) *Logger {
-	return &Logger{
-		l.Logger.With().CallerWithSkipFrameCount(skipFrameCount).Logger(),
-	}
 }
 
 func (l *Logger) Print(message string) {

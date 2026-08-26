@@ -16,7 +16,6 @@ import (
 
 	"github.com/imroc/req/v3"
 	"github.com/kamiertop/videodown/bilibili/model"
-	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"github.com/kamiertop/videodown/utils"
 )
@@ -97,7 +96,7 @@ func (b *BiliBili) downloadedCachePath(cid int64) (string, bool) {
 		return "", false
 	}
 
-	raw, err := b.settings.GetKey(key)
+	raw, err := b.store.Get(key)
 	if err != nil {
 		return "", false
 	}
@@ -151,7 +150,7 @@ func (b *BiliBili) markDownloaded(task DashDownloadTask, path string, downloadKi
 		b.logger.Errorf("marshal downloaded cache failed: %v", err)
 		return
 	}
-	if err = b.settings.SetKey(key, string(payload)); err != nil {
+	if err = b.store.Set(key, string(payload)); err != nil {
 		b.logger.Errorf("save downloaded cache failed: %v", err)
 	}
 }
@@ -219,11 +218,6 @@ func (b *BiliBili) resetDownloadProgress(bvid string, cid int64) {
 
 // emitDownloadProgress 通过 Wails 事件把下载进度推给前端，前端按 bvid 更新对应卡片。
 func (b *BiliBili) emitDownloadProgress(p downloadProgress) {
-	ctx := b.context()
-	if ctx == nil {
-		b.logger.Errorf("emitDownloadProgress failed: context is nil")
-		return
-	}
 	key := progressKey(p.Bvid, p.Cid)
 	if key != "" {
 		p.Percent = utils.ClampPercent(p.Percent)
@@ -249,17 +243,16 @@ func (b *BiliBili) emitDownloadProgress(p downloadProgress) {
 		}
 		b.progressMu.Unlock()
 	}
-	wailsRuntime.EventsEmit(ctx, "bilibili-download-progress", p)
+	if b.events != nil {
+		b.events.EmitEvent("bilibili-download-progress", p)
+	}
 }
 
 // emitDownloadCompleted 下载+休眠全部完成后推送给前端，前端收到后立即从列表移除该视频卡片。
 func (b *BiliBili) emitDownloadCompleted(item DashDownloadResult) {
-	ctx := b.context()
-	if ctx == nil {
-		b.logger.Errorf("emitDownloadCompleted failed: context is nil")
-		return
+	if b.events != nil {
+		b.events.EmitEvent("bilibili-download-completed", item)
 	}
-	wailsRuntime.EventsEmit(ctx, "bilibili-download-completed", item)
 }
 
 // downloadToFile 使用无总时长限制的 HTTP client 流式读取响应体；长视频下载不能复用接口请求的整体超时。

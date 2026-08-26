@@ -1,13 +1,13 @@
-import {createSignal, type JSXElement, onMount} from "solid-js";
+import {SetStorage} from "@bindings/github.com/kamiertop/videodown/internal/app/controller";
 import {
   GetCloseToTray,
   GetStorage,
   GetTheme,
   HasCloseToTrayChoice,
   SetCloseToTray,
-  SetStorage,
   SetTheme
-} from "../../../wailsjs/go/utils/Settings";
+} from "@bindings/github.com/kamiertop/videodown/utils/settings";
+import {createSignal, type JSXElement, onMount} from "solid-js";
 import {useToast} from "../../hooks/useToast.ts";
 import Toast from "../Toast";
 
@@ -22,8 +22,9 @@ export function GeneralSection(): JSXElement {
 }
 
 function CloseToTray(): JSXElement {
-  const [enabled, setEnabled] = createSignal(true); // 默认隐藏到托盘
+  const [enabled, setEnabled] = createSignal(false);
   const [configured, setConfigured] = createSignal(true);
+  const [loaded, setLoaded] = createSignal(false);
   const {message, type, showToast} = useToast();
 
   onMount(async () => {
@@ -39,6 +40,8 @@ function CloseToTray(): JSXElement {
     } catch {
       // key 不存在 = 用户从未选择 = 默认隐藏到托盘
       setEnabled(true);
+    } finally {
+      setLoaded(true);
     }
   });
 
@@ -66,7 +69,7 @@ function CloseToTray(): JSXElement {
 
   return (
       <>
-        <div class="card bg-base-100 shadow-xl">
+        <div class="card bg-base-100 shadow-xl" classList={{"invisible": !loaded()}}>
           <div class="card-body">
             <div class="flex items-start gap-3">
               <div class="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-info/10 text-info">
@@ -78,7 +81,8 @@ function CloseToTray(): JSXElement {
               </div>
               <div class="min-w-0 flex-1">
                 <h2 class="text-lg font-semibold leading-8">窗口关闭行为</h2>
-                <div class="mt-4 flex items-center justify-between gap-6 rounded-md border border-base-300 bg-base-200/40 px-4 py-3">
+                <div
+                    class="mt-4 flex items-center justify-between gap-6 rounded-md border border-base-300 bg-base-200/40 px-4 py-3">
                   <div class="min-w-0">
                     <p class="font-medium leading-6">关闭时缩小到任务栏托盘</p>
                     <p class="text-sm leading-6 text-base-content/60">
@@ -94,7 +98,9 @@ function CloseToTray(): JSXElement {
                     <input
                         type="checkbox"
                         class="toggle toggle-info"
+                        classList={{"invisible": !loaded()}}
                         checked={enabled()}
+                        disabled={!loaded()}
                         onChange={handleToggle}
                     />
                   </div>
@@ -115,6 +121,7 @@ function CloseToTray(): JSXElement {
 
 function StorageDirectory(): JSXElement {
   const [storagePath, setStoragePath] = createSignal<string>("");
+  const [loaded, setLoaded] = createSignal(false);
   const {message, type, showToast} = useToast();
 
   onMount(async () => {
@@ -124,6 +131,8 @@ function StorageDirectory(): JSXElement {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : '获取存储路径失败';
       showToast(errorMsg, 'error');
+    } finally {
+      setLoaded(true);
     }
   })
 
@@ -157,6 +166,7 @@ function StorageDirectory(): JSXElement {
                     type="text"
                     value={storagePath()}
                     readonly
+                    classList={{"invisible": !loaded()}}
                     class="input input-bordered flex-1"
                     placeholder="选择下载路径"
                 />
@@ -172,14 +182,17 @@ function StorageDirectory(): JSXElement {
   )
 }
 
+// 界面主题
 function ThemeChange(): JSXElement {
   const [theme, setTheme] = createSignal<string>('');
+  const [loaded, setLoaded] = createSignal(false);
   const {message, type, showToast} = useToast();
 
   onMount(async () => {
     const savedTheme: string = await GetTheme().catch(() => 'light');
     setTheme(savedTheme);
     document.documentElement.setAttribute('data-theme', savedTheme);
+    setLoaded(true);
   });
 
   async function handleThemeChange(event: Event): Promise<void> {
@@ -209,7 +222,8 @@ function ThemeChange(): JSXElement {
           <div class="form-control">
             <label class="label cursor-pointer justify-between">
               <span class="label-text">主题模式</span>
-              <select value={theme()} onchange={handleThemeChange} class="select select-accent">
+              <select value={theme()} onchange={handleThemeChange} class="select select-accent"
+                      classList={{"invisible": !loaded()}}>
                 <option value="dark">dark - 深色模式</option>
                 <option value="light">light - 浅色模式</option>
                 <option value="cupcake">cupcake - 纸杯蛋糕</option>
@@ -218,7 +232,7 @@ function ThemeChange(): JSXElement {
             </label>
             <label class="label">
               <span class="label-text-alt pl-2">当前主题：
-                <span class="text-accent font-semibold">{theme()}</span>
+                <span class="text-accent font-semibold" classList={{"invisible": !loaded()}}>{theme()}</span>
               </span>
             </label>
           </div>

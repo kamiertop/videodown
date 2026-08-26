@@ -1,7 +1,7 @@
 import {createFileRoute, useNavigate} from '@tanstack/solid-router'
 import {createSignal, For, type JSXElement, Match, onMount, Show, Switch} from "solid-js";
-import {DynamicVideosPage} from "../../../wailsjs/go/api/BiliBili";
-import {model} from "../../../wailsjs/go/models";
+import {DynamicVideosPage} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
+import * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
 import DetailError from "../../components/DetailError";
 import NoCover from "../../components/NoCover";
 import Toast from "../../components/Toast";

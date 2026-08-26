@@ -1,5 +1,5 @@
 import {createEffect, createMemo, createSignal, type JSXElement, Match, Show, Switch} from "solid-js";
-import {model} from "../../../wailsjs/go/models";
+import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
 import DetailError from "../DetailError.tsx";
 import DetailLoading from "../DetailLoading.tsx";
 import EmptyState from "../EmptyState.tsx";

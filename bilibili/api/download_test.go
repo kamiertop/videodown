@@ -11,7 +11,7 @@ import (
 func TestResolveTargetDirGroupsByAuthor(t *testing.T) {
 	settings := utils.NewSettingsWithMemory(logger.New())
 	defer func() {
-		_ = settings.Close()
+		_ = settings.ServiceShutdown()
 	}()
 	b := &BiliBili{settings: settings}
 	root := t.TempDir()

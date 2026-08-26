@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/kamiertop/videodown/bilibili/model"
-	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type PlayUrlRequest struct {
@@ -46,12 +45,9 @@ func (b *BiliBili) releaseSem() {
 // emitPlayUrlResolved 通过 Wails 事件把单条解析结果推送给前端，
 // 前端按 bvid+cid 更新对应卡片的解析状态，无需等待整批解析完成。
 func (b *BiliBili) emitPlayUrlResolved(r PlayUrlResult) {
-	ctx := b.context()
-	if ctx == nil {
-		b.logger.Errorf("emitPlayUrlResolved failed: context is nil")
-		return
+	if b.events != nil {
+		b.events.EmitEvent("bilibili-playurl-resolved", r)
 	}
-	wailsRuntime.EventsEmit(ctx, "bilibili-playurl-resolved", r)
 }
 
 // BatchResolvePlayUrl 批量解析播放地址。单条失败只写入该条结果，不中断整批解析。

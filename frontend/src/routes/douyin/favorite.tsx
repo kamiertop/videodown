@@ -6,8 +6,8 @@ import {
   CollectList,
   FavoritesVideoList,
   FavoriteVideo,
-} from "../../../wailsjs/go/api/Douyin";
-import {model} from "../../../wailsjs/go/models";
+} from "@bindings/github.com/kamiertop/videodown/douyin/api/douyin";
+import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
 import CollectionVideoPanel, {
   type DouyinListItem,
   type ListPage,
@@ -204,7 +204,7 @@ function DouyinFavoritePage(): JSXElement {
     setVideoLoadingMore(true);
     try {
       const next = await FavoriteVideo(20, current.cursor ?? videos().length);
-      setVideoResult(model.FavoriteVideoResponse.createFrom({
+      setVideoResult(({
         ...next,
         aweme_list: [...videos(), ...(next.aweme_list ?? [])],
         uid: current.uid ?? next.uid,

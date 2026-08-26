@@ -1,0 +1,27 @@
+version: '3'
+
+tasks:
+  install:frontend:deps:
+    dir: frontend
+    sources: [package.json, package-lock.json]
+    generates: [node_modules/*]
+    cmds:
+      - npm install
+
+  generate:bindings:
+    sources: ["**/*.go", go.mod, go.sum]
+    generates: [frontend/bindings/**/*]
+    cmds:
+      - GOCACHE=/tmp/videodown-go-cache wails3 generate bindings -clean=true -ts -i
+
+  build:frontend:
+    dir: frontend
+    deps: [install:frontend:deps, generate:bindings]
+    cmds:
+      - npm run build
+
+  dev:frontend:
+    dir: frontend
+    deps: [install:frontend:deps]
+    cmds:
+      - npm run dev

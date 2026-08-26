@@ -1,7 +1,7 @@
 import {useNavigate} from "@tanstack/solid-router";
 import {createEffect, createMemo, createSignal, type JSXElement, Match, Switch} from "solid-js";
 import {createStore} from "solid-js/store";
-import {model} from "../../../wailsjs/go/models";
+import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
 import {
   defaultDouyinVideoOption,
   douyinCoverCandidates,

@@ -1,7 +1,7 @@
 import {createFileRoute} from '@tanstack/solid-router'
 import {createSignal, type JSXElement, Match, onMount, Show, Switch} from "solid-js";
-import {GetCookie, Profile, SetCookie} from "../../../wailsjs/go/api/Douyin";
-import {model} from "../../../wailsjs/go/models";
+import {GetCookie, Profile, SetCookie} from "@bindings/github.com/kamiertop/videodown/douyin/api/douyin";
+import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
 import DetailError from "../../components/DetailError.tsx";
 import DetailLoading from "../../components/DetailLoading.tsx";
 import IconRefresh from "../../components/icons/IconRefresh.tsx";

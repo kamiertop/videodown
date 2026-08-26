@@ -1,0 +1,18 @@
+version: '3'
+
+tasks:
+  build:
+    env:
+      GOOS: windows
+      CGO_ENABLED: 0
+      GOCACHE: /tmp/videodown-go-cache
+    cmds:
+      - wails3 task common:build:frontend
+      - go build -buildvcs=false -ldflags="-H windowsgui" -o "{{.BIN_DIR}}/{{.APP_NAME}}.exe"
+
+  package:
+    deps: [build]
+
+  run:
+    cmds:
+      - "{{.BIN_DIR}}/{{.APP_NAME}}.exe"

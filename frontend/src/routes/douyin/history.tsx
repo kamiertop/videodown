@@ -1,9 +1,9 @@
 import {createFileRoute} from '@tanstack/solid-router'
 import {createMemo, createResource, createSignal, For, type JSXElement, Match, Show, Switch} from "solid-js";
-import {ClearDownloadHistory, DeleteDownloadHistory, DownloadHistory} from "../../../wailsjs/go/api/Douyin";
-import {api} from "../../../wailsjs/go/models.ts";
+import {ClearDownloadHistory, DeleteDownloadHistory, DownloadHistory} from "@bindings/github.com/kamiertop/videodown/douyin/api/douyin";
+import * as api from "@bindings/github.com/kamiertop/videodown/douyin/api/models";
 
-import {OpenDownloadLocation, OpenLocalFile} from "../../../wailsjs/go/utils/Settings";
+import {OpenDownloadLocation, OpenLocalFile} from "@bindings/github.com/kamiertop/videodown/utils/settings";
 import DetailError from "../../components/DetailError.tsx";
 import IconChat from "../../components/icons/IconChat";
 import IconEye from "../../components/icons/IconEye";
@@ -15,7 +15,7 @@ import Toast from "../../components/Toast.tsx";
 import {useToast} from "../../hooks/useToast.ts";
 import {formatCount, formatDate, formatDuration} from "../../lib/format";
 import {formatDownloadedAt} from "../../utils/format.ts";
-import DouyinDownloadHistoryItem = api.DouyinDownloadHistoryItem;
+type DouyinDownloadHistoryItem = api.DouyinDownloadHistoryItem;
 
 
 export const Route = createFileRoute('/douyin/history')({

@@ -1,7 +1,7 @@
 import {createEffect, createMemo, createSignal, onCleanup} from "solid-js";
-import {BatchResolvePlayUrl, DownloadVideosByDash} from "../../../wailsjs/go/api/BiliBili";
-import {api} from "../../../wailsjs/go/models";
-import {EventsOn} from "../../../wailsjs/runtime";
+import {BatchResolvePlayUrl, DownloadVideosByDash} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
+import * as api from "@bindings/github.com/kamiertop/videodown/bilibili/api/models";
+import {Events} from "@wailsio/runtime";
 import type {MediaCardItem} from "../model.ts";
 import {
   bilibiliPlayResolveKey,
@@ -52,8 +52,6 @@ interface DownloadTask {
 }
 
 type DashDownloadTask = api.DashDownloadTask;
-type DashDownloadResult = api.DashDownloadResult;
-
 // 解析播放地址是异步副作用。这个 Set 防止 Solid effect 重跑时对同一个 BV 重复发起解析请求。
 const playResolveInFlight = new Set<string>();
 const [playResolveByBvid, setPlayResolveByBvid] = createSignal<Record<string, PlayResolveEntry>>({});
@@ -72,7 +70,7 @@ function ensureProgressListener(): void {
   if (progressListenerReady) return;
   progressListenerReady = true;
 
-  EventsOn("bilibili-download-progress", (payload: DownloadProgress) => {
+  Events.On("bilibili-download-progress", ({data: payload}) => {
     const key = bilibiliPlayResolveKey({bvid: payload?.bvid, cid: payload?.cid});
     if (!key) return;
 
@@ -87,7 +85,7 @@ function ensureProgressListener(): void {
 
   // 监听后端逐条推送的解析结果，实现渐进式 UI 更新。
   // 后端 BatchResolvePlayUrl 中每完成一条，就通过此事件推送。
-  EventsOn("bilibili-playurl-resolved", (result: PlayUrlResult) => {
+  Events.On("bilibili-playurl-resolved", ({data: result}) => {
     // 使用 requestCid（原始请求的 cid）计算 key，与 createEffect 中设置的 loading 状态 key 保持一致
     const key = bilibiliPlayResolveKey({
       bvid: result?.bvid,
@@ -104,7 +102,7 @@ function ensureProgressListener(): void {
   });
 
   // 下载+合并+休眠全部完成后，后端逐条推送此事件，前端立即移除对应卡片。
-  EventsOn("bilibili-download-completed", (result: DashDownloadResult) => {
+  Events.On("bilibili-download-completed", ({data: result}) => {
     if (!result?.bvid) return;
     if (result.error) return; // 失败的保留在列表中供用户重试
     removeVideoAfterDownloadSuccess(result.bvid, result.cid > 0 ? result.cid : undefined);

@@ -1,6 +1,6 @@
 import {createSignal, type JSXElement, onMount} from "solid-js";
-import {GetVersion} from "../../../wailsjs/go/utils/Settings";
-import {BrowserOpenURL} from "../../../wailsjs/runtime";
+import {GetVersion} from "@bindings/github.com/kamiertop/videodown/utils/settings";
+import {Browser} from "@wailsio/runtime";
 
 import app from "../../assets/app-128.png";
 
@@ -76,7 +76,7 @@ export function AboutSection(): JSXElement {
           <p class="text-xs text-base-content/40">Go · SolidJS · TailwindCSS · DaisyUI · Wails</p>
           <button class="btn btn-ghost btn-sm gap-2" onClick={() => {
             try {
-              BrowserOpenURL(GITHUB_REPO_URL);
+              Browser.OpenURL(GITHUB_REPO_URL);
             } catch {
               window.open(GITHUB_REPO_URL, '_blank', 'noopener,noreferrer');
             }

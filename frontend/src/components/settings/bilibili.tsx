@@ -4,7 +4,7 @@ import {
   GetParsePlayURLSleep,
   SetParsePlayURLNum,
   SetParsePlayURLSleep,
-} from "../../../wailsjs/go/utils/Settings";
+} from "@bindings/github.com/kamiertop/videodown/utils/settings";
 import {useToast} from "../../hooks/useToast";
 import Toast from "../Toast";
 
@@ -13,6 +13,7 @@ export function BilibiliSection(): JSXElement {
   const {message, type, showToast} = useToast();
   const [num, setNum] = createSignal<number>(5);
   const [sleep, setSleep] = createSignal<number>(0);
+  const [loaded, setLoaded] = createSignal(false);
 
   onMount(async () => {
     try {
@@ -25,6 +26,8 @@ export function BilibiliSection(): JSXElement {
     } catch {
       setNum(5);
       setSleep(0);
+    } finally {
+      setLoaded(true);
     }
   });
 
@@ -49,7 +52,7 @@ export function BilibiliSection(): JSXElement {
 
   return (
       <>
-        <div class="space-y-6 max-w-2xl mx-auto">
+        <div class="space-y-6 max-w-2xl mx-auto" classList={{"invisible": !loaded()}}>
           {/* 并发数 */}
           <div class="card bg-base-100 shadow-xl">
             <div class="card-body">

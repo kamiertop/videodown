@@ -11,7 +11,7 @@ permissions:
 
 env:
   APP_NAME: videodown
-  WAILS_VERSION: v2.13.0
+  WAILS_VERSION: v3.0.0-beta.13
   NODE_OPTIONS: --max-old-space-size=4096
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
@@ -63,14 +63,14 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc pkg-config libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev xvfb
+          sudo apt-get install -y build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev xvfb
 
       - name: Add Go bin to PATH
         shell: bash
         run: echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
 
       - name: Build Wails app
         shell: bash
@@ -78,15 +78,22 @@ jobs:
           mode: prod
         run: |
           LDFLAGS="-X github.com/kamiertop/videodown/utils.Version=${{ github.ref_name }} -X github.com/kamiertop/videodown/logger.Mode=prod"
-          BUILD_CMD="wails build --clean --platform \"${{ matrix.platform }}\""
-          if [ -n "${{ matrix.build_tags }}" ]; then
-            BUILD_CMD="$BUILD_CMD -tags \"${{ matrix.build_tags }}\""
+          target_os="${{ matrix.platform }}"
+          target_arch="${target_os#*/}"
+          target_os="${target_os%%/*}"
+          if [ "$target_arch" = "universal" ]; then
+            target_arch="arm64"
           fi
-          BUILD_CMD="$BUILD_CMD -ldflags \"$LDFLAGS\""
+          output="build/bin/${{ env.APP_NAME }}"
+          if [ "$target_os" = "windows" ]; then
+            output="$output.exe"
+          fi
+          cd frontend && npm ci && npm run build && cd ..
+          GOOS="$target_os" GOARCH="$target_arch" go build -buildvcs=false -ldflags "$LDFLAGS" -o "$output"
           if [ "${{ runner.os }}" = "Linux" ]; then
-            xvfb-run --auto-servernum bash -c "$BUILD_CMD"
+            xvfb-run --auto-servernum true
           else
-            bash -c "$BUILD_CMD"
+            true
           fi
 
       - name: Package Linux artifact
@@ -114,7 +121,7 @@ jobs:
         run: |
           package_dir="dist/package/${{ env.APP_NAME }}"
           mkdir -p "$package_dir"
-          cp "build/bin/${{ env.APP_NAME }}.app/Contents/MacOS/${{ env.APP_NAME }}" "$package_dir/"
+          cp "build/bin/${{ env.APP_NAME }}" "$package_dir/"
           chmod +x "$package_dir/${{ env.APP_NAME }}"
           tar -czf "dist/${{ matrix.archive }}" -C "dist/package" "${{ env.APP_NAME }}"
 

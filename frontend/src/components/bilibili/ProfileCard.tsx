@@ -1,5 +1,5 @@
 import {createSignal, Show, type JSXElement} from "solid-js";
-import type {model} from "../../../wailsjs/go/models.ts";
+import type * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
 import bilibiliAvatarFallback from "../../assets/bilibili_256_256.svg";
 
 interface BiliBiliProfileCardProps {

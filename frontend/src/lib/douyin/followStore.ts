@@ -1,5 +1,5 @@
 import {createSignal} from "solid-js";
-import {model} from "../../../wailsjs/go/models";
+import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
 
 const FOLLOW_CACHE_KEY = "douyin:user:follow-cache";
 
@@ -8,7 +8,7 @@ function loadFollowCache(): model.FollowResponse | null {
   const raw = window.sessionStorage.getItem(FOLLOW_CACHE_KEY);
   if (!raw) return null;
   try {
-    return model.FollowResponse.createFrom(JSON.parse(raw));
+    return (JSON.parse(raw));
   } catch {
     return null;
   }
@@ -51,7 +51,7 @@ export function updateFollowData(data: model.FollowResponse | null): void {
 }
 
 export function appendFollowData(next: model.FollowResponse, total: number, currentItems: readonly model.FollowItem[]): void {
-  const merged = model.FollowResponse.createFrom({
+  const merged = ({
     ...next,
     followings: [...currentItems, ...(next.followings ?? [])],
     total: total ?? next.total,

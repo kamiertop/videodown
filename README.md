@@ -91,7 +91,7 @@ VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.d
 - Node.js 和 npm
 - Wails CLI
 - ffmpeg
-- Fedora44下载libwebkit41, 开发时使用：`wails dev -tags webkit2_41`
+- Fedora44下载libwebkit41, 开发时使用：`wails3 dev -tags webkit2_41`
 
 哔哩哔哩下载通常需要合并视频流和音频流，因此必须安装 `ffmpeg` 并确保命令行可以直接访问：
 
@@ -113,7 +113,7 @@ npm install
 返回项目根目录后启动 Wails 开发模式：
 
 ```bash
-wails dev
+wails3 dev
 ```
 
 前端单独构建：
@@ -126,7 +126,7 @@ npm run build
 生成 Wails 前端绑定：
 
 ```bash
-wails generate module
+wails3 generate bindings -ts
 ```
 
 运行后端测试：
@@ -136,7 +136,7 @@ wails generate module
 在项目根目录执行：
 
 ```bash
-wails build
+wails3 build
 ```
 
 构建产物会输出到 Wails 默认的 build 目录中。不同平台的打包依赖请参考 Wails 官方文档。

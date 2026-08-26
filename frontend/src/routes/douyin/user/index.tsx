@@ -1,7 +1,7 @@
 import {createFileRoute, useNavigate} from '@tanstack/solid-router'
 import {createEffect, createSignal, For, onMount, type JSXElement, Match, onCleanup, Show, Switch} from "solid-js";
-import {ParseSecUserID, SearchFollow, User, FollowList} from "../../../../wailsjs/go/api/Douyin";
-import {model} from "../../../../wailsjs/go/models";
+import {ParseSecUserID, SearchFollow, User, FollowList} from "@bindings/github.com/kamiertop/videodown/douyin/api/douyin";
+import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
 import DetailError from "../../../components/DetailError.tsx";
 import DetailLoading from "../../../components/DetailLoading.tsx";
 import IconRefresh from "../../../components/icons/IconRefresh.tsx";
@@ -51,7 +51,7 @@ function DouyinUserIndexPage(): JSXElement {
   const users = () => followData()?.followings ?? [];
 
   function coverUrl(item: model.FollowItem): string {
-    return item.avatar_larger.url_list[0] || item.avatar_medium.url_list[0] || item.avatar_thumb.url_list[0] || '';
+    return item.avatar_larger.url_list?.[0] || item.avatar_medium.url_list?.[0] || item.avatar_thumb.url_list?.[0] || '';
   }
 
   function userAvatarUrl(user: model.User): string {

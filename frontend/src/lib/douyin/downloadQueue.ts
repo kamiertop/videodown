@@ -1,7 +1,7 @@
 import {createSignal, onCleanup} from "solid-js";
-import {DownloadVideos} from "../../../wailsjs/go/api/Douyin";
-import {api} from "../../../wailsjs/go/models";
-import {EventsOn} from "../../../wailsjs/runtime";
+import {DownloadVideos} from "@bindings/github.com/kamiertop/videodown/douyin/api/douyin";
+import * as api from "@bindings/github.com/kamiertop/videodown/douyin/api/models";
+import {Events} from "@wailsio/runtime";
 import {type DouyinDownloadItem, douyinVideoList, removeDouyinVideo} from "./store.ts";
 
 type ToastType = "error" | "success" | "info" | "warning";
@@ -37,7 +37,7 @@ function ensureProgressListener(): void {
   if (progressListenerReady) return;
   progressListenerReady = true;
 
-  EventsOn("douyin-download-progress", (payload: DouyinDownloadProgress) => {
+  Events.On("douyin-download-progress", ({data: payload}) => {
     if (!payload?.awemeId) return;
     setProgressByID((prev) => ({
       ...prev,
@@ -57,7 +57,7 @@ function hasDownloadURL(item: DouyinDownloadItem): boolean {
 
 function toBackendTask(item: DouyinDownloadItem): BackendTask {
   // 前端只提交最终选择好的下载地址和来源元数据；落盘目录由后端统一判断。
-  return api.DouyinDownloadTask.createFrom({
+  return ({
     awemeId: item.awemeId,
     sourceKind: item.sourceKind,
     sourceName: item.sourceName ?? "",

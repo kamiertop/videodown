@@ -1,5 +1,5 @@
-import {VideoDetailConciseBvid} from "../../../wailsjs/go/api/BiliBili";
-import {model} from "../../../wailsjs/go/models";
+import {VideoDetailConciseBvid} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
+import * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
 import type {MediaCardItem} from "../model";
 
 type VideoDetailView = model.VideoDetailView;

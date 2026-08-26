@@ -18,7 +18,6 @@ import (
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kamiertop/videodown/douyin/model"
 	"github.com/kamiertop/videodown/utils"
-	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 const douyinDownloadedCachePrefix = "douyin:downloaded:"
@@ -128,11 +127,6 @@ func bestDouyinCoverURL(covers []model.Cover) string {
 }
 
 func (d *Douyin) emitDownloadProgress(p douyinDownloadProgress) {
-	ctx := d.context()
-	if ctx == nil {
-		d.logger.Errorf("emitDownloadProgress failed: context is nil")
-		return
-	}
 	if p.AwemeID != "" {
 		p.Percent = utils.ClampPercent(p.Percent)
 		d.progressMu.Lock()
@@ -145,7 +139,9 @@ func (d *Douyin) emitDownloadProgress(p douyinDownloadProgress) {
 		d.progressByID[p.AwemeID] = p.Percent
 		d.progressMu.Unlock()
 	}
-	wailsRuntime.EventsEmit(ctx, "douyin-download-progress", p)
+	if d.events != nil {
+		d.events.EmitEvent("douyin-download-progress", p)
+	}
 }
 
 // markDownloaded 写入下载成功历史；缓存失败不影响已经落盘的文件。
@@ -183,7 +179,7 @@ func (d *Douyin) markDownloaded(task DouyinDownloadTask, path string, isImageAlb
 		d.logger.Errorf("marshal douyin downloaded cache failed: %v", err)
 		return
 	}
-	if err = d.settings.SetKey(key, string(payload)); err != nil {
+	if err = d.store.Set(key, string(payload)); err != nil {
 		d.logger.Errorf("save douyin downloaded cache failed: %v", err)
 	}
 }
@@ -193,7 +189,7 @@ func (d *Douyin) DownloadHistory() ([]DouyinDownloadHistoryItem, error) {
 	items := make([]DouyinDownloadHistoryItem, 0)
 	prefix := []byte(douyinDownloadedCachePrefix)
 
-	err := d.settings.View(func(txn *badger.Txn) error {
+	err := d.store.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
 		defer it.Close()
 
@@ -230,12 +226,12 @@ func (d *Douyin) DeleteDownloadHistory(awemeID string) error {
 		return errors.New("视频ID为空")
 	}
 
-	return d.settings.DeleteKey(key)
+	return d.store.Delete(key)
 }
 
 // ClearDownloadHistory 清空抖音下载历史；不会删除已经下载到本地的文件。
 func (d *Douyin) ClearDownloadHistory() error {
-	return d.settings.ClearDownloadHistory(douyinDownloadedCachePrefix)
+	return d.store.DeletePrefix(douyinDownloadedCachePrefix)
 }
 
 // downloadURLToFile 手动流式读取响应体，这样才能持续把字节进度推给前端。
