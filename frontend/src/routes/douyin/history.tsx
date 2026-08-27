@@ -39,8 +39,7 @@ function History(): JSXElement {
   const [searchValue, setSearchValue] = createSignal<string>("");
 
   function historyItems(): DouyinDownloadHistoryItem[] {
-    readResource(() => items());
-    return items() ?? [];
+    return readResource(() => items()) ?? [];
   }
 
   const visibleItems = createMemo(() => {

@@ -7,10 +7,9 @@ import {
   douyinCoverCandidates,
   douyinDownloadAssets,
   douyinImageURLs,
+  douyinMediaBadge,
   douyinMusicURL,
   douyinVideoOptions,
-  isDouyinImageAlbum,
-  isDouyinLivePhoto,
 } from "../../lib/douyin/media.ts";
 import {addDouyinVideos, type DouyinDownloadItem} from "../../lib/douyin/store.ts";
 import {formatDate, formatDuration} from "../../lib/format.ts";
@@ -149,9 +148,7 @@ export default function VideoContentPanel(props: {
         const videoOptions = douyinVideoOptions(item);
         const selectedVideoOption = defaultDouyinVideoOption(videoOptions);
         const imageURLs = douyinImageURLs(item);
-        const mediaBadge = isDouyinLivePhoto(item)
-            ? "live-photo"
-            : isDouyinImageAlbum(item) ? "image" : undefined;
+        const mediaBadge = douyinMediaBadge(item);
 
         return {
           id: awemeKey(item, index),

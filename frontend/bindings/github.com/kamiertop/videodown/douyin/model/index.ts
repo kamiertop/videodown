@@ -21,6 +21,8 @@ export type {
     FavoriteVideoResponse,
     FollowItem,
     FollowResponse,
+    HistoryItem,
+    HistoryResponse,
     ImageItem,
     ImageVideo,
     MatchedPgcSound,

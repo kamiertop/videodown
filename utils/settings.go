@@ -94,14 +94,6 @@ func NewSettings(logger *logger.Logger, store *storage.Store) (*Settings, error)
 	return s, nil
 }
 
-func NewSettingsForDebug(logger *logger.Logger, path string) (*Settings, error) {
-	store, err := storage.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	return NewSettings(logger, store)
-}
-
 // GetTheme 获取主题设置
 func (s *Settings) GetTheme() (string, error) {
 	theme, err := s.store.Get(themeKey)

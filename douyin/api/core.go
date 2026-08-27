@@ -43,6 +43,7 @@ func New(log *logger.Logger, settings *utils.Settings, store *storage.Store, eve
 	if logger.IsDevMode() {
 		client.SetLogger(log).EnableDebugLog()
 	}
+
 	return &Douyin{
 		logger:         log.WithName("Douyin"),
 		client:         client,
