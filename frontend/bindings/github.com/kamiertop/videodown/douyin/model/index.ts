@@ -18,6 +18,8 @@ export type {
     CollectionStatistic,
     CollectsList,
     Cover,
+    DynamicItem,
+    DynamicResponse,
     FavoriteVideoResponse,
     FollowItem,
     FollowResponse,

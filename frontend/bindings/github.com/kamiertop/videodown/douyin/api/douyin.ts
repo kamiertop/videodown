@@ -74,6 +74,14 @@ export function DownloadVideos(tasks: $models.DouyinDownloadTask[] | null): $Can
 }
 
 /**
+ * Dynamic 关注的用户最近发布的动态
+ * cursor参数是分页的游标，首次请求传0，后续传上次响应里的cursor
+ */
+export function Dynamic(cursor: number): $CancellablePromise<model$0.DynamicResponse> {
+    return $Call.ByID(2923706537, cursor);
+}
+
+/**
  * FavoriteVideo 收藏的视频列表，视频列表包含收藏夹中的
  */
 export function FavoriteVideo(count: number, cursor: number): $CancellablePromise<model$0.FavoriteVideoResponse> {

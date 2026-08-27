@@ -45,7 +45,8 @@ export type DouyinVideoContentKind =
     | "user-video"
     | "favorite-collection"
     | "favorite-mix"
-    | "user-mix";
+    | "user-mix"
+    | "follow-dynamic";
 
 // kind 是这个组件的核心入口：页面类型确定后，默认标题、空态、下载来源都可推导。
 function defaultTitle(kind: DouyinVideoContentKind): string {
@@ -54,6 +55,8 @@ function defaultTitle(kind: DouyinVideoContentKind): string {
       return "收藏视频";
     case "user-video":
       return "全部作品";
+    case "follow-dynamic":
+      return "关注动态";
     case "favorite-collection":
       return "收藏夹视频";
     case "favorite-mix":
@@ -68,6 +71,8 @@ function emptyTitle(kind: DouyinVideoContentKind): string {
       return "暂无收藏视频";
     case "user-video":
       return "暂无作品";
+    case "follow-dynamic":
+      return "暂无关注动态";
     case "favorite-collection":
       return "暂无收藏夹视频";
     case "favorite-mix":
@@ -82,6 +87,8 @@ function emptyDescription(kind: DouyinVideoContentKind): string {
       return "请先确认账号已登录，或稍后重试。";
     case "user-video":
       return "该用户暂未返回可展示的视频。";
+    case "follow-dynamic":
+      return "关注的用户暂未发布新作品。";
     case "favorite-collection":
       return "该收藏夹暂未返回可展示的视频。";
     case "favorite-mix":
@@ -96,6 +103,8 @@ export function douyinSourceKind(kind: DouyinVideoContentKind): string {
       return "收藏视频";
     case "user-video":
       return "用户作品";
+    case "follow-dynamic":
+      return "关注动态";
     case "favorite-collection":
       return "收藏夹";
     case "favorite-mix":
@@ -230,10 +239,10 @@ export default function VideoContentPanel(props: {
     if (allSelected()) {
       return selectedMap[id]
           ? "border-2 border-base-300 bg-base-100 opacity-70"
-          : "border-2 border-transparent bg-base-100 ring-1 ring-base-300";
+          : "border-2 border-primary bg-primary/5 shadow-sm shadow-primary/15";
     }
     return selectedMap[id]
-        ? "border-2 border-success bg-success/5 shadow-sm shadow-success/15"
+        ? "border-2 border-primary bg-primary/5 shadow-sm shadow-primary/15"
         : "border-2 border-transparent bg-base-100 ring-1 ring-base-300";
   }
 

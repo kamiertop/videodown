@@ -167,10 +167,10 @@ export default function VideoGrid(props: {
   }
 
   return (
-      <div class={`flex h-full min-h-0 w-full min-w-0 flex-col ${props.allSelected ? "ring-1 ring-success/40" : ""}`}>
+      <div class={`flex h-full min-h-0 w-full min-w-0 flex-col ${props.allSelected ? "ring-1 ring-primary/40" : ""}`}>
         {/* 固定操作栏：选择与下载按钮不跟随卡片区域滚动。 */}
         <div class="flex shrink-0 items-center gap-2 border-b px-4 py-3"
-             classList={{"border-success/40 bg-success/5": props.allSelected, "border-base-300": !props.allSelected}}>
+          classList={{"border-primary/40 bg-primary/5": props.allSelected, "border-base-300": !props.allSelected}}>
           <div class="min-w-0 flex-1">
             <h3 class="truncate text-sm font-bold text-base-content">{props.title}</h3>
             <p class="text-xs text-base-content/55">{props.items.length} 个已加载</p>

@@ -475,6 +475,21 @@ export interface Cover {
     "height": number;
 }
 
+export interface DynamicItem {
+    "aweme": AwemeItem;
+    "comment_count": number;
+}
+
+/**
+ * DynamicResponse 关注动态列表响应
+ */
+export interface DynamicResponse {
+    "cursor": number;
+    "has_more": number;
+    "status_code": number;
+    "data": DynamicItem[] | null;
+}
+
 /**
  * FavoriteVideoResponse 收藏视频列表响应
  */
