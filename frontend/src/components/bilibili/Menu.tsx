@@ -53,6 +53,15 @@ const menuItems = [
     </svg>,
   },
   {
+    name: "播放历史",
+    link: "/bilibili/play-history",
+    icon: <svg width="18" height="19" viewBox="0 0 20 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M10 2.2a8.5 8.5 0 1 0 8.5 8.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      <path d="M10 5.5v5.2l3.2 1.8M13.5 2.4h4v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"
+            stroke-linejoin="round"/>
+    </svg>,
+  },
+  {
     name: "下载历史",
     link: "/bilibili/history",
     icon: <svg width="18" height="19" viewBox="0 0 20 21" fill="none" xmlns="http://www.w3.org/2000/svg"

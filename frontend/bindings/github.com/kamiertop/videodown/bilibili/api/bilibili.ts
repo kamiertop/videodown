@@ -161,6 +161,13 @@ export function MyInfo(): $CancellablePromise<model$0.MyInfoProfile> {
 }
 
 /**
+ * PlayHistory 返回播放历史记录
+ */
+export function PlayHistory(cursor: number, viewAt: number): $CancellablePromise<model$0.PlayHistoryData> {
+    return $Call.ByID(3428556714, cursor, viewAt);
+}
+
+/**
  * PollQRCode 轮询二维码状态, 直到扫码成功或二维码过期
  */
 export function PollQRCode(qrcodeKey: string): $CancellablePromise<model$0.PollQRCodeData> {
@@ -187,14 +194,6 @@ export function RefreshCookie(): $CancellablePromise<model$0.CookieRefreshData> 
  */
 export function ResolvePlayUrl(req: $models.PlayUrlRequest, totalCount: number): $CancellablePromise<$models.PlayUrlResult> {
     return $Call.ByID(3065194543, req, totalCount);
-}
-
-/**
- * SearchDownloadHistory 获取历史搜索记录
- * Deprecated: 该接口已废弃，搜索历史记录功能已迁移到前端实现，后端不再维护搜索历史记录
- */
-export function SearchDownloadHistory(upperNameOrTitle: string): $CancellablePromise<model$0.DownloadHistoryItem[] | null> {
-    return $Call.ByID(3933691036, upperNameOrTitle);
 }
 
 /**

@@ -919,6 +919,86 @@ export interface PlayConf {
     "is_new_description": boolean;
 }
 
+export interface PlayHistory {
+    "oid": number;
+    "epid": number;
+    "bvid": string;
+    "page": number;
+    "cid": number;
+    "part": string;
+    "business": string;
+    "dt": number;
+}
+
+export interface PlayHistoryCursor {
+    "max": number;
+    "view_at": number;
+    "business": string;
+    "ps": number;
+}
+
+/**
+ * PlayHistoryData 播放历史记录
+ */
+export interface PlayHistoryData {
+    "cursor": PlayHistoryCursor;
+    "tab": PlayHistoryTab[] | null;
+    "list": PlayHistoryItem[] | null;
+}
+
+export interface PlayHistoryItem {
+    /**
+     * 标题
+     */
+    "title": string;
+    "long_title": string;
+
+    /**
+     * 封面URL
+     */
+    "cover": string;
+    "history": PlayHistory;
+    "videos": number;
+
+    /**
+     * 作者名称
+     */
+    "author_name": string;
+    "author_face": string;
+    "author_mid": number;
+    "view_at": number;
+    "progress": number;
+    "badge": string;
+    "show_title": string;
+    "current": string;
+    "duration": number;
+    "total": number;
+    "is_finish": number;
+    "is_fav": number;
+    "kid": number;
+    "new_desc": string;
+
+    /**
+     * 视频标签名称，例如：数码
+     */
+    "tag_name": string;
+
+    /**
+     * 直播状态
+     */
+    "live_status": number;
+}
+
+export interface PlayHistoryTab {
+    /**
+     * archive: 视频
+     * live： 直播
+     * article： 专栏
+     */
+    "type": string;
+    "name": string;
+}
+
 export interface PollQRCodeData {
     "url": string;
     "refresh_token": string;
