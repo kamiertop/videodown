@@ -576,6 +576,102 @@ export interface FollowResponse {
     "offset": number;
 }
 
+export interface HistoryItem {
+    "author": Author;
+
+    /**
+     * 视频ID
+     */
+    "aweme_id": string;
+
+    /**
+     * 抖音业务类型码，辅助排查类型差异
+     */
+    "aweme_type": number;
+
+    /**
+     * 标题，可能为空
+     */
+    "caption": string;
+
+    /**
+     * 发布时间
+     */
+    "create_time": number;
+
+    /**
+     * 标题+#标签
+     */
+    "desc": string;
+
+    /**
+     * 图文/动图素材列表
+     */
+    "images": ImageItem[] | null;
+
+    /**
+     * 1 表示动图
+     */
+    "is_live_photo": number;
+
+    /**
+     * 多张动图信号
+     */
+    "is_slides": boolean;
+
+    /**
+     * 置顶状态，1 是置顶
+     */
+    "is_top": number;
+
+    /**
+     * 子标题，可能为空
+     */
+    "item_title": string;
+
+    /**
+     * 2 图文，4 普通视频，42 常见于动图/Live Photo
+     */
+    "media_type": number;
+    "music": Music;
+
+    /**
+     * 视频统计信息
+     */
+    "statistics": VideoStatistics;
+    "video": Video;
+}
+
+/**
+ * HistoryResponse 观看历史接口的响应
+ */
+export interface HistoryResponse {
+    /**
+     * 是否有更多数据，1表示有，0表示没有
+     */
+    "has_more": number;
+
+    /**
+     * 最大游标，下一页请求时传入
+     */
+    "max_cursor": number;
+
+    /**
+     * 状态码，成功时为0
+     */
+    "status_code": number;
+
+    /**
+     * 状态信息，成功时为""
+     */
+    "status_msg": string;
+
+    /**
+     * 观看历史列表
+     */
+    "aweme_list": HistoryItem[] | null;
+}
+
 export interface ImageItem {
     /**
      * / 不带水印的图片下载地址列表

@@ -2,6 +2,7 @@ import {Link} from "@tanstack/solid-router";
 import type {JSXElement} from "solid-js";
 import {createSignal, For, onCleanup, onMount} from "solid-js";
 import douyinAvatarFallback from "../../assets/douyin_256_256.svg";
+import IconPlayCircle from "../icons/IconPlayCircle.tsx";
 import {StarIcon} from "../icons/IconStar.tsx";
 import IconUsers from "../icons/IconUsers.tsx";
 
@@ -69,7 +70,7 @@ export default function Menu(): JSXElement {
       icon: <span class="scale-125"><StarIcon/></span>,
     },
     {
-      name: "历史",
+      name: "下载历史",
       link: "/douyin/history",
       icon: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -80,6 +81,11 @@ export default function Menu(): JSXElement {
                 stroke-linecap="round" stroke-linejoin="round"/>
         </svg>
       ),
+    },
+    {
+      name: "播放历史",
+      link: "/douyin/play-history",
+      icon: <IconPlayCircle class="h-4.5 w-4.5"/>,
     },
   ];
 

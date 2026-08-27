@@ -103,6 +103,17 @@ export function GetCookie(): $CancellablePromise<string> {
 }
 
 /**
+ * History 观看历史接口，获取用户观看过的视频列表
+ * maxCursor参数是分页的游标
+ * status: 用于过滤历史记录的状态，取值范围："-1" 表示不限制，"1" 表示已看完，"0" 表示未看完
+ * category: 用于过滤历史记录的分类，0：不限制，1：二次元，2：音乐，3：体育，4：电影，5：游戏
+ * directory: 用于过滤历史记录的时长，0：不限制，1：小于1分钟，2：1-3分钟，3：3-10分钟，4：10分钟以上
+ */
+export function History(maxCursor: number, status: number, category: number, directory: number): $CancellablePromise<model$0.HistoryResponse> {
+    return $Call.ByID(1977065888, maxCursor, status, category, directory);
+}
+
+/**
  * ParseSecUserID 从用户空间URL或分享链接中提取sec_user_id
  */
 export function ParseSecUserID(URLOrSecUserID: string): $CancellablePromise<string> {

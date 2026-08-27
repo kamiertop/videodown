@@ -1,9 +1,9 @@
 import type {JSXElement} from "solid-js";
 
-export default function IconLivePhoto(): JSXElement {
+export default function IconLivePhoto(props: { class?: string }): JSXElement {
   return (
     <svg
-      class="absolute right-1.5 top-1.5 z-10 h-4 w-4 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]"
+      class={props.class ?? "h-4 w-4"}
       viewBox="0 0 1024 1024"
       xmlns="http://www.w3.org/2000/svg"
       aria-label="动态照片"

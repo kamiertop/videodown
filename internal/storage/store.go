@@ -21,14 +21,20 @@ func OpenDefault() (*Store, error) {
 	if executable, err := os.Executable(); err == nil {
 		path = filepath.Join(filepath.Dir(executable), path)
 	}
+
 	return Open(path)
 }
 
+// Open opens a Badger database at the given path. If the database does not exist, it will be created.
 func Open(path string) (*Store, error) {
+	if path == "" {
+		return nil, fmt.Errorf("path cannot be empty")
+	}
 	db, err := badger.Open(badger.DefaultOptions(path).WithLoggingLevel(badger.ERROR))
 	if err != nil {
 		return nil, err
 	}
+
 	return &Store{db: db}, nil
 }
 

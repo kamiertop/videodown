@@ -1,6 +1,29 @@
 import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
 import type {DouyinDownloadAsset, DouyinVideoOption} from "./store.ts";
 
+/**
+ * 抖音作品在前端展示和下载流程中使用的统一媒体类型。
+ *
+ * 这里按抖音手机端的展示语义归类：
+ * - 单个动图素材：`live-photo`
+ * - 只要存在多个素材，或静态图与动图混合：`image`
+ * - 没有图片素材且没有图文兜底信号：`video`
+ */
+export type DouyinMediaKind = "video" | "image" | "live-photo";
+
+/**
+ * 卡片右上角只展示非普通视频的类型标识。
+ */
+export type DouyinMediaBadge = Exclude<DouyinMediaKind, "video">;
+
+type DouyinMediaItem = {
+  images?: model.ImageItem[] | null;
+  is_live_photo?: number;
+  is_slides?: boolean;
+  media_type?: number;
+  music?: model.Music;
+};
+
 function firstURL(playAddr: model.PlayInfo | undefined): string {
   return playAddr?.url_list?.[0] ?? "";
 }
@@ -107,7 +130,7 @@ export function douyinCoverCandidates(item: model.AwemeItem): model.Cover[] {
   });
 }
 
-export function douyinImageURLs(item: model.AwemeItem): string[] {
+export function douyinImageURLs(item: DouyinMediaItem): string[] {
   // 图片合集的无水印地址在 url_list
   return (item.images ?? [])
       .map((image) => image.url_list?.[0] ?? "")
@@ -121,11 +144,11 @@ function imageVideoURL(image: model.ImageItem): string {
       ?? "";
 }
 
-export function douyinMusicURL(item: model.AwemeItem): string {
+export function douyinMusicURL(item: DouyinMediaItem): string {
   return item.music?.play_url?.url_list?.[0] ?? "";
 }
 
-export function douyinDownloadAssets(item: model.AwemeItem): DouyinDownloadAsset[] {
+export function douyinDownloadAssets(item: DouyinMediaItem): DouyinDownloadAsset[] {
   return (item.images ?? [])
       .map((image): DouyinDownloadAsset | undefined => {
         if (isLivePhotoImage(image)) {
@@ -138,35 +161,55 @@ export function douyinDownloadAssets(item: model.AwemeItem): DouyinDownloadAsset
       .filter((asset): asset is DouyinDownloadAsset => asset != null);
 }
 
-function hasDouyinImages(item: model.AwemeItem): boolean {
-  return item.images != null;
-}
-
+/**
+ * 判断单个图片素材是否是动图素材。
+ *
+ * 这里只使用接口明确给出的动图字段；不再用 `image.video.play_addr` 推断展示类型，
+ * 避免普通图片因为带有兜底 video 结构而被误判成动图。
+ */
 function isLivePhotoImage(image: model.ImageItem): boolean {
-  // image.video 是 ImageVideo 值类型（Go 非指针），即使静态图片也会序列化为非 null 对象，
-  // 因此必须检查 video 是否有实质内容（play_addr 有 URL）而非判断 null。
-  return image.live_photo_type === 1
-      || image.clip_type === 5
-      || (image.video?.play_addr?.url_list?.length ?? 0) > 0;
+  return image.live_photo_type === 1 || image.clip_type === 5;
 }
 
-function hasStaticImage(item: model.AwemeItem): boolean {
-  return (item.images ?? []).some((image) => !isLivePhotoImage(image));
-}
-
-function hasOnlyLivePhotoImages(item: model.AwemeItem): boolean {
+/**
+ * 只有一个素材且这个素材本身是动图时，手机端才展示为“动图”。
+ */
+function isSingleLivePhoto(item: DouyinMediaItem): boolean {
   const images = item.images ?? [];
-  return images.length > 0 && images.every(isLivePhotoImage);
+  return images.length === 1 && isLivePhotoImage(images[0]);
 }
 
-// 是否是图片合集；只要存在静态照片，即使混有动图，也按图文处理。
-export function isDouyinImageAlbum(item: model.AwemeItem): boolean {
-  return hasDouyinImages(item) && hasStaticImage(item);
+/**
+ * 返回抖音作品的唯一媒体类型判断结果。
+ *
+ * 所有页面都应通过这个函数判断普通视频、图文、动图，不要在页面组件里直接组合
+ * `media_type`、`images`、`is_live_photo`、`is_slides` 等字段，避免不同入口判断不一致。
+ */
+export function douyinMediaKind(item: DouyinMediaItem): DouyinMediaKind {
+  const images = item.images ?? [];
+  if (images.length > 0) return isSingleLivePhoto(item) ? "live-photo" : "image";
+  if (item.media_type === 2 || item.is_slides === true) return "image";
+  return "video";
 }
 
-// 是否是动图
-export function isDouyinLivePhoto(item: model.AwemeItem): boolean {
-  return item.is_live_photo === 1
-      || hasOnlyLivePhotoImages(item)
-      || (!hasStaticImage(item) && (item.media_type === 42 || item.is_slides));
+/**
+ * 将媒体类型转换成卡片需要的右上角标识；普通视频不展示类型标识。
+ */
+export function douyinMediaBadge(item: DouyinMediaItem): DouyinMediaBadge | undefined {
+  const kind = douyinMediaKind(item);
+  return kind === "video" ? undefined : kind;
+}
+
+/**
+ * 兼容旧调用名：是否按图文处理。
+ */
+export function isDouyinImageAlbum(item: DouyinMediaItem): boolean {
+  return douyinMediaKind(item) === "image";
+}
+
+/**
+ * 兼容旧调用名：是否按单个动图处理。
+ */
+export function isDouyinLivePhoto(item: DouyinMediaItem): boolean {
+  return douyinMediaKind(item) === "live-photo";
 }

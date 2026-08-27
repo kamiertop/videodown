@@ -1,6 +1,6 @@
 import {createMemo, createSignal, For, Index, type JSXElement, onCleanup, onMount, Show} from "solid-js";
 import type {DouyinDownloadItem} from "../../lib/douyin/store.ts";
-import IconLivePhoto from "../icons/IconLivePhoto.tsx";
+import MediaTypeBadge from "./MediaTypeBadge.tsx";
 import NoCover from "../NoCover.tsx";
 
 const GRID_GAP = 8;
@@ -60,25 +60,10 @@ function VideoCard(props: {
             </span>
           </Show>
           <Show when={props.item.mediaBadge === "image"}>
-            <svg
-                width="12"
-                height="12"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-                class="absolute right-1.5 top-1.5 z-10 h-3.5 w-3.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]"
-                viewBox="0 0 12 12"
-                aria-label="图文"
-            >
-              <path
-                  d="M1.455 0C.65 0 0 .651 0 1.455V8c0 .803.651 1.455 1.455 1.455H8c.803 0 1.455-.652 1.455-1.455V1.455C9.455.65 8.803 0 8 0H1.455z"
-                  fill="#fff"></path>
-              <path
-                  d="M4 12a1.455 1.455 0 0 1-1.455-1.454h5.819a2.182 2.182 0 0 0 2.181-2.182V2.545C11.35 2.545 12 3.197 12 4v5.09A2.909 2.909 0 0 1 9.09 12H4z"
-                  fill="#fff"></path>
-            </svg>
+            <MediaTypeBadge type="image"/>
           </Show>
           <Show when={props.item.mediaBadge === "live-photo"}>
-            <IconLivePhoto/>
+            <MediaTypeBadge type="live-photo"/>
           </Show>
           <Show when={!props.item.mediaBadge}>
           <span
@@ -115,6 +100,7 @@ export default function VideoGrid(props: {
   onClearSelection: () => void;
   onDownloadSelected: () => void;
   onDownloadAll?: () => void;
+  toolbarMiddle?: JSXElement;
   refreshing?: boolean;
   onRefresh?: () => void;
   hasMore?: boolean;
@@ -189,6 +175,11 @@ export default function VideoGrid(props: {
             <h3 class="truncate text-sm font-bold text-base-content">{props.title}</h3>
             <p class="text-xs text-base-content/55">{props.items.length} 个已加载</p>
           </div>
+          <Show when={props.toolbarMiddle}>
+            <div class="flex min-w-0 flex-1 items-center justify-center gap-2">
+              {props.toolbarMiddle}
+            </div>
+          </Show>
           <button class="btn btn-ghost btn-sm" type="button" onClick={props.onToggleAll}>
             {props.allSelected ? "取消全选" : "全选"}
           </button>
