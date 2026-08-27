@@ -5,53 +5,11 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"sort"
-	"strings"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/kamiertop/videodown/bilibili/model"
 	"github.com/kamiertop/videodown/utils"
 )
-
-// SearchDownloadHistory 获取历史搜索记录
-// Deprecated: 该接口已废弃，搜索历史记录功能已迁移到前端实现，后端不再维护搜索历史记录
-func (b *BiliBili) SearchDownloadHistory(upperNameOrTitle string) ([]model.DownloadHistoryItem, error) {
-	var results []model.DownloadHistoryItem
-	prefix := []byte(downloadedVideoCachePrefix)
-
-	err := b.store.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
-		defer it.Close()
-
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			if err := it.Item().Value(func(val []byte) error {
-				var history model.DownloadHistoryItem
-				if err := json.Unmarshal(bytes.Clone(val), &history); err != nil {
-					return err
-				}
-				kw := strings.ToLower(upperNameOrTitle)
-				if strings.Contains(strings.ToLower(history.UpperName), kw) ||
-					strings.Contains(strings.ToLower(history.Title), kw) {
-					results = append(results, history)
-				}
-				return nil
-			}); err != nil {
-				b.logger.Errorf("read download history item failed: %v", err)
-				continue
-			}
-		}
-
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	sort.Slice(results, func(i, j int) bool {
-		return utils.ParseDownloadHistoryTime(results[i].Downloaded).After(utils.ParseDownloadHistoryTime(results[j].Downloaded))
-	})
-
-	return results, nil
-}
 
 // DownloadHistory 返回后端下载缓存记录；只读历史页使用，下载接口本身不暴露缓存命中细节。
 func (b *BiliBili) DownloadHistory() ([]model.DownloadHistoryItem, error) {
@@ -101,4 +59,44 @@ func (b *BiliBili) DeleteDownloadHistory(cid int64) error {
 	}
 
 	return b.store.Delete(key)
+}
+
+// PlayHistory 返回播放历史记录
+func (b *BiliBili) PlayHistory(cursor int, viewAt int) (model.PlayHistoryData, error) {
+	var resp struct {
+		model.ApiResponse
+		Data model.PlayHistoryData `json:"data"`
+	}
+
+	cookies, err := b.getCookies()
+	if err != nil {
+		return resp.Data, err
+	}
+
+	err = b.client.
+		Get("https://api.bilibili.com/x/web-interface/history/cursor").
+		SetQueryParamsAnyType(map[string]any{
+			"cursor":      cursor, //  初始为0，后续使用返回的data.cursor.max
+			"view_at":     viewAt, // 初始为0，后续使用返回的data.cursor.view_at
+			"business":    "",
+			"search_type": "archive",
+			"ps":          20,
+			webLocation:   "333.1387",
+		}).
+		SetHeaders(publicHeaders()).
+		SetHeader(Origin, biliBiliUrl).
+		SetHeader(Referer, biliBiliUrl).
+		SetHeader(Cookie, cookies).
+		Do().
+		Into(&resp)
+	if err != nil {
+		b.logger.Errorf("request play history api error: %v", err)
+		return resp.Data, err
+	}
+	if resp.Code != model.SuccessCode {
+		b.logger.Errorf("request play history error, code: %d, message: %s", resp.Code, resp.Message)
+	}
+	b.logger.Infof("cursor: %v", resp.Data.Cursor)
+
+	return resp.Data, nil
 }
