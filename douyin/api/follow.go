@@ -122,3 +122,49 @@ func (d *Douyin) SearchFollow(keyword string) ([]model.SearchFollowResponse, err
 
 	return followList, nil
 }
+
+// Dynamic 关注的用户最近发布的动态
+// cursor参数是分页的游标，首次请求传0，后续传上次响应里的cursor
+func (d *Douyin) Dynamic(cursor int) (model.DynamicResponse, error) {
+	var resp model.DynamicResponse
+
+	queryParams, err := d.publicQueryParams()
+	if err != nil {
+		return resp, fmt.Errorf("获取公共查询参数失败: %w", err)
+	}
+	publicHeaders, err := d.publicHeaders()
+	if err != nil {
+		return resp, fmt.Errorf("获取公共请求头失败: %w", err)
+	}
+
+	values := make(url.Values)
+	for key, value := range queryParams {
+		values.Set(key, fmt.Sprint(value))
+	}
+	values.Set("count", "20")
+	values.Set("cursor", fmt.Sprint(cursor))
+	values.Set("webcast_sdk_version", "170400")
+	values.Set("webcast_version_code", "170400")
+	values.Set("room_ids", "")
+	values.Set("pull_type", "2")
+
+	params := values.Encode()
+	aBogus := GenerateABogus(params)
+
+	publicHeaders[Referer] = "https://www.douyin.com/follow"
+	publicHeaders[SecChFetchSite] = "same-origin"
+	err = d.client.
+		Get(fmt.Sprintf("https://www.douyin.com/aweme/v1/web/follow/feed/?%s&a_bogus=%s", params, url.QueryEscape(aBogus))).
+		SetHeaders(publicHeaders).
+		Do().
+		Into(&resp)
+	if err != nil {
+		return resp, fmt.Errorf("请求关注动态失败: %w", err)
+	}
+	if resp.StatusCode != 0 {
+		d.logger.Errorf("request dynamic failed, status_code=%d, cursor=%d", resp.StatusCode, cursor)
+		return resp, errors.New("请求关注动态失败")
+	}
+
+	return resp, nil
+}

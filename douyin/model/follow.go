@@ -41,3 +41,16 @@ type SearchFollowResponse struct {
 	AvatarURI    string `json:"rich_sug_avatar_uri"`    // 头像URI
 	ShortID      string `json:"rich_sug_short_id"`      // 抖音号
 }
+
+// DynamicResponse 关注动态列表响应
+type DynamicResponse struct {
+	Cursor     int64         `json:"cursor"`
+	HasMore    int           `json:"has_more"`
+	StatusCode int           `json:"status_code"`
+	Data       []DynamicItem `json:"data"`
+}
+
+type DynamicItem struct {
+	Aweme        AwemeItem `json:"aweme"`
+	CommentCount int       `json:"comment_count"`
+}
