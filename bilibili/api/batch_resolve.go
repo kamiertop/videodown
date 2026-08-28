@@ -46,7 +46,7 @@ func (b *BiliBili) releaseSem() {
 // 前端按 bvid+cid 更新对应卡片的解析状态，无需等待整批解析完成。
 func (b *BiliBili) emitPlayUrlResolved(r PlayUrlResult) {
 	if b.events != nil {
-		b.events.EmitEvent("bilibili-playurl-resolved", r)
+		b.events.Emit("bilibili-playurl-resolved", r)
 	}
 }
 

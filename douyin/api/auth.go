@@ -69,7 +69,7 @@ func (d *Douyin) getMsToken() (string, error) {
 		}
 	}
 	if d.msToken.value == "" {
-		return "", fmt.Errorf("get msToken error: %w", err)
+		return "", fmt.Errorf("获取msToken失败，请检查Cookie是否正确")
 	}
 
 	return d.msToken.value, nil

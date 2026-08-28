@@ -6,6 +6,9 @@ export interface DouyinVideoOption {
   label: string;
   gearName: string;
   dataSize: number;
+  width?: number;
+  height?: number;
+  fps?: number;
   bitRate?: number;
   codec: string;
   url: string;

@@ -11,6 +11,7 @@ import (
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/logger"
 	"github.com/kamiertop/videodown/utils"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 const (
@@ -23,7 +24,7 @@ type Douyin struct {
 	downloadClient *req.Client
 	settings       *utils.Settings
 	store          *storage.Store
-	events         utils.EventEmitter
+	events         *application.EventManager
 	progressMu     sync.Mutex
 	progressByID   map[string]float64
 	webId          struct {
@@ -38,8 +39,10 @@ type Douyin struct {
 	userID    string
 }
 
-func New(log *logger.Logger, settings *utils.Settings, store *storage.Store, events utils.EventEmitter) *Douyin {
-	var client = req.C().EnableAutoDecompress()
+func New(log *logger.Logger, settings *utils.Settings, store *storage.Store, events *application.EventManager) *Douyin {
+	var client = req.C().EnableAutoDecompress().
+		SetCommonRetryCount(2).
+		SetCommonRetryBackoffInterval(300*time.Millisecond, 2*time.Second)
 	if logger.IsDevMode() {
 		client.SetLogger(log).EnableDebugLog()
 	}

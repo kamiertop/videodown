@@ -140,7 +140,7 @@ func (d *Douyin) emitDownloadProgress(p douyinDownloadProgress) {
 		d.progressMu.Unlock()
 	}
 	if d.events != nil {
-		d.events.EmitEvent("douyin-download-progress", p)
+		d.events.Emit("douyin-download-progress", p)
 	}
 }
 
@@ -242,8 +242,6 @@ func (d *Douyin) downloadURLToFile(rawURL, targetPath string, task DouyinDownloa
 	}
 	resp, err := d.downloadClient.R().
 		DisableAutoReadResponse().
-		SetRetryCount(2).
-		SetRetryBackoffInterval(300*time.Millisecond, 2*time.Second).
 		SetHeaders(headers).
 		Get(rawURL)
 	if err != nil {
@@ -587,7 +585,6 @@ func (d *Douyin) DownloadCover(covers []model.Cover, task DouyinDownloadTask) (s
 	headers[Accept] = "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"
 
 	resp, err := d.client.R().
-		SetRetryCount(2).
 		SetHeaders(headers).
 		Get(coverURL)
 	if err != nil {

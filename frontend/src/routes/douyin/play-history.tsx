@@ -100,6 +100,12 @@ function codecLabel(item: model.BitRateItem): string {
   return "H.264";
 }
 
+function videoOptionLabel(name: string, width: number | undefined, height: number | undefined, fps: number | undefined, dataSize: number, codec: string): string {
+  const resolution = width && height ? `${width}×${height}` : "未知分辨率";
+  const frameRate = fps ? ` · ${fps}fps` : "";
+  return `${name} · ${resolution}${frameRate} · ${formatDataSize(dataSize)} · ${codec}`;
+}
+
 function optionID(prefix: string, url: string, index: number): string {
   return `${prefix}-${index}-${url.slice(0, 32)}`;
 }
@@ -130,9 +136,12 @@ function videoOptions(item: HistoryItem): DouyinVideoOption[] {
     const dataSize = Number(entry.play_addr?.data_size ?? 0);
     options.push({
       id: optionID("bitrate", url, index),
-      label: `${gearName} · ${formatDataSize(dataSize)} · ${codec}`,
+      label: videoOptionLabel(gearName, entry.play_addr?.width, entry.play_addr?.height, entry.FPS, dataSize, codec),
       gearName,
       dataSize,
+      width: entry.play_addr?.width,
+      height: entry.play_addr?.height,
+      fps: entry.FPS,
       bitRate: entry.bit_rate,
       codec,
       url,
@@ -152,9 +161,11 @@ function videoOptions(item: HistoryItem): DouyinVideoOption[] {
     const dataSize = Number(fallback.playAddr?.data_size ?? 0);
     options.push({
       id: optionID(fallback.name, url, index),
-      label: `${fallback.name} · ${formatDataSize(dataSize)} · ${fallback.codec}`,
+      label: videoOptionLabel(fallback.name, fallback.playAddr?.width, fallback.playAddr?.height, undefined, dataSize, fallback.codec),
       gearName: fallback.name,
       dataSize,
+      width: fallback.playAddr?.width,
+      height: fallback.playAddr?.height,
       codec: fallback.codec,
       url,
     });
@@ -164,10 +175,9 @@ function videoOptions(item: HistoryItem): DouyinVideoOption[] {
 }
 
 function defaultVideoOption(options: DouyinVideoOption[]): DouyinVideoOption | undefined {
-  const h264 = options
-      .filter((option) => option.codec === "H.264")
-      .sort((a, b) => (b.bitRate ?? 0) - (a.bitRate ?? 0) || b.dataSize - a.dataSize)[0];
-  return h264 ?? options[0];
+  // 默认在所有编码格式中选择最高画质。
+  return [...options]
+      .sort((a, b) => ((b.width ?? 0) * (b.height ?? 0) - (a.width ?? 0) * (a.height ?? 0)) || (b.fps ?? 0) - (a.fps ?? 0) || (b.bitRate ?? 0) - (a.bitRate ?? 0) || b.dataSize - a.dataSize)[0];
 }
 
 function toDownloadItem(item: HistoryItem): DouyinDownloadItem {

@@ -4,12 +4,14 @@ import (
 	"errors"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/imroc/req/v3"
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/logger"
 	"github.com/kamiertop/videodown/utils"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 const (
@@ -25,14 +27,16 @@ type BiliBili struct {
 	downloadClient *req.Client
 	settings       *utils.Settings
 	store          *storage.Store
-	events         utils.EventEmitter
+	events         *application.EventManager
 	wbiKey         *wbiKeys // lazy init
 	progressMu     sync.Mutex
 	progressByBvid map[string]float64
 }
 
-func New(log *logger.Logger, settings *utils.Settings, store *storage.Store, events utils.EventEmitter) *BiliBili {
-	var client = req.C().EnableAutoDecompress()
+func New(log *logger.Logger, settings *utils.Settings, store *storage.Store, events *application.EventManager) *BiliBili {
+	var client = req.C().EnableAutoDecompress().
+		SetCommonRetryCount(2).
+		SetCommonRetryBackoffInterval(300*time.Millisecond, 2*time.Second)
 	if logger.IsDevMode() {
 		client.SetLogger(log).EnableDebugLog()
 	}
