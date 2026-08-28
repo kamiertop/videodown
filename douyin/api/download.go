@@ -315,7 +315,7 @@ func (d *Douyin) downloadURLToFile(rawURL, targetPath string, task DouyinDownloa
 }
 
 func (d *Douyin) resolveDownloadDir(storagePath string, task DouyinDownloadTask) (string, error) {
-	allowGroup, err := d.settings.GetSavePreference()
+	allowGroup, err := d.store.SavePreference()
 	if err != nil {
 		return "", err
 	}
@@ -372,7 +372,7 @@ func (d *Douyin) downloadTask(task DouyinDownloadTask) (string, error) {
 		task.Title = task.AwemeID
 	}
 
-	storagePath, err := d.settings.GetStorage()
+	storagePath, err := d.store.StoragePath()
 	if err != nil {
 		return "", err
 	}
@@ -472,7 +472,7 @@ func uniqueDouyinDownloadTasks(tasks []DouyinDownloadTask) []DouyinDownloadTask 
 
 func (d *Douyin) sleepAfterTask(task DouyinDownloadTask) {
 	// 和 B 站下载保持一致：每个 worker 完成一条任务后按用户设置随机休眠，降低连续请求频率。
-	sleepTime, err := d.settings.GetSleepTime()
+	sleepTime, err := d.store.SleepTime()
 	if err != nil || sleepTime <= 0 {
 		return
 	}
@@ -502,7 +502,7 @@ func (d *Douyin) DownloadVideos(tasks []DouyinDownloadTask) (DouyinDownloadBatch
 		return result, errors.New("下载列表为空")
 	}
 
-	workerCount, err := d.settings.GetConcurrencyNum()
+	workerCount, err := d.store.ConcurrencyNum()
 	if err != nil {
 		return result, err
 	}
@@ -566,7 +566,7 @@ func (d *Douyin) DownloadCover(covers []model.Cover, task DouyinDownloadTask) (s
 		return "", errors.New("封面地址无效")
 	}
 
-	storagePath, err := d.settings.GetStorage()
+	storagePath, err := d.store.StoragePath()
 	if err != nil {
 		return "", err
 	}

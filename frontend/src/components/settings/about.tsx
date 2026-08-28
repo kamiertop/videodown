@@ -1,5 +1,5 @@
 import {createSignal, type JSXElement, onMount} from "solid-js";
-import {GetVersion} from "@bindings/github.com/kamiertop/videodown/utils/settings";
+import {GetVersion} from "@bindings/github.com/kamiertop/videodown/internal/updater/updater";
 import {Browser} from "@wailsio/runtime";
 
 import app from "../../assets/app-128.png";

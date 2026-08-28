@@ -157,7 +157,7 @@ func (b *BiliBili) markDownloaded(task DashDownloadTask, path string, downloadKi
 
 // resolveTargetDir 只在后端决定落盘目录，避免前端把目录规则写死。
 func (b *BiliBili) resolveTargetDir(storagePath string, task DashDownloadTask) (string, error) {
-	allowGroup, err := b.settings.GetSavePreference()
+	allowGroup, err := b.store.SavePreference()
 	if err != nil {
 		return "", err
 	}
@@ -358,7 +358,7 @@ func (b *BiliBili) downloadDashTask(task DashDownloadTask) (string, error) {
 		return "", err
 	}
 
-	storagePath, err := b.settings.GetStorage()
+	storagePath, err := b.store.StoragePath()
 	if err != nil {
 		return "", err
 	}
@@ -441,7 +441,7 @@ func (b *BiliBili) DownloadVideoByDash(sourceName, bvid, title, videoURL, audioU
 // sleepAfterTask 按设置项在同一个 worker 中休眠，避免连续请求过快；并发 worker 互不阻塞。
 // 根据设置的时间上下浮动
 func (b *BiliBili) sleepAfterTask(task DashDownloadTask) {
-	sleepTime, err := b.settings.GetSleepTime()
+	sleepTime, err := b.store.SleepTime()
 	if err != nil || sleepTime <= 0 {
 		return
 	}
@@ -508,7 +508,7 @@ func (b *BiliBili) DownloadVideosByDash(tasks []DashDownloadTask) (DashDownloadB
 		return result, errors.New("下载列表为空")
 	}
 
-	workerCount, err := b.settings.GetConcurrencyNum()
+	workerCount, err := b.store.ConcurrencyNum()
 	if err != nil {
 		return result, err
 	}
@@ -612,7 +612,7 @@ func (b *BiliBili) DownloadCover(cover string, task DashDownloadTask) (string, e
 		return "", errors.New("封面地址无效")
 	}
 
-	storagePath, err := b.settings.GetStorage()
+	storagePath, err := b.store.StoragePath()
 	if err != nil {
 		return "", err
 	}
