@@ -280,6 +280,10 @@ export interface BitRateItem {
      * 视频格式, 例如 "dash","mp4"
      */
     "format": string;
+
+    /**
+     * 如：normal_1080_0
+     */
     "gear_name": string;
     "is_bytevc1": number;
     "is_h265": number;

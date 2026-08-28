@@ -30,17 +30,6 @@ func Configure(controller *Controller, wailsApp *application.App, window *applic
 	controller.window = window
 }
 
-// EventEmitter returns a runtime adapter for backend services.
-func EventEmitter(controller *Controller) utils.EventEmitter {
-	return eventEmitter{controller: controller}
-}
-
-type eventEmitter struct{ controller *Controller }
-
-func (e eventEmitter) EmitEvent(name string, data any) bool {
-	return emitEvent(e.controller, name, data)
-}
-
 // BeforeClose reports whether a main-window close event should be cancelled.
 func BeforeClose(controller *Controller) bool {
 	if controller.forceQuit.Swap(false) {
@@ -49,7 +38,9 @@ func BeforeClose(controller *Controller) bool {
 
 	closeToTray, err := controller.settings.GetCloseToTray()
 	if err != nil {
-		emitEvent(controller, "before-close-prompt", nil)
+		if controller.app != nil {
+			controller.app.Event.Emit("before-close-prompt")
+		}
 		return true
 	}
 	if closeToTray {
@@ -57,14 +48,6 @@ func BeforeClose(controller *Controller) bool {
 		return true
 	}
 	return false
-}
-
-func emitEvent(controller *Controller, name string, data any) bool {
-	window := controller.window
-	if window == nil {
-		return false
-	}
-	return window.EmitEvent(name, data)
 }
 
 // ForceQuit allows the next close event to exit the application.

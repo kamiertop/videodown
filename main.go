@@ -37,19 +37,11 @@ func main() {
 	}
 
 	controller := app.New(settings)
-	bilibili := bilibiliapi.New(log, settings, store, app.EventEmitter(controller))
-	douyin := douyinapi.New(log, settings, store, app.EventEmitter(controller))
 
 	wailsApp := application.New(application.Options{
 		Name:     appName,
 		Logger:   log.Slog(slog.LevelError),
 		LogLevel: slog.LevelError,
-		Services: []application.Service{
-			application.NewService(bilibili),
-			application.NewService(douyin),
-			application.NewService(settings),
-			application.NewService(controller),
-		},
 		Assets: application.AssetOptions{
 			Handler: application.AssetFileServerFS(assets),
 		},
@@ -64,6 +56,14 @@ func main() {
 		MaxHeight: 1440,
 	})
 	app.Configure(controller, wailsApp, window)
+	bilibili := bilibiliapi.New(log, settings, store, wailsApp.Event)
+	douyin := douyinapi.New(log, settings, store, wailsApp.Event)
+
+	wailsApp.RegisterService(application.NewService(bilibili))
+	wailsApp.RegisterService(application.NewService(douyin))
+	wailsApp.RegisterService(application.NewService(settings))
+	wailsApp.RegisterService(application.NewService(controller))
+
 	app.SetupSystemTray(wailsApp, window, icon, controller)
 
 	window.RegisterHook(events.Common.WindowClosing, func(event *application.WindowEvent) {

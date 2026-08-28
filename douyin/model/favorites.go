@@ -82,8 +82,8 @@ type BitRateItem struct {
 	HDRBit      string   `json:"HDR_bit"`
 	HDRType     string   `json:"HDR_type"`
 	BitRate     int      `json:"bit_rate"`
-	Format      string   `json:"format"` // 视频格式, 例如 "dash","mp4"
-	GearName    string   `json:"gear_name"`
+	Format      string   `json:"format"`    // 视频格式, 例如 "dash","mp4"
+	GearName    string   `json:"gear_name"` // 如：normal_1080_0
 	IsBytevc1   int      `json:"is_bytevc1"`
 	IsH265      int      `json:"is_h265"`
 	PlayAddr    PlayInfo `json:"play_addr"`

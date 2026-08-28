@@ -38,6 +38,12 @@ function codecLabel(item: model.BitRateItem): string {
   return "H.264";
 }
 
+function videoOptionLabel(name: string, width: number | undefined, height: number | undefined, fps: number | undefined, dataSize: number, codec: string): string {
+  const resolution = width && height ? `${width}×${height}` : "未知分辨率";
+  const frameRate = fps ? ` · ${fps}fps` : "";
+  return `${name} · ${resolution}${frameRate} · ${formatDataSize(dataSize)} · ${codec}`;
+}
+
 // 抖音接口里的 data_size 是字节数；展示给用户时统一压成易读单位。
 export function formatDataSize(value: number | undefined): string {
   const size = Number(value) || 0;
@@ -66,9 +72,12 @@ export function douyinVideoOptions(item: model.AwemeItem): DouyinVideoOption[] {
     const dataSize = Number(entry.play_addr?.data_size ?? 0);
     options.push({
       id: optionID("bitrate", url, index),
-      label: `${gearName} · ${formatDataSize(dataSize)} · ${codec}`,
+      label: videoOptionLabel(gearName, entry.play_addr?.width, entry.play_addr?.height, entry.FPS, dataSize, codec),
       gearName,
       dataSize,
+      width: entry.play_addr?.width,
+      height: entry.play_addr?.height,
+      fps: entry.FPS,
       bitRate: entry.bit_rate,
       codec,
       url,
@@ -89,9 +98,11 @@ export function douyinVideoOptions(item: model.AwemeItem): DouyinVideoOption[] {
     const dataSize = Number(fallback.playAddr?.data_size ?? 0);
     options.push({
       id: optionID(fallback.name, url, index),
-      label: `${fallback.name} · ${formatDataSize(dataSize)} · ${fallback.codec}`,
+      label: videoOptionLabel(fallback.name, fallback.playAddr?.width, fallback.playAddr?.height, undefined, dataSize, fallback.codec),
       gearName: fallback.name,
       dataSize,
+      width: fallback.playAddr?.width,
+      height: fallback.playAddr?.height,
       codec: fallback.codec,
       url,
     });
@@ -101,11 +112,9 @@ export function douyinVideoOptions(item: model.AwemeItem): DouyinVideoOption[] {
 }
 
 export function defaultDouyinVideoOption(options: DouyinVideoOption[]): DouyinVideoOption | undefined {
-  // 默认优先选兼容性最好的 H.264 高码率项；如果没有 H.264，再退到接口返回的第一个可用项。
-  const h264 = options
-      .filter((option) => option.codec === "H.264")
-      .sort((a, b) => (b.bitRate ?? 0) - (a.bitRate ?? 0) || b.dataSize - a.dataSize)[0];
-  return h264 ?? options[0];
+  // 默认在所有编码格式中选择最高画质。
+  return [...options]
+      .sort((a, b) => ((b.width ?? 0) * (b.height ?? 0) - (a.width ?? 0) * (a.height ?? 0)) || (b.fps ?? 0) - (a.fps ?? 0) || (b.bitRate ?? 0) - (a.bitRate ?? 0) || b.dataSize - a.dataSize)[0];
 }
 
 export function douyinVideoURL(item: model.AwemeItem): string {

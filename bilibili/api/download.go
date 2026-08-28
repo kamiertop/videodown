@@ -244,14 +244,14 @@ func (b *BiliBili) emitDownloadProgress(p downloadProgress) {
 		b.progressMu.Unlock()
 	}
 	if b.events != nil {
-		b.events.EmitEvent("bilibili-download-progress", p)
+		b.events.Emit("bilibili-download-progress", p)
 	}
 }
 
 // emitDownloadCompleted 下载+休眠全部完成后推送给前端，前端收到后立即从列表移除该视频卡片。
 func (b *BiliBili) emitDownloadCompleted(item DashDownloadResult) {
 	if b.events != nil {
-		b.events.EmitEvent("bilibili-download-completed", item)
+		b.events.Emit("bilibili-download-completed", item)
 	}
 }
 
@@ -260,7 +260,6 @@ func (b *BiliBili) downloadToFile(rawURL, targetPath, bvid, title string, cid in
 	var resp *req.Response
 	resp, err = b.downloadClient.R().
 		DisableAutoReadResponse().
-		SetRetryCount(2).
 		SetHeader(UserAgent, userAgent()).
 		SetHeader(Referer, fmt.Sprintf("https://www.bilibili.com/video/%s", strings.TrimSpace(bvid))).
 		SetHeader(Origin, biliBiliUrl).
@@ -626,7 +625,6 @@ func (b *BiliBili) DownloadCover(cover string, task DashDownloadTask) (string, e
 	}
 
 	resp, err := b.client.R().
-		SetRetryCount(2).
 		SetHeader(UserAgent, userAgent()).
 		SetHeader(Referer, biliBiliUrl).
 		SetHeader(Accept, "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8").
