@@ -10,7 +10,6 @@ import (
 
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/logger"
-	"github.com/kamiertop/videodown/utils"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -22,7 +21,6 @@ type Douyin struct {
 	logger         *logger.Logger
 	client         *req.Client
 	downloadClient *req.Client
-	settings       *utils.Settings
 	store          *storage.Store
 	events         *application.EventManager
 	progressMu     sync.Mutex
@@ -39,7 +37,7 @@ type Douyin struct {
 	userID    string
 }
 
-func New(log *logger.Logger, settings *utils.Settings, store *storage.Store, events *application.EventManager) *Douyin {
+func New(log *logger.Logger, store *storage.Store, events *application.EventManager) *Douyin {
 	var client = req.C().EnableAutoDecompress().
 		SetCommonRetryCount(2).
 		SetCommonRetryBackoffInterval(300*time.Millisecond, 2*time.Second)
@@ -51,7 +49,6 @@ func New(log *logger.Logger, settings *utils.Settings, store *storage.Store, eve
 		logger:         log.WithName("Douyin"),
 		client:         client,
 		downloadClient: client.Clone().SetTimeout(0), // 下载流单独走 downloadClient，避免长视频下载受超时影响
-		settings:       settings,
 		store:          store,
 		events:         events,
 		progressByID:   make(map[string]float64),

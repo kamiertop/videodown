@@ -7,6 +7,7 @@ import {
   SetCloseToTray,
   SetTheme
 } from "@bindings/github.com/kamiertop/videodown/utils/settings";
+import {IsAutoUpdate, SetAutoUpdate} from "@bindings/github.com/kamiertop/videodown/internal/updater/updater";
 import {createSignal, type JSXElement, onMount} from "solid-js";
 import {useToast} from "../../hooks/useToast.ts";
 import Toast from "../Toast";
@@ -16,9 +17,60 @@ export function GeneralSection(): JSXElement {
       <div class="space-y-6 max-w-2xl mx-auto">
         <StorageDirectory/>
         <ThemeChange/>
+        <AutoUpdate/>
         <CloseToTray/>
       </div>
   )
+}
+
+function AutoUpdate(): JSXElement {
+  const [enabled, setEnabled] = createSignal(false);
+  const [loaded, setLoaded] = createSignal(false);
+  const {message, type, showToast} = useToast();
+
+  onMount(async () => {
+    try {
+      setEnabled(await IsAutoUpdate());
+    } catch (e) {
+      showToast("获取自动更新设置失败: " + (e instanceof Error ? e.message : String(e)), "error");
+    } finally {
+      setLoaded(true);
+    }
+  });
+
+  async function handleToggle() {
+    const next = !enabled();
+    setEnabled(next);
+    try {
+      await SetAutoUpdate(next);
+    } catch (e) {
+      setEnabled(!next);
+      showToast("保存自动更新设置失败: " + (e instanceof Error ? e.message : String(e)), "error");
+    }
+  }
+
+  return (
+    <>
+      <div class="card bg-base-100 shadow-xl" classList={{"invisible": !loaded()}}>
+        <div class="card-body">
+          <div class="flex items-start gap-3">
+            <div class="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-success/10 text-success">↻</div>
+            <div class="min-w-0 flex-1">
+              <h2 class="text-lg font-semibold leading-8">自动更新</h2>
+              <div class="mt-4 flex items-center justify-between gap-6 rounded-md border border-base-300 bg-base-200/40 px-4 py-3">
+                <div>
+                  <p class="font-medium leading-6">启动时检查新版本</p>
+                  <p class="text-sm leading-6 text-base-content/60">在后台检查 GitHub 是否有可用更新</p>
+                </div>
+                <input type="checkbox" class="toggle toggle-success" checked={enabled()} disabled={!loaded()} onChange={handleToggle}/>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <Toast message={message()} type={type()}/>
+    </>
+  );
 }
 
 function CloseToTray(): JSXElement {

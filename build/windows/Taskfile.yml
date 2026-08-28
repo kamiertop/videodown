@@ -8,7 +8,8 @@ tasks:
       GOCACHE: /tmp/videodown-go-cache
     cmds:
       - wails3 task common:build:frontend
-      - go build -buildvcs=false -ldflags="-H windowsgui" -o "{{.BIN_DIR}}/{{.APP_NAME}}.exe"
+      - go build -buildvcs=false -ldflags="-H windowsgui -X github.com/kamiertop/videodown/internal/updater.Version={{.APP_VERSION}}" -o "{{.BIN_DIR}}/{{.APP_NAME}}.exe"
+      - go build -buildvcs=false -o "{{.BIN_DIR}}/{{.APP_NAME}}-updater.exe" ./cmd/updater
 
   package:
     deps: [build]

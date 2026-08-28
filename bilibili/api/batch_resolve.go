@@ -29,7 +29,7 @@ var playUrlSemOnce sync.Once
 
 func (b *BiliBili) ensureSem() {
 	playUrlSemOnce.Do(func() {
-		playUrlSem = make(chan struct{}, b.settings.GetParsePlayURLNumSafe())
+		playUrlSem = make(chan struct{}, b.getParsePlayURLNumSafe())
 	})
 }
 
@@ -74,8 +74,8 @@ func (b *BiliBili) ResolvePlayUrl(req PlayUrlRequest, totalCount int) PlayUrlRes
 	defer b.releaseSem()
 	// 仅当批量视频数超过并发上限时才休眠，拉开不同请求的时间间隔，防止风控连坐。
 	// 少量视频（≤ 并发数）全部在同一窗口内发出，睡不睡效果相同，直接跳过。
-	if totalCount > b.settings.GetParsePlayURLNumSafe() {
-		if maxSleep := b.settings.GetParsePlayURLSleepSafe(); maxSleep > 0 {
+	if totalCount > b.getParsePlayURLNumSafe() {
+		if maxSleep := b.getParsePlayURLSleepSafe(); maxSleep > 0 {
 			d := rand.Float64() * float64(maxSleep)
 			b.logger.Infof("Sleeping for %.1fs before resolving %s", d, req.Bvid)
 			time.Sleep(time.Duration(d * float64(time.Second)))

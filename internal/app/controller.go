@@ -5,22 +5,29 @@ package app
 import (
 	"errors"
 	"fmt"
+	"os"
+	"os/exec"
 	"sync/atomic"
 
-	"github.com/kamiertop/videodown/utils"
+	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/wailsapp/wails/v3/pkg/application"
+)
+
+const (
+	closeToTrayKey = "closeToTray"
+	ffmpegPathKey  = "ffmpeg_path"
 )
 
 // Controller owns application-window interactions exposed to the frontend.
 type Controller struct {
-	settings  *utils.Settings
+	store     *storage.Store
 	app       *application.App
 	window    *application.WebviewWindow
 	forceQuit atomic.Bool
 }
 
-func New(settings *utils.Settings) *Controller {
-	return &Controller{settings: settings}
+func New(store *storage.Store) *Controller {
+	return &Controller{store: store}
 }
 
 // Configure supplies the Wails objects after their construction. It is a
@@ -36,14 +43,14 @@ func BeforeClose(controller *Controller) bool {
 		return false
 	}
 
-	closeToTray, err := controller.settings.GetCloseToTray()
+	value, err := controller.store.Get(closeToTrayKey)
 	if err != nil {
 		if controller.app != nil {
 			controller.app.Event.Emit("before-close-prompt")
 		}
 		return true
 	}
-	if closeToTray {
+	if value == "true" {
 		controller.HideWindow()
 		return true
 	}
@@ -76,7 +83,7 @@ func (c *Controller) SetStorage() (string, error) {
 	if dir == "" {
 		return "", nil
 	}
-	if err := c.settings.SetStoragePath(dir); err != nil {
+	if err := c.store.SetStoragePath(dir); err != nil {
 		return "", err
 	}
 	return dir, nil
@@ -95,7 +102,13 @@ func (c *Controller) SelectFFmpegPath() (string, error) {
 	if path == "" {
 		return "", nil
 	}
-	if err := c.settings.SetFFmpegPath(path); err != nil {
+	if _, err := os.Stat(path); err != nil {
+		return "", fmt.Errorf("invalid ffmpeg path: %w", err)
+	}
+	if out, err := exec.Command(path, "-version").CombinedOutput(); err != nil {
+		return "", fmt.Errorf("ffmpeg is not executable: %w: %s", err, string(out))
+	}
+	if err := c.store.Set(ffmpegPathKey, path); err != nil {
 		return "", err
 	}
 	return path, nil

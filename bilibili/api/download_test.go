@@ -4,16 +4,21 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/kamiertop/videodown/logger"
-	"github.com/kamiertop/videodown/utils"
+	"github.com/kamiertop/videodown/internal/storage"
 )
 
 func TestResolveTargetDirGroupsByAuthor(t *testing.T) {
-	settings := utils.NewSettingsWithMemory(logger.New())
+	store, err := storage.OpenMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
 	defer func() {
-		_ = settings.ServiceShutdown()
+		_ = store.Close()
 	}()
-	b := &BiliBili{settings: settings}
+	if err := store.SetSavePreference(true); err != nil {
+		t.Fatal(err)
+	}
+	b := &BiliBili{store: store}
 	root := t.TempDir()
 
 	tests := []struct {

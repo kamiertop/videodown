@@ -81,13 +81,6 @@ export function GetTheme(): $CancellablePromise<string> {
 }
 
 /**
- * GetVersion returns the current version of the application.
- */
-export function GetVersion(): $CancellablePromise<string> {
-    return $Call.ByID(2092884539);
-}
-
-/**
  * HasCloseToTrayChoice 检查用户是否已对关闭行为做出选择（key 是否存在）。
  */
 export function HasCloseToTrayChoice(): $CancellablePromise<boolean> {
@@ -101,19 +94,11 @@ export function HasFFmpeg(): $CancellablePromise<boolean> {
     return $Call.ByID(2353954040);
 }
 
-export function IsAutoUpdate(): $CancellablePromise<boolean> {
-    return $Call.ByID(2576526785);
-}
-
 /**
  * IsCloseToTray 返回用户选择：true=缩小到托盘，false=退出程序。未选择时默认返回 true。
  */
 export function IsCloseToTray(): $CancellablePromise<boolean> {
     return $Call.ByID(1155197624);
-}
-
-export function NeedUpdate(): $CancellablePromise<boolean> {
-    return $Call.ByID(3828115834);
 }
 
 /**
@@ -128,10 +113,6 @@ export function OpenDownloadLocation(path: string): $CancellablePromise<void> {
  */
 export function OpenLocalFile(path: string): $CancellablePromise<void> {
     return $Call.ByID(2344555772, path);
-}
-
-export function SetAutoUpdate(enable: boolean): $CancellablePromise<void> {
-    return $Call.ByID(2869161031, enable);
 }
 
 /**

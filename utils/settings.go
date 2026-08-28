@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	stdRuntime "runtime"
-	"strconv"
 	"strings"
 
 	"github.com/dgraph-io/badger/v4"
@@ -18,14 +17,6 @@ import (
 const (
 	// themeKey 主题设置，默认为 "light"
 	themeKey = "theme"
-	// storageKey 存储目录，默认为可执行文件所在目录的 download 子目录
-	storageKey = "storage"
-	// sleepTimeKey 下载完一个视频之后的随机休眠时间，单位为秒，默认为0-60 秒
-	sleepTimeKey = "sleepTime"
-	// allowGroupOnSaveKey 保存时是否自动分组，默认为 true
-	allowGroupOnSaveKey = "allowGroupOnSave"
-	// concurrencyNumKey 保存同时下载的视频数量，默认为 1
-	concurrencyNumKey = "concurrencyNum"
 	// closeToTrayKey 关闭按钮行为，无默认值。用户首次点击关闭时弹窗选择后才写入。
 	closeToTrayKey = "closeToTray"
 )
@@ -42,19 +33,17 @@ func (s *Settings) init() error {
 		return err
 	}
 
+	defaultStoragePath := filepath.Join(filepath.Dir(executable), "download")
+	if err := s.store.InitPreferenceDefaults(defaultStoragePath); err != nil {
+		return err
+	}
+	s.logger.Infof("set default storage path: %s", defaultStoragePath)
+
 	return s.store.Update(func(txn *badger.Txn) error {
 		defaultValue := map[string]string{
-			themeKey:             "light",
-			storageKey:           filepath.Join(filepath.Dir(executable), "download"),
-			allowGroupOnSaveKey:  "true",
-			sleepTimeKey:         "60",
-			concurrencyNumKey:    "1",
-			autoUpdateKey:        "false",
-			parsePlayURLNumKey:   "3",
-			parsePlayURLSleepKey: "5",
+			themeKey: "light",
 			// 其他设置项的默认值
 		}
-		s.logger.Infof("set default storage path: %s", defaultValue[storageKey])
 		var errList error
 		for key, value := range defaultValue {
 			if _, err := txn.Get([]byte(key)); errors.Is(err, badger.ErrKeyNotFound) {
@@ -118,7 +107,7 @@ func (s *Settings) SetTheme(theme string) error {
 
 // GetStorage 获取存储目录设置
 func (s *Settings) GetStorage() (string, error) {
-	path, err := s.store.Get(storageKey)
+	path, err := s.store.StoragePath()
 	if err != nil {
 		s.logger.Errorf("failed to get storage path: %v", err)
 		return "", errors.New("获取存储目录失败")
@@ -129,7 +118,7 @@ func (s *Settings) GetStorage() (string, error) {
 
 // SetStoragePath 保存存储目录。
 func (s *Settings) SetStoragePath(dir string) error {
-	if err := s.store.Set(storageKey, dir); err != nil {
+	if err := s.store.SetStoragePath(dir); err != nil {
 		s.logger.Errorf("Failed to set new storage path [%s], err: %v", dir, err)
 		return errors.New("设置存储目录失败")
 	}
@@ -140,70 +129,41 @@ func (s *Settings) SetStoragePath(dir string) error {
 
 // GetSleepTime 下载完一个视频之后的休眠时间；配置值按“秒”保存，避免把默认值 60 误解释成 60 纳秒。
 func (s *Settings) GetSleepTime() (int64, error) {
-	value, err := s.store.Get(sleepTimeKey)
+	value, err := s.store.SleepTime()
 	if err != nil {
 		s.logger.Errorf("failed to get sleep time: %v", err)
 		return 0, errors.New("获取休眠时间失败")
 	}
-	val, err := strconv.ParseInt(value, 10, 64)
-	if err != nil {
-		s.logger.Errorf("failed to parse sleep time: %v", err)
-		return 60, nil
-	}
-
-	return val, nil
+	return value, nil
 }
 
 // SetSleepTime 保存休眠秒数；前端传入 time.Duration 时统一落库为秒，便于用户理解和配置。
 func (s *Settings) SetSleepTime(d int64) error {
 	s.logger.Infof("setting sleep time: %d", d)
 
-	return s.store.Set(sleepTimeKey, strconv.FormatInt(d, 10))
+	return s.store.SetSleepTime(d)
 }
 
 func (s *Settings) GetSavePreference() (bool, error) {
-	key, err := s.store.Get(allowGroupOnSaveKey)
-	if err != nil {
-		return true, err
-	}
-	if key == "true" {
-		return true, nil
-	}
-
-	return false, nil
+	return s.store.SavePreference()
 }
 
 // SetSavePreference 保存时是否自动分组
 func (s *Settings) SetSavePreference(allowGroup bool) error {
-	var b string
-	if allowGroup {
-		b = "true"
-	} else {
-		b = "false"
-	}
-	s.logger.Infof("Setting save preference to: %s", b)
+	s.logger.Infof("Setting save preference to: %t", allowGroup)
 
-	return s.store.Set(allowGroupOnSaveKey, b)
+	return s.store.SetSavePreference(allowGroup)
 }
 
 // GetConcurrencyNum 获取同时下载的视频数量
 func (s *Settings) GetConcurrencyNum() (int, error) {
-	val, err := s.store.Get(concurrencyNumKey)
-	if err != nil {
-		return 1, err
-	}
-	num, err := strconv.Atoi(val)
-	if err != nil {
-		return 1, err
-	}
-
-	return num, nil
+	return s.store.ConcurrencyNum()
 }
 
 // SetConcurrencyNum 保存同时下载的视频数量
 func (s *Settings) SetConcurrencyNum(num int) error {
 	s.logger.Infof("Setting concurrency num to %d", num)
-	return s.store.Set(concurrencyNumKey, strconv.Itoa(num))
+	return s.store.SetConcurrencyNum(num)
 }
 
 // OpenDownloadLocation 打开下载历史中的文件位置.
