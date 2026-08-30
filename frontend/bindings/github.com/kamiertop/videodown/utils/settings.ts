@@ -31,6 +31,17 @@ export function GetConcurrencyNum(): $CancellablePromise<number> {
 }
 
 /**
+ * GetFilenameTemplate 获取下载文件命名模板。
+ */
+export function GetFilenameTemplate(): $CancellablePromise<string> {
+    return $Call.ByID(3581612638);
+}
+
+export function GetGroupingRule(): $CancellablePromise<string> {
+    return $Call.ByID(1986946334);
+}
+
+/**
  * GetParsePlayURLNum 获取同时BiliBili解析播放链接的数量，默认为3
  */
 export function GetParsePlayURLNum(): $CancellablePromise<number> {
@@ -131,6 +142,17 @@ export function SetConcurrencyNum(num: number): $CancellablePromise<void> {
 
 export function SetFFmpegPath(path: string): $CancellablePromise<void> {
     return $Call.ByID(2487329511, path);
+}
+
+/**
+ * SetFilenameTemplate 保存下载文件命名模板。
+ */
+export function SetFilenameTemplate(template: string): $CancellablePromise<void> {
+    return $Call.ByID(1690086570, template);
+}
+
+export function SetGroupingRule(rule: string): $CancellablePromise<void> {
+    return $Call.ByID(1570777994, rule);
 }
 
 export function SetParsePlayURLNum(num: number): $CancellablePromise<void> {

@@ -1,4 +1,5 @@
-import {createSignal, For, type JSXElement, onMount} from "solid-js";
+import {batch, createSignal, For, type JSXElement, onMount, Show} from "solid-js";
+import {createFileRoute} from '@tanstack/solid-router';
 import {
   GetParsePlayURLNum,
   GetParsePlayURLSleep,
@@ -6,10 +7,12 @@ import {
   SetParsePlayURLSleep,
 } from "@bindings/github.com/kamiertop/videodown/utils/settings";
 import {useToast} from "../../hooks/useToast";
-import Toast from "../Toast";
+import Toast from "../../components/Toast";
+
+export const Route = createFileRoute('/settings/bilibili')({component: BilibiliSection});
 
 
-export function BilibiliSection(): JSXElement {
+function BilibiliSection(): JSXElement {
   const {message, type, showToast} = useToast();
   const [num, setNum] = createSignal<number>(5);
   const [sleep, setSleep] = createSignal<number>(0);
@@ -21,8 +24,10 @@ export function BilibiliSection(): JSXElement {
         GetParsePlayURLNum().catch(() => 5),
         GetParsePlayURLSleep().catch(() => 0),
       ]);
-      setNum(n);
-      setSleep(s);
+      batch(() => {
+        setNum(n);
+        setSleep(s);
+      });
     } catch {
       setNum(5);
       setSleep(0);
@@ -52,7 +57,8 @@ export function BilibiliSection(): JSXElement {
 
   return (
       <>
-        <div class="space-y-6 max-w-2xl mx-auto" classList={{"invisible": !loaded()}}>
+        <Show when={loaded()} fallback={<div class="space-y-6 max-w-2xl mx-auto"><div class="card bg-base-100 shadow-xl"><div class="card-body"><span class="loading loading-dots loading-sm" aria-label="读取中"/></div></div></div>}>
+        <div class="space-y-6 max-w-2xl mx-auto">
           {/* 并发数 */}
           <div class="card bg-base-100 shadow-xl">
             <div class="card-body">
@@ -130,6 +136,7 @@ export function BilibiliSection(): JSXElement {
             </div>
           </div>
         </div>
+        </Show>
         <Toast message={message()} type={type()}/>
       </>
   )

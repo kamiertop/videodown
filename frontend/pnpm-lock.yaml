@@ -17,6 +17,12 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: ^1.166.11
         version: 1.167.0(@tanstack/router-core@1.171.15)(@tanstack/solid-router@1.170.18(solid-js@1.9.14))(csstype@3.2.3)(solid-js@1.9.14)
+      '@thisbeyond/solid-dnd':
+        specifier: ^0.7.5
+        version: 0.7.5(solid-js@1.9.14)
+      '@wailsio/runtime':
+        specifier: ^3.0.0-beta.13
+        version: 3.0.0-beta.15
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4
@@ -441,6 +447,12 @@ packages:
     resolution: {integrity: sha512-uhOeFyxLcU41HzvrxsGpiWdcMbScY1EDgbZ5K7DVRMYInbLYWAC0EA/kx9wXAoSM8q82bUG2hRl8+EAjE6XAbA==}
     engines: {node: '>=20.19'}
 
+  '@thisbeyond/solid-dnd@0.7.5':
+    resolution: {integrity: sha512-DfI5ff+yYGpK9M21LhYwIPlbP2msKxN2ARwuu6GF8tT1GgNVDTI8VCQvH4TJFoVApP9d44izmAcTh/iTCH2UUw==}
+    engines: {node: '>=18.0.0', pnpm: '>=8.6.0'}
+    peerDependencies:
+      solid-js: ^1.5
+
   '@tybys/wasm-util@0.10.3':
     resolution: {integrity: sha512-F3fo1MYrRJYL3zER0OUOmkutjr1Vp23m7OsSgp7nq4SP6OqX6C/56XFIPAl5bt3zaBRjmW7SGz3u/6LwFpYcOg==}
 
@@ -461,6 +473,9 @@ packages:
 
   '@types/qrcode@1.5.6':
     resolution: {integrity: sha512-te7NQcV2BOvdj2b1hCAHzAoMNuj65kNBMz0KBaxM6c3VGBOhU0dURQKOtH8CFNI/dsKkwlv32p26qYQTWoB5bw==}
+
+  '@wailsio/runtime@3.0.0-beta.15':
+    resolution: {integrity: sha512-dFFc+Dggb1fK8OYNBjztAG08rKccF3/zxNR6qab0DUCGFtm6M4/hJ4LKd0vNbcriUhyJHAb1Xgn7OqRhzGH1pg==}
 
   ansi-regex@5.0.1:
     resolution: {integrity: sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==}
@@ -1447,6 +1462,10 @@ snapshots:
 
   '@tanstack/virtual-file-routes@1.162.0': {}
 
+  '@thisbeyond/solid-dnd@0.7.5(solid-js@1.9.14)':
+    dependencies:
+      solid-js: 1.9.14
+
   '@tybys/wasm-util@0.10.3':
     dependencies:
       tslib: 2.8.1
@@ -1480,6 +1499,8 @@ snapshots:
   '@types/qrcode@1.5.6':
     dependencies:
       '@types/node': 24.13.3
+
+  '@wailsio/runtime@3.0.0-beta.15': {}
 
   ansi-regex@5.0.1: {}
 

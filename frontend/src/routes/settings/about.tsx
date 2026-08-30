@@ -1,4 +1,5 @@
 import {createSignal, type JSXElement, onMount} from "solid-js";
+import {createFileRoute} from '@tanstack/solid-router';
 import {GetVersion} from "@bindings/github.com/kamiertop/videodown/internal/updater/updater";
 import {Browser} from "@wailsio/runtime";
 
@@ -6,7 +7,9 @@ import app from "../../assets/app-128.png";
 
 const GITHUB_REPO_URL = 'https://github.com/kamiertop/videodown';
 
-export function AboutSection(): JSXElement {
+export const Route = createFileRoute('/settings/about')({component: AboutSection});
+
+function AboutSection(): JSXElement {
   const [version, setVersion] = createSignal('');
 
   onMount(async () => {
