@@ -8,7 +8,9 @@ import (
 	"io"
 	"math/rand"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -341,6 +343,15 @@ func (d *Douyin) resolveDownloadDir(storagePath string, task DouyinDownloadTask)
 func douyinAssetExt(asset DouyinDownloadAsset) string {
 	ext := strings.TrimSpace(asset.Ext)
 	if ext == "" {
+		// 素材未显式携带扩展名时，从 URL path（而非 query）推断原始格式。
+		if parsed, err := url.Parse(strings.TrimSpace(asset.URL)); err == nil {
+			name := path.Base(parsed.Path)
+			if dot := strings.LastIndex(name, "."); dot >= 0 {
+				ext = name[dot:]
+			}
+		}
+	}
+	if ext == "" {
 		if asset.Kind == "video" {
 			return ".mp4"
 		}
@@ -351,7 +362,7 @@ func douyinAssetExt(asset DouyinDownloadAsset) string {
 	}
 	ext = strings.ToLower(ext)
 	switch ext {
-	case ".jpg", ".jpeg", ".png", ".webp", ".mp4":
+	case ".jpg", ".jpeg", ".png", ".webp", ".gif", ".mp4":
 		return ext
 	default:
 		if asset.Kind == "video" {
@@ -389,7 +400,7 @@ func (d *Douyin) downloadTask(task DouyinDownloadTask) (string, error) {
 	d.progressMu.Unlock()
 
 	if len(task.Assets) > 0 || len(task.ImageURLs) > 0 {
-		// 图文/动图保存为一个目录，素材按 001.jpg、002.mp4 顺序落盘，配乐单独保存为 music.mp3。
+		// 图文/动图保存为一个目录，素材按 001.<原始扩展名> 顺序落盘，配乐单独保存为 music.mp3。
 		dirName := utils.FileName(task.Title)
 		if dirName == "" {
 			dirName = "douyin"
@@ -402,7 +413,7 @@ func (d *Douyin) downloadTask(task DouyinDownloadTask) (string, error) {
 		if len(assets) == 0 {
 			assets = make([]DouyinDownloadAsset, 0, len(task.ImageURLs))
 			for _, imageURL := range task.ImageURLs {
-				assets = append(assets, DouyinDownloadAsset{URL: imageURL, Kind: "image", Ext: ".jpg"})
+				assets = append(assets, DouyinDownloadAsset{URL: imageURL, Kind: "image"})
 			}
 		}
 		total := len(assets)
