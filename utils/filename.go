@@ -30,7 +30,7 @@ func ApplyFilenameTemplate(template string, values map[string]string) string {
 	// Empty optional fields must not leave a dangling separator.
 	name = emptyFieldSeparator.ReplaceAllString(name, " ")
 	name = strings.ReplaceAll(name, "\x00", "")
-	name = FileName(name)
+	name = FileNamePreserveSpaces(name)
 	// FileName normalizes whitespace to underscores; restore the readable
 	// separators selected by the template (for example " - ").
 	name = regexp.MustCompile(`_+[-]_+`).ReplaceAllString(name, " - ")
@@ -56,6 +56,14 @@ func isIllegalChar(r rune) bool {
 // FileName 清理文件名中的非法字符，返回合法的文件/目录名。
 // 空字符串输入或清理后为空时返回空字符串，由调用方决定默认值。
 func FileName(rawName string) string {
+	return fileName(rawName, false)
+}
+
+func FileNamePreserveSpaces(rawName string) string {
+	return fileName(rawName, true)
+}
+
+func fileName(rawName string, preserveSpaces bool) string {
 	s := strings.TrimSpace(rawName)
 	if s == "" {
 		return ""
@@ -71,7 +79,12 @@ func FileName(rawName string) string {
 		}
 	}
 
-	s = strings.Join(strings.Fields(b.String()), "_")
+	// 保留标题中的普通空格（仅折叠连续空白），避免中文标题被改成下划线风格。
+	separator := "_"
+	if preserveSpaces {
+		separator = " "
+	}
+	s = strings.Join(strings.Fields(b.String()), separator)
 	s = strings.Trim(s, " .")
 	if isReservedWindowsName(s) {
 		s = "_" + s
