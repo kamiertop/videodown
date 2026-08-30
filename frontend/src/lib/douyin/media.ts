@@ -153,6 +153,20 @@ function imageVideoURL(image: model.ImageItem): string {
       ?? "";
 }
 
+/** 从图片地址路径识别原始扩展名；查询参数不会影响判断。 */
+function imageExtFromURL(rawURL: string): string {
+  try {
+    const path = new URL(rawURL).pathname;
+    const name = path.slice(path.lastIndexOf("/") + 1).toLowerCase();
+    const dot = name.lastIndexOf(".");
+    const ext = dot >= 0 ? name.slice(dot) : "";
+    if ([".jpg", ".jpeg", ".png", ".webp", ".gif"].includes(ext)) return ext === ".jpeg" ? ".jpg" : ext;
+  } catch {
+    // URL 不可解析时由后端使用默认扩展名兜底。
+  }
+  return ".jpg";
+}
+
 export function douyinMusicURL(item: DouyinMediaItem): string {
   return item.music?.play_url?.url_list?.[0] ?? "";
 }
@@ -165,7 +179,7 @@ export function douyinDownloadAssets(item: DouyinMediaItem): DouyinDownloadAsset
           return url ? {url, kind: "video", ext: ".mp4"} : undefined;
         }
         const url = image.url_list?.[0] ?? "";
-        return url ? {url, kind: "image", ext: ".jpg"} : undefined;
+        return url ? {url, kind: "image", ext: imageExtFromURL(url)} : undefined;
       })
       .filter((asset): asset is DouyinDownloadAsset => asset != null);
 }
