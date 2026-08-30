@@ -23,3 +23,9 @@ func TestFilenameSafety(t *testing.T) {
 		t.Fatalf("unexpected unknown token result: %q", got)
 	}
 }
+
+func TestFilenamePreservesSpaces(t *testing.T) {
+	if got := FileNamePreserveSpaces("大  周 礼 时代(25)"); got != "大 周 礼 时代(25)" {
+		t.Fatalf("spaces should be preserved: %q", got)
+	}
+}
