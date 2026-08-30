@@ -105,6 +105,29 @@ func (s *Settings) SetTheme(theme string) error {
 	return nil
 }
 
+// GetFilenameTemplate 获取下载文件命名模板。
+func (s *Settings) GetFilenameTemplate() (string, error) { return s.store.FilenameTemplate() }
+
+// SetFilenameTemplate 保存下载文件命名模板。
+func (s *Settings) SetFilenameTemplate(template string) error {
+	template = strings.TrimSpace(template)
+	if template == "" {
+		return errors.New("命名模板不能为空")
+	}
+	if !SupportedFilenameTemplate(template) {
+		return errors.New("命名模板必须包含受支持的变量")
+	}
+	return s.store.SetFilenameTemplate(template)
+}
+
+func (s *Settings) GetGroupingRule() (string, error) { return s.store.GroupingRule() }
+func (s *Settings) SetGroupingRule(rule string) error {
+	if rule != "none" && rule != "author" && rule != "author_source" {
+		return errors.New("无效的分组规则")
+	}
+	return s.store.SetGroupingRule(rule)
+}
+
 // GetStorage 获取存储目录设置
 func (s *Settings) GetStorage() (string, error) {
 	path, err := s.store.StoragePath()

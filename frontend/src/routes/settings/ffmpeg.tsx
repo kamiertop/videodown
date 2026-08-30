@@ -1,11 +1,14 @@
 import {createSignal, type JSXElement, onMount, Show} from "solid-js";
+import {createFileRoute} from '@tanstack/solid-router';
 import {FFmpegPath, HasFFmpeg} from "@bindings/github.com/kamiertop/videodown/utils/settings";
 import {SelectFFmpegPath} from "@bindings/github.com/kamiertop/videodown/internal/app/controller";
 import {Browser} from "@wailsio/runtime";
 import {useToast} from "../../hooks/useToast";
-import Toast from "../Toast";
+import Toast from "../../components/Toast";
 
-export function FFmpegSection(): JSXElement {
+export const Route = createFileRoute('/settings/ffmpeg')({component: FFmpegSection});
+
+function FFmpegSection(): JSXElement {
   const [detected, setDetected] = createSignal<boolean | null>(null);
   const [path, setPath] = createSignal("");
   const [checking, setChecking] = createSignal(false);

@@ -15,6 +15,8 @@ const (
 	parsePlayURLNumKey   = "parse_play_url_num"
 	parsePlayURLSleepKey = "parse_play_url_sleep"
 	autoUpdateKey        = "auto_update"
+	filenameTemplateKey  = "filename_template"
+	groupingRuleKey      = "grouping_rule"
 )
 
 func (s *Store) InitPreferenceDefaults(defaultStoragePath string) error {
@@ -26,6 +28,8 @@ func (s *Store) InitPreferenceDefaults(defaultStoragePath string) error {
 		parsePlayURLNumKey:   "3",
 		parsePlayURLSleepKey: "5",
 		autoUpdateKey:        "true",
+		filenameTemplateKey:  "{title}",
+		groupingRuleKey:      "author_source",
 	}
 	return s.Update(func(txn *badger.Txn) error {
 		for key, value := range defaults {
@@ -38,6 +42,15 @@ func (s *Store) InitPreferenceDefaults(defaultStoragePath string) error {
 		return nil
 	})
 }
+
+func (s *Store) FilenameTemplate() (string, error) { return s.Get(filenameTemplateKey) }
+
+func (s *Store) SetFilenameTemplate(template string) error {
+	return s.Set(filenameTemplateKey, template)
+}
+
+func (s *Store) GroupingRule() (string, error)     { return s.Get(groupingRuleKey) }
+func (s *Store) SetGroupingRule(rule string) error { return s.Set(groupingRuleKey, rule) }
 
 func (s *Store) AutoUpdate() (bool, error) {
 	value, err := s.Get(autoUpdateKey)

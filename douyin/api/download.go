@@ -324,12 +324,19 @@ func (d *Douyin) resolveDownloadDir(storagePath string, task DouyinDownloadTask)
 	if !allowGroup {
 		return storagePath, nil
 	}
+	rule, _ := d.store.GroupingRule()
+	if rule == "none" {
+		return storagePath, nil
+	}
 	author := utils.FileName(task.AuthorName)
 	if author == "" {
 		author = "未知作者"
 	}
 
 	authorDir := filepath.Join(storagePath, author)
+	if rule == "author" {
+		return authorDir, nil
+	}
 	switch strings.TrimSpace(task.SourceKind) {
 	case "收藏夹", "合集", "收藏合集", "用户合集":
 		if sourceName := utils.FileName(task.SourceName); sourceName != "" {
@@ -450,7 +457,17 @@ func (d *Douyin) downloadTask(task DouyinDownloadTask) (string, error) {
 	if strings.TrimSpace(task.VideoURL) == "" {
 		return "", errors.New("视频下载地址为空")
 	}
-	fileName := utils.FileName(task.Title)
+	template, _ := d.store.FilenameTemplate()
+	now := time.Now()
+	values := map[string]string{"title": task.Title, "id": task.AwemeID, "author": task.AuthorName, "author_id": "", "source": task.SourceName, "folder": "", "collection": task.SourceName, "publish_date": "", "date": now.Format("2006-01-02"), "time": now.Format("15-04-05")}
+	if strings.Contains(task.SourceKind, "收藏") {
+		values["folder"] = task.SourceName
+		values["collection"] = ""
+	}
+	if task.PublishTime > 0 {
+		values["publish_date"] = time.Unix(int64(task.PublishTime), 0).Format("2006-01-02")
+	}
+	fileName := utils.ApplyFilenameTemplate(template, values)
 	if fileName == "" {
 		fileName = "douyin"
 	}

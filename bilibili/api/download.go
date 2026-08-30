@@ -164,6 +164,10 @@ func (b *BiliBili) resolveTargetDir(storagePath string, task DashDownloadTask) (
 	if !allowGroup {
 		return storagePath, nil
 	}
+	rule, _ := b.store.GroupingRule()
+	if rule == "none" {
+		return storagePath, nil
+	}
 
 	upperName := utils.FileName(task.UpperName)
 	if upperName == "" {
@@ -171,6 +175,9 @@ func (b *BiliBili) resolveTargetDir(storagePath string, task DashDownloadTask) (
 	}
 
 	authorDir := filepath.Join(storagePath, upperName)
+	if rule == "author" {
+		return authorDir, nil
+	}
 	switch strings.TrimSpace(task.SourceKind) {
 	case "收藏夹", "合集", "系列":
 		if sourceName := utils.FileName(task.SourceName); sourceName != "" {
@@ -372,7 +379,20 @@ func (b *BiliBili) downloadDashTask(task DashDownloadTask) (string, error) {
 		return "", errors.New("创建下载目录失败")
 	}
 
-	fileName := sanitizeFilename(task.Title)
+	template, _ := b.store.FilenameTemplate()
+	now := time.Now()
+	values := map[string]string{"title": task.Title, "id": task.Bvid, "author": task.UpperName, "author_id": "", "source": task.SourceName, "folder": "", "collection": task.SourceName, "publish_date": "", "date": now.Format("2006-01-02"), "time": now.Format("15-04-05")}
+	if strings.TrimSpace(task.SourceKind) == "收藏夹" {
+		values["folder"] = task.SourceName
+		values["collection"] = ""
+	}
+	if task.Pubtime > 0 {
+		values["publish_date"] = time.Unix(int64(task.Pubtime), 0).Format("2006-01-02")
+	}
+	fileName := utils.ApplyFilenameTemplate(template, values)
+	if fileName == "" {
+		fileName = sanitizeFilename(task.Title)
+	}
 	if strings.TrimSpace(task.Bvid) == "" {
 		task.Bvid = "BV_UNKNOWN"
 	}
