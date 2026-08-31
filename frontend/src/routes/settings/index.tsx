@@ -8,11 +8,14 @@ import {
   SetTheme
 } from "@bindings/github.com/kamiertop/videodown/utils/settings";
 import {IsAutoUpdate, SetAutoUpdate} from "@bindings/github.com/kamiertop/videodown/internal/updater/updater";
-import {createSignal, type JSXElement, onMount} from "solid-js";
+import {createSignal, type JSXElement, onMount, Show} from "solid-js";
+import {createFileRoute} from '@tanstack/solid-router';
 import {useToast} from "../../hooks/useToast.ts";
-import Toast from "../Toast";
+import Toast from "../../components/Toast";
 
-export function GeneralSection(): JSXElement {
+export const Route = createFileRoute('/settings/')({component: GeneralSection});
+
+function GeneralSection(): JSXElement {
   return (
       <div class="space-y-6 max-w-2xl mx-auto">
         <StorageDirectory/>
@@ -51,7 +54,8 @@ function AutoUpdate(): JSXElement {
 
   return (
     <>
-      <div class="card bg-base-100 shadow-xl" classList={{"invisible": !loaded()}}>
+      <Show when={loaded()} fallback={<div class="card bg-base-100 shadow-xl"><div class="card-body"><span class="loading loading-dots loading-sm" aria-label="读取中"/></div></div>}>
+      <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
           <div class="flex items-start gap-3">
             <div class="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-success/10 text-success">↻</div>
@@ -68,6 +72,7 @@ function AutoUpdate(): JSXElement {
           </div>
         </div>
       </div>
+      </Show>
       <Toast message={message()} type={type()}/>
     </>
   );
@@ -121,7 +126,8 @@ function CloseToTray(): JSXElement {
 
   return (
       <>
-        <div class="card bg-base-100 shadow-xl" classList={{"invisible": !loaded()}}>
+        <Show when={loaded()} fallback={<div class="card bg-base-100 shadow-xl"><div class="card-body"><span class="loading loading-dots loading-sm" aria-label="读取中"/></div></div>}>
+        <div class="card bg-base-100 shadow-xl">
           <div class="card-body">
             <div class="flex items-start gap-3">
               <div class="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-info/10 text-info">
@@ -166,6 +172,7 @@ function CloseToTray(): JSXElement {
             </div>
           </div>
         </div>
+        </Show>
         <Toast message={message()} type={type()}/>
       </>
   )
@@ -202,6 +209,7 @@ function StorageDirectory(): JSXElement {
 
   return (
       <>
+        <Show when={loaded()} fallback={<div class="card bg-base-100 shadow-xl"><div class="card-body"><span class="loading loading-dots loading-sm" aria-label="读取中"/></div></div>}>
         <div class="card bg-base-100 shadow-xl">
           <div class="card-body">
             <h2 class="card-title mb-4">
@@ -229,6 +237,7 @@ function StorageDirectory(): JSXElement {
             </div>
           </div>
         </div>
+        </Show>
         <Toast message={message()} type={type()}/>
       </>
   )
@@ -261,7 +270,9 @@ function ThemeChange(): JSXElement {
   }
 
   return (
-      <div class="card bg-base-100 shadow-xl">
+      <>
+        <Show when={loaded()} fallback={<div class="card bg-base-100 shadow-xl"><div class="card-body"><span class="loading loading-dots loading-sm" aria-label="读取中"/></div></div>}>
+        <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
           <h2 class="card-title mb-4">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-warning" fill="none"
@@ -274,22 +285,27 @@ function ThemeChange(): JSXElement {
           <div class="form-control">
             <label class="label cursor-pointer justify-between">
               <span class="label-text">主题模式</span>
-              <select value={theme()} onchange={handleThemeChange} class="select select-accent"
-                      classList={{"invisible": !loaded()}}>
-                <option value="dark">dark - 深色模式</option>
-                <option value="light">light - 浅色模式</option>
-                <option value="cupcake">cupcake - 纸杯蛋糕</option>
-                <option value="caramellatte">caramellatte 焦糖</option>
-              </select>
+              <Show when={loaded()} fallback={<span class="loading loading-dots loading-sm text-accent" aria-label="读取中"/>}>
+                <select value={theme()} onchange={handleThemeChange} class="select select-accent">
+                  <option value="dark">dark - 深色模式</option>
+                  <option value="light">light - 浅色模式</option>
+                  <option value="cupcake">cupcake - 纸杯蛋糕</option>
+                  <option value="caramellatte">caramellatte 焦糖</option>
+                </select>
+              </Show>
             </label>
             <label class="label">
               <span class="label-text-alt pl-2">当前主题：
-                <span class="text-accent font-semibold" classList={{"invisible": !loaded()}}>{theme()}</span>
+                <Show when={loaded()} fallback={<span class="text-base-content/50">读取中...</span>}>
+                  <span class="text-accent font-semibold">{theme()}</span>
+                </Show>
               </span>
             </label>
           </div>
         </div>
+        </div>
+        </Show>
         <Toast message={message()} type={type()}/>
-      </div>
+      </>
   )
 }
