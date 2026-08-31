@@ -17,9 +17,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dgraph-io/badger/v4"
 	"github.com/kamiertop/videodown/douyin/model"
+	"github.com/kamiertop/videodown/internal/constant"
 	"github.com/kamiertop/videodown/utils"
+
+	"github.com/dgraph-io/badger/v4"
 )
 
 const douyinDownloadedCachePrefix = "douyin:downloaded:"
@@ -324,7 +326,7 @@ func (d *Douyin) resolveDownloadDir(storagePath string, task DouyinDownloadTask)
 	if !allowGroup {
 		return storagePath, nil
 	}
-	rule, _ := d.store.GroupingRule()
+	rule, _ := d.store.Get(constant.GroupingRuleKey)
 	if rule == "none" {
 		return storagePath, nil
 	}
@@ -434,8 +436,8 @@ func (d *Douyin) downloadTask(task DouyinDownloadTask) (string, error) {
 			ext := douyinAssetExt(asset)
 			start := float64(index) / float64(total) * 100
 			weight := 100 / float64(total)
-			path := filepath.Join(dir, fmt.Sprintf("%03d%s", index+1, ext))
-			if err = d.downloadURLToFile(asset.URL, path, task, asset.Kind, start, weight); err != nil {
+			join := filepath.Join(dir, fmt.Sprintf("%03d%s", index+1, ext))
+			if err = d.downloadURLToFile(asset.URL, join, task, asset.Kind, start, weight); err != nil {
 				d.emitDownloadProgress(douyinDownloadProgress{AwemeID: task.AwemeID, Title: task.Title, Phase: "error"})
 				return "", err
 			}
@@ -443,8 +445,8 @@ func (d *Douyin) downloadTask(task DouyinDownloadTask) (string, error) {
 		if strings.TrimSpace(task.MusicURL) != "" {
 			start := float64(len(assets)) / float64(total) * 100
 			weight := 100 / float64(total)
-			path := filepath.Join(dir, "music.mp3")
-			if err = d.downloadURLToFile(task.MusicURL, path, task, "music", start, weight); err != nil {
+			join := filepath.Join(dir, "music.mp3")
+			if err = d.downloadURLToFile(task.MusicURL, join, task, "music", start, weight); err != nil {
 				d.emitDownloadProgress(douyinDownloadProgress{AwemeID: task.AwemeID, Title: task.Title, Phase: "error"})
 				return "", err
 			}
@@ -541,8 +543,8 @@ func (d *Douyin) DownloadVideos(tasks []DouyinDownloadTask) (DouyinDownloadBatch
 	for range workerCount {
 		wg.Go(func() {
 			for task := range jobs {
-				path, err := d.downloadTask(task)
-				item := DouyinDownloadResult{AwemeID: task.AwemeID, Title: task.Title, Path: path}
+				targetPath, err := d.downloadTask(task)
+				item := DouyinDownloadResult{AwemeID: task.AwemeID, Title: task.Title, Path: targetPath}
 				if err != nil {
 					d.logger.Errorf("download task failed, task: %v, err: %v", task, err)
 					item.Error = err.Error()

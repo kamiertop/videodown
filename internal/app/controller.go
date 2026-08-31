@@ -9,13 +9,10 @@ import (
 	"os/exec"
 	"sync/atomic"
 
+	"github.com/kamiertop/videodown/internal/constant"
 	"github.com/kamiertop/videodown/internal/storage"
-	"github.com/wailsapp/wails/v3/pkg/application"
-)
 
-const (
-	closeToTrayKey = "closeToTray"
-	ffmpegPathKey  = "ffmpeg_path"
+	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 // Controller owns application-window interactions exposed to the frontend.
@@ -43,7 +40,7 @@ func BeforeClose(controller *Controller) bool {
 		return false
 	}
 
-	value, err := controller.store.Get(closeToTrayKey)
+	value, err := controller.store.Get(constant.CloseToTrayKey)
 	if err != nil {
 		if controller.app != nil {
 			controller.app.Event.Emit("before-close-prompt")
@@ -54,6 +51,7 @@ func BeforeClose(controller *Controller) bool {
 		controller.HideWindow()
 		return true
 	}
+
 	return false
 }
 
@@ -83,9 +81,10 @@ func (c *Controller) SetStorage() (string, error) {
 	if dir == "" {
 		return "", nil
 	}
-	if err := c.store.SetStoragePath(dir); err != nil {
+	if err := c.store.Set(constant.StorageKey, dir); err != nil {
 		return "", err
 	}
+
 	return dir, nil
 }
 
@@ -108,7 +107,7 @@ func (c *Controller) SelectFFmpegPath() (string, error) {
 	if out, err := exec.Command(path, "-version").CombinedOutput(); err != nil {
 		return "", fmt.Errorf("ffmpeg is not executable: %w: %s", err, string(out))
 	}
-	if err := c.store.Set(ffmpegPathKey, path); err != nil {
+	if err := c.store.Set(constant.FFmpegPathKey, path); err != nil {
 		return "", err
 	}
 	return path, nil

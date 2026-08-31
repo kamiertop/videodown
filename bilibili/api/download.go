@@ -16,6 +16,7 @@ import (
 
 	"github.com/imroc/req/v3"
 	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/internal/constant"
 
 	"github.com/kamiertop/videodown/utils"
 )
@@ -164,7 +165,7 @@ func (b *BiliBili) resolveTargetDir(storagePath string, task DashDownloadTask) (
 	if !allowGroup {
 		return storagePath, nil
 	}
-	rule, _ := b.store.GroupingRule()
+	rule, _ := b.store.Get(constant.GroupingRuleKey)
 	if rule == "none" {
 		return storagePath, nil
 	}

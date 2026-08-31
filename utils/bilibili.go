@@ -1,5 +1,11 @@
 package utils
 
+import (
+	"strconv"
+
+	"github.com/kamiertop/videodown/internal/constant"
+)
+
 const (
 	// bilibiliDefaultQNKey 默认视频清晰度 ID。
 	bilibiliDefaultQNKey = "bilibili_default_qn"
@@ -18,7 +24,7 @@ func (s *Settings) GetParsePlayURLNum() (int, error) {
 func (s *Settings) SetParsePlayURLNum(num int) error {
 	s.logger.Infof("Setting parse play url num to %d", num)
 
-	return s.store.SetParsePlayURLNum(num)
+	return s.store.Set(constant.ParsePlayURLNumKey, strconv.Itoa(num))
 }
 
 // GetParsePlayURLNumSafe 获取并发解析数，出错时返回默认值 3
@@ -36,7 +42,7 @@ func (s *Settings) GetParsePlayURLSleep() (int, error) {
 }
 
 func (s *Settings) SetParsePlayURLSleep(seconds int) error {
-	return s.store.SetParsePlayURLSleep(seconds)
+	return s.store.Set(constant.ParsePlayURLSleepKey, strconv.Itoa(seconds))
 }
 
 // GetParsePlayURLSleepSafe 获取解析后随机休眠上限（秒），默认 5
