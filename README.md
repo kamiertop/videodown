@@ -15,11 +15,15 @@ VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.d
 
 ## 软件预览🥳
 
-### 总览
+![](./docs/home.png)
 
-| 首页                     | 设置                         |
-|--------------------------|------------------------------|
-| ![首页](./docs/home.png) | ![设置](./docs/settings.png) |
+### 设置
+
+| 命名模板                                     | 设置                                     |
+|----------------------------------------------|------------------------------------------|
+| ![命名模板](./docs/setting_tmpl.png)         | ![设置](./docs/setting_general.png)      |
+| 哔哩哔哩设置                                 | 下载设置                                 |
+| ![哔哩哔哩设置](./docs/setting_bilibili.png) | ![下载设置](./docs/setting_download.png) |
 
 ### 哔哩哔哩
 
@@ -28,6 +32,8 @@ VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.d
 | ![UP 主页面](./docs/up.png)             | ![B 站下载页](./docs/bilibili_download.png)            |
 | 收藏夹                                  | 收藏夹合集                                             |
 | ![B 站收藏夹](./docs/bilibili_star.png) | ![B 站收藏夹合集](./docs/bilibili_star_collection.png) |
+| 关注动态                                | 播放历史                                               |
+| ![关注动态](./docs/bilibili_dyn.png)    | ![播放历史](./docs/bilibili_play_history.png)          |
 
 ### 抖音
 
@@ -36,6 +42,8 @@ VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.d
 | ![抖音用户页](./docs/douyin_user.png) | ![抖音下载页](./docs/douyin_download.png)        |
 | 收藏页                                | 用户作品页                                       |
 | ![抖音收藏页](./docs/douyin_star.png) | ![抖音用户作品页](./docs/douyin_user_detail.png) |
+| 关注动态                              | 播放历史                                         |
+| ![关注动态](./docs/douyin_dyn.png)    | ![播放历史](./docs/douyin_play_history.png)      |
 
 ## 功能特性🎉
 
@@ -55,7 +63,9 @@ VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.d
 - 下载队列、清晰度/音轨选择、下载进度
 - 批量下载收藏夹、合集、系列、UP 主视频
 - 下载历史查看和删除
-- 测登录状态是否过期
+- 检测登录状态是否过期
+- 播放历史
+- 关注 UP 主的动态
 
 ### 抖音
 
@@ -68,18 +78,12 @@ VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.d
 - 下载队列、批量下载、下载进度
 - 下载来源区分：收藏视频、收藏合集、用户作品、用户合集、手动解析
 - 下载历史查看和删除
-
-### 未来计划🧐
-
-- [x] 细节优化
-- [ ] 代码优化（前端半吊子，所以大量借助AI生成）
-- [ ] 哔哩哔哩大会员更高质量视频下载测试（没钱充会员🥹）
-- [ ] `ffmpeg`不存在时自动下载
-- [x] 自动更新
+- 播放历史
+- 关注博主的动态
 
 ## 技术栈
 
-- 桌面框架：Wails v2
+- 桌面框架：Wails v3
 - 后端：Go、BadgerDB、req/v3
 - 前端：SolidJS、TanStack Router、Tailwind CSS、DaisyUI
 
@@ -87,7 +91,7 @@ VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.d
 
 ### 环境要求
 
-- Go 1.26+
+- Go 1.27+
 - Node.js 和 npm
 - Wails CLI
 - ffmpeg
@@ -126,7 +130,8 @@ npm run build
 生成 Wails 前端绑定：
 
 ```bash
-wails3 generate bindings -ts
+# 生成 interface 风格的 TypeScript 绑定
+wails3 generate bindings -ts -i
 ```
 
 运行后端测试：
