@@ -173,15 +173,8 @@ export function SetSavePreference(allowGroup: boolean): $CancellablePromise<void
 /**
  * SetSleepTime 保存休眠秒数；前端传入 time.Duration 时统一落库为秒，便于用户理解和配置。
  */
-export function SetSleepTime(d: number): $CancellablePromise<void> {
-    return $Call.ByID(3627690169, d);
-}
-
-/**
- * SetStoragePath 保存存储目录。
- */
-export function SetStoragePath(dir: string): $CancellablePromise<void> {
-    return $Call.ByID(594889173, dir);
+export function SetSleepTime(seconds: number): $CancellablePromise<void> {
+    return $Call.ByID(3627690169, seconds);
 }
 
 /**

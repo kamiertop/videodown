@@ -5,75 +5,43 @@ import (
 	"strconv"
 
 	"github.com/dgraph-io/badger/v4"
+	"github.com/kamiertop/videodown/internal/constant"
 )
 
-const (
-	storageKey           = "storage"
-	sleepTimeKey         = "sleepTime"
-	allowGroupOnSaveKey  = "allowGroupOnSave"
-	concurrencyNumKey    = "concurrencyNum"
-	parsePlayURLNumKey   = "parse_play_url_num"
-	parsePlayURLSleepKey = "parse_play_url_sleep"
-	autoUpdateKey        = "auto_update"
-	filenameTemplateKey  = "filename_template"
-	groupingRuleKey      = "grouping_rule"
-)
-
-func (s *Store) InitPreferenceDefaults(defaultStoragePath string) error {
-	defaults := map[string]string{
-		storageKey:           defaultStoragePath,
-		sleepTimeKey:         "60",
-		allowGroupOnSaveKey:  "true",
-		concurrencyNumKey:    "1",
-		parsePlayURLNumKey:   "3",
-		parsePlayURLSleepKey: "5",
-		autoUpdateKey:        "true",
-		filenameTemplateKey:  "{title}",
-		groupingRuleKey:      "author_source",
-	}
+func (s *Store) InitPreferenceDefaults(defaultSettings map[string]string) error {
 	return s.Update(func(txn *badger.Txn) error {
-		for key, value := range defaults {
+		for key, value := range defaultSettings {
 			if _, err := txn.Get([]byte(key)); errors.Is(err, badger.ErrKeyNotFound) {
-				if err := txn.Set([]byte(key), []byte(value)); err != nil {
+				// 只有key不存在时才设置默认值，避免覆盖用户已设置的值
+				if err = txn.Set([]byte(key), []byte(value)); err != nil {
 					return err
 				}
 			}
 		}
+
 		return nil
 	})
 }
 
-func (s *Store) FilenameTemplate() (string, error) { return s.Get(filenameTemplateKey) }
-
-func (s *Store) SetFilenameTemplate(template string) error {
-	return s.Set(filenameTemplateKey, template)
+func (s *Store) FilenameTemplate() (string, error) {
+	return s.Get(constant.FilenameTemplateKey)
 }
 
-func (s *Store) GroupingRule() (string, error)     { return s.Get(groupingRuleKey) }
-func (s *Store) SetGroupingRule(rule string) error { return s.Set(groupingRuleKey, rule) }
-
 func (s *Store) AutoUpdate() (bool, error) {
-	value, err := s.Get(autoUpdateKey)
+	value, err := s.Get(constant.AutoUpdateKey)
 	if err != nil {
 		return false, err
 	}
+
 	return value == "true", nil
 }
 
-func (s *Store) SetAutoUpdate(enabled bool) error {
-	return s.Set(autoUpdateKey, strconv.FormatBool(enabled))
-}
-
 func (s *Store) StoragePath() (string, error) {
-	return s.Get(storageKey)
-}
-
-func (s *Store) SetStoragePath(path string) error {
-	return s.Set(storageKey, path)
+	return s.Get(constant.StorageKey)
 }
 
 func (s *Store) SavePreference() (bool, error) {
-	value, err := s.Get(allowGroupOnSaveKey)
+	value, err := s.Get(constant.AllowGroupOnSaveKey)
 	if err != nil {
 		return true, err
 	}
@@ -81,11 +49,11 @@ func (s *Store) SavePreference() (bool, error) {
 }
 
 func (s *Store) SetSavePreference(allowGroup bool) error {
-	return s.Set(allowGroupOnSaveKey, strconv.FormatBool(allowGroup))
+	return s.Set(constant.AllowGroupOnSaveKey, strconv.FormatBool(allowGroup))
 }
 
 func (s *Store) SleepTime() (int64, error) {
-	value, err := s.Get(sleepTimeKey)
+	value, err := s.Get(constant.SleepTimeKey)
 	if err != nil {
 		return 0, err
 	}
@@ -93,27 +61,21 @@ func (s *Store) SleepTime() (int64, error) {
 	if err != nil {
 		return 60, nil
 	}
+
 	return seconds, nil
 }
 
-func (s *Store) SetSleepTime(seconds int64) error {
-	return s.Set(sleepTimeKey, strconv.FormatInt(seconds, 10))
-}
-
 func (s *Store) ConcurrencyNum() (int, error) {
-	value, err := s.Get(concurrencyNumKey)
+	value, err := s.Get(constant.ConcurrencyNumKey)
 	if err != nil {
 		return 1, err
 	}
+
 	return strconv.Atoi(value)
 }
 
-func (s *Store) SetConcurrencyNum(num int) error {
-	return s.Set(concurrencyNumKey, strconv.Itoa(num))
-}
-
 func (s *Store) ParsePlayURLNum() (int, error) {
-	value, err := s.Get(parsePlayURLNumKey)
+	value, err := s.Get(constant.ParsePlayURLNumKey)
 	if err != nil {
 		return 3, err
 	}
@@ -121,21 +83,15 @@ func (s *Store) ParsePlayURLNum() (int, error) {
 	if err != nil {
 		return 3, err
 	}
+
 	return num, nil
 }
 
-func (s *Store) SetParsePlayURLNum(num int) error {
-	return s.Set(parsePlayURLNumKey, strconv.Itoa(num))
-}
-
 func (s *Store) ParsePlayURLSleep() (int, error) {
-	value, err := s.Get(parsePlayURLSleepKey)
+	value, err := s.Get(constant.ParsePlayURLSleepKey)
 	if err != nil {
 		return 0, err
 	}
-	return strconv.Atoi(value)
-}
 
-func (s *Store) SetParsePlayURLSleep(seconds int) error {
-	return s.Set(parsePlayURLSleepKey, strconv.Itoa(seconds))
+	return strconv.Atoi(value)
 }
