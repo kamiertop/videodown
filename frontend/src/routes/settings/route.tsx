@@ -1,24 +1,19 @@
-import {createFileRoute} from '@tanstack/solid-router'
-import {createSignal, For, type JSXElement} from "solid-js";
-import {AboutSection} from "../components/settings/about";
-import {BilibiliSection} from "../components/settings/bilibili";
-import {DownloadSection} from "../components/settings/download";
-import {FFmpegSection} from "../components/settings/ffmpeg";
-import {GeneralSection} from "../components/settings/general";
+import {createFileRoute, Link, Outlet} from '@tanstack/solid-router'
+import {For, type JSXElement} from "solid-js";
 
 export const Route = createFileRoute('/settings')({
   component: SettingsComponent,
 })
 
 interface NavSection {
-  id: string;
+  path: '/settings' | '/settings/about' | '/settings/bilibili' | '/settings/download' | '/settings/ffmpeg' | '/settings/filename';
   label: string;
   icon: JSXElement;
 }
 
 const NAV_SECTIONS: NavSection[] = [
   {
-    id: 'general',
+    path: '/settings',
     label: '通用',
     icon: (
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -29,7 +24,7 @@ const NAV_SECTIONS: NavSection[] = [
     ),
   },
   {
-    id: 'bilibili',
+    path: '/settings/bilibili',
     label: '哔哩哔哩',
     icon: (
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -41,7 +36,7 @@ const NAV_SECTIONS: NavSection[] = [
     ),
   },
   {
-    id: 'download',
+    path: '/settings/download',
     label: '下载',
     icon: (
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -52,7 +47,12 @@ const NAV_SECTIONS: NavSection[] = [
     ),
   },
   {
-    id: 'FFmpeg',
+    path: '/settings/filename',
+    label: '命名模板',
+    icon: <span class="text-base">✎</span>,
+  },
+  {
+    path: '/settings/ffmpeg',
     label: 'FFmpeg',
     icon: (
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -62,7 +62,7 @@ const NAV_SECTIONS: NavSection[] = [
     )
   },
   {
-    id: 'about',
+    path: '/settings/about',
     label: '关于',
     icon: (
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -74,46 +74,29 @@ const NAV_SECTIONS: NavSection[] = [
 ];
 
 function SettingsComponent(): JSXElement {
-  const [active, setActive] = createSignal('general');
-
   return (
       <div class="flex flex-col md:flex-row h-full">
         <nav class="w-full md:w-56 shrink-0 border-b md:border-b-0 md:border-r border-base-300 p-4">
           <ul class="flex md:flex-col gap-1 overflow-x-auto">
             <For each={NAV_SECTIONS}>
               {(section) => (
-                  <button
-                      class={`flex items-center gap-3 px-3 py-2.5 rounded-lg w-full whitespace-nowrap text-sm transition-colors
-                          ${active() === section.id
-                          ? 'bg-base-200 font-semibold text-base-content'
-                          : 'text-base-content/70 hover:bg-base-200/50 hover:text-base-content'
-                      }`}
-                      onClick={() => setActive(section.id)}
+                  <Link
+                      to={section.path}
+                      activeOptions={{exact: section.path === '/settings'}}
+                      activeProps={{class: 'bg-base-200 font-semibold text-base-content'}}
+                      inactiveProps={{class: 'text-base-content/70 hover:bg-base-200/50 hover:text-base-content'}}
+                      class="flex items-center gap-3 px-3 py-2.5 rounded-lg w-full whitespace-nowrap text-sm transition-colors"
                   >
                     {section.icon}
                     {section.label}
-                  </button>
+                  </Link>
               )}
             </For>
           </ul>
         </nav>
 
         <div class="flex-1 overflow-y-auto p-6">
-          <div classList={{hidden: active() !== 'general'}}>
-            <GeneralSection/>
-          </div>
-          <div classList={{hidden: active() !== 'bilibili'}}>
-            <BilibiliSection/>
-          </div>
-          <div classList={{hidden: active() !== 'download'}}>
-            <DownloadSection/>
-          </div>
-          <div classList={{hidden: active() !== 'FFmpeg'}}>
-            <FFmpegSection/>
-          </div>
-          <div classList={{hidden: active() !== 'about'}}>
-            <AboutSection/>
-          </div>
+          <Outlet/>
         </div>
       </div>
   )

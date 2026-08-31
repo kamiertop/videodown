@@ -1,4 +1,5 @@
-import {createSignal, For, type JSXElement, onCleanup, onMount} from "solid-js";
+import {createSignal, For, type JSXElement, onCleanup, onMount, Show} from "solid-js";
+import {createFileRoute} from '@tanstack/solid-router';
 import {
   GetConcurrencyNum,
   GetSavePreference,
@@ -8,9 +9,11 @@ import {
   SetSleepTime,
 } from "@bindings/github.com/kamiertop/videodown/utils/settings";
 import {useToast} from "../../hooks/useToast";
-import Toast from "../Toast";
+import Toast from "../../components/Toast";
 
-export function DownloadSection(): JSXElement {
+export const Route = createFileRoute('/settings/download')({component: DownloadSection});
+
+function DownloadSection(): JSXElement {
   return (
       <div class="space-y-6 max-w-2xl mx-auto">
         <ConcurrencyNum/>
@@ -47,7 +50,8 @@ function ConcurrencyNum(): JSXElement {
   }
 
   return (
-      <div class="card bg-base-100 shadow-xl" classList={{invisible: !loaded()}}>
+      <Show when={loaded()} fallback={<div class="card bg-base-100 shadow-xl"><div class="card-body"><span class="loading loading-dots loading-sm" aria-label="读取中"/></div></div>}>
+      <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
           <h2 class="card-title mb-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-accent" fill="none"
@@ -84,6 +88,7 @@ function ConcurrencyNum(): JSXElement {
         </div>
         <Toast message={message()} type={type()}/>
       </div>
+      </Show>
   )
 }
 
@@ -147,7 +152,8 @@ function SleepAfterDownLoad(): JSXElement {
 
   return (
       <>
-        <div class="card bg-base-100 shadow-xl" classList={{invisible: !loaded()}}>
+        <Show when={loaded()} fallback={<div class="card bg-base-100 shadow-xl"><div class="card-body"><span class="loading loading-dots loading-sm" aria-label="读取中"/></div></div>}>
+        <div class="card bg-base-100 shadow-xl">
           <div class="card-body">
             <div class="flex items-start justify-between gap-4">
               <div>
@@ -208,6 +214,7 @@ function SleepAfterDownLoad(): JSXElement {
 
           </div>
         </div>
+        </Show>
         <Toast message={message()} type={type()}/>
       </>
   )
