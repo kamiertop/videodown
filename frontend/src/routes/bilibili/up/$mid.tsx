@@ -14,6 +14,7 @@ import SidebarList from "../../../components/SidebarList.tsx";
 import Toast from "../../../components/Toast";
 import VideoListSection from "../../../components/bilibili/VideoListSection.tsx";
 import {useToast} from "../../../hooks/useToast";
+import {waitBulkDownloadPage} from "../../../lib/bulkDownloadThrottle.ts";
 import {parseBilibiliLengthToSeconds} from "../../../lib/format";
 import type {MediaCardItem} from "../../../lib/model.ts";
 
@@ -148,6 +149,7 @@ function UpDetail(): JSXElement {
                     hasMore={logic.hasMoreVideos}
                     loadingMore={logic.videoLoadingMore}
                     onLoadMore={() => void logic.loadVideoList(true)}
+                    prepareDownloadAll={logic.prepareAllVideos}
                   />
                 </Match>
               </Switch>
@@ -225,6 +227,7 @@ function UpDetail(): JSXElement {
                           hasMore={logic.hasMoreListVideos}
                           loadingMore={logic.listLoadingMore}
                           onLoadMore={() => void logic.handleLoadMoreList()}
+                          prepareDownloadAll={logic.prepareAllListVideos}
                         />
                       </Match>
                     </Switch>
@@ -587,6 +590,28 @@ function createUpDetailLogic(
     }
   };
 
+  // 一键下载：后台连续翻页，直到全部投稿视频加载完毕。
+  async function prepareAllVideos(onStatus?: (message: string) => void): Promise<void> {
+    while (hasMoreVideos()) {
+      const before = videoCards().length;
+      await waitBulkDownloadPage(onStatus);
+      await loadVideoList(true);
+      if (videoCards().length === before) break;
+    }
+  }
+
+  // 一键下载：后台连续翻页，直到当前合集/系列视频加载完毕。
+  async function prepareAllListVideos(onStatus?: (message: string) => void): Promise<void> {
+    const item = selectedListItem();
+    if (!item) return;
+    while (hasMoreListVideos()) {
+      const before = listCards().length;
+      await waitBulkDownloadPage(onStatus);
+      await loadListDetail(item, true);
+      if (listCards().length === before) break;
+    }
+  }
+
   const init = () => {
     void loadVideoList(false);
   };
@@ -621,5 +646,7 @@ function createUpDetailLogic(
     listDetailEpoch,
     init,
     retryListDetail,
+    prepareAllVideos,
+    prepareAllListVideos,
   };
 }
