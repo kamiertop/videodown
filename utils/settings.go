@@ -28,16 +28,17 @@ func (s *Settings) init() error {
 	}
 	defaultStoragePath := filepath.Join(filepath.Dir(executable), "download")
 	defaults := map[string]string{
-		constant.ThemeKey:             "light",
-		constant.StorageKey:           defaultStoragePath,
-		constant.SleepTimeKey:         "60",
-		constant.AllowGroupOnSaveKey:  "true",
-		constant.ConcurrencyNumKey:    "1",
-		constant.ParsePlayURLNumKey:   "3",
-		constant.ParsePlayURLSleepKey: "5",
-		constant.AutoUpdateKey:        "true",
-		constant.FilenameTemplateKey:  "{title}",
-		constant.GroupingRuleKey:      "author_source",
+		constant.ThemeKey:                 "light",
+		constant.StorageKey:               defaultStoragePath,
+		constant.SleepTimeKey:             "60",
+		constant.BulkDownloadSleepTimeKey: "20",
+		constant.AllowGroupOnSaveKey:      "true",
+		constant.ConcurrencyNumKey:        "1",
+		constant.ParsePlayURLNumKey:       "3",
+		constant.ParsePlayURLSleepKey:     "5",
+		constant.AutoUpdateKey:            "true",
+		constant.FilenameTemplateKey:      "{title}",
+		constant.GroupingRuleKey:          "author_source",
 	}
 
 	return s.store.InitPreferenceDefaults(defaults)
@@ -111,7 +112,7 @@ func (s *Settings) GetGroupingRule() (string, error) {
 
 func (s *Settings) SetGroupingRule(rule string) error {
 	// 方便扩展
-	if !slices.Contains([]string{"none", "author", "author_source"}, rule) {
+	if !slices.Contains([]string{"none", "author", "author_source", "source"}, rule) {
 		return errors.New("无效的分组规则")
 	}
 
@@ -144,6 +145,26 @@ func (s *Settings) SetSleepTime(seconds int64) error {
 	s.logger.Infof("setting sleep time: %d", seconds)
 
 	return s.store.Set(constant.SleepTimeKey, strconv.FormatInt(seconds, 10))
+}
+
+// GetBulkDownloadSleepTime 获取一键下载全部时分页请求之间的休眠时间（秒）。
+func (s *Settings) GetBulkDownloadSleepTime() (int64, error) {
+	value, err := s.store.BulkDownloadSleepTime()
+	if err != nil {
+		return 0, errors.New("获取一键下载休眠时间失败")
+	}
+	return value, nil
+}
+
+// SetBulkDownloadSleepTime 保存一键下载全部时分页请求之间的休眠时间（秒）。
+func (s *Settings) SetBulkDownloadSleepTime(seconds int64) error {
+	if seconds < 0 {
+		seconds = 0
+	}
+	if seconds > 600 {
+		seconds = 600
+	}
+	return s.store.Set(constant.BulkDownloadSleepTimeKey, strconv.FormatInt(seconds, 10))
 }
 
 func (s *Settings) GetSavePreference() (bool, error) {

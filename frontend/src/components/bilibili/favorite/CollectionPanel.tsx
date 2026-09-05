@@ -2,6 +2,7 @@ import {createEffect, createSignal, type JSXElement} from "solid-js";
 import {Collection, CollectionItem} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
 import * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
 import type {MediaCardItem} from "../../../lib/model.ts";
+import {waitBulkDownloadPage} from "../../../lib/bulkDownloadThrottle.ts";
 import {StackIcon} from "../../icons/IconStack";
 import {type SidebarListItem} from "../../SidebarList";
 import FavoriteCollectionView from "./FavoriteCollectionView";
@@ -40,7 +41,6 @@ function toCollectionMediaCards(medias: model.CollectionItemMedias[], listName: 
     danmaku: media.cnt_info?.danmaku,
     pubtime: media.pubtime,
     sourceListName: name,
-    sourceListKind: '合集',
   }));
 }
 
@@ -117,6 +117,18 @@ export default function CollectionPanel(props: {
       }
     }
   };
+
+  // 一键下载时后台连续翻页，直到接口明确返回没有下一页。
+  async function prepareAllDetailVideos(onStatus?: (message: string) => void): Promise<void> {
+    const item = selectedItem();
+    if (!item) return;
+    while (detailHasMore()) {
+      const before = mediaCards().length;
+      await waitBulkDownloadPage(onStatus);
+      await loadCollectionDetail(item, true);
+      if (mediaCards().length === before) break;
+    }
+  }
 
   const loadCollections = async (append = false) => {
     const targetPage = append ? collectionPage() + 1 : COLLECTION_PAGE;
@@ -213,6 +225,7 @@ export default function CollectionPanel(props: {
           if (!item || !detailHasMore() || loadingMore()) return;
           void loadCollectionDetail(item, true);
         }}
+        prepareDownloadAll={prepareAllDetailVideos}
       />
     </div>
   );

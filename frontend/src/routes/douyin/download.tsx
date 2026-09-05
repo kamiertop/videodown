@@ -1,7 +1,8 @@
+import {ParseVideo, VideoDetail} from "@bindings/github.com/kamiertop/videodown/douyin/api/douyin";
+import {DownloadCover} from "@bindings/github.com/kamiertop/videodown/douyin/download/service.ts";
+import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
 import {createFileRoute} from '@tanstack/solid-router'
 import {createSignal, For, type JSXElement, Show} from "solid-js";
-import {DownloadCover, ParseVideo, VideoDetail} from "@bindings/github.com/kamiertop/videodown/douyin/api/douyin";
-import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
 import MediaTypeBadge from "../../components/douyin/MediaTypeBadge.tsx";
 import EmptyState from "../../components/EmptyState.tsx";
 import NoCover from "../../components/NoCover.tsx";
@@ -26,6 +27,7 @@ import {
   updateDouyinVideoOption,
 } from "../../lib/douyin/store.ts";
 import {formatCount, formatDate, formatDuration} from "../../lib/format.ts";
+
 type AwemeItem = model.AwemeItem;
 
 export const Route = createFileRoute('/douyin/download')({
@@ -38,9 +40,11 @@ function normalizeDouyinDuration(value?: number): number {
 }
 
 function awemeCover(item: model.AwemeItem): string {
-  return item.video?.cover?.url_list?.[0]
-      ?? item.video?.origin_cover?.url_list?.[0]
-      ?? "";
+  return [
+    ...(item.video?.raw_cover?.url_list ?? []),
+    ...(item.video?.cover?.url_list ?? []),
+    ...(item.video?.origin_cover?.url_list ?? []),
+  ][0] ?? "";
 }
 
 function awemeTitle(item: model.AwemeItem): string {
@@ -59,7 +63,6 @@ function detailToDownloadItem(item: model.AwemeItem): DouyinDownloadItem {
 
   return {
     awemeId,
-    sourceKind: "解析结果",
     sourceName: "",
     title,
     cover,
@@ -105,7 +108,8 @@ function DouyinDownloadCard(props: {
   const selectedOption = () => props.item.videoOptions?.find((option) => option.id === props.item.selectedVideoOptionId);
 
   return (
-      <article class="grid gap-3 rounded-lg border border-base-200 bg-base-100 p-2.5 shadow-sm md:grid-cols-[6rem_minmax(0,1fr)]">
+      <article
+          class="grid gap-3 rounded-lg border border-base-200 bg-base-100 p-2.5 shadow-sm md:grid-cols-[6rem_minmax(0,1fr)]">
         <div class="relative h-36 w-24 shrink-0 overflow-hidden rounded-lg bg-base-200">
           <Show when={props.item.cover} fallback={<NoCover/>}>
             <img
@@ -167,10 +171,12 @@ function DouyinDownloadCard(props: {
 
           <div class="flex flex-wrap items-center gap-2 text-xs text-base-content/55">
             <span>发布 {props.item.publishTime ? formatDate(props.item.publishTime) : "-"}</span>
-            <span
-                class="rounded-full bg-base-200 px-2 py-0.5 tabular-nums">赞 {formatCount(props.item.diggCount)}</span>
-            <span
-                class="rounded-full bg-base-200 px-2 py-0.5 tabular-nums">藏 {formatCount(props.item.collectCount)}</span>
+            <span class="rounded-full bg-base-200 px-2 py-0.5 tabular-nums">
+              赞 {formatCount(props.item.diggCount)}
+            </span>
+            <span class="rounded-full bg-base-200 px-2 py-0.5 tabular-nums">
+              藏 {formatCount(props.item.collectCount)}
+            </span>
           </div>
 
           <Show when={!props.canDownload}>
@@ -237,6 +243,7 @@ function DouyinDownloadPage(): JSXElement {
   const [videoURL, setVideoURL] = createSignal("");
   const [parsing, setParsing] = createSignal(false);
   const [coverDownloadingIDs, setCoverDownloadingIDs] = createSignal<string[]>([]);
+  const [completedCount, setCompletedCount] = createSignal(0);
   const {message, type, showToast} = useToast();
   // 下载状态集中在 hook 中，页面只负责渲染列表和把用户操作转发给队列。
   const queue = useDouyinDownloadQueue(showToast);
@@ -262,7 +269,6 @@ function DouyinDownloadPage(): JSXElement {
     try {
       const path = await DownloadCover(covers, ({
         awemeId: item.awemeId,
-        sourceKind: item.sourceKind,
         sourceName: item.sourceName ?? "",
         title: item.title || item.awemeId || "cover",
         cover: item.cover,
@@ -271,10 +277,10 @@ function DouyinDownloadPage(): JSXElement {
         publishTime: item.publishTime ?? 0,
         diggCount: item.diggCount ?? 0,
         collectCount: item.collectCount ?? 0,
-		videoURL: "",
-		imageURLs: [],
-		assets: [],
-		musicURL: "",
+        videoURL: "",
+        imageURLs: [],
+        assets: [],
+        musicURL: "",
       }));
       showToast(`封面已保存：${path}`, "success");
     } catch (error) {
@@ -352,19 +358,25 @@ function DouyinDownloadPage(): JSXElement {
 
         </section>
 
-        <Show when={douyinVideoList().length > 0}>
+        <Show when={douyinVideoList().length > 0 || completedCount() > 0}>
           <section class="mt-2 flex flex-row items-center justify-between rounded-lg p-3 shadow-sm">
             <div class="flex min-w-0 flex-1 flex-col gap-1">
               <div class="flex items-center gap-2">
-                <div class="badge badge-primary">{douyinVideoList().length}</div>
-                <span class="text-xs">个内容待下载</span>
+                <Show when={douyinVideoList().length > 0}>
+                  <div class="badge badge-primary">{douyinVideoList().length}</div>
+                  <span class="text-xs">个内容待下载</span>
+                </Show>
+                <Show when={completedCount() > 0}>
+                  <div class="badge badge-success">{completedCount()}</div>
+                  <span class="text-xs text-success">个内容已完成</span>
+                </Show>
               </div>
             </div>
             <button
                 class="btn btn-success btn-xs gap-1.5"
                 type="button"
-                onClick={() => void queue.startDownload()}
-                disabled={queue.downloading()}
+              onClick={() => void queue.startDownload().then((count) => setCompletedCount((value) => value + count))}
+              disabled={queue.downloading()}
             >
               {queue.downloading() ? "下载中..." : "开始下载"}
             </button>
@@ -387,14 +399,14 @@ function DouyinDownloadPage(): JSXElement {
                         progress={queue.progressFor(item)}
                         coverDownloading={coverDownloadingIDs().includes(item.awemeId)}
                         onDownloadCover={() => void downloadCover(item)}
-                        onDownload={() => void queue.downloadOne(item)}
+                        onDownload={() => void queue.downloadOne(item).then((count) => setCompletedCount((value) => value + count))}
                     />
                 )}
               </For>
             </div>
           </Show>
         </div>
-        <Toast message={message()} type={type()}/>
+        <Toast message={message()} type={type()} topClass="top-32 md:top-36"/>
       </section>
   )
 }

@@ -1,7 +1,8 @@
+import {VideoDetailConciseBvid} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
+import {DownloadCover} from "@bindings/github.com/kamiertop/videodown/bilibili/download/service.ts";
+import {HasFFmpeg} from "@bindings/github.com/kamiertop/videodown/utils/settings";
 import {createFileRoute} from "@tanstack/solid-router";
 import {createMemo, createSignal, For, type JSXElement, onMount, Show} from "solid-js";
-import {DownloadCover, VideoDetailConciseBvid} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
-import {HasFFmpeg} from "@bindings/github.com/kamiertop/videodown/utils/settings";
 import DownloadInputBar from "../../components/bilibili/downloadPage/DownloadInputBar.tsx";
 import DownloadSummaryBar from "../../components/bilibili/downloadPage/DownloadSummaryBar.tsx";
 import DownloadVideoCard from "../../components/bilibili/downloadPage/DownloadVideoCard.tsx";
@@ -45,7 +46,6 @@ function detailToMediaCard(view: VideoDetailView): MediaCardItem {
     danmaku: view.stat?.danmaku,
     pubtime: view.pubdate,
     sourceListName: "",
-    sourceListKind: "解析结果",
   };
 }
 
@@ -81,7 +81,6 @@ function ugcSeasonToCards(view: VideoDetailView, current: MediaCardItem): MediaC
         danmaku: episode.arc?.stat?.danmaku,
         pubtime: episode.arc?.pubdate,
         sourceListName: listName,
-        sourceListKind: "合集",
       })),
   );
 }
@@ -110,7 +109,6 @@ function pagesToMediaCards(view: VideoDetailView, upperName: string): MediaCardI
         danmaku: view.stat?.danmaku,
         pubtime: view.pubdate,
         sourceListName: mainTitle,
-        sourceListKind: "分P",
       })),
   );
 }
@@ -164,6 +162,7 @@ function DownLoad(): JSXElement {
   const [parsedGroup, setParsedGroup] = createSignal<ParsedVideoGroup | null>(null);
   const [selectedGroupIds, setSelectedGroupIds] = createSignal<number[]>([]);
   const [coverDownloadingIds, setCoverDownloadingIds] = createSignal<number[]>([]);
+  const [completedCount, setCompletedCount] = createSignal(0);
   const {message, type, showToast} = useToast();
   // 下载相关的副作用（监听 videoList、解析 DASH、接收进度事件）都集中在这个 hook 里。
   const queue = useBilibiliDownloadQueue(showToast);
@@ -221,7 +220,6 @@ function DownLoad(): JSXElement {
     try {
       const path = await DownloadCover(cover, ({
         sourceName: item.sourceListName ?? "",
-        sourceKind: item.sourceListKind ?? "",
         upperName: item.upperName ?? "",
         bvid: item.bvid,
         cid: item.cid ?? item.id,
@@ -231,8 +229,8 @@ function DownLoad(): JSXElement {
         play: item.play ?? 0,
         danmaku: item.danmaku ?? 0,
         pubtime: item.pubtime ?? 0,
-		videoURL: "",
-		audioURL: "",
+        videoURL: "",
+        audioURL: "",
       }));
       showToast(`封面已保存：${path}`, "success");
     } catch (e) {
@@ -364,8 +362,9 @@ function DownLoad(): JSXElement {
         <DownloadSummaryBar
             count={videoList().length}
             downloading={queue.downloading()}
-            onDownload={() => void queue.startDownload()}
+            onDownload={() => void queue.startDownload().then((count) => setCompletedCount((value) => value + count))}
             resolveProgress={queue.resolveProgress()}
+            completedCount={completedCount()}
         />
         <section class="mt-3 flex flex-1 flex-col gap-3 overflow-y-auto pr-4">
           <For each={videoList()}>
@@ -382,7 +381,7 @@ function DownLoad(): JSXElement {
                     onPickQn={(qn) => queue.handlePickQn(item, qn)}
                     onPickAudio={(audioId) => queue.handlePickAudio(item, audioId)}
                     onRemove={() => removeVideo(item.id)}
-                    onDownload={() => void queue.downloadOne(item)}
+                    onDownload={() => void queue.downloadOne(item).then((count) => setCompletedCount((value) => value + count))}
                     onRetry={() => queue.retryResolve(item)}
                 />
             )}

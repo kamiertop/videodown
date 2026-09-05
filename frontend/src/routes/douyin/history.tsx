@@ -1,9 +1,13 @@
-import {createFileRoute} from '@tanstack/solid-router'
-import {createMemo, createResource, createSignal, For, type JSXElement, Match, Show, Switch} from "solid-js";
-import {ClearDownloadHistory, DeleteDownloadHistory, DownloadHistory} from "@bindings/github.com/kamiertop/videodown/douyin/api/douyin";
-import * as api from "@bindings/github.com/kamiertop/videodown/douyin/api/models";
+import type {HistoryItem} from "@bindings/github.com/kamiertop/videodown/douyin/download/models.ts";
+import {
+  ClearDownloadHistory,
+  DeleteDownloadHistory,
+  DownloadHistory
+} from "@bindings/github.com/kamiertop/videodown/douyin/download/service.ts";
 
 import {OpenDownloadLocation, OpenLocalFile} from "@bindings/github.com/kamiertop/videodown/utils/settings";
+import {createFileRoute} from "@tanstack/solid-router";
+import {createMemo, createResource, createSignal, For, type JSXElement, Match, Show, Switch} from "solid-js";
 import DetailError from "../../components/DetailError.tsx";
 import IconChat from "../../components/icons/IconChat";
 import IconEye from "../../components/icons/IconEye";
@@ -15,7 +19,6 @@ import Toast from "../../components/Toast.tsx";
 import {useToast} from "../../hooks/useToast.ts";
 import {formatCount, formatDate, formatDuration} from "../../lib/format";
 import {formatDownloadedAt} from "../../utils/format.ts";
-type DouyinDownloadHistoryItem = api.DouyinDownloadHistoryItem;
 
 
 export const Route = createFileRoute('/douyin/history')({
@@ -38,7 +41,7 @@ function History(): JSXElement {
   });
   const [searchValue, setSearchValue] = createSignal<string>("");
 
-  function historyItems(): DouyinDownloadHistoryItem[] {
+  function historyItems(): HistoryItem[] {
     return readResource(() => items()) ?? [];
   }
 
@@ -53,7 +56,7 @@ function History(): JSXElement {
     );
   });
 
-  function historyBadge(item: DouyinDownloadHistoryItem): string {
+  function historyBadge(item: HistoryItem): string {
     if (item.downloadKind === "cover") return "封面";
     if (item.isImageAlbum || item.downloadKind === "album") return `图文 ${item.imageCount || 0}`;
     return formatDuration(item.duration);
@@ -156,7 +159,7 @@ function History(): JSXElement {
             <Match when={visibleItems().length > 0}>
               <div class="divide-y divide-base-200">
                 <For each={visibleItems()}>
-                  {(item: DouyinDownloadHistoryItem): JSXElement => (
+                  {(item: HistoryItem): JSXElement => (
                       <article class="flex gap-3 p-3 flex-row">
                         {/*水平布局，左侧封面*/}
                         <div class="relative aspect-3/4 w-28 shrink-0 overflow-hidden rounded bg-base-200">
@@ -171,7 +174,7 @@ function History(): JSXElement {
                           </Show>
                           <span
                               class="absolute bottom-1 right-1 rounded bg-black/65 px-1 py-0.5 text-xs tabular-nums text-white">
-                        {historyBadge(item)}
+                              {historyBadge(item)}
                       </span>
                         </div>
                         <div class="min-w-0 flex-1 flex-col flex">

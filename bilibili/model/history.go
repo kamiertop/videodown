@@ -12,7 +12,6 @@ type DownloadHistoryItem struct {
 	Danmaku      int    `json:"danmaku"`
 	Pubtime      int    `json:"pubtime"`
 	SourceName   string `json:"sourceName"`
-	SourceKind   string `json:"sourceKind"`
 	Path         string `json:"path"`
 	DownloadKind string `json:"downloadKind"`
 	// Wails 绑定生成不支持直接暴露 time.Time，保存为 RFC3339 字符串给前端解析。

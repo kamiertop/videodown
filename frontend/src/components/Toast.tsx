@@ -3,6 +3,7 @@ import {Show, type JSXElement} from "solid-js";
 interface ToastProps {
     message?: string;
     type?: "error" | "success" | "info" | "warning";
+    topClass?: string;
 }
 
 const typeClassMap = {
@@ -17,7 +18,7 @@ export default function Toast(props: ToastProps): JSXElement {
 
     return (
         <Show when={props.message}>
-            <div class="toast toast-top toast-end z-50 top-16 md:top-20">
+            <div class={`toast toast-top toast-end z-50 ${props.topClass ?? "top-16 md:top-20"}`}>
                 <div class={`alert ${alertClass()} shadow-lg`}>
                     <span>{props.message}</span>
                 </div>

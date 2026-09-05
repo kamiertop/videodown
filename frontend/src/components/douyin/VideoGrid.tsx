@@ -1,4 +1,4 @@
-import {createMemo, createSignal, For, Index, type JSXElement, onCleanup, onMount, Show} from "solid-js";
+import {createEffect, createMemo, createSignal, For, Index, type JSXElement, onCleanup, onMount, Show} from "solid-js";
 import type {DouyinDownloadItem} from "../../lib/douyin/store.ts";
 import MediaTypeBadge from "./MediaTypeBadge.tsx";
 import NoCover from "../NoCover.tsx";
@@ -11,6 +11,7 @@ export interface DouyinVideoCardItem {
   // VideoContentPanel 已经把 AwemeItem 压平，这里不再依赖后端模型字段。
   id: string;
   cover: string;
+  coverCandidates?: string[];
   title: string;
   author: string;
   publishText: string;
@@ -36,6 +37,24 @@ function VideoCard(props: {
   onClick: () => void;
   selectedClass: string;
 }): JSXElement {
+  const [cover, setCover] = createSignal(props.item.cover);
+  const [coverIndex, setCoverIndex] = createSignal(0);
+  createEffect(() => {
+    setCoverIndex(0);
+    setCover(props.item.cover);
+  });
+
+  function handleCoverError(): void {
+    const candidates = props.item.coverCandidates ?? [];
+    const next = coverIndex() + 1;
+    if (next < candidates.length) {
+      setCoverIndex(next);
+      setCover(candidates[next]);
+    } else {
+      setCover("");
+    }
+  }
+
   return (
       <article
           class={`flex cursor-pointer flex-col overflow-hidden rounded-lg transition-colors ${props.selectedClass}`}
@@ -44,14 +63,17 @@ function VideoCard(props: {
           onClick={props.onClick}
       >
         <div class="relative aspect-3/5 w-full overflow-hidden bg-base-200">
-          <Show when={props.item.cover} fallback={<NoCover/>}>
+          <Show when={cover()} fallback={<NoCover/>}>
             <img
-                src={props.item.cover}
+                src={cover()}
                 class="h-full w-full object-cover"
                 alt={props.item.title}
-                loading="lazy"
+                // 网格本身已经做了虚拟滚动；再使用原生 lazy 在动态列表首次挂载时
+                // 可能错过观察窗口，导致封面直到手动刷新才触发加载。
+                loading="eager"
                 decoding="async"
                 referrerPolicy="no-referrer"
+                onError={handleCoverError}
             />
           </Show>
           <Show when={props.item.isTop}>
@@ -92,6 +114,7 @@ function VideoCard(props: {
 export default function VideoGrid(props: {
   title: string;
   items: DouyinVideoCardItem[];
+  totalCount?: number;
   selectedCount: number;
   allSelected: boolean;
   selectedClass: (id: string) => string;
@@ -167,13 +190,16 @@ export default function VideoGrid(props: {
   }
 
   return (
-      <div class={`flex h-full min-h-0 w-full min-w-0 flex-col ${props.allSelected ? "ring-1 ring-primary/40" : ""}`}>
+      <div class={`relative flex h-full min-h-0 w-full min-w-0 flex-col ${props.allSelected ? "ring-1 ring-primary/40" : ""}`}>
         {/* 固定操作栏：选择与下载按钮不跟随卡片区域滚动。 */}
         <div class="flex shrink-0 items-center gap-2 border-b px-4 py-3"
           classList={{"border-primary/40 bg-primary/5": props.allSelected, "border-base-300": !props.allSelected}}>
           <div class="min-w-0 flex-1">
             <h3 class="truncate text-sm font-bold text-base-content">{props.title}</h3>
-            <p class="text-xs text-base-content/55">{props.items.length} 个已加载</p>
+            <p class="text-xs text-base-content/55">
+              {props.totalCount ?? props.items.length} 个作品
+              {props.totalCount !== undefined && props.items.length < props.totalCount ? `（已加载 ${props.items.length}）` : ""}
+            </p>
           </div>
           <Show when={props.toolbarMiddle}>
             <div class="flex min-w-0 flex-1 items-center justify-center gap-2">
@@ -205,18 +231,25 @@ export default function VideoGrid(props: {
           >
             去下载 ({props.selectedCount})
           </button>
-          <Show when={props.onDownloadAll}>
-            {(onDownloadAll) => (
-                <button
-                    class="btn btn-primary btn-sm"
-                    type="button"
-                    onClick={onDownloadAll()}
-                    disabled={props.items.length === 0}
-                >
-                  下载全部
-                </button>
-            )}
-          </Show>
+          {props.onDownloadAll ? (
+                <div class="group relative shrink-0">
+                  <button
+                      class="btn btn-primary btn-sm"
+                      type="button"
+                      onClick={() => void props.onDownloadAll?.()}
+                      disabled={props.items.length === 0}
+                      aria-label="一键下载全部（自动加载全部分页）"
+                  >
+                    一键下载全部
+                  </button>
+                  <span
+                      role="tooltip"
+                      class="pointer-events-none absolute right-0 top-full z-50 mt-1.5 w-max max-w-[min(220px,calc(100vw-24px))] whitespace-normal rounded-md bg-neutral px-2.5 py-1.5 text-center text-[11px] leading-4 text-neutral-content opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                  >
+                    自动加载全部分页并加入下载队列
+                  </span>
+                </div>
+          ) : null}
         </div>
 
         <div

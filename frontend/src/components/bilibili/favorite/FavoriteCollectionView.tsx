@@ -34,6 +34,8 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
   hasMore?: () => boolean;
   loadingMore?: () => boolean;
   onLoadMore?: () => void;
+  /** 一键下载前自动加载完当前收藏夹/合集的剩余分页。 */
+  prepareDownloadAll?: (onStatus?: (message: string) => void) => Promise<void>;
 }): JSXElement {
   function emptySidebarTitle(): string {
     switch (props.sidebarLabel) {
@@ -146,6 +148,7 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
                 hasMore={props.hasMore}
                 loadingMore={props.loadingMore}
                 onLoadMore={props.onLoadMore}
+                prepareDownloadAll={props.prepareDownloadAll}
               />
             </Match>
           </Switch>
