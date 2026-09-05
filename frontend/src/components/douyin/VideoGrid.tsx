@@ -1,4 +1,4 @@
-import {createMemo, createSignal, For, Index, type JSXElement, onCleanup, onMount, Show} from "solid-js";
+import {createEffect, createMemo, createSignal, For, Index, type JSXElement, onCleanup, onMount, Show} from "solid-js";
 import type {DouyinDownloadItem} from "../../lib/douyin/store.ts";
 import MediaTypeBadge from "./MediaTypeBadge.tsx";
 import NoCover from "../NoCover.tsx";
@@ -11,6 +11,7 @@ export interface DouyinVideoCardItem {
   // VideoContentPanel 已经把 AwemeItem 压平，这里不再依赖后端模型字段。
   id: string;
   cover: string;
+  coverCandidates?: string[];
   title: string;
   author: string;
   publishText: string;
@@ -36,6 +37,24 @@ function VideoCard(props: {
   onClick: () => void;
   selectedClass: string;
 }): JSXElement {
+  const [cover, setCover] = createSignal(props.item.cover);
+  const [coverIndex, setCoverIndex] = createSignal(0);
+  createEffect(() => {
+    setCoverIndex(0);
+    setCover(props.item.cover);
+  });
+
+  function handleCoverError(): void {
+    const candidates = props.item.coverCandidates ?? [];
+    const next = coverIndex() + 1;
+    if (next < candidates.length) {
+      setCoverIndex(next);
+      setCover(candidates[next]);
+    } else {
+      setCover("");
+    }
+  }
+
   return (
       <article
           class={`flex cursor-pointer flex-col overflow-hidden rounded-lg transition-colors ${props.selectedClass}`}
@@ -44,14 +63,17 @@ function VideoCard(props: {
           onClick={props.onClick}
       >
         <div class="relative aspect-3/5 w-full overflow-hidden bg-base-200">
-          <Show when={props.item.cover} fallback={<NoCover/>}>
+          <Show when={cover()} fallback={<NoCover/>}>
             <img
-                src={props.item.cover}
+                src={cover()}
                 class="h-full w-full object-cover"
                 alt={props.item.title}
-                loading="lazy"
+                // 网格本身已经做了虚拟滚动；再使用原生 lazy 在动态列表首次挂载时
+                // 可能错过观察窗口，导致封面直到手动刷新才触发加载。
+                loading="eager"
                 decoding="async"
                 referrerPolicy="no-referrer"
+                onError={handleCoverError}
             />
           </Show>
           <Show when={props.item.isTop}>

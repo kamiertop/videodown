@@ -40,9 +40,11 @@ function normalizeDouyinDuration(value?: number): number {
 }
 
 function awemeCover(item: model.AwemeItem): string {
-  return item.video?.cover?.url_list?.[0]
-      ?? item.video?.origin_cover?.url_list?.[0]
-      ?? "";
+  return [
+    ...(item.video?.raw_cover?.url_list ?? []),
+    ...(item.video?.cover?.url_list ?? []),
+    ...(item.video?.origin_cover?.url_list ?? []),
+  ][0] ?? "";
 }
 
 function awemeTitle(item: model.AwemeItem): string {
@@ -61,7 +63,6 @@ function detailToDownloadItem(item: model.AwemeItem): DouyinDownloadItem {
 
   return {
     awemeId,
-    sourceKind: "解析结果",
     sourceName: "",
     title,
     cover,
@@ -267,7 +268,6 @@ function DouyinDownloadPage(): JSXElement {
     try {
       const path = await DownloadCover(covers, ({
         awemeId: item.awemeId,
-        sourceKind: item.sourceKind,
         sourceName: item.sourceName ?? "",
         title: item.title || item.awemeId || "cover",
         cover: item.cover,

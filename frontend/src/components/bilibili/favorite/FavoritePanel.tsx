@@ -45,7 +45,6 @@ function toMediaCards(medias: model.FavoriteMedias[], listName: string): MediaCa
     danmaku: media.cnt_info?.danmaku,
     pubtime: media.pubtime,
     sourceListName: name,
-    sourceListKind: '收藏夹',
   }));
 }
 

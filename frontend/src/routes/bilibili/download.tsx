@@ -46,7 +46,6 @@ function detailToMediaCard(view: VideoDetailView): MediaCardItem {
     danmaku: view.stat?.danmaku,
     pubtime: view.pubdate,
     sourceListName: "",
-    sourceListKind: "解析结果",
   };
 }
 
@@ -82,7 +81,6 @@ function ugcSeasonToCards(view: VideoDetailView, current: MediaCardItem): MediaC
         danmaku: episode.arc?.stat?.danmaku,
         pubtime: episode.arc?.pubdate,
         sourceListName: listName,
-        sourceListKind: "合集",
       })),
   );
 }
@@ -111,7 +109,6 @@ function pagesToMediaCards(view: VideoDetailView, upperName: string): MediaCardI
         danmaku: view.stat?.danmaku,
         pubtime: view.pubdate,
         sourceListName: mainTitle,
-        sourceListKind: "分P",
       })),
   );
 }
@@ -222,7 +219,6 @@ function DownLoad(): JSXElement {
     try {
       const path = await DownloadCover(cover, ({
         sourceName: item.sourceListName ?? "",
-        sourceKind: item.sourceListKind ?? "",
         upperName: item.upperName ?? "",
         bvid: item.bvid,
         cid: item.cid ?? item.id,

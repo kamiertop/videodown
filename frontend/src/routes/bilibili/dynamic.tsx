@@ -49,7 +49,6 @@ function toMediaCardItem(item: DynamicArchiveItem): MediaCardItem {
     upperName: item.author_name,
     pubtime: item.pub_ts,
     sourceListName: "关注动态",
-    sourceListKind: "关注动态",
   };
 }
 

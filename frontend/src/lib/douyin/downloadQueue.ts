@@ -58,7 +58,6 @@ function toTask(item: DouyinDownloadItem): Task {
   // 前端只提交最终选择好地下载地址和来源元数据；落盘目录由后端统一判断。
   return ({
     awemeId: item.awemeId,
-    sourceKind: item.sourceKind,
     sourceName: item.sourceName ?? "",
     title: item.title,
     cover: item.cover,

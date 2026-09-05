@@ -46,7 +46,7 @@ function PlayHistoryPage(): JSXElement {
     return {
       id: index + 1, title: title(item), cover: item.cover || '', duration: item.duration || 0,
       bvid: item.history.bvid || '', link: link(item), upperName: item.author_name || '未知 UP 主',
-      play: 0, danmaku: 0, pubtime: item.view_at, sourceListName: 'B站播放历史', sourceListKind: '播放历史'
+      play: 0, danmaku: 0, pubtime: item.view_at, sourceListName: 'B站播放历史'
     };
   }
 

@@ -4,7 +4,6 @@ package download
 // 前端已经完成清晰度选择，所以后端只消费最终 videoURL；图片合集则使用 ImageURLs。
 type Task struct {
 	AwemeID      string   `json:"awemeId"`
-	SourceKind   string   `json:"sourceKind"`
 	SourceName   string   `json:"sourceName"`
 	Title        string   `json:"title"`
 	Cover        string   `json:"cover"`

@@ -352,7 +352,6 @@ function createUpDetailLogic(
 	      pubtime: v.created,
 	      // 全部投稿只传作者名作来源；是否进一步展开分 P 由加入下载队列时的详情接口决定。
 	      sourceListName: upperName,
-	      sourceListKind: '全部投稿',
 	    }));
 	  };
 
@@ -442,10 +441,8 @@ function createUpDetailLogic(
     archives: any[] | undefined,
     upperName: string,
     listName: string,
-    listKind: string,
   ): MediaCardItem[] => {
     const name = listName.trim();
-    const kind = listKind.trim();
     return (archives ?? []).map((a: any) => ({
       id: Number(a.aid) || 0,
       title: a.title ?? '',
@@ -457,7 +454,6 @@ function createUpDetailLogic(
       danmaku: a.stat?.danmaku,
       pubtime: a.pubdate ?? a.pubDate,
       sourceListName: name,
-      sourceListKind: kind,
     }));
   };
 
@@ -481,7 +477,7 @@ function createUpDetailLogic(
       if (item.kind === 'season') {
         const data = await SeasonsArchivesList(mid, 20, targetPage, item.id) as unknown as model.SeasonsArchivesData;
         if (seq !== listReqSeq) return;
-        const cards = mapArchivesToCards(data.archives ?? undefined, upperName, item.title, item.subtitle);
+        const cards = mapArchivesToCards(data.archives ?? undefined, upperName, item.title);
         const total = Number(data.meta?.total ?? data.page?.Total ?? item.count ?? 0) || 0;
         setListTotal(total);
         if (append) setListCards(prev => [...prev, ...cards]); else setListCards(cards);
@@ -489,7 +485,7 @@ function createUpDetailLogic(
       } else {
         const data = await SeriesList(mid, 20, targetPage, item.id) as SeriesArchivesResp;
         if (seq !== listReqSeq) return;
-        const cards = mapArchivesToCards(data.archives as any[], upperName, item.title, item.subtitle);
+        const cards = mapArchivesToCards(data.archives as any[], upperName, item.title);
         const total = Number((data as any).page?.total ?? (data as any).page?.Total ?? item.count ?? 0) || 0;
         setListTotal(total);
         if (append) setListCards(prev => [...prev, ...cards]); else setListCards(cards);

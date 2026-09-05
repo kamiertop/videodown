@@ -3,7 +3,6 @@ package download
 // Task 是前端提交给后端的最小下载任务；流地址已经由前端按用户选择的画质/音质确定。
 type Task struct {
 	SourceName string `json:"sourceName"`
-	SourceKind string `json:"sourceKind"`
 	UpperName  string `json:"upperName"`
 	Bvid       string `json:"bvid"`
 	// Cid 为分 P 稿件某一 P 的 cid；单 P 或未填时为 0，行为与旧版一致。

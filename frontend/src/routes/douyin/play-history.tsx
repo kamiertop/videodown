@@ -71,15 +71,15 @@ function historyTitle(item: HistoryItem): string {
 }
 
 function historyCover(item: HistoryItem): string {
-  return item.video?.cover?.url_list?.[0]
-      ?? item.video?.origin_cover?.url_list?.[0]
-      ?? item.video?.dynamic_cover?.url_list?.[0]
-      ?? "";
+  return [
+    ...(item.video?.raw_cover?.url_list ?? []),
+    ...(item.video?.cover?.url_list ?? []),
+    ...(item.video?.origin_cover?.url_list ?? []),
+  ][0] ?? "";
 }
 
 function coverCandidates(item: HistoryItem): model.Cover[] {
   const covers = [
-    item.video?.dynamic_cover,
     item.video?.raw_cover,
     item.video?.cover,
     item.video?.origin_cover,
@@ -191,7 +191,6 @@ function toDownloadItem(item: HistoryItem): DouyinDownloadItem {
 
   return {
     awemeId,
-    sourceKind: "播放历史",
     sourceName: "抖音播放历史",
     title,
     cover,
