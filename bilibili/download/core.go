@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
+	"math/rand/v2"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -303,7 +303,7 @@ func (s *Service) sleepAfterTask(task Task) {
 		return
 	}
 
-	sleepTime = rand.Int63n(sleepTime)
+	sleepTime = rand.Int64N(sleepTime)
 	if sleepTime <= 0 {
 		return
 	}
@@ -319,6 +319,7 @@ func (s *Service) sleepAfterTask(task Task) {
 			SleepRemaining: remaining,
 			SleepTotal:     sleepTime,
 		})
+		time.Sleep(time.Second)
 	}
 	s.emitProgress(progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
 }

@@ -372,7 +372,7 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
     };
   }
 
-  async function runDownloadTasks(tasks: DownloadTask[]): Promise<{ success: number; failed: number }> {
+  async function runDownloadTasks(tasks: DownloadTask[]): Promise<{ success: number; failed: number; failedItems: MediaCardItem[] }> {
     // 所有待提交任务先置为下载中；真实字节进度由后端事件逐条刷新。
     for (const task of tasks) {
       const key = task.uiKey;
@@ -390,6 +390,7 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
         if (task.backendKey) pairs.push([task.backendKey, task.item]);
         return pairs;
       }));
+      const failedItems: MediaCardItem[] = [];
 
       // 后端返回每条任务的最终结果，前端只移除成功项，失败项保留给用户重试。
       for (const item of batch.results ?? []) {
@@ -399,15 +400,16 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
 
         if (item.error) {
           notify(`下载失败：${media.title}，${item.error}`, "error");
+          failedItems.push(media);
         } else {
           removeVideoAfterDownloadSuccess(media.bvid, item.cid);
         }
       }
 
-      return {success: batch.success ?? 0, failed: batch.failed ?? 0};
+      return {success: batch.success ?? 0, failed: batch.failed ?? 0, failedItems};
     } catch (e) {
       notify(e instanceof Error ? e.message : String(e), "error");
-      return {success: 0, failed: tasks.length};
+      return {success: 0, failed: tasks.length, failedItems: tasks.map((task) => task.item)};
     } finally {
       // 批量调用结束后清理按钮态；失败项仍留在列表，但进度条回到待下载状态。
       for (const task of tasks) {
@@ -426,55 +428,76 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
     }
   }
 
-  async function startDownload(items = videoList()): Promise<void> {
+  async function startDownload(items = videoList()): Promise<number> {
     // 默认下载当前列表里的全部视频；单个卡片下载会传入只含一个 item 的数组。
-    if (downloading()) return;
+    if (downloading()) return 0;
     if (items.length === 0) {
       notify("暂无可下载视频", "warning");
-      return;
+      return 0;
     }
 
     const tasks = buildDownloadTasks(items);
     if (tasks.length === 0) {
       notify("暂无可用流地址，请稍候重试", "warning");
-      return;
+      return 0;
     }
 
     setDownloading(true);
-    const {success, failed} = await runDownloadTasks(tasks);
+    let {success, failed, failedItems} = await runDownloadTasks(tasks);
+    if (failedItems.length > 0) {
+      notify(`有 ${failedItems.length} 个视频下载失败，其他任务完成后将自动重试`, "warning");
+      const retryTasks = buildDownloadTasks(failedItems);
+      if (retryTasks.length > 0) {
+        const retry = await runDownloadTasks(retryTasks);
+        success += retry.success;
+        failed = retry.failed;
+      }
+    }
 
     if (failed === 0) {
       notify(`下载完成：成功 ${success} 个`, "success");
-      return;
+      return success;
     }
     notify(`下载完成：成功 ${success} 个，失败 ${failed} 个`, "warning");
+    return success;
   }
 
-  async function downloadOne(item: MediaCardItem): Promise<void> {
+  async function downloadOne(item: MediaCardItem): Promise<number> {
     const key = bilibiliPlayResolveKey(item);
-    if (downloading() || (key && downloadingByBvid()[key])) return;
+    if (downloading() || (key && downloadingByBvid()[key])) return 0;
 
     const entry = entryForItem(item);
     if (entry?.status === "loading") {
       notify("视频还在解析中，请稍候", "warning");
-      return;
+      return 0;
     }
     if (entry?.status === "error") {
       notify(`解析失败：${entry.message}`, "error");
-      return;
+      return 0;
     }
 
     const tasks = buildDownloadTasks([item]);
     if (tasks.length === 0) {
       notify("暂无可用流地址，请稍候重试", "warning");
-      return;
+      return 0;
     }
 
     setDownloading(true);
-    const {failed} = await runDownloadTasks(tasks);
+    let {success, failed, failedItems} = await runDownloadTasks(tasks);
+    if (failedItems.length > 0) {
+      notify("下载失败，正在自动重试", "warning");
+      const retryTasks = buildDownloadTasks(failedItems);
+      if (retryTasks.length > 0) {
+        const retry = await runDownloadTasks(retryTasks);
+        success += retry.success;
+        failed = retry.failed;
+      }
+    }
     if (failed === 0) {
       notify(`下载完成：${item.title}`, "success");
+      return 1;
     }
+    return 0;
   }
 
   function canDownload(item: MediaCardItem): boolean {
