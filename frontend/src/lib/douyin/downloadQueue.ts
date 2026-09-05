@@ -1,7 +1,7 @@
-import {createSignal, onCleanup} from "solid-js";
-import {DownloadVideos} from "@bindings/github.com/kamiertop/videodown/douyin/api/douyin";
-import * as api from "@bindings/github.com/kamiertop/videodown/douyin/api/models";
+import {type Task} from "@bindings/github.com/kamiertop/videodown/douyin/download"
+import {DownloadVideos} from "@bindings/github.com/kamiertop/videodown/douyin/download/service.ts";
 import {Events} from "@wailsio/runtime";
+import {createSignal, onCleanup} from "solid-js";
 import {type DouyinDownloadItem, douyinVideoList, removeDouyinVideo} from "./store.ts";
 
 type ToastType = "error" | "success" | "info" | "warning";
@@ -20,7 +20,6 @@ export interface DouyinDownloadProgress {
   sleepTotal?: number;
 }
 
-type BackendTask = api.DouyinDownloadTask;
 
 const [downloading, setDownloading] = createSignal(false);
 const [downloadingByID, setDownloadingByID] = createSignal<Record<string, boolean>>({});
@@ -55,8 +54,8 @@ function hasDownloadURL(item: DouyinDownloadItem): boolean {
   return !!item.videoURL;
 }
 
-function toBackendTask(item: DouyinDownloadItem): BackendTask {
-  // 前端只提交最终选择好的下载地址和来源元数据；落盘目录由后端统一判断。
+function toTask(item: DouyinDownloadItem): Task {
+  // 前端只提交最终选择好地下载地址和来源元数据；落盘目录由后端统一判断。
   return ({
     awemeId: item.awemeId,
     sourceKind: item.sourceKind,
@@ -86,7 +85,7 @@ export function useDouyinDownloadQueue(showToast: ShowToast) {
   });
 
   // 后端按 awemeId 推送实时进度；成功后该条会被移出列表，失败则留在列表供用户重试。
-  function buildTasks(items: DouyinDownloadItem[]): BackendTask[] {
+  function buildTasks(items: DouyinDownloadItem[]): Task[] {
     const seen = new Set<string>();
     return items
         .filter((item) => {
@@ -96,7 +95,7 @@ export function useDouyinDownloadQueue(showToast: ShowToast) {
           seen.add(key);
           return true;
         })
-        .map(toBackendTask);
+        .map(toTask);
   }
 
   async function runTasks(items: DouyinDownloadItem[]): Promise<{ success: number; failed: number }> {

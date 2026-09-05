@@ -7,6 +7,7 @@ import (
 	bilibiliapi "github.com/kamiertop/videodown/bilibili/api"
 	"github.com/kamiertop/videodown/bilibili/download"
 	douyinapi "github.com/kamiertop/videodown/douyin/api"
+	douyinDown "github.com/kamiertop/videodown/douyin/download"
 	"github.com/kamiertop/videodown/internal/app"
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/internal/updater"
@@ -63,6 +64,7 @@ func main() {
 	douyin := douyinapi.New(log, store, wailsApp.Event)
 	updateService := updater.New(log, store, wailsApp.Event)
 	biliDownService := download.NewService(log, store, wailsApp.Event, bilibili.CookieFunc())
+	douyinDownService := douyinDown.New(log, store, wailsApp.Event, douyin.PublicHeaders())
 
 	wailsApp.RegisterService(application.NewService(bilibili))
 	wailsApp.RegisterService(application.NewService(douyin))
@@ -70,6 +72,7 @@ func main() {
 	wailsApp.RegisterService(application.NewService(controller))
 	wailsApp.RegisterService(application.NewService(updateService))
 	wailsApp.RegisterService(application.NewService(biliDownService))
+	wailsApp.RegisterService(application.NewService(douyinDownService))
 
 	app.SetupSystemTray(wailsApp, window, icon, controller)
 

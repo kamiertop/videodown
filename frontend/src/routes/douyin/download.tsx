@@ -1,7 +1,8 @@
+import {ParseVideo, VideoDetail} from "@bindings/github.com/kamiertop/videodown/douyin/api/douyin";
+import {DownloadCover} from "@bindings/github.com/kamiertop/videodown/douyin/download/service.ts";
+import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
 import {createFileRoute} from '@tanstack/solid-router'
 import {createSignal, For, type JSXElement, Show} from "solid-js";
-import {DownloadCover, ParseVideo, VideoDetail} from "@bindings/github.com/kamiertop/videodown/douyin/api/douyin";
-import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
 import MediaTypeBadge from "../../components/douyin/MediaTypeBadge.tsx";
 import EmptyState from "../../components/EmptyState.tsx";
 import NoCover from "../../components/NoCover.tsx";
@@ -26,6 +27,7 @@ import {
   updateDouyinVideoOption,
 } from "../../lib/douyin/store.ts";
 import {formatCount, formatDate, formatDuration} from "../../lib/format.ts";
+
 type AwemeItem = model.AwemeItem;
 
 export const Route = createFileRoute('/douyin/download')({
@@ -105,7 +107,8 @@ function DouyinDownloadCard(props: {
   const selectedOption = () => props.item.videoOptions?.find((option) => option.id === props.item.selectedVideoOptionId);
 
   return (
-      <article class="grid gap-3 rounded-lg border border-base-200 bg-base-100 p-2.5 shadow-sm md:grid-cols-[6rem_minmax(0,1fr)]">
+      <article
+          class="grid gap-3 rounded-lg border border-base-200 bg-base-100 p-2.5 shadow-sm md:grid-cols-[6rem_minmax(0,1fr)]">
         <div class="relative h-36 w-24 shrink-0 overflow-hidden rounded-lg bg-base-200">
           <Show when={props.item.cover} fallback={<NoCover/>}>
             <img
@@ -167,10 +170,12 @@ function DouyinDownloadCard(props: {
 
           <div class="flex flex-wrap items-center gap-2 text-xs text-base-content/55">
             <span>发布 {props.item.publishTime ? formatDate(props.item.publishTime) : "-"}</span>
-            <span
-                class="rounded-full bg-base-200 px-2 py-0.5 tabular-nums">赞 {formatCount(props.item.diggCount)}</span>
-            <span
-                class="rounded-full bg-base-200 px-2 py-0.5 tabular-nums">藏 {formatCount(props.item.collectCount)}</span>
+            <span class="rounded-full bg-base-200 px-2 py-0.5 tabular-nums">
+              赞 {formatCount(props.item.diggCount)}
+            </span>
+            <span class="rounded-full bg-base-200 px-2 py-0.5 tabular-nums">
+              藏 {formatCount(props.item.collectCount)}
+            </span>
           </div>
 
           <Show when={!props.canDownload}>
@@ -271,10 +276,10 @@ function DouyinDownloadPage(): JSXElement {
         publishTime: item.publishTime ?? 0,
         diggCount: item.diggCount ?? 0,
         collectCount: item.collectCount ?? 0,
-		videoURL: "",
-		imageURLs: [],
-		assets: [],
-		musicURL: "",
+        videoURL: "",
+        imageURLs: [],
+        assets: [],
+        musicURL: "",
       }));
       showToast(`封面已保存：${path}`, "success");
     } catch (error) {
