@@ -162,6 +162,7 @@ function DownLoad(): JSXElement {
   const [parsedGroup, setParsedGroup] = createSignal<ParsedVideoGroup | null>(null);
   const [selectedGroupIds, setSelectedGroupIds] = createSignal<number[]>([]);
   const [coverDownloadingIds, setCoverDownloadingIds] = createSignal<number[]>([]);
+  const [completedCount, setCompletedCount] = createSignal(0);
   const {message, type, showToast} = useToast();
   // 下载相关的副作用（监听 videoList、解析 DASH、接收进度事件）都集中在这个 hook 里。
   const queue = useBilibiliDownloadQueue(showToast);
@@ -361,8 +362,9 @@ function DownLoad(): JSXElement {
         <DownloadSummaryBar
             count={videoList().length}
             downloading={queue.downloading()}
-            onDownload={() => void queue.startDownload()}
+            onDownload={() => void queue.startDownload().then((count) => setCompletedCount((value) => value + count))}
             resolveProgress={queue.resolveProgress()}
+            completedCount={completedCount()}
         />
         <section class="mt-3 flex flex-1 flex-col gap-3 overflow-y-auto pr-4">
           <For each={videoList()}>
@@ -379,7 +381,7 @@ function DownLoad(): JSXElement {
                     onPickQn={(qn) => queue.handlePickQn(item, qn)}
                     onPickAudio={(audioId) => queue.handlePickAudio(item, audioId)}
                     onRemove={() => removeVideo(item.id)}
-                    onDownload={() => void queue.downloadOne(item)}
+                    onDownload={() => void queue.downloadOne(item).then((count) => setCompletedCount((value) => value + count))}
                     onRetry={() => queue.retryResolve(item)}
                 />
             )}

@@ -332,7 +332,7 @@ func (d *Service) sleepAfterTask(task Task) {
 			SleepRemaining: remaining,
 			SleepTotal:     sleepTime,
 		})
-		// TODO
+		time.Sleep(time.Second)
 	}
 	d.emitProgress(progress{AwemeID: task.AwemeID, Title: task.Title, Phase: "done", Percent: 100})
 }
