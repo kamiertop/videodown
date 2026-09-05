@@ -55,7 +55,7 @@ function FilenameSection(): JSXElement {
     try {
       const value = await GetFilenameTemplate();
       setTemplate(value);
-      setParts(value.match(/\{(?:title|source|author|folder|collection|publish_date|date|time|id|author_id)\}/g) || ["{title}"]);
+      setParts(value.match(/\{(?:title|source|author|folder|collection|publish_date|date|time|id|author_id)}/g) || ["{title}"]);
       setDefaultPath(await GetStorage().catch(() => "未设置"));
       setGrouping(await GetSavePreference().catch(() => true));
       setGroupRule(await GetGroupingRule().catch(() => "author_source"));
@@ -107,13 +107,33 @@ function FilenameSection(): JSXElement {
     setTemplate(next.join(separator()));
   }
 
+  function previewGroupingPath() {
+    if (!grouping() || groupRule() === "none") {
+      return "/";
+    }
+    return groupingPathInfo[groupRule()]?.path || "/";
+  }
+
+  const groupingPathInfo: Record<string, { path: string; desc: string }> = {
+    none: {path: "/", desc: "所有文件直接保存到下载目录"},
+    author: {path: "/作者名/", desc: "按视频作者分别保存到对应目录"},
+    source: {path: "/来源名/", desc: "收藏夹名称、合集或系列名称"},
+    author_source: {path: "/作者名/来源名/", desc: "先按作者，再按收藏夹、合集或系列分类保存"}
+  };
+
+  function groupingDescription(rule: string) {
+    return groupingPathInfo[rule]?.desc || "";
+  }
+
   return <>
-    <Show when={loaded()} fallback={
-      <div class="card bg-base-100 shadow-xl">
-        <div class="card-body"><span class="loading loading-dots loading-sm" aria-label="读取中"/>
-        </div>
-      </div>
-    }>
+    <Show when={loaded()}
+          fallback={
+            <div class="card bg-base-100 shadow-xl">
+              <div class="card-body">
+                <span class="loading loading-dots loading-sm" aria-label="读取中"/>
+              </div>
+            </div>
+          }>
       <div class="card bg-base-100 border border-base-300/60 shadow-xl max-w-4xl mx-auto overflow-hidden">
         <div class="card-body gap-6">
           <div><p class="label-text text-sm font-semibold mb-2">选择文件名内容</p>
@@ -133,37 +153,48 @@ function FilenameSection(): JSXElement {
               </For>
             </div>
           </div>
-          <div><p class="label-text text-sm font-semibold mb-2">当前顺序 <span
-              class="font-normal text-xs text-base-content/50">（拖动 ☰ 调整）</span></p>
+          <div>
+            <p class="label-text text-sm font-semibold mb-2">当前顺序
+              <span class="font-normal text-xs text-base-content/50">（拖动 ☰ 调整）</span>
+            </p>
             <DragDropProvider onDragEnd={({draggable, droppable}) => {
               if (droppable && draggable) {
                 const from = parts().indexOf(String(draggable.id));
                 const to = parts().indexOf(String(droppable.id));
                 if (from >= 0 && to >= 0 && from !== to) movePart(from, to);
               }
-            }}><DragDropSensors><SortableProvider ids={parts()}>
-              <div class="flex flex-wrap gap-2 min-h-10 rounded-lg border border-dashed border-base-300 p-2"><For
-                  each={parts()}>{(token) => <SortablePart id={token}
-                                                           label={fields.find(f => f[0] === token)?.[1] || token}/>}</For>
-              </div>
-            </SortableProvider></DragDropSensors></DragDropProvider>
+            }}>
+              <DragDropSensors>
+                <SortableProvider ids={parts()}>
+                  <div class="flex flex-wrap gap-2 min-h-10 rounded-lg border border-dashed border-base-300 p-2">
+                    <For each={parts()}>
+                      {(token) =>
+                          <SortablePart id={token} label={fields.find(f => f[0] === token)?.[1] || token}/>}
+                    </For>
+                  </div>
+                </SortableProvider>
+              </DragDropSensors>
+            </DragDropProvider>
           </div>
-          <div><p class="label-text text-sm font-semibold mb-2">字段之间的分隔符</p>
+          <div>
+            <p class="label-text text-sm font-semibold mb-2">字段之间的分隔符</p>
             <div class="flex flex-wrap gap-2">
-              <For each={[[" - ", "短横线"], ["_", "下划线"], [" ", "空格"], [" | ", "竖线"]]}>{(item) =>
-                  <button type="button"
-                          class={`btn btn-sm ${separator() === item[0] ? "btn-secondary" : "btn-outline"}`}
-                          onClick={() => {
-                            setSeparator(item[0]);
-                            setTemplate(parts().join(item[0]));
-                          }}>
-                    <span>{separator() === item[0] ? "✓" : "○"}</span>
-                    <span>{item[1]}</span>
-                    <span class="text-xl font-black leading-none min-w-5 text-center"
-                          aria-label={`分隔符 ${item[1]}`}>{item[0] === " " ? "·" : item[0].trim()}
-                  </span>
-                  </button>
-              }</For>
+              <For each={[[" - ", "短横线"], ["_", "下划线"], [" ", "空格"], [" | ", "竖线"]]}>
+                {(item) =>
+                    <button type="button"
+                            class={`btn btn-sm ${separator() === item[0] ? "btn-secondary" : "btn-outline"}`}
+                            onClick={() => {
+                              setSeparator(item[0]);
+                              setTemplate(parts().join(item[0]));
+                            }}>
+                      <span>{separator() === item[0] ? "✓" : "○"}</span>
+                      <span>{item[1]}</span>
+                      <span class="text-xl font-black leading-none min-w-5 text-center"
+                            aria-label={`分隔符 ${item[1]}`}>{item[0] === " " ? "·" : item[0].trim()}
+                      </span>
+                    </button>
+                }
+              </For>
             </div>
           </div>
           <div class="rounded-xl bg-base-200/70 border-2 border-primary/30 shadow-sm p-4">
@@ -180,23 +211,30 @@ function FilenameSection(): JSXElement {
           </label>
           <div class="rounded-xl border-2 border-secondary/30 bg-base-100 shadow-sm p-4">
             <div class="flex items-center justify-between gap-4">
-              <div><p class="font-semibold">目录分组规则</p><p
-                  class="text-xs text-base-content/50 mt-1">选择下载文件的目录组织方式</p></div>
+              <div>
+                <p class="font-semibold">目录分组规则</p>
+                <p class="text-xs text-base-content/50 mt-1">选择下载文件的目录组织方式</p>
+              </div>
               <input type="checkbox" class="toggle toggle-primary" checked={grouping()}
                      onChange={e => setGrouping(e.currentTarget.checked)}/>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-4" classList={{"opacity-50": !grouping()}}>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4" classList={{"opacity-50": !grouping()}}>
               <For
-                  each={[["none", "不分组"], ["author", "按作者"], ["author_source", "作者 + 来源"]]}>{item => <button
-                  type="button" disabled={!grouping()}
-                  class={`btn btn-sm ${groupRule() === item[0] ? "btn-primary" : "btn-outline"}`}
-                  onClick={() => setGroupRule(item[0])}>{item[1]}</button>}
+                  each={[["none", "不分组"], ["author", "按作者"], ["author_source", "作者 + 来源"], ["source", "来源"]]}>
+                {item => (
+                    <button
+                        type="button" disabled={!grouping()}
+                        title={groupingDescription(item[0])}
+                        class={`btn btn-sm whitespace-nowrap px-2 sm:px-3 ${groupRule() === item[0] ? "btn-primary" : "btn-outline"}`}
+                        onClick={() => setGroupRule(item[0])}>{item[1]}
+                    </button>
+                )}
               </For>
             </div>
             <div class="mt-4 rounded-lg bg-base-200/70 border border-secondary/30 px-3 py-2 text-sm">
               <span class="text-base-content/50">示例路径：</span>
               <code>
-                {defaultPath()}{!grouping() ? "/" : groupRule() === "none" ? "/" : groupRule() === "author" ? "/作者名/" : "/作者名/收藏夹名/"}{template() || "视频标题"}.mp4
+                {defaultPath()}{previewGroupingPath()}{template() || "视频标题"}.mp4
               </code>
             </div>
           </div>
