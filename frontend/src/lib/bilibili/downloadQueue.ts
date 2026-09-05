@@ -358,7 +358,6 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
   function toBackendTask(task: DownloadTask): Task {
     return {
       sourceName: task.item.sourceListName ?? "",
-      sourceKind: task.item.sourceListKind ?? "",
       upperName: task.item.upperName ?? "",
       bvid: task.bvid,
       cid: task.cid,

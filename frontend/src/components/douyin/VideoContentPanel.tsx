@@ -30,10 +30,17 @@ function awemeKey(item: model.AwemeItem, index: number): string {
 }
 
 function awemeCover(item: model.AwemeItem): string {
-  return item.video?.cover?.url_list?.[0]
-      ?? item.video?.origin_cover?.url_list?.[0]
-      ?? item.images?.[0]?.url_list?.[0]
-      ?? "";
+  return awemeCoverCandidates(item)[0] ?? "";
+}
+
+function awemeCoverCandidates(item: model.AwemeItem): string[] {
+  const candidates = [
+    ...(item.video?.raw_cover?.url_list ?? []),
+    ...(item.video?.cover?.url_list ?? []),
+    ...(item.video?.origin_cover?.url_list ?? []),
+    ...(item.images?.[0]?.url_list ?? []),
+  ];
+  return [...new Set(candidates.filter(Boolean))];
 }
 
 function awemeTitle(item: model.AwemeItem): string {
@@ -97,23 +104,6 @@ function emptyDescription(kind: DouyinVideoContentKind): string {
   }
 }
 
-export function douyinSourceKind(kind: DouyinVideoContentKind): string {
-  switch (kind) {
-    case "favorite-video":
-      return "收藏视频";
-    case "user-video":
-      return "用户作品";
-    case "follow-dynamic":
-      return "关注动态";
-    case "favorite-collection":
-      return "收藏夹";
-    case "favorite-mix":
-      return "收藏合集";
-    case "user-mix":
-      return "用户合集";
-  }
-}
-
 // 统一的视频内容面板：收藏视频、用户作品、收藏夹详情和合集详情都使用这一套选择/下载/分页 UI。
 export default function VideoContentPanel(props: {
   kind: DouyinVideoContentKind;
@@ -123,7 +113,7 @@ export default function VideoContentPanel(props: {
   onRetry?: () => void;
   title?: string;
   items: readonly model.AwemeItem[];
-  // sourceName 是具体来源名，例如某个合集名或用户昵称；sourceKind 由 kind 推导。
+  // sourceName 是具体来源名，例如某个合集名或用户昵称。
   sourceName: string;
   fallbackAuthor: string;
   showToast: (message: string, type?: "success" | "error" | "warning" | "info") => void;
@@ -162,6 +152,7 @@ export default function VideoContentPanel(props: {
         return {
           id: awemeKey(item, index),
           cover,
+          coverCandidates: awemeCoverCandidates(item),
           title,
           author,
           publishText: formatDate(item.create_time ?? 0),
@@ -169,7 +160,6 @@ export default function VideoContentPanel(props: {
           isTop: item.is_top === 1,
           downloadItem: {
             awemeId,
-            sourceKind: douyinSourceKind(props.kind),
             sourceName: props.sourceName,
             title,
             cover,

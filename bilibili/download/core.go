@@ -224,10 +224,6 @@ func (s *Service) downloadDashTask(task Task) (string, error) {
 	template, _ := s.store.FilenameTemplate()
 	now := time.Now()
 	values := map[string]string{"title": task.Title, "id": task.Bvid, "author": task.UpperName, "author_id": "", "source": task.SourceName, "folder": "", "collection": task.SourceName, "publish_date": "", "date": now.Format("2006-01-02"), "time": now.Format("15-04-05")}
-	if strings.TrimSpace(task.SourceKind) == "收藏夹" {
-		values["folder"] = task.SourceName
-		values["collection"] = ""
-	}
 	if task.Pubtime > 0 {
 		values["publish_date"] = time.Unix(int64(task.Pubtime), 0).Format("2006-01-02")
 	}
@@ -291,7 +287,6 @@ func (s *Service) downloadDashTask(task Task) (string, error) {
 func (s *Service) DownloadVideoByDash(sourceName, bvid, title, videoURL, audioURL string) (string, error) {
 	return s.downloadDashTask(Task{
 		SourceName: sourceName,
-		SourceKind: "",
 		UpperName:  "",
 		Bvid:       bvid,
 		Title:      title,

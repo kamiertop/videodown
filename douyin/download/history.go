@@ -22,7 +22,6 @@ type HistoryItem struct {
 	DiggCount    int    `json:"diggCount"`
 	CollectCount int    `json:"collectCount"`
 	SourceName   string `json:"sourceName"`
-	SourceKind   string `json:"sourceKind"`
 	Path         string `json:"path"`
 	IsImageAlbum bool   `json:"isImageAlbum"`
 	ImageCount   int    `json:"imageCount"`
@@ -105,7 +104,6 @@ func (d *Service) markDownloaded(task Task, path string, isImageAlbum bool, imag
 		DiggCount:    task.DiggCount,
 		CollectCount: task.CollectCount,
 		SourceName:   strings.TrimSpace(task.SourceName),
-		SourceKind:   strings.TrimSpace(task.SourceKind),
 		Path:         path,
 		IsImageAlbum: isImageAlbum,
 		ImageCount:   imageCount,

@@ -86,7 +86,6 @@ func (s *Service) markDownloaded(task Task, path string, downloadKind string) {
 		Danmaku:      task.Danmaku,
 		Pubtime:      task.Pubtime,
 		SourceName:   strings.TrimSpace(task.SourceName),
-		SourceKind:   strings.TrimSpace(task.SourceKind),
 		Path:         path,
 		DownloadKind: downloadKind,
 		Downloaded:   time.Now().Format(time.RFC3339Nano),

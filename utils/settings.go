@@ -111,7 +111,7 @@ func (s *Settings) GetGroupingRule() (string, error) {
 
 func (s *Settings) SetGroupingRule(rule string) error {
 	// 方便扩展
-	if !slices.Contains([]string{"none", "author", "author_source"}, rule) {
+	if !slices.Contains([]string{"none", "author", "author_source", "source"}, rule) {
 		return errors.New("无效的分组规则")
 	}
 

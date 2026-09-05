@@ -40,7 +40,6 @@ function toCollectionMediaCards(medias: model.CollectionItemMedias[], listName: 
     danmaku: media.cnt_info?.danmaku,
     pubtime: media.pubtime,
     sourceListName: name,
-    sourceListKind: '合集',
   }));
 }
 
