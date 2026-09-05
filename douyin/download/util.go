@@ -95,24 +95,18 @@ func (d *Service) resolveDownloadDir(storagePath string, task Task) (string, err
 		return storagePath, nil
 	}
 	rule, _ := d.store.Get(constant.GroupingRuleKey)
-	if rule == "none" {
-		return storagePath, nil
-	}
+
+	sourceName := utils.FileName(task.SourceName)
 	author := utils.FileName(task.AuthorName)
-	if author == "" {
-		author = "未知作者"
-	}
 
-	authorDir := filepath.Join(storagePath, author)
-	if rule == "author" {
-		return authorDir, nil
+	switch rule {
+	case "source":
+		return filepath.Join(storagePath, sourceName), nil
+	case "author":
+		return filepath.Join(storagePath, author), nil
+	case "author_source":
+		return filepath.Join(storagePath, author, sourceName), nil
+	default:
+		return filepath.Join(storagePath), nil
 	}
-	switch strings.TrimSpace(task.SourceKind) {
-	case "收藏夹", "合集", "收藏合集", "用户合集":
-		if sourceName := utils.FileName(task.SourceName); sourceName != "" {
-			return filepath.Join(authorDir, sourceName), nil
-		}
-	}
-
-	return authorDir, nil
 }
