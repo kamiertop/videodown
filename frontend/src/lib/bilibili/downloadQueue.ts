@@ -1,7 +1,9 @@
-import {createEffect, createMemo, createSignal, onCleanup} from "solid-js";
-import {BatchResolvePlayUrl, DownloadVideosByDash} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
+import {BatchResolvePlayUrl} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
 import * as api from "@bindings/github.com/kamiertop/videodown/bilibili/api/models";
+import type {Task} from "@bindings/github.com/kamiertop/videodown/bilibili/download";
+import {DownloadVideosByDash} from "@bindings/github.com/kamiertop/videodown/bilibili/download/service.ts";
 import {Events} from "@wailsio/runtime";
+import {createEffect, createMemo, createSignal, onCleanup} from "solid-js";
 import type {MediaCardItem} from "../model.ts";
 import {
   bilibiliPlayResolveKey,
@@ -51,7 +53,6 @@ interface DownloadTask {
   audioURL: string;
 }
 
-type DashDownloadTask = api.DashDownloadTask;
 // 解析播放地址是异步副作用。这个 Set 防止 Solid effect 重跑时对同一个 BV 重复发起解析请求。
 const playResolveInFlight = new Set<string>();
 const [playResolveByBvid, setPlayResolveByBvid] = createSignal<Record<string, PlayResolveEntry>>({});
@@ -353,8 +354,8 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
         .filter((v): v is DownloadTask => v !== null);
   }
 
-  // 后端批量接口只需要稳定的下载参数；目录规则由后端根据 kind/upperName/sourceName 统一判断。
-  function toBackendTask(task: DownloadTask): DashDownloadTask {
+  // 后端批量接口只需要稳定地下载参数；目录规则由后端根据 kind/upperName/sourceName 统一判断。
+  function toBackendTask(task: DownloadTask): Task {
     return {
       sourceName: task.item.sourceListName ?? "",
       sourceKind: task.item.sourceListKind ?? "",
@@ -382,7 +383,7 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
     }
 
     try {
-      // 真正的并发下载、休眠控制、缓存判断都在后端完成；前端只提交任务列表并等待最终结果。
+      // 真正地并发下载、休眠控制、缓存判断都在后端完成；前端只提交任务列表并等待最终结果。
       const batch = await DownloadVideosByDash(tasks.map(toBackendTask));
       const byKey = new Map(tasks.flatMap((task) => {
         const pairs: Array<[string, MediaCardItem]> = [];

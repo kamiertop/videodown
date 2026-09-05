@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/internal/constant"
 )
 
 func (b *BiliBili) FollowList(pn, ps int) (model.FollowData, error) {
@@ -32,9 +33,9 @@ func (b *BiliBili) FollowList(pn, ps int) (model.FollowData, error) {
 			webLocation:   "333.1387",
 		}).
 		SetHeaders(publicHeaders()).
-		SetHeader(Origin, spaceOrigin).
-		SetHeader(Referer, fmt.Sprintf("https://space.bilibili.com/%s/relation/follow", myMid)).
-		SetHeader(Cookie, cookies).
+		SetHeader(constant.Origin, spaceOrigin).
+		SetHeader(constant.Referer, fmt.Sprintf("https://space.bilibili.com/%s/relation/follow", myMid)).
+		SetHeader(constant.Cookie, cookies).
 		Do().
 		Into(&resp)
 	if err != nil {
