@@ -1,5 +1,5 @@
 import {useNavigate} from "@tanstack/solid-router";
-import {createEffect, createMemo, createSignal, type JSXElement, Match, Switch} from "solid-js";
+import {createEffect, createMemo, createSignal, type JSXElement, Match, Show, Switch} from "solid-js";
 import {createStore} from "solid-js/store";
 import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
 import {
@@ -113,6 +113,8 @@ export default function VideoContentPanel(props: {
   onRetry?: () => void;
   title?: string;
   items: readonly model.AwemeItem[];
+  /** 后端返回的总作品数（用户详情页使用 aweme_count）。 */
+  totalCount?: number;
   // sourceName 是具体来源名，例如某个合集名或用户昵称。
   sourceName: string;
   fallbackAuthor: string;
@@ -122,6 +124,8 @@ export default function VideoContentPanel(props: {
   hasMore?: boolean;
   loadingMore?: boolean;
   onLoadMore?: () => void;
+  /** 一键下载前自动加载完剩余分页；完成后使用最新 items 组建下载队列。 */
+  prepareDownloadAll?: (onStatus?: (message: string) => void) => Promise<void>;
 }): JSXElement {
   const navigate = useNavigate();
   // allSelected=true 时表示“当前已加载视频默认都选中”，selectedMap 存的是排除项。
@@ -129,6 +133,8 @@ export default function VideoContentPanel(props: {
   const [allSelected, setAllSelected] = createSignal(false);
   // createStore 方便按 id 删除单个选择项；值固定为 true，不存额外数据。
   const [selectedMap, setSelectedMap] = createStore<Record<string, true>>({});
+  const [downloadAllLoading, setDownloadAllLoading] = createSignal(false);
+  const [downloadAllStatus, setDownloadAllStatus] = createSignal("正在加载全部视频");
 
   function clearSelection(): void {
     setAllSelected(false);
@@ -272,6 +278,7 @@ export default function VideoContentPanel(props: {
           <VideoGrid
               title={props.title ?? defaultTitle(props.kind)}
               items={videoItems()}
+              totalCount={props.totalCount}
               selectedCount={selectedCount()}
               allSelected={allVideosSelected()}
               selectedClass={videoCardClass}
@@ -279,13 +286,33 @@ export default function VideoContentPanel(props: {
               onToggleAll={toggleSelectAll}
               onClearSelection={clearSelection}
               onDownloadSelected={() => void enqueueAndGoDownload(selectedDownloadItems())}
-              onDownloadAll={() => void enqueueAndGoDownload(videoItems().map((item) => item.downloadItem))}
+              onDownloadAll={async () => {
+                if (downloadAllLoading()) return;
+                setDownloadAllLoading(true);
+                try {
+                  setDownloadAllStatus("正在加载全部视频");
+                  await props.prepareDownloadAll?.(setDownloadAllStatus);
+                  await enqueueAndGoDownload(videoItems().map((item) => item.downloadItem));
+                } finally {
+                  setDownloadAllLoading(false);
+                }
+              }}
               refreshing={props.refreshing}
               onRefresh={props.onRefresh}
               hasMore={props.hasMore}
               loadingMore={props.loadingMore}
               onLoadMore={props.onLoadMore}
           />
+          <Show when={downloadAllLoading()}>
+            <div class="fixed inset-0 z-40 grid place-items-center bg-base-300/45 p-4 backdrop-blur-[2px]">
+              <div class="w-full max-w-sm rounded-xl border border-base-300 bg-base-100 p-5 text-center shadow-2xl">
+                <h3 class="text-base font-semibold text-base-content">{downloadAllStatus()}</h3>
+                <p class="mt-1 text-xs text-base-content/60">请稍候，完成后将自动加入下载队列</p>
+                <progress class="progress progress-primary mt-4 w-full" />
+                <p class="mt-2 text-xs tabular-nums text-base-content/55">已加载 {videoItems().length} 个视频</p>
+              </div>
+            </div>
+          </Show>
         </Match>
       </Switch>
   );

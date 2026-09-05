@@ -65,6 +65,19 @@ func (s *Store) SleepTime() (int64, error) {
 	return seconds, nil
 }
 
+func (s *Store) BulkDownloadSleepTime() (int64, error) {
+	value, err := s.Get(constant.BulkDownloadSleepTimeKey)
+	if err != nil {
+		return 0, err
+	}
+	seconds, err := strconv.ParseInt(value, 10, 64)
+	if err != nil {
+		return 0, nil
+	}
+
+	return seconds, nil
+}
+
 func (s *Store) ConcurrencyNum() (int, error) {
 	value, err := s.Get(constant.ConcurrencyNumKey)
 	if err != nil {

@@ -5,6 +5,7 @@ import DetailLoading from "../DetailLoading.tsx";
 import EmptyState from "../EmptyState.tsx";
 import CollectionSidebar, {type CollectionSidebarItem} from "./CollectionSidebar.tsx";
 import VideoContentPanel, {type DouyinVideoContentKind} from "./VideoContentPanel.tsx";
+import {waitBulkDownloadPage} from "../../lib/douyin/bulkDownloadThrottle.ts";
 
 export type DouyinListItem = model.CollectsList | model.CollectionItem | model.SeriesInfoItem;
 
@@ -51,6 +52,7 @@ function CollectionPage<T>(props: {
   contentHasMore: boolean;
   contentLoadingMore: boolean;
   onContentLoadMore: () => void;
+  onContentPrepareDownloadAll: (onStatus?: (message: string) => void) => Promise<void>;
 }): JSXElement {
   return (
     <div classList={{"flex h-full min-h-0 w-full flex-1": props.active, "hidden": !props.active}}>
@@ -96,6 +98,7 @@ function CollectionPage<T>(props: {
                 hasMore={props.contentHasMore}
                 loadingMore={props.contentLoadingMore}
                 onLoadMore={props.onContentLoadMore}
+                prepareDownloadAll={props.onContentPrepareDownloadAll}
               />
             </Show>
           </main>
@@ -211,6 +214,7 @@ export default function CollectionVideoPanel(props: {
   let detailRequestSeq = 0;
   let loadedSourceKey = "";
   let observedRefreshKey: unknown = props.refreshKey;
+  let autoLoadingList = false;
 
   function resetState(): void {
     setItems(EMPTY_LIST);
@@ -298,6 +302,32 @@ export default function CollectionVideoPanel(props: {
     }
   }
 
+  async function loadAllListItems(): Promise<void> {
+    if (autoLoadingList) return;
+    autoLoadingList = true;
+    try {
+      while (listHasMore()) {
+        const before = items().length;
+        await loadItems(true);
+        if (items().length === before) break;
+      }
+    } finally {
+      autoLoadingList = false;
+    }
+  }
+
+  async function prepareAllDetailVideos(onStatus?: (message: string) => void): Promise<void> {
+    const item = selectedItem();
+    if (!item) return;
+    // 一键下载自动请求当前收藏夹/合集的所有分页。
+      while (detailHasMore()) {
+        const before = detailVideos().length;
+        await waitBulkDownloadPage(onStatus);
+        await loadDetail(item, true);
+      if (detailVideos().length === before) break;
+    }
+  }
+
   createEffect(() => {
     if (!props.active) return;
     if (loadedSourceKey !== props.sourceKey) {
@@ -308,7 +338,9 @@ export default function CollectionVideoPanel(props: {
       observedRefreshKey = props.refreshKey;
       resetState();
     }
-    if (!loadedOnce()) void loadItems();
+    if (!loadedOnce()) {
+      void loadItems().then(() => void loadAllListItems());
+    }
   });
 
   const sidebarItems = createMemo<CollectionSidebarItem<DouyinListItem>[]>(() =>
@@ -373,6 +405,7 @@ export default function CollectionVideoPanel(props: {
         const item = selectedItem();
         if (item) void loadDetail(item, true);
       }}
+      onContentPrepareDownloadAll={prepareAllDetailVideos}
     />
   );
 }

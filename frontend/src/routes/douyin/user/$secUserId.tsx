@@ -11,6 +11,7 @@ import VideoContentPanel from "../../../components/douyin/VideoContentPanel.tsx"
 import Toast from "../../../components/Toast.tsx";
 import {useToast} from "../../../hooks/useToast.ts";
 import {formatCount} from "../../../lib/format.ts";
+import {waitBulkDownloadPage} from "../../../lib/douyin/bulkDownloadThrottle.ts";
 
 export const Route = createFileRoute('/douyin/user/$secUserId')({
   component: DouyinUserPage,
@@ -158,6 +159,15 @@ function DouyinUserPage(): JSXElement {
     }
   }
 
+  async function prepareAllUserVideos(onStatus?: (message: string) => void): Promise<void> {
+    while (hasMore()) {
+      const before = videos().length;
+      await waitBulkDownloadPage(onStatus);
+      await loadMore();
+      if (videos().length === before) break;
+    }
+  }
+
   async function reload(): Promise<void> {
     if (activeTab() === "series") {
       setSeriesRefreshKey((value) => value + 1);
@@ -235,6 +245,7 @@ function DouyinUserPage(): JSXElement {
                   error={!isCookieError() ? errorMessage() : ""}
                   onRetry={() => void reload()}
                   items={videos()}
+                  totalCount={user()?.aweme_count}
                   sourceName={user()?.nickname || "用户作品"}
                   fallbackAuthor={user()?.nickname || "未知作者"}
                   showToast={showToast}
@@ -243,6 +254,7 @@ function DouyinUserPage(): JSXElement {
                   hasMore={hasMore()}
                   loadingMore={loadingMore()}
                   onLoadMore={() => void loadMore()}
+                  prepareDownloadAll={prepareAllUserVideos}
                 />
               </div>
 

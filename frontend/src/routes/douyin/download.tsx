@@ -243,6 +243,7 @@ function DouyinDownloadPage(): JSXElement {
   const [videoURL, setVideoURL] = createSignal("");
   const [parsing, setParsing] = createSignal(false);
   const [coverDownloadingIDs, setCoverDownloadingIDs] = createSignal<string[]>([]);
+  const [completedCount, setCompletedCount] = createSignal(0);
   const {message, type, showToast} = useToast();
   // 下载状态集中在 hook 中，页面只负责渲染列表和把用户操作转发给队列。
   const queue = useDouyinDownloadQueue(showToast);
@@ -357,19 +358,25 @@ function DouyinDownloadPage(): JSXElement {
 
         </section>
 
-        <Show when={douyinVideoList().length > 0}>
+        <Show when={douyinVideoList().length > 0 || completedCount() > 0}>
           <section class="mt-2 flex flex-row items-center justify-between rounded-lg p-3 shadow-sm">
             <div class="flex min-w-0 flex-1 flex-col gap-1">
               <div class="flex items-center gap-2">
-                <div class="badge badge-primary">{douyinVideoList().length}</div>
-                <span class="text-xs">个内容待下载</span>
+                <Show when={douyinVideoList().length > 0}>
+                  <div class="badge badge-primary">{douyinVideoList().length}</div>
+                  <span class="text-xs">个内容待下载</span>
+                </Show>
+                <Show when={completedCount() > 0}>
+                  <div class="badge badge-success">{completedCount()}</div>
+                  <span class="text-xs text-success">个内容已完成</span>
+                </Show>
               </div>
             </div>
             <button
                 class="btn btn-success btn-xs gap-1.5"
                 type="button"
-                onClick={() => void queue.startDownload()}
-                disabled={queue.downloading()}
+              onClick={() => void queue.startDownload().then((count) => setCompletedCount((value) => value + count))}
+              disabled={queue.downloading()}
             >
               {queue.downloading() ? "下载中..." : "开始下载"}
             </button>
@@ -392,14 +399,14 @@ function DouyinDownloadPage(): JSXElement {
                         progress={queue.progressFor(item)}
                         coverDownloading={coverDownloadingIDs().includes(item.awemeId)}
                         onDownloadCover={() => void downloadCover(item)}
-                        onDownload={() => void queue.downloadOne(item)}
+                        onDownload={() => void queue.downloadOne(item).then((count) => setCompletedCount((value) => value + count))}
                     />
                 )}
               </For>
             </div>
           </Show>
         </div>
-        <Toast message={message()} type={type()}/>
+        <Toast message={message()} type={type()} topClass="top-32 md:top-36"/>
       </section>
   )
 }

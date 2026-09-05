@@ -17,6 +17,13 @@ export function GetBilibiliDefaultQN(): $CancellablePromise<string> {
 }
 
 /**
+ * GetBulkDownloadSleepTime 获取一键下载全部时分页请求之间的休眠时间（秒）。
+ */
+export function GetBulkDownloadSleepTime(): $CancellablePromise<number> {
+    return $Call.ByID(1695548289);
+}
+
+/**
  * GetCloseToTray 获取关闭按钮行为设置。
  */
 export function GetCloseToTray(): $CancellablePromise<boolean> {
@@ -124,6 +131,13 @@ export function OpenDownloadLocation(path: string): $CancellablePromise<void> {
  */
 export function OpenLocalFile(path: string): $CancellablePromise<void> {
     return $Call.ByID(2344555772, path);
+}
+
+/**
+ * SetBulkDownloadSleepTime 保存一键下载全部时分页请求之间的休眠时间（秒）。
+ */
+export function SetBulkDownloadSleepTime(seconds: number): $CancellablePromise<void> {
+    return $Call.ByID(3552900829, seconds);
 }
 
 /**
