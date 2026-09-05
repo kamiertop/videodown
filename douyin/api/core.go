@@ -3,7 +3,6 @@ package api
 import (
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/imroc/req/v3"
@@ -18,14 +17,10 @@ const (
 )
 
 type Douyin struct {
-	logger         *logger.Logger
-	client         *req.Client
-	downloadClient *req.Client
-	store          *storage.Store
-	events         *application.EventManager
-	progressMu     sync.Mutex
-	progressByID   map[string]float64
-	webId          struct {
+	logger *logger.Logger
+	client *req.Client
+	store  *storage.Store
+	webId  struct {
 		value       string
 		lastUpdated time.Time
 	}
@@ -46,12 +41,9 @@ func New(log *logger.Logger, store *storage.Store, events *application.EventMana
 	}
 
 	return &Douyin{
-		logger:         log.WithName("Douyin"),
-		client:         client,
-		downloadClient: client.Clone().SetTimeout(0), // 下载流单独走 downloadClient，避免长视频下载受超时影响
-		store:          store,
-		events:         events,
-		progressByID:   make(map[string]float64),
+		logger: log.WithName("Douyin"),
+		client: client,
+		store:  store,
 	}
 }
 
