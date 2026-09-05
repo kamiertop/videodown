@@ -5,7 +5,7 @@ import DetailLoading from "../DetailLoading.tsx";
 import EmptyState from "../EmptyState.tsx";
 import CollectionSidebar, {type CollectionSidebarItem} from "./CollectionSidebar.tsx";
 import VideoContentPanel, {type DouyinVideoContentKind} from "./VideoContentPanel.tsx";
-import {waitBulkDownloadPage} from "../../lib/douyin/bulkDownloadThrottle.ts";
+import {waitBulkDownloadPage} from "../../lib/bulkDownloadThrottle.ts";
 
 export type DouyinListItem = model.CollectsList | model.CollectionItem | model.SeriesInfoItem;
 

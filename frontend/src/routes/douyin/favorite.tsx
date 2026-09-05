@@ -16,7 +16,7 @@ import CollectionVideoPanel, {
 import VideoContentPanel from "../../components/douyin/VideoContentPanel.tsx";
 import Toast from "../../components/Toast.tsx";
 import {useToast} from "../../hooks/useToast.ts";
-import {waitBulkDownloadPage} from "../../lib/douyin/bulkDownloadThrottle.ts";
+import {waitBulkDownloadPage} from "../../lib/bulkDownloadThrottle.ts";
 
 export const Route = createFileRoute('/douyin/favorite')({
   component: DouyinFavoritePage,
