@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/internal/constant"
 )
 
 // FavoritesList 获取自己的收藏列表，这里不处理他人的收藏列表了
@@ -26,7 +27,7 @@ func (b *BiliBili) FavoritesList() (model.FavoritesData, error) {
 		Get("https://api.bilibili.com/x/v3/fav/folder/created/list-all").
 		SetQueryParam("up_mid", mid).SetQueryParam(webLocation, "333.1387").
 		SetHeaders(publicHeaders()).
-		SetHeader(Cookie, cookie).
+		SetHeader(constant.Cookie, cookie).
 		Do().
 		Into(&resp); err != nil {
 		b.logger.Errorf("get favorites list error: %v", err)
@@ -73,7 +74,7 @@ func (b *BiliBili) Favorites(mediaId, pn, ps int) (model.FavoriteData, error) {
 		}).
 		SetHeader("Cookie", cookies).
 		SetHeaders(publicHeaders()).
-		SetHeader(Origin, spaceOrigin).
+		SetHeader(constant.Origin, spaceOrigin).
 		Do().
 		Into(&resp); err != nil {
 		b.logger.Errorf("request favorites error: %v", err)

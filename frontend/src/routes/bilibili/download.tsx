@@ -1,7 +1,8 @@
+import {VideoDetailConciseBvid} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
+import {DownloadCover} from "@bindings/github.com/kamiertop/videodown/bilibili/download/service.ts";
+import {HasFFmpeg} from "@bindings/github.com/kamiertop/videodown/utils/settings";
 import {createFileRoute} from "@tanstack/solid-router";
 import {createMemo, createSignal, For, type JSXElement, onMount, Show} from "solid-js";
-import {DownloadCover, VideoDetailConciseBvid} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
-import {HasFFmpeg} from "@bindings/github.com/kamiertop/videodown/utils/settings";
 import DownloadInputBar from "../../components/bilibili/downloadPage/DownloadInputBar.tsx";
 import DownloadSummaryBar from "../../components/bilibili/downloadPage/DownloadSummaryBar.tsx";
 import DownloadVideoCard from "../../components/bilibili/downloadPage/DownloadVideoCard.tsx";
@@ -231,8 +232,8 @@ function DownLoad(): JSXElement {
         play: item.play ?? 0,
         danmaku: item.danmaku ?? 0,
         pubtime: item.pubtime ?? 0,
-		videoURL: "",
-		audioURL: "",
+        videoURL: "",
+        audioURL: "",
       }));
       showToast(`封面已保存：${path}`, "success");
     } catch (e) {
