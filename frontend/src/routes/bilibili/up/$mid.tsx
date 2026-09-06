@@ -14,6 +14,7 @@ import SidebarList from "../../../components/SidebarList.tsx";
 import Toast from "../../../components/Toast";
 import VideoListSection from "../../../components/bilibili/VideoListSection.tsx";
 import {useToast} from "../../../hooks/useToast";
+import {waitBulkDownloadPage} from "../../../lib/bulkDownloadThrottle.ts";
 import {parseBilibiliLengthToSeconds} from "../../../lib/format";
 import type {MediaCardItem} from "../../../lib/model.ts";
 
@@ -148,6 +149,7 @@ function UpDetail(): JSXElement {
                     hasMore={logic.hasMoreVideos}
                     loadingMore={logic.videoLoadingMore}
                     onLoadMore={() => void logic.loadVideoList(true)}
+                    prepareDownloadAll={logic.prepareAllVideos}
                   />
                 </Match>
               </Switch>
@@ -225,6 +227,7 @@ function UpDetail(): JSXElement {
                           hasMore={logic.hasMoreListVideos}
                           loadingMore={logic.listLoadingMore}
                           onLoadMore={() => void logic.handleLoadMoreList()}
+                          prepareDownloadAll={logic.prepareAllListVideos}
                         />
                       </Match>
                     </Switch>
@@ -352,7 +355,6 @@ function createUpDetailLogic(
 	      pubtime: v.created,
 	      // 全部投稿只传作者名作来源；是否进一步展开分 P 由加入下载队列时的详情接口决定。
 	      sourceListName: upperName,
-	      sourceListKind: '全部投稿',
 	    }));
 	  };
 
@@ -442,10 +444,8 @@ function createUpDetailLogic(
     archives: any[] | undefined,
     upperName: string,
     listName: string,
-    listKind: string,
   ): MediaCardItem[] => {
     const name = listName.trim();
-    const kind = listKind.trim();
     return (archives ?? []).map((a: any) => ({
       id: Number(a.aid) || 0,
       title: a.title ?? '',
@@ -457,7 +457,6 @@ function createUpDetailLogic(
       danmaku: a.stat?.danmaku,
       pubtime: a.pubdate ?? a.pubDate,
       sourceListName: name,
-      sourceListKind: kind,
     }));
   };
 
@@ -481,7 +480,7 @@ function createUpDetailLogic(
       if (item.kind === 'season') {
         const data = await SeasonsArchivesList(mid, 20, targetPage, item.id) as unknown as model.SeasonsArchivesData;
         if (seq !== listReqSeq) return;
-        const cards = mapArchivesToCards(data.archives ?? undefined, upperName, item.title, item.subtitle);
+        const cards = mapArchivesToCards(data.archives ?? undefined, upperName, item.title);
         const total = Number(data.meta?.total ?? data.page?.Total ?? item.count ?? 0) || 0;
         setListTotal(total);
         if (append) setListCards(prev => [...prev, ...cards]); else setListCards(cards);
@@ -489,7 +488,7 @@ function createUpDetailLogic(
       } else {
         const data = await SeriesList(mid, 20, targetPage, item.id) as SeriesArchivesResp;
         if (seq !== listReqSeq) return;
-        const cards = mapArchivesToCards(data.archives as any[], upperName, item.title, item.subtitle);
+        const cards = mapArchivesToCards(data.archives as any[], upperName, item.title);
         const total = Number((data as any).page?.total ?? (data as any).page?.Total ?? item.count ?? 0) || 0;
         setListTotal(total);
         if (append) setListCards(prev => [...prev, ...cards]); else setListCards(cards);
@@ -591,6 +590,28 @@ function createUpDetailLogic(
     }
   };
 
+  // 一键下载：后台连续翻页，直到全部投稿视频加载完毕。
+  async function prepareAllVideos(onStatus?: (message: string) => void): Promise<void> {
+    while (hasMoreVideos()) {
+      const before = videoCards().length;
+      await waitBulkDownloadPage(onStatus);
+      await loadVideoList(true);
+      if (videoCards().length === before) break;
+    }
+  }
+
+  // 一键下载：后台连续翻页，直到当前合集/系列视频加载完毕。
+  async function prepareAllListVideos(onStatus?: (message: string) => void): Promise<void> {
+    const item = selectedListItem();
+    if (!item) return;
+    while (hasMoreListVideos()) {
+      const before = listCards().length;
+      await waitBulkDownloadPage(onStatus);
+      await loadListDetail(item, true);
+      if (listCards().length === before) break;
+    }
+  }
+
   const init = () => {
     void loadVideoList(false);
   };
@@ -625,5 +646,7 @@ function createUpDetailLogic(
     listDetailEpoch,
     init,
     retryListDetail,
+    prepareAllVideos,
+    prepareAllListVideos,
   };
 }

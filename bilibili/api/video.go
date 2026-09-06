@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/internal/constant"
 )
 
 // VideoList 获取视频列表。mid 为用户 ID，ps 为每页数量，pn 为页码
@@ -38,7 +39,7 @@ func (b *BiliBili) VideoList(mid uint, ps, pn int) (model.VideoListData, error) 
 	err = b.client.
 		Get("https://api.bilibili.com/x/space/wbi/arc/search").
 		SetQueryParams(params).
-		SetHeader(Cookie, cookies).
+		SetHeader(constant.Cookie, cookies).
 		SetHeaders(publicHeaders()).
 		Do().
 		Into(&resp)
@@ -78,11 +79,11 @@ func (b *BiliBili) VideoDetailConcise(aid int) (model.VideoDetailConciseData, er
 	err = b.client.
 		Get("https://api.bilibili.com/x/web-interface/wbi/view/detail").
 		SetQueryParams(params).
-		SetHeader(Cookie, cookies).
+		SetHeader(constant.Cookie, cookies).
 		SetHeaders(publicHeaders()).
-		SetHeader(Origin, biliBiliUrl).
-		SetHeader(Accept, "application/json, text/plain, */*").
-		SetHeader(Referer, fmt.Sprintf("https://www.bilibili.com/video/av%d", aid)).
+		SetHeader(constant.Origin, biliBiliUrl).
+		SetHeader(constant.Accept, "application/json, text/plain, */*").
+		SetHeader(constant.Referer, fmt.Sprintf("https://www.bilibili.com/video/av%d", aid)).
 		Do().
 		Into(&resp)
 	if err != nil {
@@ -130,11 +131,11 @@ func (b *BiliBili) VideoDetailConciseBvid(bvid string) (model.VideoDetailConcise
 	err = b.client.
 		Get("https://api.bilibili.com/x/web-interface/wbi/view/detail").
 		SetQueryParams(params).
-		SetHeader(Cookie, cookies).
+		SetHeader(constant.Cookie, cookies).
 		SetHeaders(publicHeaders()).
-		SetHeader(Origin, biliBiliUrl).
-		SetHeader(Accept, "application/json, text/plain, */*").
-		SetHeader(Referer, fmt.Sprintf("https://www.bilibili.com/video/%s", bvid)).
+		SetHeader(constant.Origin, biliBiliUrl).
+		SetHeader(constant.Accept, "application/json, text/plain, */*").
+		SetHeader(constant.Referer, fmt.Sprintf("https://www.bilibili.com/video/%s", bvid)).
 		Do().
 		Into(&resp)
 	if err != nil {
@@ -187,10 +188,10 @@ func (b *BiliBili) VideoPlayURL(avid int64, bvid string, cid int64, qn int) (mod
 		Get("https://api.bilibili.com/x/player/wbi/playurl").
 		SetQueryParams(params).
 		SetHeaders(publicHeaders()).
-		SetHeader(Cookie, cookies).
-		SetHeader(Origin, biliBiliUrl).
-		SetHeader(Accept, "application/json, text/plain, */*").
-		SetHeader(Referer, fmt.Sprintf("https://www.bilibili.com/video/%s", bvid)).
+		SetHeader(constant.Cookie, cookies).
+		SetHeader(constant.Origin, biliBiliUrl).
+		SetHeader(constant.Accept, "application/json, text/plain, */*").
+		SetHeader(constant.Referer, fmt.Sprintf("https://www.bilibili.com/video/%s", bvid)).
 		Do().
 		Into(&resp)
 	if err != nil {

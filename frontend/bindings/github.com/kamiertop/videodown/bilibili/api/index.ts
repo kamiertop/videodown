@@ -7,9 +7,6 @@ export {
 };
 
 export type {
-    DashDownloadBatchResult,
-    DashDownloadResult,
-    DashDownloadTask,
     PlayUrlRequest,
     PlayUrlResult
 } from "./models.js";

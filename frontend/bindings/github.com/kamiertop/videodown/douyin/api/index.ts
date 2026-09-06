@@ -5,11 +5,3 @@ import * as Douyin from "./douyin.js";
 export {
     Douyin
 };
-
-export type {
-    DouyinDownloadAsset,
-    DouyinDownloadBatchResult,
-    DouyinDownloadHistoryItem,
-    DouyinDownloadResult,
-    DouyinDownloadTask
-} from "./models.js";

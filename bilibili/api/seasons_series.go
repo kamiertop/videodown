@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/internal/constant"
 )
 
 // SeasonsSeriesList 获取合集|系列列表, 这个使用的接口是：https://api.bilibili.com/x/polymer/web-space/seasons_series_list
@@ -28,9 +29,9 @@ func (b *BiliBili) SeasonsSeriesList(upMid string, pageSize, pageNum int) (model
 			webLocation: "333.1387",
 		}).
 		SetHeaders(publicHeaders()).
-		SetHeader(Origin, spaceOrigin).
-		SetHeader(Cookie, cookies).
-		SetHeader(Referer, fmt.Sprintf("https://space.bilibili.com/%s/lists", upMid)).
+		SetHeader(constant.Origin, spaceOrigin).
+		SetHeader(constant.Cookie, cookies).
+		SetHeader(constant.Referer, fmt.Sprintf("https://space.bilibili.com/%s/lists", upMid)).
 		Do().
 		Into(&resp); err != nil {
 		b.logger.Errorf("request seasons series list error: %v", err)
@@ -65,8 +66,8 @@ func (b *BiliBili) SeasonsArchivesList(upMid string, pageSize, pageNum, seasonId
 			webLocation:     "333.1387",
 		}).
 		SetHeaders(publicHeaders()).
-		SetHeader(Cookie, cookies).
-		SetHeader(Referer, fmt.Sprintf("https://space.bilibili.com/%s/lists/%d?type=season", upMid, seasonId)).
+		SetHeader(constant.Cookie, cookies).
+		SetHeader(constant.Referer, fmt.Sprintf("https://space.bilibili.com/%s/lists/%d?type=season", upMid, seasonId)).
 		Do().
 		Into(&resp)
 	if err != nil {
@@ -107,9 +108,10 @@ func (b *BiliBili) SeriesList(upMid string, ps, pn, seriesId int) (model.SeriesA
 			"sort":        "desc",
 			webLocation:   "333.1387",
 			"only_normal": true,
-		}).SetHeader(Cookie, cookies).
+		}).
+		SetHeader(constant.Cookie, cookies).
 		SetHeaders(publicHeaders()).
-		SetHeader(Referer, fmt.Sprintf("https://space.bilibili.com/%s/lists/%d?type=series", upMid, seriesId)).
+		SetHeader(constant.Referer, fmt.Sprintf("https://space.bilibili.com/%s/lists/%d?type=series", upMid, seriesId)).
 		Do().
 		Into(&resp)
 	if err != nil {

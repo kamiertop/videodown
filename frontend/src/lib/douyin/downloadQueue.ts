@@ -1,7 +1,7 @@
-import {createSignal, onCleanup} from "solid-js";
-import {DownloadVideos} from "@bindings/github.com/kamiertop/videodown/douyin/api/douyin";
-import * as api from "@bindings/github.com/kamiertop/videodown/douyin/api/models";
+import {type Task} from "@bindings/github.com/kamiertop/videodown/douyin/download"
+import {DownloadVideos} from "@bindings/github.com/kamiertop/videodown/douyin/download/service.ts";
 import {Events} from "@wailsio/runtime";
+import {createSignal, onCleanup} from "solid-js";
 import {type DouyinDownloadItem, douyinVideoList, removeDouyinVideo} from "./store.ts";
 
 type ToastType = "error" | "success" | "info" | "warning";
@@ -20,7 +20,6 @@ export interface DouyinDownloadProgress {
   sleepTotal?: number;
 }
 
-type BackendTask = api.DouyinDownloadTask;
 
 const [downloading, setDownloading] = createSignal(false);
 const [downloadingByID, setDownloadingByID] = createSignal<Record<string, boolean>>({});
@@ -55,11 +54,10 @@ function hasDownloadURL(item: DouyinDownloadItem): boolean {
   return !!item.videoURL;
 }
 
-function toBackendTask(item: DouyinDownloadItem): BackendTask {
-  // 前端只提交最终选择好的下载地址和来源元数据；落盘目录由后端统一判断。
+function toTask(item: DouyinDownloadItem): Task {
+  // 前端只提交最终选择好地下载地址和来源元数据；落盘目录由后端统一判断。
   return ({
     awemeId: item.awemeId,
-    sourceKind: item.sourceKind,
     sourceName: item.sourceName ?? "",
     title: item.title,
     cover: item.cover,
@@ -86,7 +84,7 @@ export function useDouyinDownloadQueue(showToast: ShowToast) {
   });
 
   // 后端按 awemeId 推送实时进度；成功后该条会被移出列表，失败则留在列表供用户重试。
-  function buildTasks(items: DouyinDownloadItem[]): BackendTask[] {
+  function buildTasks(items: DouyinDownloadItem[]): Task[] {
     const seen = new Set<string>();
     return items
         .filter((item) => {
@@ -96,14 +94,14 @@ export function useDouyinDownloadQueue(showToast: ShowToast) {
           seen.add(key);
           return true;
         })
-        .map(toBackendTask);
+        .map(toTask);
   }
 
-  async function runTasks(items: DouyinDownloadItem[]): Promise<{ success: number; failed: number }> {
+  async function runTasks(items: DouyinDownloadItem[]): Promise<{ success: number; failed: number; failedItems: DouyinDownloadItem[] }> {
     const tasks = buildTasks(items);
     if (tasks.length === 0) {
       notify("暂无可用下载地址，请稍后重试", "warning");
-      return {success: 0, failed: items.length};
+      return {success: 0, failed: items.length, failedItems: items};
     }
 
     for (const task of tasks) {
@@ -112,24 +110,29 @@ export function useDouyinDownloadQueue(showToast: ShowToast) {
 
     try {
       const batch = await DownloadVideos(tasks);
-      const byID = new Map(items.map((item) => [item.awemeId, item]));
+      // 后端返回的 awemeId 可能带有首尾空白；统一按规范化 ID 匹配，
+      // 否则成功结果虽已返回，前端会因 Map 未命中而无法移除列表项。
+      const byID = new Map(items.map((item) => [item.awemeId.trim(), item]));
+      const failedItems: DouyinDownloadItem[] = [];
 
       // 和 B 站一致：成功项自动移除，失败项保留并展示错误。
       for (const result of batch.results ?? []) {
-        const item = byID.get(result.awemeId);
+        const resultID = String(result.awemeId ?? "").trim();
+        const item = byID.get(resultID);
         if (!item) continue;
 
         if (result.error) {
           notify(`下载失败：${item.title}，${result.error}`, "error");
+          failedItems.push(item);
         } else {
-          removeDouyinVideo(item.awemeId);
+          removeDouyinVideo(resultID);
         }
       }
 
-      return {success: batch.success ?? 0, failed: batch.failed ?? 0};
+      return {success: batch.success ?? 0, failed: batch.failed ?? 0, failedItems};
     } catch (error) {
       notify(error instanceof Error ? error.message : String(error), "error");
-      return {success: 0, failed: tasks.length};
+      return {success: 0, failed: tasks.length, failedItems: items};
     } finally {
       for (const task of tasks) {
         setDownloadingByID((prev) => ({...prev, [task.awemeId]: false}));
@@ -143,29 +146,44 @@ export function useDouyinDownloadQueue(showToast: ShowToast) {
     }
   }
 
-  async function startDownload(items = douyinVideoList()): Promise<void> {
-    if (downloading()) return;
+  async function startDownload(items = douyinVideoList()): Promise<number> {
+    if (downloading()) return 0;
     if (items.length === 0) {
       notify("暂无可下载内容", "warning");
-      return;
+      return 0;
     }
 
     setDownloading(true);
-    const {success, failed} = await runTasks(items);
+    let {success, failed, failedItems} = await runTasks(items);
+    if (failedItems.length > 0) {
+      notify(`有 ${failedItems.length} 个内容下载失败，其他任务完成后将自动重试`, "warning");
+      const retry = await runTasks(failedItems);
+      success += retry.success;
+      failed = retry.failed;
+    }
     if (failed === 0) {
       notify(`下载完成：成功 ${success} 个`, "success");
-      return;
+      return success;
     }
     notify(`下载完成：成功 ${success} 个，失败 ${failed} 个`, "warning");
+    return success;
   }
 
-  async function downloadOne(item: DouyinDownloadItem): Promise<void> {
-    if (downloading() || downloadingByID()[item.awemeId]) return;
+  async function downloadOne(item: DouyinDownloadItem): Promise<number> {
+    if (downloading() || downloadingByID()[item.awemeId]) return 0;
     setDownloading(true);
-    const {failed} = await runTasks([item]);
+    let {success, failed, failedItems} = await runTasks([item]);
+    if (failedItems.length > 0) {
+      notify("下载失败，正在自动重试", "warning");
+      const retry = await runTasks(failedItems);
+      success += retry.success;
+      failed = retry.failed;
+    }
     if (failed === 0) {
       notify(`下载完成：${item.title}`, "success");
+      return 1;
     }
+    return 0;
   }
 
   function canDownload(item: DouyinDownloadItem): boolean {

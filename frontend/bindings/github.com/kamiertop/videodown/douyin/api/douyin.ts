@@ -9,17 +9,6 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 // @ts-ignore: Unused imports
 import * as model$0 from "../model/models.js";
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore: Unused imports
-import * as $models from "./models.js";
-
-/**
- * ClearDownloadHistory 清空抖音下载历史；不会删除已经下载到本地的文件。
- */
-export function ClearDownloadHistory(): $CancellablePromise<void> {
-    return $Call.ByID(1981888651);
-}
-
 /**
  * CollectList 收藏夹列表接口，需要分页获取，前端默认10条。cursor参数是偏移量，默认0，即从第0条数据开始返回，每次请求返回10条数据。
  */
@@ -39,38 +28,6 @@ export function Collection(count: number, cursor: number): $CancellablePromise<m
  */
 export function CollectionList(secUserID: string, seriesID: string, cursor: number, count: number): $CancellablePromise<model$0.CollectionListResponse> {
     return $Call.ByID(743063260, secUserID, seriesID, cursor, count);
-}
-
-/**
- * DeleteDownloadHistory 删除单条历史记录；不会删除已经下载到本地的文件。
- */
-export function DeleteDownloadHistory(awemeID: string): $CancellablePromise<void> {
-    return $Call.ByID(3278324681, awemeID);
-}
-
-export function Download(videoURL: string): $CancellablePromise<void> {
-    return $Call.ByID(825435880, videoURL);
-}
-
-/**
- * DownloadCover 从多个抖音封面候选中选择最高质量的一张并保存到作者目录。
- */
-export function DownloadCover(covers: model$0.Cover[] | null, task: $models.DouyinDownloadTask): $CancellablePromise<string> {
-    return $Call.ByID(1357779251, covers, task);
-}
-
-/**
- * DownloadHistory 返回抖音下载历史，用于前端历史页展示。
- */
-export function DownloadHistory(): $CancellablePromise<$models.DouyinDownloadHistoryItem[] | null> {
-    return $Call.ByID(1483194768);
-}
-
-/**
- * DownloadVideos 批量下载抖音任务；单个任务失败不会中断整批，结果逐条返回给前端。
- */
-export function DownloadVideos(tasks: $models.DouyinDownloadTask[] | null): $CancellablePromise<$models.DouyinDownloadBatchResult> {
-    return $Call.ByID(1438878072, tasks);
 }
 
 /**
@@ -140,6 +97,10 @@ export function ParseVideo(link: string): $CancellablePromise<string> {
  */
 export function Profile(): $CancellablePromise<model$0.MyInfoResponse> {
     return $Call.ByID(564887389);
+}
+
+export function PublicHeaders(): $CancellablePromise<any> {
+    return $Call.ByID(2739440541);
 }
 
 /**

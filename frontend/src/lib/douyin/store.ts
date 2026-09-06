@@ -23,7 +23,6 @@ export interface DouyinDownloadAsset {
 // 下载页只保存轻量任务数据；完整 AwemeItem 太大，也不适合跨页面长期持有。
 export interface DouyinDownloadItem {
   awemeId: string;
-  sourceKind: string;
   sourceName?: string;
   title: string;
   cover: string;

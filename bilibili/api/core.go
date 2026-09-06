@@ -3,7 +3,6 @@ package api
 import (
 	"errors"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
@@ -21,30 +20,26 @@ const (
 )
 
 type BiliBili struct {
-	logger         *logger.Logger
-	client         *req.Client
-	downloadClient *req.Client
-	store          *storage.Store
-	events         *application.EventManager
-	wbiKey         *wbiKeys // lazy init
-	progressMu     sync.Mutex
-	progressByBvid map[string]float64
+	logger *logger.Logger
+	client *req.Client
+	store  *storage.Store
+	events *application.EventManager
+	wbiKey *wbiKeys // lazy init
 }
 
 func New(log *logger.Logger, store *storage.Store, events *application.EventManager) *BiliBili {
-	var client = req.C().EnableAutoDecompress().
+	var client = req.C().
+		EnableAutoDecompress().
 		SetCommonRetryCount(2).
 		SetCommonRetryBackoffInterval(300*time.Millisecond, 2*time.Second)
 	if logger.IsDevMode() {
 		client.SetLogger(log).EnableDebugLog()
 	}
 	return &BiliBili{
-		logger:         log.WithName("BiliBili"),
-		downloadClient: client.Clone().SetTimeout(0), // 下载流单独走 downloadClient，避免长视频下载受超时影响
-		client:         client,
-		store:          store,
-		events:         events,
-		progressByBvid: make(map[string]float64),
+		logger: log.WithName("BiliBili"),
+		client: client,
+		store:  store,
+		events: events,
 	}
 }
 
@@ -89,4 +84,8 @@ func (b *BiliBili) clearAuthState() error {
 
 		return nil
 	})
+}
+
+func (b *BiliBili) CookieFunc() func() (string, error) {
+	return b.getCookies
 }

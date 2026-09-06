@@ -15,6 +15,8 @@ import (
 	"strings"
 
 	"github.com/dgraph-io/badger/v4"
+	"github.com/kamiertop/videodown/bilibili/util"
+	"github.com/kamiertop/videodown/internal/constant"
 
 	"github.com/kamiertop/videodown/bilibili/model"
 )
@@ -37,17 +39,17 @@ func (b *BiliBili) QRCode() (model.QRCodeData, error) {
 			"x-bili-locale-json": `{"c_locale":{"language":"zh","region":"CN"},"always_translate":true}`,
 		}).
 		SetHeaders(map[string]string{
-			Accept:          "*/*",
-			AcceptLanguage:  "zh-CN,zh;q=0.9",
-			Priority:        "u=1, i",
-			SecCHUA:         `"Google Chrome";v="123", "Not:A-Brand";v="8", "Chromium";v="123"`,
-			SecCHUAMobile:   "?0",
-			SecCHUAPlatform: `Windows"`,
-			SecFetchDest:    "empty",
-			SecFetchMode:    "cors",
-			SecFetchSite:    "same-site",
-			Referer:         biliBiliUrl,
-			UserAgent:       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
+			constant.Accept:          "*/*",
+			constant.AcceptLanguage:  "zh-CN,zh;q=0.9",
+			constant.Priority:        "u=1, i",
+			constant.SecCHUA:         `"Google Chrome";v="123", "Not:A-Brand";v="8", "Chromium";v="123"`,
+			constant.SecCHUAMobile:   "?0",
+			constant.SecCHUAPlatform: `Windows"`,
+			constant.SecFetchDest:    "empty",
+			constant.SecFetchMode:    "cors",
+			constant.SecFetchSite:    "same-site",
+			constant.Referer:         biliBiliUrl,
+			constant.UserAgent:       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36",
 		}).
 		Do().
 		Into(&resp); err != nil {
@@ -73,11 +75,11 @@ func (b *BiliBili) PollQRCode(qrcodeKey string) (model.PollQRCodeData, error) {
 			"x-bili-locale-json": `{"c_locale":{"language":"zh","region":"CN"},"always_translate":true}`,
 		}).
 		SetHeaders(map[string]string{
-			Referer:         biliBiliUrl,
-			SecCHUA:         `"Not:A-Brand";v="99", "Google Chrome";v="145", "Chromium";v="145"`,
-			SecCHUAMobile:   "?0",
-			SecCHUAPlatform: `"Windows"`,
-			UserAgent:       userAgent(),
+			constant.Referer:         biliBiliUrl,
+			constant.SecCHUA:         `"Not:A-Brand";v="99", "Google Chrome";v="145", "Chromium";v="145"`,
+			constant.SecCHUAMobile:   "?0",
+			constant.SecCHUAPlatform: `"Windows"`,
+			constant.UserAgent:       util.UserAgent(),
 		}).
 		Get("https://passport.bilibili.com/x/passport-login/web/qrcode/poll")
 
@@ -238,7 +240,7 @@ func parseCookieString(cookieStr string) map[string]string {
 	return cookieMap
 }
 
-// mergeAndSaveCookies 合并新旧 cookies, 在刷新 Cookie 时，新的响应可能只包含部分 Cookie，因此需要将新的 Cookie 与旧的 Cookie 合并后再保存到数据库中，以确保所有必要的 Cookie 都被正确保存和更新
+// mergeAndSaveCookies 合并新旧 cookies, 在刷新 Cookie 时，新地响应可能只包含部分 Cookie，因此需要将新的 Cookie 与旧的 Cookie 合并后再保存到数据库中，以确保所有必要的 Cookie 都被正确保存和更新
 func (b *BiliBili) mergeAndSaveCookies(storedCookies string, cookies []*http.Cookie) error {
 	cookieMap := parseCookieString(storedCookies)
 	for _, cookie := range cookies {
@@ -293,7 +295,7 @@ func (b *BiliBili) IsRefresh() (model.RefreshData, error) {
 		SetQueryParam(webLocation, "333.1387").
 		SetQueryParam("csrf", csrf).
 		SetHeaders(publicHeaders()).
-		SetHeader(Cookie, cookies).
+		SetHeader(constant.Cookie, cookies).
 		Do().
 		Into(&response); err != nil {
 		b.logger.Errorf("check if cookies need to be refreshed error: %v", err)
@@ -377,8 +379,8 @@ func (b *BiliBili) refreshCSRF(correspondPath, cookies string) (string, error) {
 	resp, err := b.client.
 		R().
 		SetHeaders(publicHeaders()).
-		SetHeader(Cookie, cookies).
-		SetHeader(Referer, biliBiliUrl).
+		SetHeader(constant.Cookie, cookies).
+		SetHeader(constant.Referer, biliBiliUrl).
 		Get("https://www.bilibili.com/correspond/1/" + correspondPath)
 	if err != nil {
 		b.logger.Errorf("get bilibili refresh_csrf failed: %v", err)
@@ -409,9 +411,9 @@ func (b *BiliBili) refreshCookie(csrf, refreshCSRF, refreshToken, cookies string
 	resp, err := b.client.
 		R().
 		SetHeaders(publicHeaders()).
-		SetHeader(Cookie, cookies).
-		SetHeader(Origin, biliBiliUrl[:len(biliBiliUrl)-1]).
-		SetHeader(Referer, biliBiliUrl).
+		SetHeader(constant.Cookie, cookies).
+		SetHeader(constant.Origin, biliBiliUrl[:len(biliBiliUrl)-1]).
+		SetHeader(constant.Referer, biliBiliUrl).
 		SetHeader("Content-Type", "application/x-www-form-urlencoded").
 		SetFormDataAnyType(map[string]any{
 			"csrf":          csrf,
@@ -449,9 +451,9 @@ func (b *BiliBili) confirmRefresh(csrf, oldRefreshToken, cookies string) error {
 	resp, err := b.client.
 		R().
 		SetHeaders(publicHeaders()).
-		SetHeader(Cookie, cookies).
-		SetHeader(Origin, biliBiliUrl[:len(biliBiliUrl)-1]).
-		SetHeader(Referer, biliBiliUrl).
+		SetHeader(constant.Cookie, cookies).
+		SetHeader(constant.Origin, biliBiliUrl[:len(biliBiliUrl)-1]).
+		SetHeader(constant.Referer, biliBiliUrl).
 		SetHeader("Content-Type", "application/x-www-form-urlencoded").
 		SetFormDataAnyType(map[string]any{
 			"csrf":          csrf,
@@ -526,8 +528,8 @@ func (b *BiliBili) LogOut() (model.LogOut, error) {
 		Post("https://passport.bilibili.com/login/exit/v2").
 		SetQueryParam("biliCSRF", csrf).
 		SetQueryParam("gourl", biliBiliUrl).
-		SetHeader(Cookie, cookies).
-		SetHeader(Referer, spaceOrigin).
+		SetHeader(constant.Cookie, cookies).
+		SetHeader(constant.Referer, spaceOrigin).
 		SetHeader("Content-Type", "application/x-www-form-urlencoded").
 		SetHeader("Cache-Control", "no-cache").
 		SetHeader("Pragma", "no-cache").
