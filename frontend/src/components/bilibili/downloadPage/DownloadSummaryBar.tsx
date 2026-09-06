@@ -12,6 +12,8 @@ interface DownloadSummaryBarProps {
   downloading: boolean;
   onDownload: () => void;
   resolveProgress?: ResolveProgress;
+  /** 本页累计已下载成功的视频数（下载完成后仍保留展示）。 */
+  completedCount?: number;
 }
 
 // 下载列表顶部的汇总栏：显示待下载数量、解析进度、下载按钮。
@@ -28,11 +30,21 @@ export default function DownloadSummaryBar(props: DownloadSummaryBarProps): JSXE
   };
 
   return (
-    <Show when={props.count > 0}>
+    <Show when={props.count > 0 || (props.completedCount ?? 0) > 0}>
       <section class="mt-2 flex flex-row items-center justify-between rounded-lg border border-base-200 bg-base-100 p-3 shadow-sm">
         <div class="flex min-w-0 flex-1 items-center gap-3">
-          <div class="badge badge-primary">{props.count}</div>
-          <span class="text-xs">个视频待下载</span>
+          <Show when={props.count > 0}>
+            <div class="flex items-center gap-1.5">
+              <div class="badge badge-primary">{props.count}</div>
+              <span class="text-xs">个视频待下载</span>
+            </div>
+          </Show>
+          <Show when={(props.completedCount ?? 0) > 0}>
+            <div class="flex items-center gap-1.5">
+              <div class="badge badge-success">{props.completedCount}</div>
+              <span class="text-xs text-success">个视频已完成</span>
+            </div>
+          </Show>
           <Show when={isResolving()}>
             <div class="flex items-center gap-1.5 text-xs text-info">
               <span class="loading loading-spinner loading-xs"></span>

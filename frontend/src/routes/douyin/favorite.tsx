@@ -16,6 +16,7 @@ import CollectionVideoPanel, {
 import VideoContentPanel from "../../components/douyin/VideoContentPanel.tsx";
 import Toast from "../../components/Toast.tsx";
 import {useToast} from "../../hooks/useToast.ts";
+import {waitBulkDownloadPage} from "../../lib/bulkDownloadThrottle.ts";
 
 export const Route = createFileRoute('/douyin/favorite')({
   component: DouyinFavoritePage,
@@ -217,6 +218,16 @@ function DouyinFavoritePage(): JSXElement {
     }
   }
 
+  async function prepareAllFavoriteVideos(onStatus?: (message: string) => void): Promise<void> {
+    // 一键下载时后台连续翻页，直到接口明确返回没有下一页。
+    while (videoHasMore()) {
+      const before = videos().length;
+      await waitBulkDownloadPage(onStatus);
+      await loadMoreVideos();
+      if (videos().length === before) break;
+    }
+  }
+
   return (
     <section class="flex h-full min-h-0 flex-col p-2">
       <FavoriteHeader
@@ -253,6 +264,7 @@ function DouyinFavoritePage(): JSXElement {
               hasMore={videoHasMore()}
               loadingMore={videoLoadingMore()}
               onLoadMore={() => void loadMoreVideos()}
+              prepareDownloadAll={prepareAllFavoriteVideos}
             />
           </div>
 

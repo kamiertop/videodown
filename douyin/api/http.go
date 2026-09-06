@@ -143,6 +143,10 @@ func (d *Douyin) publicHeaders() (map[string]string, error) {
 	}, nil
 }
 
+func (d *Douyin) PublicHeaders() func() (map[string]string, error) {
+	return d.publicHeaders
+}
+
 // 下面的代码由Codex + https://github.com:JoeanAmier/TikTokDownloader 生成
 
 const (

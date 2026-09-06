@@ -15,10 +15,14 @@ export default function VideoListSection(props: {
   hasMore?: () => boolean;
   loadingMore?: () => boolean;
   onLoadMore?: () => void;
+  /** 一键下载前自动加载完剩余分页；完成后使用最新 medias 组建下载队列。 */
+  prepareDownloadAll?: (onStatus?: (message: string) => void) => Promise<void>;
 }): JSXElement {
   const navigate = useNavigate();
   const [selectedMediaIds, setSelectedMediaIds] = createSignal<number[]>([]);
   const [enqueueLoading, setEnqueueLoading] = createSignal(false);
+  const [downloadAllLoading, setDownloadAllLoading] = createSignal(false);
+  const [downloadAllStatus, setDownloadAllStatus] = createSignal("正在加载全部视频");
   const selectedSet = createMemo(() => new Set(selectedMediaIds()));
 
   function allSelected(): boolean {
@@ -71,13 +75,28 @@ export default function VideoListSection(props: {
     }
   }
 
+  async function handleDownloadAll(): Promise<void> {
+    if (downloadAllLoading() || enqueueLoading()) return;
+    setDownloadAllLoading(true);
+    try {
+      setDownloadAllStatus("正在加载全部视频");
+      await props.prepareDownloadAll?.(setDownloadAllStatus);
+      await enqueueAndGoDownload(props.medias());
+    } finally {
+      setDownloadAllLoading(false);
+    }
+  }
+
   return (
       <>
         {/*功能区域*/}
         <div class="flex shrink-0 items-center gap-2 border-b border-base-300 px-5 py-3.5">
           <div class="min-w-0 flex-1">
             <h2 class="truncate text-sm font-bold text-base-content">{props.title}</h2>
-            <p class="text-xs text-orange-500">{props.mediaCount} 个视频</p>
+            <p class="text-xs text-orange-500">
+              {props.mediaCount} 个视频
+              {props.medias().length < props.mediaCount ? `（已加载 ${props.medias().length}）` : ""}
+            </p>
           </div>
           <button class="btn btn-ghost btn-sm" onClick={toggleSelectAllMedia}>
             {allSelected() ? '取消全选' : '全选'}
@@ -95,11 +114,21 @@ export default function VideoListSection(props: {
                   disabled={selectedMediaIds().length === 0 || enqueueLoading()}>
             {enqueueLoading() ? "处理中..." : `下载已选 (${selectedMediaIds().length})`}
           </button>
-          <button class="btn btn-primary btn-sm"
-                  disabled={enqueueLoading()}
-                  onClick={() => void enqueueAndGoDownload(props.medias())}>
-            {enqueueLoading() ? "处理中..." : "下载全部"}
-          </button>
+          <div class="group relative shrink-0">
+            <button class="btn btn-primary btn-sm"
+                    type="button"
+                    onClick={() => void handleDownloadAll()}
+                    disabled={props.medias().length === 0 || enqueueLoading() || downloadAllLoading()}
+                    aria-label="一键下载全部（自动加载全部分页）">
+              {enqueueLoading() ? "处理中..." : downloadAllLoading() ? "加载中..." : "一键下载全部"}
+            </button>
+            <span
+                role="tooltip"
+                class="pointer-events-none absolute right-0 top-full z-50 mt-1.5 w-max max-w-[min(220px,calc(100vw-24px))] whitespace-normal rounded-md bg-neutral px-2.5 py-1.5 text-center text-[11px] leading-4 text-neutral-content opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+            >
+              自动加载全部分页并加入下载队列
+            </span>
+          </div>
         </div>
         {/* 视频卡片网格 — 虚拟滚动，只渲染可见行 */}
         <VirtualVideoGrid
@@ -111,6 +140,16 @@ export default function VideoListSection(props: {
             loadingMore={props.loadingMore}
             onLoadMore={props.onLoadMore}
         />
+        <Show when={downloadAllLoading()}>
+          <div class="fixed inset-0 z-40 grid place-items-center bg-base-300/45 p-4 backdrop-blur-[2px]">
+            <div class="w-full max-w-sm rounded-xl border border-base-300 bg-base-100 p-5 text-center shadow-2xl">
+              <h3 class="text-base font-semibold text-base-content">{downloadAllStatus()}</h3>
+              <p class="mt-1 text-xs text-base-content/60">请稍候，完成后将自动加入下载队列</p>
+              <progress class="progress progress-primary mt-4 w-full" />
+              <p class="mt-2 text-xs tabular-nums text-base-content/55">已加载 {props.medias().length} 个视频</p>
+            </div>
+          </div>
+        </Show>
       </>
   );
 }

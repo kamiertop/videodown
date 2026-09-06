@@ -337,7 +337,6 @@ export interface DownloadHistoryItem {
     "danmaku": number;
     "pubtime": number;
     "sourceName": string;
-    "sourceKind": string;
     "path": string;
     "downloadKind": string;
 

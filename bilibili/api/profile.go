@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/internal/constant"
 )
 
 // MyInfo 个人资料
@@ -18,10 +19,10 @@ func (b *BiliBili) MyInfo() (model.MyInfoProfile, error) {
 	}
 	if err = b.client.
 		Get("https://api.bilibili.com/x/space/v2/myinfo").
-		SetQueryParam("web_location", "333.1007").
+		SetQueryParam(webLocation, "333.1007").
 		SetHeaders(publicHeaders()).
-		SetHeader(Origin, spaceOrigin).
-		SetHeader("Cookie", cookies).
+		SetHeader(constant.Origin, spaceOrigin).
+		SetHeader(constant.Cookie, cookies).
 		Do().
 		Into(&resp); err != nil {
 		b.logger.Errorf("failed to get my_info: %v", err)

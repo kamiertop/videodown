@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/internal/constant"
 )
 
 // Collection 获取：我追的合集列表, 默认pn：1, ps: 50
@@ -32,8 +33,8 @@ func (b *BiliBili) Collection(pn, ps int) (model.CollectionData, error) {
 			"platform":  "web",
 		}).
 		SetHeaders(publicHeaders()).
-		SetHeader(Origin, "https://space.bilibili.com").
-		SetHeader(Cookie, cookies).
+		SetHeader(constant.Origin, "https://space.bilibili.com").
+		SetHeader(constant.Cookie, cookies).
 		Do().
 		Into(&resp); err != nil {
 		b.logger.Errorf("request collection list error: %v", err)
@@ -66,8 +67,8 @@ func (b *BiliBili) CollectionItem(seasonId string, pn, ps int) (model.Collection
 			"pn":        pn,
 			"ps":        ps,
 		}).
-		SetHeader(Cookie, cookies).
-		SetHeader(Origin, spaceOrigin).
+		SetHeader(constant.Cookie, cookies).
+		SetHeader(constant.Origin, spaceOrigin).
 		SetHeaders(publicHeaders()).
 		Do().
 		Into(&resp); err != nil {

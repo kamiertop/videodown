@@ -33,9 +33,8 @@ function pagesToMediaCards(view: VideoDetailView, item: MediaCardItem): MediaCar
   const pages = view.pages ?? [];
   const bvid = view.bvid || item.bvid || "";
   const mainTitle = view.title?.trim() || item.title || "未命名稿件";
-  const isUpArchive = item.sourceListKind === "全部投稿";
 
-  // UP 投稿列表只知道整稿件。展开为分 P 后，目录来源改成“分P”，后端会落到 UP/稿件名/P标题。
+  // UP 投稿列表只知道整稿件。展开为分 P 后沿用原列表来源名，目录规则统一只依赖 sourceName。
   return uniqueMediaCards(
       pages.map((p) => ({
         ...item,
@@ -50,8 +49,7 @@ function pagesToMediaCards(view: VideoDetailView, item: MediaCardItem): MediaCar
         play: view.stat?.view ?? item.play,
         danmaku: view.stat?.danmaku ?? item.danmaku,
         pubtime: view.pubdate ?? item.pubtime,
-        sourceListName: isUpArchive ? mainTitle : item.sourceListName,
-        sourceListKind: isUpArchive ? "分P" : item.sourceListKind,
+        sourceListName: item.sourceListName,
       })),
   );
 }

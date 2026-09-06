@@ -5,49 +5,6 @@
 // @ts-ignore: Unused imports
 import * as model$0 from "../model/models.js";
 
-/**
- * DashDownloadBatchResult 汇总批量下载结果；失败不会中断整批任务。
- */
-export interface DashDownloadBatchResult {
-    "results": DashDownloadResult[] | null;
-    "success": number;
-    "failed": number;
-}
-
-/**
- * DashDownloadResult 记录单个任务的结果，前端据此移除已完成的视频并保留失败项。
- */
-export interface DashDownloadResult {
-    "bvid": string;
-    "cid": number;
-    "title": string;
-    "path": string;
-    "error": string;
-}
-
-/**
- * DashDownloadTask 是前端提交给后端的最小下载任务；流地址已经由前端按用户选择的画质/音质确定。
- */
-export interface DashDownloadTask {
-    "sourceName": string;
-    "sourceKind": string;
-    "upperName": string;
-    "bvid": string;
-
-    /**
-     * Cid 为分 P 稿件某一 P 的 cid；单 P 或未填时为 0，行为与旧版一致。
-     */
-    "cid": number;
-    "title": string;
-    "cover": string;
-    "duration": number;
-    "play": number;
-    "danmaku": number;
-    "pubtime": number;
-    "videoURL": string;
-    "audioURL": string;
-}
-
 export interface PlayUrlRequest {
     "bvid": string;
     "cid": number;

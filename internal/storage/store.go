@@ -48,17 +48,18 @@ func OpenMemory() (*Store, error) {
 
 func (s *Store) Get(key string) (string, error) {
 	var value string
-	err := s.db.View(func(txn *badger.Txn) error {
+
+	return value, s.db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get([]byte(key))
 		if err != nil {
 			return err
 		}
+
 		return item.Value(func(valueBytes []byte) error {
 			value = string(valueBytes)
 			return nil
 		})
 	})
-	return value, err
 }
 
 func (s *Store) Set(key, value string) error {

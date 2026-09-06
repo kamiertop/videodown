@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/internal/constant"
 )
 
 const dynamicFeedURL = "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/all"
@@ -35,9 +36,9 @@ func (b *BiliBili) dynamic(offset string) (model.DynamicData, error) {
 		Get(dynamicFeedURL).
 		SetQueryParams(params).
 		SetHeaders(publicHeaders()).
-		SetHeader(Cookie, cookies).
-		SetHeader(Origin, biliBiliUrl).
-		SetHeader(Referer, biliBiliUrl).
+		SetHeader(constant.Cookie, cookies).
+		SetHeader(constant.Origin, biliBiliUrl).
+		SetHeader(constant.Referer, biliBiliUrl).
 		Do().
 		Into(&resp); err != nil {
 		b.logger.Errorf("request dynamic video feed error: %v", err)

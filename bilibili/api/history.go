@@ -6,15 +6,18 @@ import (
 	"errors"
 	"sort"
 
-	"github.com/dgraph-io/badger/v4"
 	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/bilibili/util"
+	"github.com/kamiertop/videodown/internal/constant"
 	"github.com/kamiertop/videodown/utils"
+
+	"github.com/dgraph-io/badger/v4"
 )
 
 // DownloadHistory 返回后端下载缓存记录；只读历史页使用，下载接口本身不暴露缓存命中细节。
 func (b *BiliBili) DownloadHistory() ([]model.DownloadHistoryItem, error) {
 	var items []model.DownloadHistoryItem
-	prefix := []byte(downloadedVideoCachePrefix)
+	prefix := []byte(util.CachePrefix)
 
 	err := b.store.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.DefaultIteratorOptions)
@@ -48,12 +51,12 @@ func (b *BiliBili) DownloadHistory() ([]model.DownloadHistoryItem, error) {
 
 // ClearDownloadHistory 清空 B 站下载历史；只清理缓存记录，不删除已经保存到本地的视频文件。
 func (b *BiliBili) ClearDownloadHistory() error {
-	return b.store.DeletePrefix(downloadedVideoCachePrefix)
+	return b.store.DeletePrefix(util.CachePrefix)
 }
 
 // DeleteDownloadHistory 删除单条下载历史；只清理缓存记录，不删除已经保存到本地的视频文件。
 func (b *BiliBili) DeleteDownloadHistory(cid int64) error {
-	key := downloadCacheKey(cid)
+	key := util.DownloadCacheKey(cid)
 	if key == "" {
 		return errors.New("视频CID为空")
 	}
@@ -84,9 +87,9 @@ func (b *BiliBili) PlayHistory(cursor int, viewAt int) (model.PlayHistoryData, e
 			webLocation:   "333.1387",
 		}).
 		SetHeaders(publicHeaders()).
-		SetHeader(Origin, biliBiliUrl).
-		SetHeader(Referer, biliBiliUrl).
-		SetHeader(Cookie, cookies).
+		SetHeader(constant.Origin, biliBiliUrl).
+		SetHeader(constant.Referer, biliBiliUrl).
+		SetHeader(constant.Cookie, cookies).
 		Do().
 		Into(&resp)
 	if err != nil {

@@ -43,6 +43,10 @@ export function CollectionItem(seasonId: string, pn: number, ps: number): $Cance
     return $Call.ByID(2699614795, seasonId, pn, ps);
 }
 
+export function CookieFunc(): $CancellablePromise<any> {
+    return $Call.ByID(3576419512);
+}
+
 /**
  * DeleteDownloadHistory 删除单条下载历史；只清理缓存记录，不删除已经保存到本地的视频文件。
  */
@@ -51,38 +55,10 @@ export function DeleteDownloadHistory(cid: number): $CancellablePromise<void> {
 }
 
 /**
- * DownloadCover 下载视频封面到当前下载目录，返回保存后的文件路径。
- */
-export function DownloadCover(cover: string, task: $models.DashDownloadTask): $CancellablePromise<string> {
-    return $Call.ByID(914802387, cover, task);
-}
-
-/**
  * DownloadHistory 返回后端下载缓存记录；只读历史页使用，下载接口本身不暴露缓存命中细节。
  */
 export function DownloadHistory(): $CancellablePromise<model$0.DownloadHistoryItem[] | null> {
     return $Call.ByID(933930544);
-}
-
-/**
- * DownloadVideoByDash 下载单个视频，保留旧入口以兼容前端或其他调用方。
- */
-export function DownloadVideoByDash(sourceName: string, bvid: string, title: string, videoURL: string, audioURL: string): $CancellablePromise<string> {
-    return $Call.ByID(3425201982, sourceName, bvid, title, videoURL, audioURL);
-}
-
-/**
- * DownloadVideosByDash 批量下载 DASH 任务；后端负责并发、失败隔离和每个任务后的休眠控制。
- */
-export function DownloadVideosByDash(tasks: $models.DashDownloadTask[] | null): $CancellablePromise<$models.DashDownloadBatchResult> {
-    return $Call.ByID(598649125, tasks);
-}
-
-/**
- * DownloadVideosByDashIncremental 增量下载：跳过已下载的视频，只下载新增部分。
- */
-export function DownloadVideosByDashIncremental(tasks: $models.DashDownloadTask[] | null): $CancellablePromise<$models.DashDownloadBatchResult> {
-    return $Call.ByID(3214500723, tasks);
 }
 
 /**
@@ -112,13 +88,6 @@ export function Favorites(mediaId: number, pn: number, ps: number): $Cancellable
  */
 export function FavoritesList(): $CancellablePromise<model$0.FavoritesData> {
     return $Call.ByID(2915442673);
-}
-
-/**
- * FilterIncrementalTasks 将任务分为待下载和已下载两组；已下载项附带当时保存的文件路径。
- */
-export function FilterIncrementalTasks(tasks: $models.DashDownloadTask[] | null): $CancellablePromise<[$models.DashDownloadTask[] | null, $models.DashDownloadResult[] | null]> {
-    return $Call.ByID(3341548992, tasks);
 }
 
 export function FollowList(pn: number, ps: number): $CancellablePromise<model$0.FollowData> {

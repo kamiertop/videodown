@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/internal/constant"
 	"github.com/kamiertop/videodown/utils"
 )
 
@@ -42,16 +43,16 @@ func (b *BiliBili) Info(spaceURLOrMid string) (model.UserInfoData, error) {
 	if err != nil {
 		return resp.Data, err
 	}
-
-	// 发起请求
+	
 	err = b.client.
 		Get("https://api.bilibili.com/x/space/wbi/acc/info").
 		SetQueryParams(params).
-		SetHeader(Cookie, cookies).
-		SetHeader(Origin, spaceOrigin).
-		SetHeader(Referer, fmt.Sprintf("https://space.bilibili.com/%s", userMid)).
+		SetHeader(constant.Cookie, cookies).
+		SetHeader(constant.Origin, spaceOrigin).
+		SetHeader(constant.Referer, fmt.Sprintf("https://space.bilibili.com/%s", userMid)).
 		SetHeaders(publicHeaders()).
-		Do().Into(&resp)
+		Do().
+		Into(&resp)
 	if err != nil {
 		return resp.Data, errors.New("请求用户信息接口失败")
 	}

@@ -1,14 +1,14 @@
-import {createFileRoute, useNavigate} from '@tanstack/solid-router'
-import {createSignal, For, type JSXElement, Match, onMount, Show, Switch} from "solid-js";
 import {DynamicVideosPage} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
 import * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
+import {createFileRoute, useNavigate} from '@tanstack/solid-router'
+import {createSignal, For, type JSXElement, Match, onMount, Show, Switch} from "solid-js";
 import DetailError from "../../components/DetailError";
+import IconRefresh from "../../components/icons/IconRefresh";
 import NoCover from "../../components/NoCover";
 import Toast from "../../components/Toast";
-import IconRefresh from "../../components/icons/IconRefresh";
 import {useToast} from "../../hooks/useToast";
-import {parseBilibiliLengthToSeconds} from "../../lib/format";
 import {addVideos} from "../../lib/bilibili/store";
+import {parseBilibiliLengthToSeconds} from "../../lib/format";
 import type {MediaCardItem} from "../../lib/model";
 
 type DynamicArchiveItem = model.DynamicArchiveItem;
@@ -49,7 +49,6 @@ function toMediaCardItem(item: DynamicArchiveItem): MediaCardItem {
     upperName: item.author_name,
     pubtime: item.pub_ts,
     sourceListName: "关注动态",
-    sourceListKind: "关注动态",
   };
 }
 
@@ -73,7 +72,7 @@ function Dynamic(): JSXElement {
       const nextItems = page.items ?? [];
       setItems((current) => append ? [...current, ...nextItems] : nextItems);
       setOffset(page.offset ?? "");
-      setHasMore(!!page.has_more);
+      setHasMore(page.has_more);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
@@ -107,7 +106,8 @@ function Dynamic(): JSXElement {
 
   return (
       <section class="flex h-full min-h-0 flex-col bg-base-200/40 p-4">
-        <header class="mb-3 flex shrink-0 items-center justify-between rounded-lg border border-base-300 bg-base-100 px-4 py-3">
+        <header
+            class="mb-3 flex shrink-0 items-center justify-between rounded-lg border border-base-300 bg-base-100 px-4 py-3">
           <div class="min-w-0">
             <h2 class="text-base font-bold text-base-content">关注动态</h2>
             <p class="text-sm text-base-content/60">
@@ -150,7 +150,8 @@ function Dynamic(): JSXElement {
             </Match>
             <Match when={items().length > 0}>
               <div class="flex h-full min-h-0 flex-col">
-                <div class="grid h-10 shrink-0 grid-cols-[minmax(0,1fr)_9rem_8rem_7rem] items-center border-b border-base-300 bg-base-200/45 px-4 text-xs font-bold text-base-content/60">
+                <div
+                    class="grid h-10 shrink-0 grid-cols-[minmax(0,1fr)_9rem_8rem_7rem] items-center border-b border-base-300 bg-base-200/45 px-4 text-xs font-bold text-base-content/60">
                   <span>视频</span>
                   <span>作者</span>
                   <span>时间</span>
@@ -159,7 +160,8 @@ function Dynamic(): JSXElement {
                 <div class="min-h-0 flex-1 overflow-y-auto divide-y divide-base-200">
                   <For each={items()}>
                     {(item): JSXElement => (
-                        <article class="grid grid-cols-[minmax(0,1fr)_9rem_8rem_7rem] items-center gap-3 px-4 py-3 transition-colors hover:bg-base-200/35">
+                        <article
+                            class="grid grid-cols-[minmax(0,1fr)_9rem_8rem_7rem] items-center gap-3 px-4 py-3 transition-colors hover:bg-base-200/35">
                           <div class="flex min-w-0 items-center gap-3">
                             <div class="relative aspect-video w-32 shrink-0 overflow-hidden rounded bg-base-200">
                               <Show when={item.cover} fallback={<NoCover/>}>
@@ -171,12 +173,14 @@ function Dynamic(): JSXElement {
                                     loading="lazy"
                                 />
                               </Show>
-                              <span class="absolute bottom-1 right-1 rounded bg-black/65 px-1 py-0.5 text-[11px] tabular-nums text-white">
+                              <span
+                                  class="absolute bottom-1 right-1 rounded bg-black/65 px-1 py-0.5 text-[11px] tabular-nums text-white">
                                 {item.duration_text || "--:--"}
                               </span>
                             </div>
                             <div class="min-w-0 flex-1">
-                              <h3 class="line-clamp-2 text-sm font-semibold leading-5 text-base-content" title={item.title}>
+                              <h3 class="line-clamp-2 text-sm font-semibold leading-5 text-base-content"
+                                  title={item.title}>
                                 {item.title || "未命名视频"}
                               </h3>
                               <div class="mt-1 truncate text-xs text-base-content/40">{item.bvid}</div>
