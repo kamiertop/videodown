@@ -21,6 +21,7 @@ export type {
     Dimension,
     Dolby,
     DownloadHistoryItem,
+    DurlItem,
     DynamicArchiveItem,
     DynamicArchivePage,
     Episode,
