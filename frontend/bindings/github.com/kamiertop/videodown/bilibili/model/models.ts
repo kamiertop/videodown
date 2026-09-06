@@ -347,6 +347,17 @@ export interface DownloadHistoryItem {
 }
 
 /**
+ * DurlItem MP4/FLV 单文件流项。
+ */
+export interface DurlItem {
+    "order": number;
+    "length": number;
+    "size": number;
+    "url": string;
+    "backup_url": string[] | null;
+}
+
+/**
  * DynamicArchiveItem is the flattened video payload used by downstream download flows.
  */
 export interface DynamicArchiveItem {
@@ -1951,6 +1962,11 @@ export interface VideoURLData {
      * DASH 流信息（音视频分离）
      */
     "dash": Dash;
+
+    /**
+     * MP4/FLV 单文件流信息
+     */
+    "durl": DurlItem[] | null;
 
     /**
      * 支持的格式详细信息

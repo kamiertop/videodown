@@ -15,6 +15,7 @@ type VideoURLData struct {
 	SeekParam         string          `json:"seek_param"`          // 拖拽参数类型
 	SeekType          string          `json:"seek_type"`           // 拖拽类型
 	Dash              Dash            `json:"dash"`                // DASH 流信息（音视频分离）
+	Durl              []DurlItem      `json:"durl"`                // MP4/FLV 单文件流信息
 	SupportFormats    []SupportFormat `json:"support_formats"`     // 支持的格式详细信息
 	HighFormat        any             `json:"high_format"`         // 高码率格式信息（通常为 null）
 	Volume            Volume          `json:"volume"`              // 音量响度标准化信息
@@ -25,6 +26,15 @@ type VideoURLData struct {
 	CurLanguage       string          `json:"cur_language"`        // 当前语言
 	CurProductionType int             `json:"cur_production_type"` // 当前制作类型
 	AutoQnResp        AutoQnResp      `json:"auto_qn_resp"`        // 自动清晰度响应
+}
+
+// DurlItem MP4/FLV 单文件流项。
+type DurlItem struct {
+	Order     int      `json:"order"`
+	Length    int      `json:"length"`
+	Size      int64    `json:"size"`
+	Url       string   `json:"url"`
+	BackupURL []string `json:"backup_url"`
 }
 
 // AutoQnResp 自动清晰度响应

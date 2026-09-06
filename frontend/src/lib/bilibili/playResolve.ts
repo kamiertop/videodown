@@ -261,8 +261,35 @@ export function buildResolvedPlayInfo(
     opts?: { preferredAudioId?: number },
 ): ResolvedPlayInfo {
   // 有些响应会返回多编码同档位，这里优先用 play.quality 对应档位内的“最佳视频流”。
-  const bestVideo =
+  let bestVideo =
       pickBestVideoAtQn(play.dash?.video ?? undefined, play.quality) ?? pickBestVideo(play.dash?.video ?? undefined);
+  // 老视频或接口降级时可能返回 MP4/FLV 单文件流（durl），没有 DASH。
+  if (!bestVideo) {
+    const durl = play.durl?.find((item) => item.url?.trim());
+    if (durl) {
+      bestVideo = {
+        id: play.quality,
+        baseUrl: durl.url.trim(),
+        base_url: durl.url.trim(),
+        backupUrl: durl.backup_url ?? [],
+        backup_url: durl.backup_url ?? [],
+        bandwidth: 0,
+        mimeType: "video/mp4",
+        mime_type: "video/mp4",
+        codecs: "",
+        width: 0,
+        height: 0,
+        frameRate: "",
+        frame_rate: "",
+        sar: "",
+        startWithSap: 0,
+        start_with_sap: 0,
+        SegmentBase: {} as model.SegmentBase,
+        segment_base: {} as model.SegmentBase1,
+        codecid: play.video_codecid,
+      } as model.VideoItem;
+    }
+  }
   if (!bestVideo) {
     throw new Error("未获取到 DASH 视频流（可能为特殊稿件或需登录）");
   }
