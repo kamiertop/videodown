@@ -88,6 +88,10 @@ jobs:
           if [ "$target_os" = "windows" ]; then
             output="$output.exe"
           fi
+          # The TypeScript bindings are generated artifacts and are not committed.
+          # Generate them before compiling the frontend so imports under @bindings exist
+          # in a clean CI checkout.
+          wails3 generate bindings -clean=true -ts -i
           cd frontend && npm ci && npm run build && cd ..
           GOOS="$target_os" GOARCH="$target_arch" go build -buildvcs=false -ldflags "$LDFLAGS" -o "$output"
           updater_output="build/bin/${{ env.APP_NAME }}-updater"
