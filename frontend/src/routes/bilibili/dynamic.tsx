@@ -1,6 +1,6 @@
 import {DynamicVideosPage} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
 import * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
-import {createFileRoute, useNavigate} from '@tanstack/solid-router'
+import {createFileRoute, Link, useNavigate} from '@tanstack/solid-router'
 import {createSignal, For, type JSXElement, Match, onMount, Show, Switch} from "solid-js";
 import DetailError from "../../components/DetailError";
 import IconRefresh from "../../components/icons/IconRefresh";
@@ -150,8 +150,8 @@ function Dynamic(): JSXElement {
             </Match>
             <Match when={items().length > 0}>
               <div class="flex h-full min-h-0 flex-col">
-                <div
-                    class="grid h-10 shrink-0 grid-cols-[minmax(0,1fr)_9rem_8rem_7rem] items-center border-b border-base-300 bg-base-200/45 px-4 text-xs font-bold text-base-content/60">
+                <div class="grid h-10 shrink-0 grid-cols-[minmax(0,1fr)_9rem_8rem_7rem] items-center border-b
+                            border-base-300 bg-base-200/45 px-4 text-xs font-bold text-base-content/60">
                   <span>视频</span>
                   <span>作者</span>
                   <span>时间</span>
@@ -159,9 +159,9 @@ function Dynamic(): JSXElement {
                 </div>
                 <div class="min-h-0 flex-1 overflow-y-auto divide-y divide-base-200">
                   <For each={items()}>
-                    {(item): JSXElement => (
+                    {(item: DynamicArchiveItem): JSXElement => (
                         <article
-                            class="grid grid-cols-[minmax(0,1fr)_9rem_8rem_7rem] items-center gap-3 px-4 py-3 transition-colors hover:bg-base-200/35">
+                            class="grid grid-cols-[minmax(0,1fr)_9rem_8rem_7rem] items-center gap-3 px-4 py-3 transition-colors hover:bg-base-300">
                           <div class="flex min-w-0 items-center gap-3">
                             <div class="relative aspect-video w-32 shrink-0 overflow-hidden rounded bg-base-200">
                               <Show when={item.cover} fallback={<NoCover/>}>
@@ -186,9 +186,26 @@ function Dynamic(): JSXElement {
                               <div class="mt-1 truncate text-xs text-base-content/40">{item.bvid}</div>
                             </div>
                           </div>
-                          <span class="truncate text-sm text-base-content/70" title={item.author_name}>
-                            {item.author_name || "未知 UP"}
-                          </span>
+                          <Show when={item.mid > 0}
+                                fallback={
+                                  <span class="truncate text-sm text-base-content/70" title={item.author_name}>
+                                    {item.author_name || "未知 UP"}
+                                  </span>
+                                }
+                          >
+                            <Link
+                                class="link decoration-2 underline-offset-4 decoration-pink-500"
+                                to="/bilibili/up/$mid"
+                                params={{mid: String(item.mid)}}
+                                search={{fromPage: 1, from: "dynamic"}}
+                                title="点击查看该 UP 主的全部视频"
+                                aria-label={`查看 ${item.author_name || "未知 UP"} 的全部视频`}
+                            >
+                              <span class="truncate text-sm" title={item.author_name}>
+                              {item.author_name || "未知 UP"}
+                            </span>
+                            </Link>
+                          </Show>
                           <span class="text-sm tabular-nums text-base-content/60">{formatDynamicTime(item)}</span>
                           <div class="flex justify-end">
                             <button

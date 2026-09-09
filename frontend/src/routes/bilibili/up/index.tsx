@@ -59,7 +59,7 @@ function UpIndex(): JSXElement {
       to: '/bilibili/up/$mid',
       params: {mid: String(mid)},
       // 详情页自己的“返回”按钮没有浏览器历史栈语义，所以显式带回列表页码。
-      search: {fromPage: page()},
+      search: {fromPage: page(), from: 'up'},
     });
   };
 

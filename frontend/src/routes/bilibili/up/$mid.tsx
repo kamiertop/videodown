@@ -1,8 +1,25 @@
-import {createFileRoute, Link} from '@tanstack/solid-router'
-import {createEffect, createMemo, createResource, createSignal, type JSXElement, Match, onMount, Show, Switch} from "solid-js";
-import {Info, SeasonsArchivesList, SeasonsSeriesList, SeriesList, VideoList} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
+import {
+  Info,
+  SeasonsArchivesList,
+  SeasonsSeriesList,
+  SeriesList,
+  VideoList
+} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
 import * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
+import {createFileRoute, Link} from '@tanstack/solid-router'
+import {
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  type JSXElement,
+  Match,
+  onMount,
+  Show,
+  Switch
+} from "solid-js";
 import UpCommonLayout from "../../../components/bilibili/up/UpCommonLayout.tsx";
+import VideoListSection from "../../../components/bilibili/VideoListSection.tsx";
 import DetailError from "../../../components/DetailError.tsx";
 import DetailLoading from "../../../components/DetailLoading.tsx";
 import EmptyState from "../../../components/EmptyState.tsx";
@@ -12,7 +29,6 @@ import IconRefresh from "../../../components/icons/IconRefresh.tsx";
 import type {SidebarListItem} from "../../../components/SidebarList.tsx";
 import SidebarList from "../../../components/SidebarList.tsx";
 import Toast from "../../../components/Toast";
-import VideoListSection from "../../../components/bilibili/VideoListSection.tsx";
 import {useToast} from "../../../hooks/useToast";
 import {waitBulkDownloadPage} from "../../../lib/bulkDownloadThrottle.ts";
 import {parseBilibiliLengthToSeconds} from "../../../lib/format";
@@ -22,6 +38,7 @@ export const Route = createFileRoute('/bilibili/up/$mid')({
   validateSearch: (search: Record<string, unknown>) => ({
     // 只服务详情页顶部“返回”按钮；浏览器后退仍走原历史记录。
     fromPage: normalizeFromPage(search.fromPage),
+    from: normalizeFromPageSource(search.from),
   }),
   component: UpDetail,
 })
@@ -30,6 +47,12 @@ function normalizeFromPage(value: unknown): number {
   const page = Number(value);
   if (!Number.isFinite(page)) return 1;
   return Math.max(1, Math.floor(page));
+}
+
+type UpDetailSource = 'up' | 'dynamic';
+
+function normalizeFromPageSource(value: unknown): UpDetailSource {
+  return value === 'dynamic' ? 'dynamic' : 'up';
 }
 
 function UpDetail(): JSXElement {
@@ -43,203 +66,213 @@ function UpDetail(): JSXElement {
   })
 
   return (
-    <UpCommonLayout
-	      headerLeft={
-	        <>
-	          <Link
-	            to="/bilibili/up"
-	            search={{page: search().fromPage}}
-	            class="btn btn-ghost btn-sm gap-1"
-	          >
-	            <IconChevronLeft class="h-4 w-4"/>
-	            返回
-	          </Link>
-          <div class="h-5 w-px bg-base-300"></div>
-          <h2 class="text-sm font-bold text-base-content">UP主详情</h2>
-          <span class="rounded-full bg-base-200 px-2 py-0.5 text-xs tabular-nums text-base-content/60">
-                        mid: {params().mid}
-                    </span>
-        </>
-      }
-      headerRight={
-        <Switch>
-          <Match when={logic.infoLoading()}>
-            <div class="flex items-center gap-2">
-              <span class="loading loading-spinner loading-xs text-primary"></span>
-              <span class="text-xs text-base-content/50">获取UP主信息...</span>
-            </div>
-          </Match>
-          <Match when={!logic.infoLoading() && logic.info()}>
-            <div class="flex min-w-0 items-center gap-2">
-              <div class="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-base-200 ring-2 ring-base-200">
-                <img
-                  src={logic.info()!.face}
-                  alt={logic.info()!.name}
-                  referrerPolicy="no-referrer"
-                  class="h-full w-full object-cover"
-                />
-              </div>
-              <div class="min-w-0">
-                <div class="flex min-w-0 items-center gap-2">
-                                    <span class="max-w-[16rem] truncate text-sm font-black text-base-content">
-                                        {logic.info()!.name}
-                                    </span>
-                  <span class="badge badge-outline badge-sm">Lv.{logic.info()!.level}</span>
-                  <span
-                    class={`badge badge-sm ${logic.info()!.is_followed ? 'badge-primary' : 'badge-ghost'}`}
-                  >
-                                        {logic.info()!.is_followed ? '已关注' : '未关注'}
-                                    </span>
+      <UpCommonLayout
+          headerLeft={
+            <>
+              <Show when={search().from === 'dynamic'}
+                    fallback={
+                      <Link
+                          to="/bilibili/up"
+                          search={{page: search().fromPage}}
+                          class="btn btn-ghost btn-sm gap-1"
+                      >
+                        <IconChevronLeft class="h-4 w-4"/>
+                        返回
+                      </Link>
+                    }>
+                <Link to="/bilibili/dynamic" class="btn btn-ghost btn-sm gap-1">
+                  <IconChevronLeft class="h-4 w-4"/>
+                  返回
+                </Link>
+              </Show>
+              <div class="h-5 w-px bg-base-300"/>
+              <h2 class="text-sm font-bold text-base-content">UP主详情</h2>
+              <span class="rounded-full bg-base-200 px-2 py-0.5 text-xs tabular-nums text-base-content/60">
+                mid: {params().mid}
+              </span>
+            </>
+          }
+          headerRight={
+            <Switch>
+              <Match when={logic.infoLoading()}>
+                <div class="flex items-center gap-2">
+                  <span class="loading loading-spinner loading-xs text-primary"></span>
+                  <span class="text-xs text-base-content/50">获取UP主信息...</span>
                 </div>
-              </div>
-            </div>
-          </Match>
-        </Switch>
-      }
-    >
-      <section class="flex h-full min-h-0 gap-3 overflow-hidden bg-base-200/40 p-3">
-        <main
-          class="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-base-300 bg-base-100">
-          <div class="flex shrink-0 border-b border-base-300">
-            <button
-              class={`flex-1 py-3 text-center text-sm font-bold transition-colors ${
-                logic.activeTab() === 'videos'
-                  ? 'border-b-2 border-success text-success'
-                  : 'text-base-content/60 hover:text-base-content'
-              }`}
-              onClick={() => logic.setActiveTab('videos')}
-            >
-              全部视频
-            </button>
-            <button
-              class={`flex-1 py-3 text-center text-sm font-bold transition-colors ${
-                logic.activeTab() === 'lists'
-                  ? 'border-b-2 border-success text-success'
-                  : 'text-base-content/60 hover:text-base-content'
-              }`}
-              onClick={() => {
-                logic.setActiveTab('lists');
-                if (!logic.ssLoadedOnce()) void logic.loadSeasonsSeriesAll();
-              }}
-            >
-              合集 | 系列
-            </button>
-          </div>
-
-          <Switch>
-            <Match when={logic.activeTab() === 'videos'}>
-              <Switch>
-                <Match when={logic.videoLoading()}>
-                  <DetailLoading/>
-                </Match>
-                <Match when={!!logic.videoError()}>
-                  <DetailError message={logic.videoError()}
-                               onRetry={() => void logic.loadVideoList(false)}/>
-                </Match>
-                <Match when={!logic.videoLoading() && logic.videoCards().length === 0}>
-                  <EmptyState title="暂无视频" description="该 UP 主暂无投稿视频或接口返回为空"/>
-                </Match>
-                <Match when={true}>
-                  <VideoListSection
-                    title="全部投稿视频"
-                    mediaCount={logic.videoTotal() || logic.videoCards().length}
-                    medias={() => logic.videoCards()}
-                    selectionResetKey={() => `${params().mid}-v-${logic.videoListEpoch()}`}
-                    showToast={showToast}
-                    hasMore={logic.hasMoreVideos}
-                    loadingMore={logic.videoLoadingMore}
-                    onLoadMore={() => void logic.loadVideoList(true)}
-                    prepareDownloadAll={logic.prepareAllVideos}
-                  />
-                </Match>
-              </Switch>
-            </Match>
-
-            <Match when={logic.activeTab() === 'lists'}>
-              <div class="flex min-h-0 flex-1 overflow-hidden">
-                <aside
-                  class="flex w-64 shrink-0 flex-col overflow-hidden border-r border-base-300 bg-base-100">
-                  <div
-                    class="flex shrink-0 items-center justify-between border-b border-base-200 px-3 py-2">
-                    <span class="text-xs font-bold text-base-content/70">列表</span>
-                    <button
-                      class="flex h-7 w-7 shrink-0 items-center justify-center rounded transition-colors hover:bg-base-200 disabled:cursor-not-allowed"
-                      onClick={() => void logic.loadSeasonsSeriesAll()}
-                      disabled={logic.ssLoading()}
-                      title="刷新"
-                    >
-                      <IconRefresh
-                        class={`h-3.5 w-3.5 text-base-content/50 ${logic.ssLoading() ? 'animate-spin' : ''}`}
-                      />
-                    </button>
+              </Match>
+              <Match when={!logic.infoLoading() && logic.info()}>
+                <div class="flex min-w-0 items-center gap-2">
+                  <div class="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-base-200 ring-2 ring-base-200">
+                    <img
+                        src={logic.info()!.face}
+                        alt={logic.info()!.name}
+                        referrerPolicy="no-referrer"
+                        class="h-full w-full object-cover"
+                    />
                   </div>
-                  <Switch>
-                    <Match when={logic.ssLoading()}>
-                      <div class="flex flex-1 items-center justify-center py-12">
-                        <span class="loading loading-spinner loading-sm text-primary"></span>
-                      </div>
-                    </Match>
-                    <Match when={!!logic.ssError()}>
-                      <div class="p-3">
-                        <DetailError message={logic.ssError()}
-                                     onRetry={() => void logic.loadSeasonsSeriesAll()}/>
-                      </div>
-                    </Match>
-                    <Match when={logic.listSidebarItems().length === 0}>
-                      <EmptyState title="暂无合集/系列" compact/>
-                    </Match>
-                    <Match when={true}>
-                      <SidebarList
-                        list={() => logic.listSidebarItems() as any}
-                        selectedId={() => logic.selectedListItem()?.id ?? null}
-                        onSelect={logic.handleSelectListItem as any}
-                        icon={<IconBook class="h-3 w-3"/>}
-                      />
-                    </Match>
-                  </Switch>
-                </aside>
+                  <div class="min-w-0">
+                    <div class="flex min-w-0 items-center gap-2">
+                    <span class="max-w-[16rem] truncate text-sm font-black text-base-content">
+                        {logic.info()!.name}
+                    </span>
+                      <span class="badge badge-outline badge-sm">Lv.{logic.info()!.level}</span>
+                      <span class={"badge badge-sm"}
+                            classList={{
+                              'badge-primary': logic.info()!.is_followed,
+                              'badge-ghost': !logic.info()!.is_followed
+                            }}
+                      >
+                        {logic.info()!.is_followed ? '已关注' : '未关注'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Match>
+            </Switch>
+          }
+      >
+        <section class="flex h-full min-h-0 gap-3 overflow-hidden bg-base-200/40 p-3">
+          <main class="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-base-300 bg-base-100">
+            <div class="flex shrink-0 border-b border-base-300">
+              <button
+                  class={`flex-1 py-3 text-center text-sm font-bold transition-colors ${
+                      logic.activeTab() === 'videos'
+                          ? 'border-b-2 border-success text-success'
+                          : 'text-base-content/60 hover:text-base-content'
+                  }`}
+                  onClick={() => logic.setActiveTab('videos')}
+              >
+                全部视频
+              </button>
+              <button
+                  class={"flex-1 py-3 text-center text-sm font-bold transition-colors"}
+                  classList={{
+                    'border-b-2 border-success text-success': logic.activeTab() === 'lists',
+                    'text-base-content/60 hover:text-base-content': logic.activeTab() !== 'lists'
+                  }}
+                  onClick={() => {
+                    logic.setActiveTab('lists');
+                    if (!logic.ssLoadedOnce()) void logic.loadSeasonsSeriesAll();
+                  }}
+              >
+                合集 | 系列
+              </button>
+            </div>
 
-                <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
-                  <Show
-                    when={!!logic.selectedListItem()}
-                    fallback={<EmptyState title="选择一个合集/系列查看内容"
-                                          description="右侧将展示视频列表"/>}
-                  >
+            <Switch>
+              <Match when={logic.activeTab() === 'videos'}>
+                <Switch>
+                  <Match when={logic.videoLoading()}>
+                    <DetailLoading/>
+                  </Match>
+                  <Match when={!!logic.videoError()}>
+                    <DetailError message={logic.videoError()}
+                                 onRetry={() => void logic.loadVideoList(false)}/>
+                  </Match>
+                  <Match when={!logic.videoLoading() && logic.videoCards().length === 0}>
+                    <EmptyState title="暂无视频" description="该 UP 主暂无投稿视频或接口返回为空"/>
+                  </Match>
+                  <Match when={true}>
+                    <VideoListSection
+                        title="全部投稿视频"
+                        mediaCount={logic.videoTotal() || logic.videoCards().length}
+                        medias={() => logic.videoCards()}
+                        selectionResetKey={() => `${params().mid}-v-${logic.videoListEpoch()}`}
+                        showToast={showToast}
+                        hasMore={logic.hasMoreVideos}
+                        loadingMore={logic.videoLoadingMore}
+                        onLoadMore={() => void logic.loadVideoList(true)}
+                        prepareDownloadAll={logic.prepareAllVideos}
+                    />
+                  </Match>
+                </Switch>
+              </Match>
+
+              <Match when={logic.activeTab() === 'lists'}>
+                <div class="flex min-h-0 flex-1 overflow-hidden">
+                  <aside class="flex w-64 shrink-0 flex-col overflow-hidden border-r border-base-300 bg-base-100">
+                    <div class="flex shrink-0 items-center justify-between border-b border-base-200 px-3 py-2">
+                      <span class="text-xs font-bold text-base-content/70">列表</span>
+                      <button
+                          class="flex h-7 w-7 shrink-0 items-center justify-center rounded transition-colors hover:bg-base-200 disabled:cursor-not-allowed"
+                          onClick={() => void logic.loadSeasonsSeriesAll()}
+                          disabled={logic.ssLoading()}
+                          title="刷新"
+                      >
+                        <IconRefresh
+                            class={`h-3.5 w-3.5 text-base-content/50 ${logic.ssLoading() ? 'animate-spin' : ''}`}
+                        />
+                      </button>
+                    </div>
                     <Switch>
-                      <Match when={logic.listDetailLoading()}>
-                        <DetailLoading/>
+                      <Match when={logic.ssLoading()}>
+                        <div class="flex flex-1 items-center justify-center py-12">
+                          <span class="loading loading-spinner loading-sm text-primary"></span>
+                        </div>
                       </Match>
-                      <Match when={!!logic.listDetailError()}>
-                        <DetailError message={logic.listDetailError()}
-                                     onRetry={logic.retryListDetail}/>
+                      <Match when={!!logic.ssError()}>
+                        <div class="p-3">
+                          <DetailError message={logic.ssError()}
+                                       onRetry={() => void logic.loadSeasonsSeriesAll()}/>
+                        </div>
                       </Match>
-                      <Match when={!logic.listDetailLoading() && logic.listCards().length === 0}>
-                        <EmptyState title="暂无视频"
-                                    description="该合集/系列暂无可用视频或接口返回为空"/>
+                      <Match when={logic.listSidebarItems().length === 0}>
+                        <EmptyState title="暂无合集/系列" compact/>
                       </Match>
                       <Match when={true}>
-                        <VideoListSection
-                          title={`${logic.selectedListItem()!.subtitle}: ${logic.selectedListItem()!.title}`}
-                          mediaCount={logic.listTotal() || logic.selectedListItem()!.count || logic.listCards().length}
-                          medias={() => logic.listCards()}
-                          selectionResetKey={() => `${params().mid}-l-${logic.listDetailEpoch()}`}
-                          showToast={showToast}
-                          hasMore={logic.hasMoreListVideos}
-                          loadingMore={logic.listLoadingMore}
-                          onLoadMore={() => void logic.handleLoadMoreList()}
-                          prepareDownloadAll={logic.prepareAllListVideos}
+                        <SidebarList
+                            list={() => logic.listSidebarItems() as any}
+                            selectedId={() => logic.selectedListItem()?.id ?? null}
+                            onSelect={logic.handleSelectListItem as any}
+                            icon={<IconBook class="h-3 w-3"/>}
                         />
                       </Match>
                     </Switch>
-                  </Show>
+                  </aside>
+
+                  <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
+                    <Show
+                        when={!!logic.selectedListItem()}
+                        fallback={
+                          <EmptyState title="选择一个合集/系列查看内容" description="右侧将展示视频列表"/>
+                        }
+                    >
+                      <Switch>
+                        <Match when={logic.listDetailLoading()}>
+                          <DetailLoading/>
+                        </Match>
+                        <Match when={!!logic.listDetailError()}>
+                          <DetailError message={logic.listDetailError()}
+                                       onRetry={logic.retryListDetail}
+                          />
+                        </Match>
+                        <Match when={!logic.listDetailLoading() && logic.listCards().length === 0}>
+                          <EmptyState title="暂无视频"
+                                      description="该合集/系列暂无可用视频或接口返回为空"/>
+                        </Match>
+                        <Match when={true}>
+                          <VideoListSection
+                              title={`${logic.selectedListItem()!.subtitle}: ${logic.selectedListItem()!.title}`}
+                              mediaCount={logic.listTotal() || logic.selectedListItem()!.count || logic.listCards().length}
+                              medias={() => logic.listCards()}
+                              selectionResetKey={() => `${params().mid}-l-${logic.listDetailEpoch()}`}
+                              showToast={showToast}
+                              hasMore={logic.hasMoreListVideos}
+                              loadingMore={logic.listLoadingMore}
+                              onLoadMore={() => void logic.handleLoadMoreList()}
+                              prepareDownloadAll={logic.prepareAllListVideos}
+                          />
+                        </Match>
+                      </Switch>
+                    </Show>
+                  </div>
                 </div>
-              </div>
-            </Match>
-          </Switch>
-        </main>
-      </section>
-      <Toast message={message()} type={type()}/>
-    </UpCommonLayout>
+              </Match>
+            </Switch>
+          </main>
+        </section>
+        <Toast message={message()} type={type()}/>
+      </UpCommonLayout>
   );
 }
 
@@ -254,11 +287,11 @@ type VideoListResp = {
       bvid: string;
       title: string;
       pic: string;
-	      length: string;
-	      created: number;
-	      play?: number;
-	      meta?: { stat?: { danmaku?: number } };
-	    }>
+      length: string;
+      created: number;
+      play?: number;
+      meta?: { stat?: { danmaku?: number } };
+    }>
   };
   page: { pn: number; ps: number; count: number };
 };
@@ -292,19 +325,19 @@ interface ListsSidebarItem extends SidebarListItem {
 }
 
 function createUpDetailLogic(
-  getMid: () => string,
-  showToast: (message: string, type?: "error" | "success" | "info" | "warning") => void,
+    getMid: () => string,
+    showToast: (message: string, type?: "error" | "success" | "info" | "warning") => void,
 ) {
   const [info] = createResource(
-    getMid,
-    async (mid): Promise<model.UserInfoData | null> => {
-      try {
-        return await Info(mid);
-      } catch (error) {
-        showToast(error instanceof Error ? error.message : String(error), 'error');
-        return null;
-      }
-    },
+      getMid,
+      async (mid): Promise<model.UserInfoData | null> => {
+        try {
+          return await Info(mid);
+        } catch (error) {
+          showToast(error instanceof Error ? error.message : String(error), 'error');
+          return null;
+        }
+      },
   );
 
   const [activeTab, setActiveTab] = createSignal<UpTab>('videos');
@@ -341,22 +374,22 @@ function createUpDetailLogic(
     setListCards(prev => prev.map(c => (c.upperName === upperName ? c : {...c, upperName})));
   });
 
-	  const mapVlistToCards = (vlist: VideoListResp["list"] extends { vlist?: infer V } ? V : any): MediaCardItem[] => {
-	    const upperName = currentUpperName();
-	    return (vlist ?? []).map((v: any) => ({
-	      id: Number(v.aid) || 0,
-	      title: v.title ?? '',
-	      cover: normalizeBiliCover(v.pic),
-	      duration: parseBilibiliLengthToSeconds(v.length ?? ''),
-	      bvid: v.bvid ?? '',
-	      upperName,
-	      play: v.play,
-	      danmaku: v.meta?.stat?.danmaku,
-	      pubtime: v.created,
-	      // 全部投稿只传作者名作来源；是否进一步展开分 P 由加入下载队列时的详情接口决定。
-	      sourceListName: upperName,
-	    }));
-	  };
+  const mapVlistToCards = (vlist: VideoListResp["list"] extends { vlist?: infer V } ? V : any): MediaCardItem[] => {
+    const upperName = currentUpperName();
+    return (vlist ?? []).map((v: any) => ({
+      id: Number(v.aid) || 0,
+      title: v.title ?? '',
+      cover: normalizeBiliCover(v.pic),
+      duration: parseBilibiliLengthToSeconds(v.length ?? ''),
+      bvid: v.bvid ?? '',
+      upperName,
+      play: v.play,
+      danmaku: v.meta?.stat?.danmaku,
+      pubtime: v.created,
+      // 全部投稿只传作者名作来源；是否进一步展开分 P 由加入下载队列时的详情接口决定。
+      sourceListName: upperName,
+    }));
+  };
 
   const loadVideoList = async (append = false) => {
     const mid = getMid();
@@ -373,15 +406,15 @@ function createUpDetailLogic(
 
     const seq = ++videoReqSeq;
     try {
-	      const data = await VideoList(Number(mid), VIDEO_PAGE_SIZE, targetPage) as VideoListResp;
-	      if (seq !== videoReqSeq) return;
-	      const cards = mapVlistToCards(data.list?.vlist);
-	      const total = Number(data.page.count) || 0;
-	      setVideoTotal(total);
-	      if (append) setVideoCards(prev => [...prev, ...cards]);
-	      else setVideoCards(cards);
-	      setVideoPage(targetPage);
-	    } catch (error) {
+      const data = await VideoList(Number(mid), VIDEO_PAGE_SIZE, targetPage) as VideoListResp;
+      if (seq !== videoReqSeq) return;
+      const cards = mapVlistToCards(data.list?.vlist);
+      const total = Number(data.page.count) || 0;
+      setVideoTotal(total);
+      if (append) setVideoCards(prev => [...prev, ...cards]);
+      else setVideoCards(cards);
+      setVideoPage(targetPage);
+    } catch (error) {
       if (seq !== videoReqSeq) return;
       const msg = error instanceof Error ? error.message : String(error);
       if (append) showToast(`加载更多失败: ${msg}`, 'warning');
@@ -441,9 +474,9 @@ function createUpDetailLogic(
   });
 
   const mapArchivesToCards = (
-    archives: any[] | undefined,
-    upperName: string,
-    listName: string,
+      archives: any[] | undefined,
+      upperName: string,
+      listName: string,
   ): MediaCardItem[] => {
     const name = listName.trim();
     return (archives ?? []).map((a: any) => ({

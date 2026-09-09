@@ -195,6 +195,7 @@ type DynamicArchiveItem struct {
 	Title        string `json:"title"`
 	Cover        string `json:"cover"`
 	DurationText string `json:"duration_text"`
+	Mid          int64  `json:"mid"`
 	AuthorName   string `json:"author_name"`
 	PubTime      string `json:"pub_time"`
 	PubTs        int64  `json:"pub_ts"`
@@ -244,6 +245,7 @@ func archiveItemFromMajor(modules DynamicModules) (DynamicArchiveItem, bool) {
 		Title:        archive.Title,
 		Cover:        archive.Cover,
 		DurationText: archive.DurationText,
+		Mid:          modules.ModuleAuthor.Mid,
 		AuthorName:   modules.ModuleAuthor.Name,
 		PubTime:      modules.ModuleAuthor.PubTime,
 		PubTs:        int64(modules.ModuleAuthor.PubTs),
@@ -262,6 +264,7 @@ func archiveItemFromAdditional(modules DynamicModules) (DynamicArchiveItem, bool
 		Title:        ugc.Title,
 		Cover:        ugc.Cover,
 		DurationText: ugc.Duration,
+		Mid:          modules.ModuleAuthor.Mid,
 		AuthorName:   modules.ModuleAuthor.Name,
 		PubTime:      modules.ModuleAuthor.PubTime,
 		PubTs:        int64(modules.ModuleAuthor.PubTs),

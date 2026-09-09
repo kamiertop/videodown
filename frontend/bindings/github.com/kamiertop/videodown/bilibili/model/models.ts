@@ -365,6 +365,7 @@ export interface DynamicArchiveItem {
     "title": string;
     "cover": string;
     "duration_text": string;
+    "mid": number;
     "author_name": string;
     "pub_time": string;
     "pub_ts": number;
