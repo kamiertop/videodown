@@ -1,8 +1,12 @@
-import {createFileRoute} from '@tanstack/solid-router'
-import {createMemo, createResource, createSignal, For, type JSXElement, Match, Show, Switch} from "solid-js";
-import {ClearDownloadHistory, DeleteDownloadHistory, DownloadHistory} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
+import {
+  ClearDownloadHistory,
+  DeleteDownloadHistory,
+  DownloadHistory
+} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
 import * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
 import {OpenDownloadLocation, OpenLocalFile} from "@bindings/github.com/kamiertop/videodown/utils/settings";
+import {createFileRoute} from '@tanstack/solid-router'
+import {createMemo, createResource, createSignal, For, type JSXElement, Match, Show, Switch} from "solid-js";
 import DetailError from "../../components/DetailError.tsx";
 import IconChat from "../../components/icons/IconChat";
 import IconEye from "../../components/icons/IconEye";
@@ -13,6 +17,7 @@ import Toast from "../../components/Toast.tsx";
 import {useToast} from "../../hooks/useToast.ts";
 import {formatCount, formatDate, formatDuration} from "../../lib/format";
 import {formatDownloadedAt} from "../../utils/format.ts";
+
 type DownloadHistoryItem = model.DownloadHistoryItem;
 
 export const Route = createFileRoute('/bilibili/history')({
@@ -151,9 +156,9 @@ function History(): JSXElement {
               <span>下载 {formatDownloadedAt(item.downloaded)}</span>
             </div>
             <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-base-content/60">
-                <span class="inline-flex items-center gap-1">
-                    <IconEye class="h-3 w-3"/>{formatCount(item.play)}
-                </span>
+              <span class="inline-flex items-center gap-1">
+                  <IconEye class="h-3 w-3"/>{formatCount(item.play)}
+              </span>
               <span class="inline-flex items-center gap-1">
                 <IconChat class="h-3 w-3"/>{formatCount(item.danmaku)}
               </span>

@@ -1,7 +1,7 @@
-import {createFileRoute, Link, useNavigate} from '@tanstack/solid-router'
-import {createResource, createSignal, For, type JSXElement, Match, Show, Switch} from "solid-js";
 import {FollowList, Info} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
 import * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
+import {createFileRoute, Link, useNavigate} from '@tanstack/solid-router'
+import {createResource, createSignal, For, type JSXElement, Match, Show, Switch} from "solid-js";
 import UpCommonLayout from "../../../components/bilibili/up/UpCommonLayout";
 import DetailError from "../../../components/DetailError.tsx";
 import IconRefresh from "../../../components/icons/IconRefresh";
@@ -42,8 +42,8 @@ function UpIndex(): JSXElement {
   // 页码放在 URL search 里，进入 UP 详情再返回时不会因为组件重挂载回到第一页。
   const page = () => search().page;
   const [followData, {refetch}] = createResource(
-    page,
-    async (pn) => await FollowList(pn, PAGE_SIZE),
+      page,
+      async (pn) => await FollowList(pn, PAGE_SIZE),
   );
   const safeFollowData = () => readResource(() => followData());
   const followErrorMessage = () => followData.error ? String(followData.error) : "";
@@ -94,183 +94,183 @@ function UpIndex(): JSXElement {
   };
 
   return (
-    <UpCommonLayout
-      headerLeft={
-        <div class="flex items-center gap-2">
-          <h2 class="text-sm font-bold text-base-content">我的关注</h2>
-          <Show when={safeFollowData()}>
+      <UpCommonLayout
+          headerLeft={
+            <div class="flex items-center gap-2">
+              <h2 class="text-sm font-bold text-base-content">我的关注</h2>
+              <Show when={safeFollowData()}>
             <span class="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold tabular-nums text-primary">
                 {safeFollowData()!.total}
             </span>
-          </Show>
-          <button
-            class="flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-base-200 disabled:cursor-not-allowed"
-            onClick={() => void refetch()}
-            disabled={followData.loading}
-          >
-            <IconRefresh class={`h-3.5 w-3.5 text-base-content/50 ${followData.loading ? 'animate-spin' : ''}`}/>
-          </button>
-        </div>
-      }
-      headerRight={
-        <div class="flex items-center gap-2">
-          <input
-            type="text"
-            class="input input-sm input-bordered w-72"
-            placeholder="输入 UP主 mid / 空间链接（支持不带 https）"
-            value={searchInput()}
-            onInput={(e) => setSearchInput(e.currentTarget.value)}
-            onKeyDown={handleKeyDown}
-          />
-          <button class="btn btn-primary btn-sm" onClick={() => void handleSearch()} disabled={parsing()}>
-            <Show when={!parsing()} fallback={<span class="loading loading-spinner loading-xs"></span>}>
-              解析
-            </Show>
-          </button>
-        </div>
-      }
-      headerBelow={
-        parsedInfo() ? (
-          <div class="rounded-xl border border-base-300 bg-base-100 px-4 py-3">
-            <div class="flex flex-wrap items-center gap-3 rounded-xl border border-base-300 bg-base-200/30 p-3">
-              <div class="h-10 w-10 overflow-hidden rounded-full bg-base-200 ring-2 ring-base-200">
-                <img
-                  src={parsedInfo()!.face}
-                  alt={parsedInfo()!.name}
-                  referrerPolicy="no-referrer"
-                  class="h-full w-full object-cover"
-                />
-              </div>
-              <div class="min-w-0 flex-1">
-                <div class="flex flex-wrap items-center gap-2">
-                  <span class="truncate text-sm font-bold text-base-content">{parsedInfo()!.name}</span>
-                  <span class="badge badge-outline badge-sm">mid: {parsedInfo()!.mid}</span>
-                  <span class={`badge badge-sm ${parsedInfo()!.is_followed ? 'badge-primary' : 'badge-ghost'}`}>
+              </Show>
+              <button
+                  class="flex h-6 w-6 items-center justify-center rounded transition-colors hover:bg-base-200 disabled:cursor-not-allowed"
+                  onClick={() => void refetch()}
+                  disabled={followData.loading}
+              >
+                <IconRefresh class={`h-3.5 w-3.5 text-base-content/50 ${followData.loading ? 'animate-spin' : ''}`}/>
+              </button>
+            </div>
+          }
+          headerRight={
+            <div class="flex items-center gap-2">
+              <input
+                  type="text"
+                  class="input input-sm input-bordered w-72"
+                  placeholder="输入 UP主 mid / 空间链接（支持不带 https）"
+                  value={searchInput()}
+                  onInput={(e) => setSearchInput(e.currentTarget.value)}
+                  onKeyDown={handleKeyDown}
+              />
+              <button class="btn btn-primary btn-sm" onClick={() => void handleSearch()} disabled={parsing()}>
+                <Show when={!parsing()} fallback={<span class="loading loading-spinner loading-xs"></span>}>
+                  解析
+                </Show>
+              </button>
+            </div>
+          }
+          headerBelow={
+            parsedInfo() ? (
+                <div class="rounded-xl border border-base-300 bg-base-100 px-4 py-3">
+                  <div class="flex flex-wrap items-center gap-3 rounded-xl border border-base-300 bg-base-200/30 p-3">
+                    <div class="h-10 w-10 overflow-hidden rounded-full bg-base-200 ring-2 ring-base-200">
+                      <img
+                          src={parsedInfo()!.face}
+                          alt={parsedInfo()!.name}
+                          referrerPolicy="no-referrer"
+                          class="h-full w-full object-cover"
+                      />
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <span class="truncate text-sm font-bold text-base-content">{parsedInfo()!.name}</span>
+                        <span class="badge badge-outline badge-sm">mid: {parsedInfo()!.mid}</span>
+                        <span class={`badge badge-sm ${parsedInfo()!.is_followed ? 'badge-primary' : 'badge-ghost'}`}>
                       {parsedInfo()!.is_followed ? '已关注' : '未关注'}
                   </span>
-                  <span class="badge badge-outline badge-sm">Lv.{parsedInfo()!.level}</span>
-                </div>
-                <div class="mt-0.5 line-clamp-1 text-xs text-base-content/60">
-                  {parsedInfo()!.sign?.trim() ? parsedInfo()!.sign : '这个人很懒，什么也没有写~'}
-                </div>
-              </div>
-              <div class="flex items-center gap-2">
-                <button class="btn btn-outline btn-sm" onClick={() => setParsedInfo(null)}>
-                  清除
-                </button>
-                <button class="btn btn-primary btn-sm" onClick={() => goToUp(parsedInfo()!.mid)}>
-                  进入详情
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : undefined
-      }
-    >
-      {/* 关注列表 */}
-      <div class="min-h-0 flex-1 overflow-auto rounded-xl border border-base-300 bg-base-100">
-        <Switch>
-          <Match when={followData.loading}>
-            <div class="flex h-full items-center justify-center">
-              <span class="loading loading-spinner loading-md text-primary"></span>
-            </div>
-          </Match>
-          <Match when={followData.error}>
-            <Show
-              when={isLoginError()}
-              fallback={<DetailError message={followErrorMessage()} onRetry={() => void refetch()}/>}
-            >
-              <div class="flex h-full min-h-[28rem] items-center justify-center p-8">
-                <div class="flex w-full max-w-xl flex-col items-center rounded-2xl border border-warning/30 bg-warning/10 px-8 py-10 text-center shadow-sm">
-                  <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-warning/15 text-3xl font-black text-warning">
-                    !
-                  </div>
-                  <h3 class="text-2xl font-black text-warning">请先登录 B 站账号</h3>
-                  <p class="mt-3 max-w-md text-sm leading-6 text-warning/80">
-                    当前没有检测到有效登录信息，登录后才能读取关注的 UP 主列表。
-                  </p>
-                  <div class="mt-6 flex items-center gap-3">
-                    <Link to="/bilibili/profile" class="btn btn-warning">
-                      前往登录
-                    </Link>
-                    <button class="btn btn-outline btn-warning" type="button" onClick={() => void refetch()}>
-                      重试
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </Show>
-          </Match>
-          <Match when={!safeFollowData()?.list?.length}>
-            <div class="flex h-full items-center justify-center text-base-content/40">
-              <div class="text-center">
-                <IconUsers class="mx-auto h-14 w-14"/>
-                <p class="mt-3 text-sm font-semibold text-base-content/60">暂无关注</p>
-                <p class="mt-1 text-xs text-base-content/50">可以通过上方搜索框直接输入 UP主 mid
-                  解析</p>
-              </div>
-            </div>
-          </Match>
-          <Match when={safeFollowData()?.list?.length}>
-
-            <div class="p-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              <For each={safeFollowData()!.list}>
-                {(up): JSXElement => {
-                  return (
-                    <button
-                      class="group flex flex-col items-center gap-2 rounded-xl border border-base-300 bg-base-100 p-4 transition-all duration-150 hover:-translate-y-px hover:border-primary/40 hover:shadow-md active:scale-[0.98]"
-                      onClick={() => goToUp(up.mid)}
-                    >
-                      <div class="relative">
-                        <div
-                          class="h-16 w-16 overflow-hidden rounded-full bg-base-200 ring-2 ring-base-200 transition group-hover:ring-primary/30">
-                          <img
-                            src={up.face}
-                            alt={up.uname}
-                            referrerPolicy="no-referrer"
-                            class="h-full w-full object-cover"
-                            loading="lazy"
-                          />
-                        </div>
+                        <span class="badge badge-outline badge-sm">Lv.{parsedInfo()!.level}</span>
                       </div>
-                      <span class="truncate text-sm font-semibold text-base-content group-hover:text-primary">
+                      <div class="mt-0.5 line-clamp-1 text-xs text-base-content/60">
+                        {parsedInfo()!.sign?.trim() ? parsedInfo()!.sign : '这个人很懒，什么也没有写~'}
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <button class="btn btn-outline btn-sm" onClick={() => setParsedInfo(null)}>
+                        清除
+                      </button>
+                      <button class="btn btn-primary btn-sm" onClick={() => goToUp(parsedInfo()!.mid)}>
+                        进入详情
+                      </button>
+                    </div>
+                  </div>
+                </div>
+            ) : undefined
+          }
+      >
+        {/* 关注列表 */}
+        <div class="min-h-0 flex-1 overflow-auto rounded-xl border border-base-300 bg-base-100">
+          <Switch>
+            <Match when={followData.loading}>
+              <div class="flex h-full items-center justify-center">
+                <span class="loading loading-spinner loading-md text-primary"></span>
+              </div>
+            </Match>
+            <Match when={followData.error}>
+              <Show
+                  when={isLoginError()}
+                  fallback={<DetailError message={followErrorMessage()} onRetry={() => void refetch()}/>}
+              >
+                <div class="flex h-full min-h-112 items-center justify-center p-8">
+                  <div
+                      class="flex w-full max-w-xl flex-col items-center rounded-2xl border border-warning/30 bg-warning/10 px-8 py-10 text-center shadow-sm">
+                    <div
+                        class="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-warning/15 text-3xl font-black text-warning">
+                      !
+                    </div>
+                    <h3 class="text-2xl font-black text-warning">请先登录 B 站账号</h3>
+                    <p class="mt-3 max-w-md text-sm leading-6 text-warning/80">
+                      当前没有检测到有效登录信息，登录后才能读取关注的 UP 主列表。
+                    </p>
+                    <div class="mt-6 flex items-center gap-3">
+                      <Link to="/bilibili/profile" class="btn btn-warning">
+                        前往登录
+                      </Link>
+                      <button class="btn btn-outline btn-warning" type="button" onClick={() => void refetch()}>
+                        重试
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </Show>
+            </Match>
+            <Match when={!safeFollowData()?.list?.length}>
+              <div class="flex h-full items-center justify-center text-base-content/40">
+                <div class="text-center">
+                  <IconUsers class="mx-auto h-14 w-14"/>
+                  <p class="mt-3 text-sm font-semibold text-base-content/60">暂无关注</p>
+                  <p class="mt-1 text-xs text-base-content/50">可以通过上方搜索框直接输入 UP主 mid 解析</p>
+                </div>
+              </div>
+            </Match>
+            <Match when={safeFollowData()?.list?.length}>
+              <div class="p-4 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                <For each={safeFollowData()!.list}>
+                  {(up): JSXElement => {
+                    return (
+                        <button
+                            class="group flex flex-col items-center gap-2 rounded-xl border border-base-300 bg-base-100 p-4 transition-all duration-150 hover:-translate-y-px hover:border-primary/40 hover:shadow-md active:scale-[0.98]"
+                            onClick={() => goToUp(up.mid)}
+                        >
+                          <div class="relative">
+                            <div
+                                class="h-16 w-16 overflow-hidden rounded-full bg-base-200 ring-2 ring-base-200 transition group-hover:ring-primary/30">
+                              <img
+                                  src={up.face}
+                                  alt={up.uname}
+                                  referrerPolicy="no-referrer"
+                                  class="h-full w-full object-cover"
+                                  loading="lazy"
+                              />
+                            </div>
+                          </div>
+                          <span class="truncate text-sm font-semibold text-base-content group-hover:text-primary">
                         {up.uname}
                       </span>
-                      <span class="line-clamp-2 text-center text-xs leading-relaxed text-base-content/50">
+                          <span class="line-clamp-2 text-center text-xs leading-relaxed text-base-content/50">
                         {up.sign}
                       </span>
-                    </button>
-                  );
-                }}
-              </For>
-            </div>
+                        </button>
+                    );
+                  }}
+                </For>
+              </div>
 
-            {/* 翻页 */}
-            <Show when={totalPages() > 1}>
-              <div class="mt-4 p-4 flex items-center justify-center gap-2">
-	                <button
-	                  class="btn btn-outline btn-sm"
-	                  disabled={page() <= 1}
-	                  onClick={() => goToPage(page() - 1)}
-	                >
-	                  上一页
-	                </button>
-                <span class="text-sm tabular-nums text-base-content/70">
+              {/* 翻页 */}
+              <Show when={totalPages() > 1}>
+                <div class="mt-4 p-4 flex items-center justify-center gap-2">
+                  <button
+                      class="btn btn-outline btn-sm"
+                      disabled={page() <= 1}
+                      onClick={() => goToPage(page() - 1)}
+                  >
+                    上一页
+                  </button>
+                  <span class="text-sm tabular-nums text-base-content/70">
                     {page()} / {totalPages()}
                   </span>
-	                <button
-	                  class="btn btn-outline btn-sm"
-	                  disabled={page() >= totalPages()}
-	                  onClick={() => goToPage(page() + 1)}
-	                >
-                  下一页
-                </button>
-              </div>
-            </Show>
-          </Match>
-        </Switch>
-      </div>
-      <Toast message={message()} type={type()}/>
-    </UpCommonLayout>
+                  <button
+                      class="btn btn-outline btn-sm"
+                      disabled={page() >= totalPages()}
+                      onClick={() => goToPage(page() + 1)}
+                  >
+                    下一页
+                  </button>
+                </div>
+              </Show>
+            </Match>
+          </Switch>
+        </div>
+        <Toast message={message()} type={type()}/>
+      </UpCommonLayout>
   );
 }

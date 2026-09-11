@@ -1,7 +1,7 @@
-import {createSignal, type JSXElement, onMount} from "solid-js";
-import {createFileRoute} from '@tanstack/solid-router';
 import {GetVersion} from "@bindings/github.com/kamiertop/videodown/internal/updater/updater";
+import {createFileRoute} from '@tanstack/solid-router';
 import {Browser} from "@wailsio/runtime";
+import {createSignal, type JSXElement, onMount} from "solid-js";
 
 import app from "../../assets/app-128.png";
 
@@ -57,7 +57,8 @@ function AboutSection(): JSXElement {
             <span class="text-lg">📖</span>开源说明
           </h3>
           <p class="text-sm text-base-content/70">
-            本软件完全<span class="text-neutral text-xl font-extrabold">开源免费</span>
+            本软件完全
+            <span class="text-neutral text-xl font-extrabold">开源免费</span>
             ，源代码托管于 GitHub，欢迎 Star、Fork 与 Pull Request
           </p>
           <div class="flex items-start gap-2 text-sm text-error">
