@@ -52,12 +52,19 @@ function PlayHistoryPage(): JSXElement {
 
   return <div class="flex h-full min-h-0 flex-col p-4">
     <Show when={!error()} fallback={<DetailError message={error()} onRetry={() => void load()}/>}>
-      <Show when={items().length > 0} fallback={<div
-          class="flex min-h-0 flex-1 items-center justify-center text-sm text-base-content/50">暂无播放历史</div>}>
+      <Show when={items().length > 0}
+            fallback={
+              <div class="flex min-h-0 flex-1 items-center justify-center text-sm text-base-content/50">
+                暂无播放历史
+              </div>
+            }
+      >
         <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-base-300 bg-base-100">
-          <VideoListSection title="播放历史" mediaCount={items().length} medias={() => items().map(media)}
-                            selectionResetKey={() => cursor().max} hasMore={hasMore} loadingMore={loading}
-                            onLoadMore={() => void load(true)}/>
+          <VideoListSection
+              title="播放历史"
+              mediaCount={items().length} medias={() => items().map(media)}
+              selectionResetKey={() => cursor().max} hasMore={hasMore} loadingMore={loading}
+              onLoadMore={() => void load(true)}/>
         </div>
       </Show>
     </Show>

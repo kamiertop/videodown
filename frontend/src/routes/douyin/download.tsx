@@ -375,8 +375,8 @@ function DouyinDownloadPage(): JSXElement {
             <button
                 class="btn btn-success btn-xs gap-1.5"
                 type="button"
-              onClick={() => void queue.startDownload().then((count) => setCompletedCount((value) => value + count))}
-              disabled={queue.downloading()}
+                onClick={() => void queue.startDownload().then((count) => setCompletedCount((value) => value + count))}
+                disabled={queue.downloading()}
             >
               {queue.downloading() ? "下载中..." : "开始下载"}
             </button>
@@ -386,8 +386,10 @@ function DouyinDownloadPage(): JSXElement {
         <div class="mt-3 min-h-0 flex-1 overflow-hidden rounded-lg border border-base-300 bg-base-100">
           <Show
               when={douyinVideoList().length > 0}
-              fallback={<EmptyState title="下载列表为空"
-                                    description="可以解析视频链接，或从收藏、合集、用户页勾选后加入下载列表。"/>}
+              fallback={
+                <EmptyState title="下载列表为空"
+                            description="可以解析视频链接，或从收藏、合集、用户页勾选后加入下载列表。"/>
+              }
           >
             <div class="flex h-full flex-col gap-1.5 overflow-auto p-2">
               <For each={douyinVideoList()}>
