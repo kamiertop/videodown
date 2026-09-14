@@ -41,6 +41,7 @@ require (
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20230207041349-798e818bf904 // indirect
 	github.com/icholy/digest v1.1.0 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jchv/go-winloader v0.0.0-20250406163304-c1995be93bd1 // indirect
 	github.com/klauspost/compress v1.19.2 // indirect
 	github.com/lucasb-eyer/go-colorful v1.4.1 // indirect
@@ -52,6 +53,8 @@ require (
 	github.com/quic-go/quic-go v0.60.0 // indirect
 	github.com/refraction-networking/utls v1.8.2 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/spf13/cobra v1.10.2 // indirect
+	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/otel v1.41.0 // indirect
