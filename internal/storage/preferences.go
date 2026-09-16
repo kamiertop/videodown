@@ -87,6 +87,7 @@ func (s *Store) ConcurrencyNum() (int, error) {
 	return strconv.Atoi(value)
 }
 
+// ParsePlayURLNum 并发解析哔哩哔哩视频下载地址的数量
 func (s *Store) ParsePlayURLNum() (int, error) {
 	value, err := s.Get(constant.ParsePlayURLNumKey)
 	if err != nil {

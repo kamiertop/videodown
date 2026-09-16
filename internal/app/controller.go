@@ -29,9 +29,9 @@ func New(store *storage.Store) *Controller {
 
 // Configure supplies the Wails objects after their construction. It is a
 // package function so it is not exported as a frontend service binding.
-func Configure(controller *Controller, wailsApp *application.App, window *application.WebviewWindow) {
-	controller.app = wailsApp
-	controller.window = window
+func (c *Controller) Configure(wailsApp *application.App, window *application.WebviewWindow) {
+	c.app = wailsApp
+	c.window = window
 }
 
 // BeforeClose reports whether a main-window close event should be cancelled.
@@ -81,7 +81,7 @@ func (c *Controller) SetStorage() (string, error) {
 	if dir == "" {
 		return "", nil
 	}
-	if err := c.store.Set(constant.StorageKey, dir); err != nil {
+	if err = c.store.Set(constant.StorageKey, dir); err != nil {
 		return "", err
 	}
 
@@ -107,7 +107,7 @@ func (c *Controller) SelectFFmpegPath() (string, error) {
 	if out, err := exec.Command(path, "-version").CombinedOutput(); err != nil {
 		return "", fmt.Errorf("ffmpeg is not executable: %w: %s", err, string(out))
 	}
-	if err := c.store.Set(constant.FFmpegPathKey, path); err != nil {
+	if err = c.store.Set(constant.FFmpegPathKey, path); err != nil {
 		return "", err
 	}
 	return path, nil

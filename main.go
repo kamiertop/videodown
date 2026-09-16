@@ -58,7 +58,7 @@ func main() {
 		MaxWidth:  2560,
 		MaxHeight: 1440,
 	})
-	app.Configure(controller, wailsApp, window)
+	controller.Configure(wailsApp, window)
 
 	bilibili := bilibiliapi.New(log, store, wailsApp.Event)
 	douyin := douyinapi.New(log, store, wailsApp.Event)
@@ -82,7 +82,7 @@ func main() {
 		}
 	})
 
-	if err := wailsApp.Run(); err != nil {
+	if err = wailsApp.Run(); err != nil {
 		log.Fatalf("Application exited with error: %v", err)
 	}
 }
