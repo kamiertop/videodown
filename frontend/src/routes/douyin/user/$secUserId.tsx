@@ -9,6 +9,7 @@ import CollectionVideoPanel, {
 } from "../../../components/douyin/CollectionVideoPanel.tsx";
 import VideoContentPanel from "../../../components/douyin/VideoContentPanel.tsx";
 import Toast from "../../../components/Toast.tsx";
+import UnderlineTabs, {type UnderlineTabItem} from "../../../components/UnderlineTabs.tsx";
 import {useToast} from "../../../hooks/useToast.ts";
 import {formatCount} from "../../../lib/format.ts";
 import {waitBulkDownloadPage} from "../../../lib/bulkDownloadThrottle.ts";
@@ -23,6 +24,11 @@ const USER_MIX_VIDEO_PAGE_SIZE = 20;
 
 type UserTab = "video" | "series";
 type DouyinMixItem = model.CollectionItem | model.SeriesInfoItem;
+
+const USER_TABS: readonly UnderlineTabItem<UserTab>[] = [
+  {key: "video", label: "视频"},
+  {key: "series", label: "合集"},
+];
 
 function readResource<T>(read: () => T | undefined): T | undefined {
   try {
@@ -206,33 +212,12 @@ function DouyinUserPage(): JSXElement {
 
         <main class="min-h-0 flex-1 overflow-hidden rounded-xl border border-base-300 bg-base-100">
           <div class="flex h-full min-h-0 flex-col">
-            <nav class="grid shrink-0 grid-cols-2 border-b border-base-300 bg-base-100 p-1" role="tablist"
-                 aria-label="用户内容">
-              <button
-                class={`min-h-8 rounded-lg text-sm font-semibold ${
-                  activeTab() === "video" ? "bg-primary/12 text-primary ring-1 ring-primary/25" : "text-base-content/55 hover:bg-base-200"
-                }`}
-                type="button"
-                role="tab"
-                aria-selected={activeTab() === "video"}
-                onClick={() => setActiveTab("video")}
-              >
-                视频
-              </button>
-              <button
-                class={`min-h-8 rounded-lg text-sm font-semibold ${
-                  activeTab() === "series" ? "bg-primary/12 text-primary ring-1 ring-primary/25" : "text-base-content/55 hover:bg-base-200"
-                }`}
-                type="button"
-                role="tab"
-                aria-selected={activeTab() === "series"}
-                onClick={() => {
-                  setActiveTab("series");
-                }}
-              >
-                合集
-              </button>
-            </nav>
+            <UnderlineTabs
+                tabs={USER_TABS}
+                active={activeTab()}
+                onChange={setActiveTab}
+                activeClass="border-b-2 border-primary text-primary"
+            />
 
             <div class="min-h-0 flex-1 overflow-hidden">
               <div classList={{

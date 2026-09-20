@@ -29,6 +29,7 @@ import IconRefresh from "../../../components/icons/IconRefresh.tsx";
 import type {SidebarListItem} from "../../../components/SidebarList.tsx";
 import SidebarList from "../../../components/SidebarList.tsx";
 import Toast from "../../../components/Toast";
+import UnderlineTabs, {type UnderlineTabItem} from "../../../components/UnderlineTabs.tsx";
 import {useToast} from "../../../hooks/useToast";
 import {waitBulkDownloadPage} from "../../../lib/bulkDownloadThrottle.ts";
 import {parseBilibiliLengthToSeconds} from "../../../lib/format";
@@ -131,146 +132,129 @@ function UpDetail(): JSXElement {
             </Switch>
           }
       >
-        <section class="flex h-full min-h-0 gap-3 overflow-hidden bg-base-200/40 p-3">
-          <main class="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-base-300 bg-base-100">
-            <div class="flex shrink-0 border-b border-base-300">
-              <button
-                  class={`flex-1 py-3 text-center text-sm font-bold transition-colors ${
-                      logic.activeTab() === 'videos'
-                          ? 'border-b-2 border-success text-success'
-                          : 'text-base-content/60 hover:text-base-content'
-                  }`}
-                  onClick={() => logic.setActiveTab('videos')}
-              >
-                全部视频
-              </button>
-              <button
-                  class={"flex-1 py-3 text-center text-sm font-bold transition-colors"}
-                  classList={{
-                    'border-b-2 border-success text-success': logic.activeTab() === 'lists',
-                    'text-base-content/60 hover:text-base-content': logic.activeTab() !== 'lists'
-                  }}
-                  onClick={() => {
-                    logic.setActiveTab('lists');
-                    if (!logic.ssLoadedOnce()) void logic.loadSeasonsSeriesAll();
-                  }}
-              >
-                合集 | 系列
-              </button>
-            </div>
+        {/* 布局 main 已提供圆角卡片边框，这里只负责撑满并内部滚动 */}
+        <div class="flex h-full min-h-0 flex-col overflow-hidden">
+          <UnderlineTabs
+              tabs={UP_DETAIL_TABS}
+              active={logic.activeTab()}
+              onChange={(tab) => {
+                logic.setActiveTab(tab);
+                if (tab === 'lists' && !logic.ssLoadedOnce()) void logic.loadSeasonsSeriesAll();
+              }}
+              activeClass="border-b-2 border-success text-success"
+          />
 
-            <Switch>
-              <Match when={logic.activeTab() === 'videos'}>
-                <Switch>
-                  <Match when={logic.videoLoading()}>
-                    <DetailLoading/>
-                  </Match>
-                  <Match when={!!logic.videoError()}>
-                    <DetailError message={logic.videoError()}
-                                 onRetry={() => void logic.loadVideoList(false)}/>
-                  </Match>
-                  <Match when={!logic.videoLoading() && logic.videoCards().length === 0}>
-                    <EmptyState title="暂无视频" description="该 UP 主暂无投稿视频或接口返回为空"/>
-                  </Match>
-                  <Match when={true}>
-                    <VideoListSection
-                        title="全部投稿视频"
-                        mediaCount={logic.videoTotal() || logic.videoCards().length}
-                        medias={() => logic.videoCards()}
-                        selectionResetKey={() => `${params().mid}-v-${logic.videoListEpoch()}`}
-                        showToast={showToast}
-                        hasMore={logic.hasMoreVideos}
-                        loadingMore={logic.videoLoadingMore}
-                        onLoadMore={() => void logic.loadVideoList(true)}
-                        prepareDownloadAll={logic.prepareAllVideos}
-                    />
-                  </Match>
-                </Switch>
-              </Match>
+          <Switch>
+            <Match when={logic.activeTab() === 'videos'}>
+              <Switch>
+                <Match when={logic.videoLoading()}>
+                  <DetailLoading/>
+                </Match>
+                <Match when={!!logic.videoError()}>
+                  <DetailError message={logic.videoError()}
+                               onRetry={() => void logic.loadVideoList(false)}/>
+                </Match>
+                <Match when={!logic.videoLoading() && logic.videoCards().length === 0}>
+                  <EmptyState title="暂无视频" description="该 UP 主暂无投稿视频或接口返回为空"/>
+                </Match>
+                <Match when={true}>
+                  <VideoListSection
+                      title="全部投稿视频"
+                      mediaCount={logic.videoTotal() || logic.videoCards().length}
+                      medias={() => logic.videoCards()}
+                      selectionResetKey={() => `${params().mid}-v-${logic.videoListEpoch()}`}
+                      showToast={showToast}
+                      hasMore={logic.hasMoreVideos}
+                      loadingMore={logic.videoLoadingMore}
+                      onLoadMore={() => void logic.loadVideoList(true)}
+                      prepareDownloadAll={logic.prepareAllVideos}
+                  />
+                </Match>
+              </Switch>
+            </Match>
 
-              <Match when={logic.activeTab() === 'lists'}>
-                <div class="flex min-h-0 flex-1 overflow-hidden">
-                  <aside class="flex w-64 shrink-0 flex-col overflow-hidden border-r border-base-300 bg-base-100">
-                    <div class="flex shrink-0 items-center justify-between border-b border-base-200 px-3 py-2">
-                      <span class="text-xs font-bold text-base-content/70">列表</span>
-                      <button
-                          class="flex h-7 w-7 shrink-0 items-center justify-center rounded transition-colors hover:bg-base-200 disabled:cursor-not-allowed"
-                          onClick={() => void logic.loadSeasonsSeriesAll()}
-                          disabled={logic.ssLoading()}
-                          title="刷新"
-                      >
-                        <IconRefresh
-                            class={`h-3.5 w-3.5 text-base-content/50 ${logic.ssLoading() ? 'animate-spin' : ''}`}
-                        />
-                      </button>
-                    </div>
+            <Match when={logic.activeTab() === 'lists'}>
+              <div class="flex min-h-0 flex-1 overflow-hidden">
+                <aside class="flex w-64 shrink-0 flex-col overflow-hidden border-r border-base-300 bg-base-100">
+                  <div class="flex shrink-0 items-center justify-between border-b border-base-200 px-3 py-2">
+                    <span class="text-xs font-bold text-base-content/70">列表</span>
+                    <button
+                        class="flex h-7 w-7 shrink-0 items-center justify-center rounded transition-colors hover:bg-base-200 disabled:cursor-not-allowed"
+                        onClick={() => void logic.loadSeasonsSeriesAll()}
+                        disabled={logic.ssLoading()}
+                        title="刷新"
+                    >
+                      <IconRefresh
+                          class={`h-3.5 w-3.5 text-base-content/50 ${logic.ssLoading() ? 'animate-spin' : ''}`}
+                      />
+                    </button>
+                  </div>
+                  <Switch>
+                    <Match when={logic.ssLoading()}>
+                      <div class="flex flex-1 items-center justify-center py-12">
+                        <span class="loading loading-spinner loading-sm text-primary"></span>
+                      </div>
+                    </Match>
+                    <Match when={!!logic.ssError()}>
+                      <div class="p-3">
+                        <DetailError message={logic.ssError()}
+                                     onRetry={() => void logic.loadSeasonsSeriesAll()}/>
+                      </div>
+                    </Match>
+                    <Match when={logic.listSidebarItems().length === 0}>
+                      <EmptyState title="暂无合集/系列" compact/>
+                    </Match>
+                    <Match when={true}>
+                      <SidebarList
+                          list={() => logic.listSidebarItems() as any}
+                          selectedId={() => logic.selectedListItem()?.id ?? null}
+                          onSelect={logic.handleSelectListItem as any}
+                          icon={<IconBook class="h-3 w-3"/>}
+                      />
+                    </Match>
+                  </Switch>
+                </aside>
+
+                <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
+                  <Show
+                      when={!!logic.selectedListItem()}
+                      fallback={
+                        <EmptyState title="选择一个合集/系列查看内容" description="右侧将展示视频列表"/>
+                      }
+                  >
                     <Switch>
-                      <Match when={logic.ssLoading()}>
-                        <div class="flex flex-1 items-center justify-center py-12">
-                          <span class="loading loading-spinner loading-sm text-primary"></span>
-                        </div>
+                      <Match when={logic.listDetailLoading()}>
+                        <DetailLoading/>
                       </Match>
-                      <Match when={!!logic.ssError()}>
-                        <div class="p-3">
-                          <DetailError message={logic.ssError()}
-                                       onRetry={() => void logic.loadSeasonsSeriesAll()}/>
-                        </div>
+                      <Match when={!!logic.listDetailError()}>
+                        <DetailError message={logic.listDetailError()}
+                                     onRetry={logic.retryListDetail}
+                        />
                       </Match>
-                      <Match when={logic.listSidebarItems().length === 0}>
-                        <EmptyState title="暂无合集/系列" compact/>
+                      <Match when={!logic.listDetailLoading() && logic.listCards().length === 0}>
+                        <EmptyState title="暂无视频"
+                                    description="该合集/系列暂无可用视频或接口返回为空"/>
                       </Match>
                       <Match when={true}>
-                        <SidebarList
-                            list={() => logic.listSidebarItems() as any}
-                            selectedId={() => logic.selectedListItem()?.id ?? null}
-                            onSelect={logic.handleSelectListItem as any}
-                            icon={<IconBook class="h-3 w-3"/>}
+                        <VideoListSection
+                            title={`${logic.selectedListItem()!.subtitle}: ${logic.selectedListItem()!.title}`}
+                            mediaCount={logic.listTotal() || logic.selectedListItem()!.count || logic.listCards().length}
+                            medias={() => logic.listCards()}
+                            selectionResetKey={() => `${params().mid}-l-${logic.listDetailEpoch()}`}
+                            showToast={showToast}
+                            hasMore={logic.hasMoreListVideos}
+                            loadingMore={logic.listLoadingMore}
+                            onLoadMore={() => void logic.handleLoadMoreList()}
+                            prepareDownloadAll={logic.prepareAllListVideos}
                         />
                       </Match>
                     </Switch>
-                  </aside>
-
-                  <div class="flex min-w-0 flex-1 flex-col overflow-hidden">
-                    <Show
-                        when={!!logic.selectedListItem()}
-                        fallback={
-                          <EmptyState title="选择一个合集/系列查看内容" description="右侧将展示视频列表"/>
-                        }
-                    >
-                      <Switch>
-                        <Match when={logic.listDetailLoading()}>
-                          <DetailLoading/>
-                        </Match>
-                        <Match when={!!logic.listDetailError()}>
-                          <DetailError message={logic.listDetailError()}
-                                       onRetry={logic.retryListDetail}
-                          />
-                        </Match>
-                        <Match when={!logic.listDetailLoading() && logic.listCards().length === 0}>
-                          <EmptyState title="暂无视频"
-                                      description="该合集/系列暂无可用视频或接口返回为空"/>
-                        </Match>
-                        <Match when={true}>
-                          <VideoListSection
-                              title={`${logic.selectedListItem()!.subtitle}: ${logic.selectedListItem()!.title}`}
-                              mediaCount={logic.listTotal() || logic.selectedListItem()!.count || logic.listCards().length}
-                              medias={() => logic.listCards()}
-                              selectionResetKey={() => `${params().mid}-l-${logic.listDetailEpoch()}`}
-                              showToast={showToast}
-                              hasMore={logic.hasMoreListVideos}
-                              loadingMore={logic.listLoadingMore}
-                              onLoadMore={() => void logic.handleLoadMoreList()}
-                              prepareDownloadAll={logic.prepareAllListVideos}
-                          />
-                        </Match>
-                      </Switch>
-                    </Show>
-                  </div>
+                  </Show>
                 </div>
-              </Match>
-            </Switch>
-          </main>
-        </section>
+              </div>
+            </Match>
+          </Switch>
+        </div>
         <Toast message={message()} type={type()}/>
       </UpCommonLayout>
   );
@@ -279,6 +263,11 @@ function UpDetail(): JSXElement {
 // ── 以下为该页专用：接口请求、分页、Tab；与 VideoListSection / VideoCardGrid 分工不同（组件不管拉数据） ──
 
 type UpTab = 'videos' | 'lists';
+
+const UP_DETAIL_TABS: readonly UnderlineTabItem<UpTab>[] = [
+  {key: 'videos', label: '全部视频'},
+  {key: 'lists', label: '合集 | 系列'},
+];
 
 type VideoListResp = {
   list?: {

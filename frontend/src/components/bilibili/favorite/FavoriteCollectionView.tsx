@@ -56,9 +56,9 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
   }
 
   return (
-    <div class="flex h-full min-h-0 w-full gap-3 overflow-hidden">
-      {/*水平布局，左侧收藏夹列表，右侧收藏夹内容*/}
-      <aside class="flex w-56 shrink-0 flex-col overflow-hidden rounded-xl border border-base-300 bg-base-100">
+    <div class="flex h-full min-h-0 w-full overflow-hidden">
+      {/*水平布局，左侧收藏夹列表，右侧收藏夹内容；外层页面卡片已带边框，这里只用 border-r 分隔*/}
+      <aside class="flex w-56 shrink-0 flex-col overflow-hidden border-r border-base-300">
         <div
           class="flex shrink-0 items-center justify-between gap-2 border-b border-base-200 bg-linear-to-b from-base-200/35 to-base-100/80 px-3 py-2"
         >
@@ -119,7 +119,7 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
         </Switch>
       </aside>
 
-      <main class="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-base-300 bg-base-100">
+      <main class="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Show
           when={props.hasSelection()}
           fallback={

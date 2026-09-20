@@ -10,6 +10,18 @@
 // @ts-ignore: Unused imports
 import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wailsio/runtime";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as application$0 from "../../../../wailsapp/wails/v3/pkg/application/models.js";
+
+/**
+ * Configure supplies the Wails objects after their construction. It is a
+ * package function so it is not exported as a frontend service binding.
+ */
+export function Configure(wailsApp: application$0.App | null, window: application$0.WebviewWindow | null): $CancellablePromise<void> {
+    return $Call.ByID(450348270, wailsApp, window);
+}
+
 /**
  * ForceQuit allows the next close event to exit the application.
  */
