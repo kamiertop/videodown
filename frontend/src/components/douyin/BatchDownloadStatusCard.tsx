@@ -15,8 +15,6 @@ function statusBadge(state: DouyinBatchState): {text: string; badgeClass: string
       return {text: "下载中", badgeClass: "badge-primary", spinning: true};
     case "loadingPage":
       return {text: "加载下一页", badgeClass: "badge-info", spinning: true};
-    case "retrySleep":
-      return {text: "重试前休眠", badgeClass: "badge-warning", spinning: true};
     case "retrying":
       return {text: "重试失败项", badgeClass: "badge-warning", spinning: true};
     case "done":

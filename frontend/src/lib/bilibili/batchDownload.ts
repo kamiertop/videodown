@@ -1,6 +1,5 @@
 import {GetConcurrencyNum} from "@bindings/github.com/kamiertop/videodown/utils/settings";
 import {createSignal} from "solid-js";
-import {waitBulkDownloadPage} from "../bulkDownloadThrottle.ts";
 import type {MediaCardItem} from "../model.ts";
 import {bilibiliPlayResolveKey} from "./playResolve.ts";
 import {
@@ -38,7 +37,6 @@ export type BilibiliBatchStatus =
     | "resolving"
     | "downloading"
     | "loadingPage"
-    | "retrySleep"
     | "retrying"
     | "done"
     | "stopped";
@@ -53,7 +51,7 @@ export interface BilibiliBatchState {
   /** 当前失败（待重试或最终仍失败）的数量。 */
   failedCount: number;
   status: BilibiliBatchStatus;
-  /** 状态的动态补充文案，例如休眠剩余秒数。 */
+  /** 状态的动态补充文案。 */
   statusText: string;
   /** 已请求停止，正在等待当前批结束。 */
   stopping: boolean;
@@ -244,16 +242,11 @@ async function runSession(id: number, loader: BilibiliBatchPageLoader | undefine
       patchState(id, (prev) => ({loadedCount: prev.loadedCount + nextPage.length}));
     }
 
-    // 最终重试：清掉失败项的解析记录重新解析（解析失败可能只是临时网络问题），
-    // 重试前按分页休眠设置缓一口气（设为 0 则立即重试）；失败项同样按块推进。
+    // 最终重试：清掉失败项的解析记录重新解析（解析失败可能只是临时网络问题）；失败项同样按块推进。
     // 重试不清场：仍失败的留在列表里，会话收尾本来就要放回展示。
     if (!stopRequested && failedItems.length > 0) {
-      patchState(id, {status: "retrySleep", statusText: "准备重试失败项"});
-      await waitBulkDownloadPage((message) => patchState(id, {statusText: message}));
-      if (!stopRequested) {
-        resetBilibiliPlayResolve(failedItems);
-        await processQueue(failedItems, true, false);
-      }
+      resetBilibiliPlayResolve(failedItems);
+      await processQueue(failedItems, true, false);
     }
 
     return true;
