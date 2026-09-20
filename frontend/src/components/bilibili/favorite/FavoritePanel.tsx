@@ -1,8 +1,8 @@
 import {createEffect, createSignal, type JSXElement} from "solid-js";
 import {Favorites, FavoritesList} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
 import * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
+import type {BilibiliBatchPageLoader} from "../../../lib/bilibili/batchDownload.ts";
 import type {MediaCardItem} from "../../../lib/model.ts";
-import {waitBulkDownloadPage} from "../../../lib/bulkDownloadThrottle.ts";
 import {StarIcon} from "../../icons/IconStar";
 import {type SidebarListItem} from "../../SidebarList";
 import FavoriteCollectionView from "./FavoriteCollectionView";
@@ -132,16 +132,25 @@ export default function FavoritePanel(props: {
     }
   };
 
-  // 一键下载时后台连续翻页，直到接口明确返回没有下一页。
-  async function prepareAllDetailVideos(onStatus?: (message: string) => void): Promise<void> {
+  // 一键下载批量会话的分页加载器；创建时（点击瞬间）烘焙收藏夹 ID/名称/页码，
+  // 跳转后本面板已卸载，loader 只依赖闭包值继续翻页。
+  function createFavoriteBatchLoader(): BilibiliBatchPageLoader | undefined {
     const item = selectedItem();
-    if (!item) return;
-    while (detailHasMore()) {
-      const before = mediaCards().length;
-      await waitBulkDownloadPage(onStatus);
-      await loadFavoriteDetail(item, true);
-      if (mediaCards().length === before) break;
-    }
+    if (!item) return undefined;
+    const mediaId = item.id;
+    const listName = item.title ?? "";
+    let pn = detailPage();
+    let hasMore = detailHasMore();
+
+    return {
+      hasMore: () => hasMore,
+      loadNext: async () => {
+        const data = await Favorites(mediaId, pn + 1, FAVORITE_PAGE_SIZE);
+        pn += 1;
+        hasMore = Boolean(data.has_more);
+        return toMediaCards(data.medias ?? [], listName);
+      },
+    };
   }
 
   const loadFavorites = async () => {
@@ -213,7 +222,11 @@ export default function FavoritePanel(props: {
           if (!item || !detailHasMore() || loadingMore()) return;
           void loadFavoriteDetail(item, true);
         }}
-        prepareDownloadAll={prepareAllDetailVideos}
+        batchDownload={selectedItem() ? {
+          title: `收藏夹: ${selectedItem()!.title}`,
+          totalCount: (detail()?.info?.media_count ?? selectedItem()!.media_count) || undefined,
+          createLoader: () => createFavoriteBatchLoader()!,
+        } : undefined}
       />
     </div>
   );

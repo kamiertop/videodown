@@ -13,7 +13,7 @@ function mediaIdentity(item: MediaCardItem): string {
   return `id:${item.id}`;
 }
 
-export function addVideos(selectedVideos: MediaCardItem[]): void {
+export function addVideos(selectedVideos: readonly MediaCardItem[]): void {
   // 同一个视频可能从 UP 投稿、合集、手动解析等不同入口进入列表；下载时必须按 BV 去重。
   setVideoList(prev => {
     const existing = new Set(prev.map(mediaIdentity));

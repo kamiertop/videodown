@@ -1,8 +1,8 @@
 import {createEffect, createSignal, type JSXElement} from "solid-js";
 import {Collection, CollectionItem} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
 import * as model from "@bindings/github.com/kamiertop/videodown/bilibili/model/models";
+import type {BilibiliBatchPageLoader} from "../../../lib/bilibili/batchDownload.ts";
 import type {MediaCardItem} from "../../../lib/model.ts";
-import {waitBulkDownloadPage} from "../../../lib/bulkDownloadThrottle.ts";
 import {StackIcon} from "../../icons/IconStack";
 import {type SidebarListItem} from "../../SidebarList";
 import FavoriteCollectionView from "./FavoriteCollectionView";
@@ -118,16 +118,30 @@ export default function CollectionPanel(props: {
     }
   };
 
-  // 一键下载时后台连续翻页，直到接口明确返回没有下一页。
-  async function prepareAllDetailVideos(onStatus?: (message: string) => void): Promise<void> {
+  // 一键下载批量会话的分页加载器；合集接口没有 has_more，加载器内按
+  // “本页有返回且已加载数 < 总数” 自行计算，创建时烘焙合集 ID/名称/页码。
+  function createCollectionBatchLoader(): BilibiliBatchPageLoader | undefined {
     const item = selectedItem();
-    if (!item) return;
-    while (detailHasMore()) {
-      const before = mediaCards().length;
-      await waitBulkDownloadPage(onStatus);
-      await loadCollectionDetail(item, true);
-      if (mediaCards().length === before) break;
-    }
+    if (!item) return undefined;
+    const seasonId = String(item.id);
+    const listName = item.title ?? "";
+    const fallbackTotal = item.media_count ?? 0;
+    let pn = detailPage();
+    let loaded = detail()?.medias?.length ?? 0;
+    let more = detailHasMore();
+
+    return {
+      hasMore: () => more,
+      loadNext: async () => {
+        const data = await CollectionItem(seasonId, pn + 1, COLLECTION_ITEM_PAGE_SIZE);
+        const medias = data.medias ?? [];
+        pn += 1;
+        loaded += medias.length;
+        const total = data.info?.media_count ?? fallbackTotal;
+        more = medias.length > 0 && loaded < total;
+        return toCollectionMediaCards(medias, listName);
+      },
+    };
   }
 
   const loadCollections = async (append = false) => {
@@ -225,7 +239,11 @@ export default function CollectionPanel(props: {
           if (!item || !detailHasMore() || loadingMore()) return;
           void loadCollectionDetail(item, true);
         }}
-        prepareDownloadAll={prepareAllDetailVideos}
+        batchDownload={selectedItem() ? {
+          title: `合集: ${selectedItem()!.title}`,
+          totalCount: (detail()?.info?.media_count ?? selectedItem()!.media_count) || undefined,
+          createLoader: () => createCollectionBatchLoader()!,
+        } : undefined}
       />
     </div>
   );

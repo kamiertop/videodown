@@ -17,7 +17,8 @@ import VideoContentPanel from "../../components/douyin/VideoContentPanel.tsx";
 import Toast from "../../components/Toast.tsx";
 import UnderlineTabs, {type UnderlineTabItem} from "../../components/UnderlineTabs.tsx";
 import {useToast} from "../../hooks/useToast.ts";
-import {waitBulkDownloadPage} from "../../lib/bulkDownloadThrottle.ts";
+import {awemeToDownloadItem} from "../../lib/douyin/aweme.ts";
+import type {DouyinBatchPageLoader} from "../../lib/douyin/batchDownload.ts";
 
 export const Route = createFileRoute('/douyin/favorite')({
   component: DouyinFavoritePage,
@@ -82,6 +83,22 @@ async function loadFavoriteMixVideos(item: DouyinListItem, cursor: number): Prom
   return {
     items: data.aweme_list ?? [],
     hasMore: Number(data.has_more ?? 0) > 0,
+  };
+}
+
+// 批量下载的收藏视频分页加载器；创建时烘焙好游标，跳转后不依赖本页组件状态。
+function favoriteVideoBatchLoader(initialCursor: number, initialHasMore: boolean): DouyinBatchPageLoader {
+  let cursor = initialCursor;
+  let hasMore = initialHasMore;
+  return {
+    hasMore: () => hasMore,
+    loadNext: async () => {
+      const data = await FavoriteVideo(20, cursor);
+      const items = data.aweme_list ?? [];
+      cursor = data.cursor ?? cursor + items.length;
+      hasMore = Number(data.has_more ?? 0) > 0 && items.length > 0;
+      return items.map((item, index) => awemeToDownloadItem(item, "收藏视频", "未知作者", index));
+    },
   };
 }
 
@@ -181,16 +198,6 @@ function DouyinFavoritePage(): JSXElement {
     }
   }
 
-  async function prepareAllFavoriteVideos(onStatus?: (message: string) => void): Promise<void> {
-    // 一键下载时后台连续翻页，直到接口明确返回没有下一页。
-    while (videoHasMore()) {
-      const before = videos().length;
-      await waitBulkDownloadPage(onStatus);
-      await loadMoreVideos();
-      if (videos().length === before) break;
-    }
-  }
-
   return (
     <section class="flex h-full min-h-0 flex-col p-2">
       <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-base-300 bg-base-100 shadow-sm">
@@ -207,6 +214,7 @@ function DouyinFavoritePage(): JSXElement {
             showToast={showToast}
             loadList={loadCollections}
             loadVideos={loadCollectionVideos}
+            createDetailPageFetcher={(item) => (offset) => loadCollectionVideos(item, offset)}
         />
 
         <div classList={{
@@ -227,7 +235,10 @@ function DouyinFavoritePage(): JSXElement {
               hasMore={videoHasMore()}
               loadingMore={videoLoadingMore()}
               onLoadMore={() => void loadMoreVideos()}
-              prepareDownloadAll={prepareAllFavoriteVideos}
+              batchDownload={{
+                title: "收藏视频",
+                createLoader: () => favoriteVideoBatchLoader(videoResult()?.cursor ?? videos().length, videoHasMore()),
+              }}
           />
         </div>
 
@@ -238,6 +249,7 @@ function DouyinFavoritePage(): JSXElement {
             showToast={showToast}
             loadList={loadFavoriteMixes}
             loadVideos={loadFavoriteMixVideos}
+            createDetailPageFetcher={(item) => (offset) => loadFavoriteMixVideos(item, offset)}
         />
       </div>
       <Toast message={message()} type={type()}/>

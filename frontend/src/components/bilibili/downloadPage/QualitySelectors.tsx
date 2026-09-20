@@ -94,6 +94,10 @@ export default function QualitySelectors(props: QualitySelectorsProps): JSXEleme
               </>
           )}
         </Show>
+        {/* 批量会话按块解析：还没轮到的项没有 entry，提示等待而不是留白。 */}
+        <Show when={!props.entry}>
+          <p class="text-xs text-base-content/50">等待解析播放地址…</p>
+        </Show>
         <Show when={props.entry?.status === "loading"}>
           <span class="loading loading-spinner loading-sm shrink-0 text-primary"/>
         </Show>

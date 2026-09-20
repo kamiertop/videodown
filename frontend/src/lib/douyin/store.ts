@@ -50,7 +50,7 @@ function itemIdentity(item: DouyinDownloadItem): string {
   return item.awemeId.trim();
 }
 
-export function addDouyinVideos(items: DouyinDownloadItem[]): void {
+export function addDouyinVideos(items: readonly DouyinDownloadItem[]): void {
   setDouyinVideoList((prev) => {
     const existing = new Set(prev.map(itemIdentity));
     const next = items.filter((item) => {

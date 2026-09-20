@@ -1,51 +1,15 @@
 import {useNavigate} from "@tanstack/solid-router";
-import {createEffect, createMemo, createSignal, type JSXElement, Match, Show, Switch} from "solid-js";
+import {createEffect, createMemo, createSignal, type JSXElement, Match, Switch} from "solid-js";
 import {createStore} from "solid-js/store";
 import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
-import {
-  defaultDouyinVideoOption,
-  douyinCoverCandidates,
-  douyinDownloadAssets,
-  douyinImageURLs,
-  douyinMediaBadge,
-  douyinMusicURL,
-  douyinVideoOptions,
-} from "../../lib/douyin/media.ts";
+import {awemeCoverURLCandidates, awemeToDownloadItem} from "../../lib/douyin/aweme.ts";
+import {type DouyinBatchPageLoader, startDouyinBatch} from "../../lib/douyin/batchDownload.ts";
 import {addDouyinVideos, type DouyinDownloadItem} from "../../lib/douyin/store.ts";
 import {formatDate, formatDuration} from "../../lib/format.ts";
 import DetailError from "../DetailError.tsx";
 import DetailLoading from "../DetailLoading.tsx";
 import EmptyState from "../EmptyState.tsx";
 import VideoGrid, {type DouyinVideoCardItem} from "./VideoGrid.tsx";
-
-function normalizeDouyinDuration(value?: number): number {
-  // 抖音部分接口返回毫秒，部分字段可能已经是秒；展示层统一转成秒。
-  if (!value || value <= 0) return 0;
-  return value >= 1000 ? Math.floor(value / 1000) : value;
-}
-
-function awemeKey(item: model.AwemeItem, index: number): string {
-  // aweme_id 最稳定；其他 ID 只用于接口缺字段时兜底，避免列表 key 为空。
-  return item.aweme_id || item.group_id || item.sec_item_id || `${item.author_user_id || "item"}-${index}`;
-}
-
-function awemeCover(item: model.AwemeItem): string {
-  return awemeCoverCandidates(item)[0] ?? "";
-}
-
-function awemeCoverCandidates(item: model.AwemeItem): string[] {
-  const candidates = [
-    ...(item.video?.raw_cover?.url_list ?? []),
-    ...(item.video?.cover?.url_list ?? []),
-    ...(item.video?.origin_cover?.url_list ?? []),
-    ...(item.images?.[0]?.url_list ?? []),
-  ];
-  return [...new Set(candidates.filter(Boolean))];
-}
-
-function awemeTitle(item: model.AwemeItem): string {
-  return item.item_title || item.desc || item.caption || `作品 ${item.aweme_id || ""}`.trim();
-}
 
 export type DouyinVideoContentKind =
     | "favorite-video"
@@ -124,8 +88,16 @@ export default function VideoContentPanel(props: {
   hasMore?: boolean;
   loadingMore?: boolean;
   onLoadMore?: () => void;
-  /** 一键下载前自动加载完剩余分页；完成后使用最新 items 组建下载队列。 */
-  prepareDownloadAll?: (onStatus?: (message: string) => void) => Promise<void>;
+  /**
+   * 一键下载全部的批量会话描述。传入后点击按钮会立即跳转下载页并自动开始：
+   * 当前已加载内容作为首批，后续分页由 loader 在会话里继续加载。
+   * 不传时按钮退化为“把已加载内容入队并跳转”。
+   */
+  batchDownload?: {
+    title: string;
+    totalCount?: number;
+    createLoader: () => DouyinBatchPageLoader;
+  };
 }): JSXElement {
   const navigate = useNavigate();
   // allSelected=true 时表示“当前已加载视频默认都选中”，selectedMap 存的是排除项。
@@ -133,8 +105,6 @@ export default function VideoContentPanel(props: {
   const [allSelected, setAllSelected] = createSignal(false);
   // createStore 方便按 id 删除单个选择项；值固定为 true，不存额外数据。
   const [selectedMap, setSelectedMap] = createStore<Record<string, true>>({});
-  const [downloadAllLoading, setDownloadAllLoading] = createSignal(false);
-  const [downloadAllStatus, setDownloadAllStatus] = createSignal("正在加载全部视频");
 
   function clearSelection(): void {
     setAllSelected(false);
@@ -143,48 +113,21 @@ export default function VideoContentPanel(props: {
 
   const videoItems = createMemo<DouyinVideoCardItem[]>(() =>
       props.items.map((item, index): DouyinVideoCardItem => {
-        // 后端 AwemeItem 很大，网格只需要轻量视图模型和下载任务。
-        const duration = normalizeDouyinDuration(item.video?.duration ?? item.duration ?? 0);
-        const awemeId = item.aweme_id || item.group_id || item.sec_item_id || `${item.author_user_id}-${index}`;
-        const title = awemeTitle(item);
-        const cover = awemeCover(item);
-        const author = item.author?.nickname || item.author?.uid || props.fallbackAuthor;
-        // 清晰度选项在进入下载页前就解析好，下载页只需要让用户切换最终 URL。
-        const videoOptions = douyinVideoOptions(item);
-        const selectedVideoOption = defaultDouyinVideoOption(videoOptions);
-        const imageURLs = douyinImageURLs(item);
-        const mediaBadge = douyinMediaBadge(item);
+        // 后端 AwemeItem 很大，网格只需要轻量视图模型和下载任务；
+        // 清晰度等解析统一走 awemeToDownloadItem，与链接解析、批量翻页保持一致。
+        const downloadItem = awemeToDownloadItem(item, props.sourceName, props.fallbackAuthor, index);
 
         return {
-          id: awemeKey(item, index),
-          cover,
-          coverCandidates: awemeCoverCandidates(item),
-          title,
-          author,
+          id: downloadItem.awemeId,
+          cover: downloadItem.cover,
+          coverCandidates: awemeCoverURLCandidates(item),
+          title: downloadItem.title,
+          author: downloadItem.authorName,
           publishText: formatDate(item.create_time ?? 0),
-          durationText: formatDuration(duration),
+          durationText: formatDuration(downloadItem.duration),
           isTop: item.is_top === 1,
-          downloadItem: {
-            awemeId,
-            sourceName: props.sourceName,
-            title,
-            cover,
-            coverCandidates: douyinCoverCandidates(item),
-            duration,
-            authorName: author,
-            publishTime: item.create_time ?? 0,
-            diggCount: item.statistics?.digg_count ?? 0,
-            collectCount: item.statistics?.collect_count ?? 0,
-            link: awemeId ? `https://www.douyin.com/video/${awemeId}` : undefined,
-            videoURL: selectedVideoOption?.url,
-            videoOptions,
-            selectedVideoOptionId: selectedVideoOption?.id,
-            imageURLs,
-            assets: mediaBadge ? douyinDownloadAssets(item) : undefined,
-            musicURL: mediaBadge ? douyinMusicURL(item) : undefined,
-            mediaBadge,
-          },
-          mediaBadge,
+          downloadItem,
+          mediaBadge: downloadItem.mediaBadge,
         };
       }),
   );
@@ -257,6 +200,26 @@ export default function VideoContentPanel(props: {
     await navigate({to: "/douyin/download"});
   }
 
+  // 一键下载全部：立即跳转下载页并自动开始；后续分页由批量会话在下载页继续加载。
+  // 只有配置了 batchDownload（可翻页的来源）才渲染按钮；关注动态等无翻页来源不提供。
+  async function startBatchDownload(): Promise<void> {
+    const batch = props.batchDownload;
+    if (!batch) return;
+
+    const started = startDouyinBatch({
+      title: batch.title,
+      totalCount: batch.totalCount,
+      initialItems: videoItems().map((item) => item.downloadItem),
+      loader: batch.createLoader(),
+    });
+    if (!started) {
+      props.showToast("已有下载任务进行中，请稍后再试", "warning");
+      return;
+    }
+    clearSelection();
+    await navigate({to: "/douyin/download"});
+  }
+
   return (
       <Switch>
         <Match when={props.loading}>
@@ -286,33 +249,13 @@ export default function VideoContentPanel(props: {
               onToggleAll={toggleSelectAll}
               onClearSelection={clearSelection}
               onDownloadSelected={() => void enqueueAndGoDownload(selectedDownloadItems())}
-              onDownloadAll={async () => {
-                if (downloadAllLoading()) return;
-                setDownloadAllLoading(true);
-                try {
-                  setDownloadAllStatus("正在加载全部视频");
-                  await props.prepareDownloadAll?.(setDownloadAllStatus);
-                  await enqueueAndGoDownload(videoItems().map((item) => item.downloadItem));
-                } finally {
-                  setDownloadAllLoading(false);
-                }
-              }}
+              onDownloadAll={props.batchDownload ? () => void startBatchDownload() : undefined}
               refreshing={props.refreshing}
               onRefresh={props.onRefresh}
               hasMore={props.hasMore}
               loadingMore={props.loadingMore}
               onLoadMore={props.onLoadMore}
           />
-          <Show when={downloadAllLoading()}>
-            <div class="fixed inset-0 z-40 grid place-items-center bg-base-300/45 p-4 backdrop-blur-[2px]">
-              <div class="w-full max-w-sm rounded-xl border border-base-300 bg-base-100 p-5 text-center shadow-2xl">
-                <h3 class="text-base font-semibold text-base-content">{downloadAllStatus()}</h3>
-                <p class="mt-1 text-xs text-base-content/60">请稍候，完成后将自动加入下载队列</p>
-                <progress class="progress progress-primary mt-4 w-full" />
-                <p class="mt-2 text-xs tabular-nums text-base-content/55">已加载 {videoItems().length} 个视频</p>
-              </div>
-            </div>
-          </Show>
         </Match>
       </Switch>
   );

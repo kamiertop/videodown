@@ -1,4 +1,5 @@
 import {type JSXElement, Match, Show, Switch} from "solid-js";
+import type {BilibiliBatchPageLoader} from "../../../lib/bilibili/batchDownload.ts";
 import type {MediaCardItem} from "../../../lib/model.ts";
 import DetailError from "../../DetailError";
 import DetailLoading from "../../DetailLoading";
@@ -34,8 +35,12 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
   hasMore?: () => boolean;
   loadingMore?: () => boolean;
   onLoadMore?: () => void;
-  /** 一键下载前自动加载完当前收藏夹/合集的剩余分页。 */
-  prepareDownloadAll?: (onStatus?: (message: string) => void) => Promise<void>;
+  /** 一键下载全部的批量会话描述，由外层面板随选中项构造；不传时不渲染按钮。 */
+  batchDownload?: {
+    title: string;
+    totalCount?: number;
+    createLoader: () => BilibiliBatchPageLoader;
+  };
 }): JSXElement {
   function emptySidebarTitle(): string {
     switch (props.sidebarLabel) {
@@ -148,7 +153,7 @@ export default function FavoriteCollectionView<T extends SidebarListItem>(props:
                 hasMore={props.hasMore}
                 loadingMore={props.loadingMore}
                 onLoadMore={props.onLoadMore}
-                prepareDownloadAll={props.prepareDownloadAll}
+                batchDownload={props.batchDownload}
               />
             </Match>
           </Switch>

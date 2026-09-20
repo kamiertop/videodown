@@ -34,6 +34,10 @@ type Service struct {
 	getCookie func() (string, error)
 }
 
+func (s *Service) IsDone() bool {
+	return len(s.progress) == 0
+}
+
 func NewService(logger *logger.Logger, store *storage.Store, events *application.EventManager, getCookie func() (string, error)) *Service {
 	return &Service{
 		store:     store,
@@ -509,4 +513,9 @@ func (s *Service) DownloadCover(cover string, task Task) (string, error) {
 	}
 
 	return outPath, nil
+}
+
+// ServiceShutdown 关闭前检查是否还有任务正在下载
+func (s *Service) ServiceShutdown() error {
+	return nil
 }

@@ -11,8 +11,9 @@ import VideoContentPanel from "../../../components/douyin/VideoContentPanel.tsx"
 import Toast from "../../../components/Toast.tsx";
 import UnderlineTabs, {type UnderlineTabItem} from "../../../components/UnderlineTabs.tsx";
 import {useToast} from "../../../hooks/useToast.ts";
+import {awemeToDownloadItem} from "../../../lib/douyin/aweme.ts";
+import type {DouyinBatchPageLoader} from "../../../lib/douyin/batchDownload.ts";
 import {formatCount} from "../../../lib/format.ts";
-import {waitBulkDownloadPage} from "../../../lib/bulkDownloadThrottle.ts";
 
 export const Route = createFileRoute('/douyin/user/$secUserId')({
   component: DouyinUserPage,
@@ -65,6 +66,28 @@ async function loadUserMixVideos(secUserId: string, item: DouyinListItem, cursor
   return {
     items: data.aweme_list ?? [],
     hasMore: Number(data.has_more ?? 0) > 0,
+  };
+}
+
+// 批量下载的作品分页加载器；创建时烘焙好所有参数，跳转后不依赖本页组件状态。
+function userVideoBatchLoader(
+    secUserId: string,
+    sourceName: string,
+    fallbackAuthor: string,
+    initialCursor: number,
+    initialHasMore: boolean,
+): DouyinBatchPageLoader {
+  let cursor = initialCursor;
+  let hasMore = initialHasMore;
+  return {
+    hasMore: () => hasMore,
+    loadNext: async () => {
+      const data = await UserVideoList(secUserId, USER_VIDEO_PAGE_SIZE, cursor);
+      const items = data.aweme_list ?? [];
+      cursor = data.max_cursor ?? cursor + items.length;
+      hasMore = Number(data.has_more ?? 0) > 0 && items.length > 0;
+      return items.map((item, index) => awemeToDownloadItem(item, sourceName, fallbackAuthor, index));
+    },
   };
 }
 
@@ -165,15 +188,6 @@ function DouyinUserPage(): JSXElement {
     }
   }
 
-  async function prepareAllUserVideos(onStatus?: (message: string) => void): Promise<void> {
-    while (hasMore()) {
-      const before = videos().length;
-      await waitBulkDownloadPage(onStatus);
-      await loadMore();
-      if (videos().length === before) break;
-    }
-  }
-
   async function reload(): Promise<void> {
     if (activeTab() === "series") {
       setSeriesRefreshKey((value) => value + 1);
@@ -239,7 +253,17 @@ function DouyinUserPage(): JSXElement {
                   hasMore={hasMore()}
                   loadingMore={loadingMore()}
                   onLoadMore={() => void loadMore()}
-                  prepareDownloadAll={prepareAllUserVideos}
+                  batchDownload={{
+                    title: `${user()?.nickname || "用户"}的全部作品`,
+                    totalCount: user()?.aweme_count,
+                    createLoader: () => userVideoBatchLoader(
+                        secUserId(),
+                        user()?.nickname || "用户作品",
+                        user()?.nickname || "未知作者",
+                        videoData()?.max_cursor ?? videos().length,
+                        hasMore(),
+                    ),
+                  }}
                 />
               </div>
 
@@ -251,6 +275,11 @@ function DouyinUserPage(): JSXElement {
                 showToast={showToast}
                 loadList={(cursor) => loadUserMixes(secUserId(), cursor)}
                 loadVideos={(item, cursor) => loadUserMixVideos(secUserId(), item, cursor)}
+                createDetailPageFetcher={(item) => {
+                  // 烘焙当前用户 ID；批量会话翻页时本页已卸载，不能再读路由参数。
+                  const id = secUserId();
+                  return (offset) => loadUserMixVideos(id, item, offset);
+                }}
               />
             </div>
           </div>

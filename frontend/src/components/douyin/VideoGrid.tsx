@@ -238,7 +238,7 @@ export default function VideoGrid(props: {
                       type="button"
                       onClick={() => void props.onDownloadAll?.()}
                       disabled={props.items.length === 0}
-                      aria-label="一键下载全部（自动加载全部分页）"
+                      aria-label="一键下载全部（跳转下载页自动分页下载）"
                   >
                     一键下载全部
                   </button>
@@ -246,7 +246,7 @@ export default function VideoGrid(props: {
                       role="tooltip"
                       class="pointer-events-none absolute right-0 top-full z-50 mt-1.5 w-max max-w-[min(220px,calc(100vw-24px))] whitespace-normal rounded-md bg-neutral px-2.5 py-1.5 text-center text-[11px] leading-4 text-neutral-content opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
                   >
-                    自动加载全部分页并加入下载队列
+                    跳转下载页，自动分页加载并下载全部
                   </span>
                 </div>
           ) : null}

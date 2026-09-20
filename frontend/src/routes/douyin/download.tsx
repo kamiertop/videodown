@@ -3,22 +3,16 @@ import {DownloadCover} from "@bindings/github.com/kamiertop/videodown/douyin/dow
 import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
 import {createFileRoute} from '@tanstack/solid-router'
 import {createSignal, For, type JSXElement, Show} from "solid-js";
+import DouyinBatchStatusCard from "../../components/douyin/BatchDownloadStatusCard.tsx";
 import MediaTypeBadge from "../../components/douyin/MediaTypeBadge.tsx";
 import EmptyState from "../../components/EmptyState.tsx";
 import NoCover from "../../components/NoCover.tsx";
 import Toast from "../../components/Toast.tsx";
 import {useToast} from "../../hooks/useToast.ts";
+import {awemeToDownloadItem} from "../../lib/douyin/aweme.ts";
+import {douyinBatchState} from "../../lib/douyin/batchDownload.ts";
 import {type DouyinDownloadProgress, useDouyinDownloadQueue} from "../../lib/douyin/downloadQueue.ts";
-import {
-  defaultDouyinVideoOption,
-  douyinCoverCandidates,
-  douyinDownloadAssets,
-  douyinImageURLs,
-  douyinMediaBadge,
-  douyinMusicURL,
-  douyinVideoOptions,
-  formatDataSize,
-} from "../../lib/douyin/media.ts";
+import {formatDataSize} from "../../lib/douyin/media.ts";
 import {
   addDouyinVideos,
   type DouyinDownloadItem,
@@ -33,55 +27,6 @@ type AwemeItem = model.AwemeItem;
 export const Route = createFileRoute('/douyin/download')({
   component: DouyinDownloadPage,
 })
-
-function normalizeDouyinDuration(value?: number): number {
-  if (!value || value <= 0) return 0;
-  return value >= 1000 ? Math.floor(value / 1000) : value;
-}
-
-function awemeCover(item: model.AwemeItem): string {
-  return [
-    ...(item.video?.raw_cover?.url_list ?? []),
-    ...(item.video?.cover?.url_list ?? []),
-    ...(item.video?.origin_cover?.url_list ?? []),
-  ][0] ?? "";
-}
-
-function awemeTitle(item: model.AwemeItem): string {
-  return item.item_title || item.desc || item.caption || `作品 ${item.aweme_id || ""}`.trim();
-}
-
-function detailToDownloadItem(item: model.AwemeItem): DouyinDownloadItem {
-  const awemeId = item.aweme_id || item.group_id || item.sec_item_id;
-  const title = awemeTitle(item);
-  const cover = awemeCover(item);
-  const duration = normalizeDouyinDuration(item.video?.duration ?? item.duration ?? 0);
-  const authorName = item.author?.nickname || item.author?.uid || "未知作者";
-  const videoOptions = douyinVideoOptions(item);
-  const selectedVideoOption = defaultDouyinVideoOption(videoOptions);
-  const mediaBadge = douyinMediaBadge(item);
-
-  return {
-    awemeId,
-    sourceName: "",
-    title,
-    cover,
-    coverCandidates: douyinCoverCandidates(item),
-    duration,
-    authorName,
-    publishTime: item.create_time ?? 0,
-    diggCount: item.statistics?.digg_count ?? 0,
-    collectCount: item.statistics?.collect_count ?? 0,
-    link: awemeId ? `https://www.douyin.com/video/${awemeId}` : undefined,
-    videoURL: selectedVideoOption?.url,
-    videoOptions,
-    selectedVideoOptionId: selectedVideoOption?.id,
-    imageURLs: douyinImageURLs(item),
-    assets: mediaBadge ? douyinDownloadAssets(item) : undefined,
-    musicURL: mediaBadge ? douyinMusicURL(item) : undefined,
-    mediaBadge,
-  };
-}
 
 function progressText(progress: DouyinDownloadProgress | undefined): string {
   // 后端把视频和图片合集都归一成同一条 0-100 进度，前端只区分阶段文案。
@@ -309,7 +254,7 @@ function DouyinDownloadPage(): JSXElement {
       }
 
       const detail: AwemeItem = await VideoDetail(awemeId);
-      const item = detailToDownloadItem(detail);
+      const item = awemeToDownloadItem(detail, "", "未知作者");
       if (!item.awemeId) {
         showToast("解析成功，但详情中没有视频 ID", "error");
         return;
@@ -358,7 +303,12 @@ function DouyinDownloadPage(): JSXElement {
 
         </section>
 
-        <Show when={douyinVideoList().length > 0 || completedCount() > 0}>
+        {/* 批量任务卡片：一键下载全部的会话进度（已下载/总数、当前状态、停止）。 */}
+        <DouyinBatchStatusCard/>
+
+        {/* 批量进行中列表里始终只有当前批的一页，“待下载 N 个”没有信息量，隐藏这行摘要；
+            批量结束后恢复显示，此时列表里的就是重试后仍失败的内容。 */}
+        <Show when={!douyinBatchState()?.active && (douyinVideoList().length > 0 || completedCount() > 0)}>
           <section class="mt-2 flex flex-row items-center justify-between rounded-lg p-3 shadow-sm">
             <div class="flex min-w-0 flex-1 flex-col gap-1">
               <div class="flex items-center gap-2">

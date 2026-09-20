@@ -31,7 +31,7 @@ import SidebarList from "../../../components/SidebarList.tsx";
 import Toast from "../../../components/Toast";
 import UnderlineTabs, {type UnderlineTabItem} from "../../../components/UnderlineTabs.tsx";
 import {useToast} from "../../../hooks/useToast";
-import {waitBulkDownloadPage} from "../../../lib/bulkDownloadThrottle.ts";
+import type {BilibiliBatchPageLoader} from "../../../lib/bilibili/batchDownload.ts";
 import {parseBilibiliLengthToSeconds} from "../../../lib/format";
 import type {MediaCardItem} from "../../../lib/model.ts";
 
@@ -167,7 +167,11 @@ function UpDetail(): JSXElement {
                       hasMore={logic.hasMoreVideos}
                       loadingMore={logic.videoLoadingMore}
                       onLoadMore={() => void logic.loadVideoList(true)}
-                      prepareDownloadAll={logic.prepareAllVideos}
+                      batchDownload={{
+                        title: `${logic.info()?.name || "UP主"}的全部投稿`,
+                        totalCount: logic.videoTotal() || undefined,
+                        createLoader: () => logic.createVideoBatchLoader(),
+                      }}
                   />
                 </Match>
               </Switch>
@@ -245,7 +249,11 @@ function UpDetail(): JSXElement {
                             hasMore={logic.hasMoreListVideos}
                             loadingMore={logic.listLoadingMore}
                             onLoadMore={() => void logic.handleLoadMoreList()}
-                            prepareDownloadAll={logic.prepareAllListVideos}
+                            batchDownload={{
+                              title: `${logic.selectedListItem()!.subtitle}: ${logic.selectedListItem()!.title}`,
+                              totalCount: logic.listTotal() || logic.selectedListItem()!.count || undefined,
+                              createLoader: () => logic.createListBatchLoader()!,
+                            }}
                         />
                       </Match>
                     </Switch>
@@ -363,8 +371,11 @@ function createUpDetailLogic(
     setListCards(prev => prev.map(c => (c.upperName === upperName ? c : {...c, upperName})));
   });
 
-  const mapVlistToCards = (vlist: VideoListResp["list"] extends { vlist?: infer V } ? V : any): MediaCardItem[] => {
-    const upperName = currentUpperName();
+  const mapVlistToCards = (
+      vlist: VideoListResp["list"] extends { vlist?: infer V } ? V : any,
+      upperNameOverride?: string,
+  ): MediaCardItem[] => {
+    const upperName = upperNameOverride ?? currentUpperName();
     return (vlist ?? []).map((v: any) => ({
       id: Number(v.aid) || 0,
       title: v.title ?? '',
@@ -612,26 +623,59 @@ function createUpDetailLogic(
     }
   };
 
-  // 一键下载：后台连续翻页，直到全部投稿视频加载完毕。
-  async function prepareAllVideos(onStatus?: (message: string) => void): Promise<void> {
-    while (hasMoreVideos()) {
-      const before = videoCards().length;
-      await waitBulkDownloadPage(onStatus);
-      await loadVideoList(true);
-      if (videoCards().length === before) break;
-    }
+  // 一键下载批量会话的投稿分页加载器；创建时（点击瞬间）烘焙 mid/UP名/页码，
+  // 跳转后本页组件已卸载，loader 只依赖闭包值继续翻页。
+  function createVideoBatchLoader(): BilibiliBatchPageLoader {
+    const mid = Number(getMid());
+    const upperName = currentUpperName();
+    let page = videoPage();
+    let loaded = videoCards().length;
+    let total = videoTotal();
+
+    return {
+      hasMore: () => total > 0 && loaded < total,
+      loadNext: async () => {
+        const data = await VideoList(mid, VIDEO_PAGE_SIZE, page + 1) as VideoListResp;
+        const cards = mapVlistToCards(data.list?.vlist, upperName);
+        page += 1;
+        loaded += cards.length;
+        total = Number(data.page.count) || total;
+        return cards;
+      },
+    };
   }
 
-  // 一键下载：后台连续翻页，直到当前合集/系列视频加载完毕。
-  async function prepareAllListVideos(onStatus?: (message: string) => void): Promise<void> {
+  // 当前合集/系列的分页加载器；season 与 series 的接口和总数字段不同，烘焙 kind 后分流。
+  function createListBatchLoader(): BilibiliBatchPageLoader | undefined {
     const item = selectedListItem();
-    if (!item) return;
-    while (hasMoreListVideos()) {
-      const before = listCards().length;
-      await waitBulkDownloadPage(onStatus);
-      await loadListDetail(item, true);
-      if (listCards().length === before) break;
-    }
+    if (!item) return undefined;
+    const mid = getMid();
+    const upperName = currentUpperName();
+    const kind = item.kind;
+    const listId = item.id;
+    const listName = item.title;
+    let page = listPage();
+    let loaded = listCards().length;
+    let total = listTotal() || item.count || 0;
+
+    return {
+      hasMore: () => total > 0 && loaded < total,
+      loadNext: async () => {
+        let cards: MediaCardItem[];
+        if (kind === 'season') {
+          const data = await SeasonsArchivesList(mid, 20, page + 1, listId) as unknown as model.SeasonsArchivesData;
+          cards = mapArchivesToCards(data.archives ?? undefined, upperName, listName);
+          total = Number(data.meta?.total ?? data.page?.Total ?? total) || total;
+        } else {
+          const data = await SeriesList(mid, 20, page + 1, listId) as SeriesArchivesResp;
+          cards = mapArchivesToCards(data.archives as any[], upperName, listName);
+          total = Number((data as any).page?.total ?? (data as any).page?.Total ?? total) || total;
+        }
+        page += 1;
+        loaded += cards.length;
+        return cards;
+      },
+    };
   }
 
   const init = () => {
@@ -668,7 +712,7 @@ function createUpDetailLogic(
     listDetailEpoch,
     init,
     retryListDetail,
-    prepareAllVideos,
-    prepareAllListVideos,
+    createVideoBatchLoader,
+    createListBatchLoader,
   };
 }
