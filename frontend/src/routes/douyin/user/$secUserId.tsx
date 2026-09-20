@@ -1,7 +1,12 @@
+import {
+  CollectionList,
+  User,
+  UserSeries,
+  UserVideoList
+} from "@bindings/github.com/kamiertop/videodown/douyin/api/douyin";
+import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
 import {createFileRoute, Link} from '@tanstack/solid-router'
 import {createResource, createSignal, type JSXElement, Match, Show, Switch} from "solid-js";
-import {CollectionList, User, UserSeries, UserVideoList} from "@bindings/github.com/kamiertop/videodown/douyin/api/douyin";
-import * as model from "@bindings/github.com/kamiertop/videodown/douyin/model/models";
 import CollectionVideoPanel, {
   type DouyinListItem,
   type ListPage,
@@ -93,9 +98,9 @@ function userVideoBatchLoader(
 
 function avatarUrl(user: model.User | undefined): string {
   return user?.avatar_larger?.url_list?.[0]
-    ?? user?.avatar_medium?.url_list?.[0]
-    ?? user?.avatar_thumb?.url_list?.[0]
-    ?? "";
+      ?? user?.avatar_medium?.url_list?.[0]
+      ?? user?.avatar_thumb?.url_list?.[0]
+      ?? "";
 }
 
 function UserHeader(props: {
@@ -104,49 +109,52 @@ function UserHeader(props: {
   loading: boolean;
 }): JSXElement {
   return (
-    <header
-      class="flex h-12 shrink-0 items-center gap-3 overflow-hidden rounded-xl border border-base-300 bg-base-100 px-4">
-      <div class="flex min-w-0 flex-1 items-center gap-2">
-        <Link to="/douyin/user" class="btn btn-ghost btn-sm shrink-0">返回用户</Link>
-        <div class="h-5 w-px bg-base-300"></div>
-        <h2 class="shrink-0 text-sm font-bold text-base-content">抖音用户</h2>
-        <span class="min-w-0 truncate rounded-full bg-base-200 px-2 py-0.5 text-xs text-base-content/60">
+      <header
+          class="flex h-12 shrink-0 items-center gap-3 overflow-hidden rounded-xl border border-base-300 bg-base-100 px-4">
+        <div class="flex min-w-0 flex-1 items-center gap-2">
+          <Link to="/douyin/user" class="btn btn-ghost btn-sm shrink-0">返回用户</Link>
+          <div class="h-5 w-px bg-base-300"></div>
+          <h2 class="shrink-0 text-sm font-bold text-base-content">抖音用户</h2>
+          <span class="min-w-0 truncate rounded-full bg-base-200 px-2 py-0.5 text-xs text-base-content/60">
           {props.user?.signature || "全部作品"}
         </span>
-      </div>
+        </div>
 
-      <div class="flex shrink-0 items-center gap-2">
-        <Switch>
-          <Match when={props.loading}>
-            <div class="flex items-center gap-2">
-              <span class="loading loading-spinner loading-xs text-primary"></span>
-              <span class="text-xs text-base-content/50">获取用户信息...</span>
-            </div>
-          </Match>
-          <Match when={!props.loading}>
-            <div class="flex min-w-0 items-center gap-2">
-              <div class="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-base-200 ring-2 ring-base-200">
-                <Show when={avatarUrl(props.user)} fallback={<div class="h-full w-full bg-base-200"/>}>
-                  <img src={avatarUrl(props.user)} alt="" class="h-full w-full object-cover"
-                       referrerPolicy="no-referrer"/>
-                </Show>
+        <div class="flex shrink-0 items-center gap-2">
+          <Switch>
+            <Match when={props.loading}>
+              <div class="flex items-center gap-2">
+                <span class="loading loading-spinner loading-xs text-primary"></span>
+                <span class="text-xs text-base-content/50">获取用户信息...</span>
               </div>
+            </Match>
+            <Match when={!props.loading}>
               <div class="flex min-w-0 items-center gap-2">
+                <div class="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-base-200 ring-2 ring-base-200">
+                  <Show when={avatarUrl(props.user)} fallback={<div class="h-full w-full bg-base-200"/>}>
+                    <img src={avatarUrl(props.user)} alt="" class="h-full w-full object-cover"
+                         referrerPolicy="no-referrer"/>
+                  </Show>
+                </div>
+                <div class="flex min-w-0 items-center gap-2">
                 <span class="max-w-56 truncate text-sm font-black text-base-content">
                   {props.user?.nickname || "抖音用户"}
                 </span>
-                <span
-                  class="badge badge-outline badge-sm">作品 {formatCount(props.user?.aweme_count ?? props.videoCount)}</span>
-                <span class="badge badge-outline badge-sm">粉丝 {formatCount(props.user?.follower_count ?? 0)}</span>
-                <Show when={props.user?.ip_location}>
-                  <span class="badge badge-ghost badge-sm">{props.user?.ip_location}</span>
-                </Show>
+                  <span class="badge badge-outline badge-sm">
+                    作品 {formatCount(props.user?.aweme_count ?? props.videoCount)}
+                  </span>
+                  <span class="badge badge-outline badge-sm">
+                    粉丝 {formatCount(props.user?.follower_count ?? 0)}
+                  </span>
+                  <Show when={props.user?.ip_location}>
+                    <span class="badge badge-ghost badge-sm">{props.user?.ip_location}</span>
+                  </Show>
+                </div>
               </div>
-            </div>
-          </Match>
-        </Switch>
-      </div>
-    </header>
+            </Match>
+          </Switch>
+        </div>
+      </header>
   );
 }
 
@@ -159,8 +167,8 @@ function DouyinUserPage(): JSXElement {
   const {message, type, showToast} = useToast();
   const [userResult, {refetch: refetchUser}] = createResource(secUserId, User);
   const [videoResult, {refetch: refetchVideos, mutate: mutateVideos}] = createResource(
-    secUserId,
-    (id) => UserVideoList(id, USER_VIDEO_PAGE_SIZE, 0),
+      secUserId,
+      (id) => UserVideoList(id, USER_VIDEO_PAGE_SIZE, 0),
   );
 
   const userData = () => readResource(() => userResult());
@@ -208,84 +216,86 @@ function DouyinUserPage(): JSXElement {
   };
 
   return (
-    <section class="flex h-full min-h-0 flex-col gap-3 overflow-hidden bg-base-200/40 p-3">
-      <Show when={!isCookieError()} fallback={
-        <div class="m-auto max-w-md w-full flex flex-col items-center justify-center gap-4 p-8">
-          <div class="rounded-xl border border-warning/30 bg-warning/10 px-5 py-4 text-center">
-            <p class="text-base font-semibold text-warning">请先设置抖音 Cookie</p>
-            <p class="mt-2 text-xs text-warning/80">后端未检测到抖音 Cookie，无法获取用户信息。请前往设置页面填写 Cookie。</p>
-            <Link to="/settings" class="btn btn-warning btn-sm mt-4">前往设置</Link>
-          </div>
-        </div>
-      }>
-        <UserHeader
-          user={user()}
-          videoCount={videos().length}
-          loading={userResult.loading}
-        />
+      <section class="flex h-full min-h-0 flex-col gap-3 overflow-hidden bg-base-200/40 p-3">
+        <Show when={!isCookieError()}
+              fallback={
+                <div class="m-auto max-w-md w-full flex flex-col items-center justify-center gap-4 p-8">
+                  <div class="rounded-xl border border-warning/30 bg-warning/10 px-5 py-4 text-center">
+                    <p class="text-base font-semibold text-warning">请先设置抖音 Cookie</p>
+                    <p class="mt-2 text-xs text-warning/80">后端未检测到抖音 Cookie，无法获取用户信息。请前往设置页面填写
+                      Cookie。</p>
+                    <Link to="/settings" class="btn btn-warning btn-sm mt-4">前往设置</Link>
+                  </div>
+                </div>
+              }>
+          <UserHeader
+              user={user()}
+              videoCount={videos().length}
+              loading={userResult.loading}
+          />
 
-        <main class="min-h-0 flex-1 overflow-hidden rounded-xl border border-base-300 bg-base-100">
-          <div class="flex h-full min-h-0 flex-col">
-            <UnderlineTabs
-                tabs={USER_TABS}
-                active={activeTab()}
-                onChange={setActiveTab}
-                activeClass="border-b-2 border-primary text-primary"
-            />
+          <main class="min-h-0 flex-1 overflow-hidden rounded-xl border border-base-300 bg-base-100">
+            <div class="flex h-full min-h-0 flex-col">
+              <UnderlineTabs
+                  tabs={USER_TABS}
+                  active={activeTab()}
+                  onChange={setActiveTab}
+                  activeClass="border-b-2 border-primary text-primary"
+              />
 
-            <div class="min-h-0 flex-1 overflow-hidden">
-              <div classList={{
-                "flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden": activeTab() === "video",
-                "hidden": activeTab() !== "video",
-              }}>
-                <VideoContentPanel
-                  kind="user-video"
-                  loading={userResult.loading || videoResult.loading}
-                  error={!isCookieError() ? errorMessage() : ""}
-                  onRetry={() => void reload()}
-                  items={videos()}
-                  totalCount={user()?.aweme_count}
-                  sourceName={user()?.nickname || "用户作品"}
-                  fallbackAuthor={user()?.nickname || "未知作者"}
-                  showToast={showToast}
-                  refreshing={userResult.loading || videoResult.loading}
-                  onRefresh={() => void reload()}
-                  hasMore={hasMore()}
-                  loadingMore={loadingMore()}
-                  onLoadMore={() => void loadMore()}
-                  batchDownload={{
-                    title: `${user()?.nickname || "用户"}的全部作品`,
-                    totalCount: user()?.aweme_count,
-                    createLoader: () => userVideoBatchLoader(
-                        secUserId(),
-                        user()?.nickname || "用户作品",
-                        user()?.nickname || "未知作者",
-                        videoData()?.max_cursor ?? videos().length,
-                        hasMore(),
-                    ),
-                  }}
+              <div class="min-h-0 flex-1 overflow-hidden">
+                <div classList={{
+                  "flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden": activeTab() === "video",
+                  "hidden": activeTab() !== "video",
+                }}>
+                  <VideoContentPanel
+                      kind="user-video"
+                      loading={userResult.loading || videoResult.loading}
+                      error={!isCookieError() ? errorMessage() : ""}
+                      onRetry={() => void reload()}
+                      items={videos()}
+                      totalCount={user()?.aweme_count}
+                      sourceName={user()?.nickname || "用户作品"}
+                      fallbackAuthor={user()?.nickname || "未知作者"}
+                      showToast={showToast}
+                      refreshing={userResult.loading || videoResult.loading}
+                      onRefresh={() => void reload()}
+                      hasMore={hasMore()}
+                      loadingMore={loadingMore()}
+                      onLoadMore={() => void loadMore()}
+                      batchDownload={{
+                        title: `${user()?.nickname || "用户"}的全部作品`,
+                        totalCount: user()?.aweme_count,
+                        createLoader: () => userVideoBatchLoader(
+                            secUserId(),
+                            user()?.nickname || "用户作品",
+                            user()?.nickname || "未知作者",
+                            videoData()?.max_cursor ?? videos().length,
+                            hasMore(),
+                        ),
+                      }}
+                  />
+                </div>
+
+                <CollectionVideoPanel
+                    active={activeTab() === "series"}
+                    kind="user-mix"
+                    sourceKey={`user:${secUserId()}`}
+                    refreshKey={seriesRefreshKey()}
+                    showToast={showToast}
+                    loadList={(cursor) => loadUserMixes(secUserId(), cursor)}
+                    loadVideos={(item, cursor) => loadUserMixVideos(secUserId(), item, cursor)}
+                    createDetailPageFetcher={(item) => {
+                      // 烘焙当前用户 ID；批量会话翻页时本页已卸载，不能再读路由参数。
+                      const id: string = secUserId();
+                      return (offset) => loadUserMixVideos(id, item, offset);
+                    }}
                 />
               </div>
-
-              <CollectionVideoPanel
-                active={activeTab() === "series"}
-                kind="user-mix"
-                sourceKey={`user:${secUserId()}`}
-                refreshKey={seriesRefreshKey()}
-                showToast={showToast}
-                loadList={(cursor) => loadUserMixes(secUserId(), cursor)}
-                loadVideos={(item, cursor) => loadUserMixVideos(secUserId(), item, cursor)}
-                createDetailPageFetcher={(item) => {
-                  // 烘焙当前用户 ID；批量会话翻页时本页已卸载，不能再读路由参数。
-                  const id = secUserId();
-                  return (offset) => loadUserMixVideos(id, item, offset);
-                }}
-              />
             </div>
-          </div>
-        </main>
-      </Show>
-      <Toast message={message()} type={type()}/>
-    </section>
+          </main>
+        </Show>
+        <Toast message={message()} type={type()}/>
+      </section>
   );
 }

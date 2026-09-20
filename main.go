@@ -65,6 +65,9 @@ func main() {
 	updateService := updater.New(log, store, wailsApp.Event)
 	biliDownService := download.NewService(log, store, wailsApp.Event, bilibili.CookieFunc())
 	douyinDownService := douyinDown.New(log, store, wailsApp.Event, douyin.PublicHeaders())
+	controller.SetActiveTaskProbe(func() int {
+		return biliDownService.ActiveCount() + douyinDownService.ActiveCount()
+	})
 
 	wailsApp.RegisterService(application.NewService(bilibili))
 	wailsApp.RegisterService(application.NewService(douyin))

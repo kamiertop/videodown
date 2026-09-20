@@ -17,10 +17,11 @@ import (
 
 // Controller owns application-window interactions exposed to the frontend.
 type Controller struct {
-	store     *storage.Store
-	app       *application.App
-	window    *application.WebviewWindow
-	forceQuit atomic.Bool
+	store      *storage.Store
+	app        *application.App
+	window     *application.WebviewWindow
+	forceQuit  atomic.Bool
+	activeTask func() int
 }
 
 func New(store *storage.Store) *Controller {
@@ -34,6 +35,31 @@ func (c *Controller) Configure(wailsApp *application.App, window *application.We
 	c.window = window
 }
 
+// SetActiveTaskProbe registers a callback returning the number of download
+// tasks still running, so close handling can warn before interrupting them.
+func (c *Controller) SetActiveTaskProbe(probe func() int) {
+	c.activeTask = probe
+}
+
+// ActiveDownloads returns the number of download tasks still running.
+func (c *Controller) ActiveDownloads() int {
+	if c.activeTask == nil {
+		return 0
+	}
+	return c.activeTask()
+}
+
+// promptQuitWithTasks asks the frontend to confirm quitting while downloads
+// are still running; the window must stay visible for the dialog to be seen.
+func (c *Controller) promptQuitWithTasks(count int) {
+	if c.window != nil {
+		c.window.Show()
+	}
+	if c.app != nil {
+		c.app.Event.Emit("quit-with-tasks", count)
+	}
+}
+
 // BeforeClose reports whether a main-window close event should be cancelled.
 func BeforeClose(controller *Controller) bool {
 	if controller.forceQuit.Swap(false) {
@@ -43,12 +69,16 @@ func BeforeClose(controller *Controller) bool {
 	value, err := controller.store.Get(constant.CloseToTrayKey)
 	if err != nil {
 		if controller.app != nil {
-			controller.app.Event.Emit("before-close-prompt")
+			controller.app.Event.Emit("before-close-prompt", controller.ActiveDownloads())
 		}
 		return true
 	}
 	if value == "true" {
 		controller.HideWindow()
+		return true
+	}
+	if active := controller.ActiveDownloads(); active > 0 {
+		controller.promptQuitWithTasks(active)
 		return true
 	}
 
