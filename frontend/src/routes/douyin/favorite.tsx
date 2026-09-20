@@ -1,5 +1,5 @@
 import {createFileRoute} from '@tanstack/solid-router'
-import {createEffect, createSignal, For, type JSXElement, onCleanup, onMount,} from "solid-js";
+import {createEffect, createSignal, type JSXElement, onCleanup, onMount,} from "solid-js";
 import {
   Collection as FavoriteMixCollection,
   CollectionList,
@@ -15,6 +15,7 @@ import CollectionVideoPanel, {
 } from "../../components/douyin/CollectionVideoPanel.tsx";
 import VideoContentPanel from "../../components/douyin/VideoContentPanel.tsx";
 import Toast from "../../components/Toast.tsx";
+import UnderlineTabs, {type UnderlineTabItem} from "../../components/UnderlineTabs.tsx";
 import {useToast} from "../../hooks/useToast.ts";
 import {waitBulkDownloadPage} from "../../lib/bulkDownloadThrottle.ts";
 
@@ -84,49 +85,11 @@ async function loadFavoriteMixVideos(item: DouyinListItem, cursor: number): Prom
   };
 }
 
-function tabLabel(tab: FavoriteTab): string {
-  const labels: Record<FavoriteTab, string> = {
-    collection: "收藏夹",
-    video: "视频",
-    mix: "合集",
-  };
-
-  return labels[tab];
-}
-
-function FavoriteHeader(props: {
-  activeTab: FavoriteTab;
-  onTabChange: (tab: FavoriteTab) => void;
-}): JSXElement {
-  return (
-    <header class="mb-2 shrink-0">
-      <nav
-        class="flex min-w-0 flex-row justify-between rounded-2xl border border-base-300/90 bg-linear-to-b from-base-100 via-base-100 to-base-200/20 p-1.5 shadow-sm"
-        role="tablist"
-        aria-label="收藏分类"
-      >
-        <For each={['collection', 'video', 'mix'] as const}>
-          {(tab) => (
-            <button
-              class={'min-h-6 flex-1 rounded-xl px-2 text-center text-xs font-semibold sm:text-sm'}
-              classList={{
-                "bg-primary/12 text-primary shadow-sm ring-1 ring-primary/25": props.activeTab === tab,
-                "text-base-content/50 hover:bg-base-200/80 hover:text-base-content": props.activeTab !== tab,
-                "opacity-90": tab === 'mix',
-              }}
-              type="button"
-              role="tab"
-              aria-selected={props.activeTab === tab}
-              onClick={() => props.onTabChange(tab)}
-            >
-              {tabLabel(tab)}
-            </button>
-          )}
-        </For>
-      </nav>
-    </header>
-  );
-}
+const FAVORITE_TABS: readonly UnderlineTabItem<FavoriteTab>[] = [
+  {key: "collection", label: "收藏夹"},
+  {key: "video", label: "视频"},
+  {key: "mix", label: "合集"},
+];
 
 function DouyinFavoritePage(): JSXElement {
   const [activeTab, setActiveTab] = createSignal<FavoriteTab>('collection');
@@ -230,27 +193,27 @@ function DouyinFavoritePage(): JSXElement {
 
   return (
     <section class="flex h-full min-h-0 flex-col p-2">
-      <FavoriteHeader
-        activeTab={activeTab()}
-        onTabChange={setActiveTab}
-      />
-
-      <div class="min-h-0 flex-1 overflow-hidden rounded-xl border border-base-300 bg-base-100 shadow-sm">
-        <div class="flex h-full min-h-0 flex-col">
-          <CollectionVideoPanel
+      <div class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-base-300 bg-base-100 shadow-sm">
+        <UnderlineTabs
+            tabs={FAVORITE_TABS}
+            active={activeTab()}
+            onChange={setActiveTab}
+            activeClass="border-b-2 border-primary text-primary"
+        />
+        <CollectionVideoPanel
             active={activeTab() === 'collection'}
             kind="favorite-collection"
             sourceKey="favorite-collections"
             showToast={showToast}
             loadList={loadCollections}
             loadVideos={loadCollectionVideos}
-          />
+        />
 
-          <div classList={{
-            "flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden": activeTab() === 'video',
-            "hidden": activeTab() !== 'video',
-          }}>
-            <VideoContentPanel
+        <div classList={{
+          "flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden": activeTab() === 'video',
+          "hidden": activeTab() !== 'video',
+        }}>
+          <VideoContentPanel
               kind="favorite-video"
               loading={videoLoading()}
               error={videoError()}
@@ -265,18 +228,17 @@ function DouyinFavoritePage(): JSXElement {
               loadingMore={videoLoadingMore()}
               onLoadMore={() => void loadMoreVideos()}
               prepareDownloadAll={prepareAllFavoriteVideos}
-            />
-          </div>
+          />
+        </div>
 
-          <CollectionVideoPanel
+        <CollectionVideoPanel
             active={activeTab() === 'mix'}
             kind="favorite-mix"
             sourceKey="favorite-mixes"
             showToast={showToast}
             loadList={loadFavoriteMixes}
             loadVideos={loadFavoriteMixVideos}
-          />
-        </div>
+        />
       </div>
       <Toast message={message()} type={type()}/>
     </section>
