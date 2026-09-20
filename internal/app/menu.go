@@ -13,6 +13,11 @@ func SetupSystemTray(wailsApp *application.App, window *application.WebviewWindo
 	})
 	menu.AddSeparator()
 	menu.Add("退出").OnClick(func(_ *application.Context) {
+		// 有任务在进行时先在前端弹窗确认，避免托盘退出静默中断下载。
+		if active := controller.ActiveDownloads(); active > 0 {
+			controller.promptQuitWithTasks(active)
+			return
+		}
 		controller.ForceQuit()
 		wailsApp.Quit()
 	})

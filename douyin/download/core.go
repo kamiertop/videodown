@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/imroc/req/v3"
@@ -20,18 +21,20 @@ import (
 )
 
 type Service struct {
-	client        *req.Client
-	logger        *logger.Logger
-	store         *storage.Store
-	events        *application.EventManager
-	mu            sync.Mutex
-	progress      map[string]float64
+	client   *req.Client
+	logger   *logger.Logger
+	store    *storage.Store
+	events   *application.EventManager
+	mu       sync.Mutex
+	progress map[string]float64
+	// active 记录正在执行（含休眠间隔）的任务数，供关闭程序前判断是否有任务未完成。
+	active        atomic.Int64
 	publicHeaders func() (map[string]string, error)
 }
 
-// IsDone returns true if there are no ongoing download tasks
-func (d *Service) IsDone() bool {
-	return len(d.progress) == 0
+// ActiveCount 返回正在执行的任务数；0 表示当前没有任务在进行。
+func (d *Service) ActiveCount() int {
+	return int(d.active.Load())
 }
 
 func New(logger *logger.Logger, store *storage.Store, events *application.EventManager, publicHeaders func() (map[string]string, error)) *Service {
@@ -74,6 +77,7 @@ func (d *Service) DownloadVideos(tasks []Task) (BatchResult, error) {
 	for range workerCount {
 		wg.Go(func() {
 			for task := range jobs {
+				d.active.Add(1)
 				targetPath, err := d.downloadTask(task)
 				item := Result{AwemeID: task.AwemeID, Title: task.Title, Path: targetPath}
 				if err != nil {
@@ -84,6 +88,8 @@ func (d *Service) DownloadVideos(tasks []Task) (BatchResult, error) {
 				if err == nil {
 					d.sleepAfterTask(task)
 				}
+				// 休眠结束后任务才算完成，避免休眠间隔内关闭程序被判定为无任务进行
+				d.active.Add(-1)
 			}
 		})
 	}

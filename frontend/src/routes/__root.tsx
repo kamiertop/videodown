@@ -14,6 +14,8 @@ export const Route = createRootRoute({
 function RootComponent(): JSXElement {
   const [showChoice, setShowChoice] = createSignal(false);
   const [rememberChoice, setRememberChoice] = createSignal(false);
+  const [activeCount, setActiveCount] = createSignal(0);
+  const [showQuitTasks, setShowQuitTasks] = createSignal(false);
   const [update, setUpdate] = createSignal<Result | null>(null);
   const [installing, setInstalling] = createSignal(false);
 
@@ -21,9 +23,15 @@ function RootComponent(): JSXElement {
     const theme: string = await GetTheme().catch(() => 'light');
     document.documentElement.setAttribute('data-theme', theme);
 
-    Events.On("before-close-prompt", () => {
+    Events.On("before-close-prompt", ({data}) => {
+      setActiveCount(Number(data) || 0);
       setRememberChoice(false);
       setShowChoice(true);
+    });
+
+    Events.On("quit-with-tasks", ({data}) => {
+      setActiveCount(Number(data) || 0);
+      setShowQuitTasks(true);
     });
 
     Events.On("update-available", ({data}) => {
@@ -92,6 +100,11 @@ function RootComponent(): JSXElement {
               <p class="text-sm text-base-content/70 mb-4">
                 你希望现在如何关闭窗口？
               </p>
+              <Show when={activeCount() > 0}>
+                <p class="text-sm text-warning mb-4">
+                  仍有 {activeCount()} 个任务正在下载，退出会中断这些任务。
+                </p>
+              </Show>
               <label class="label cursor-pointer justify-start gap-3 px-0 mb-5">
                 <input
                     type="checkbox"
@@ -123,6 +136,44 @@ function RootComponent(): JSXElement {
                       setRememberChoice(false);
                       setShowChoice(false);
                     }}
+                >
+                  取消
+                </button>
+              </div>
+            </div>
+          </div>
+        </Show>
+
+        <Show when={showQuitTasks()}>
+          <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div class="w-[calc(100%-2rem)] max-w-sm rounded-lg bg-base-100 p-6 text-base-content shadow-2xl">
+              <h3 class="text-lg font-bold mb-2">还有任务未完成</h3>
+              <p class="text-sm text-base-content/70 mb-4">
+                仍有 {activeCount()} 个任务正在下载，退出会中断这些任务。
+              </p>
+              <div class="flex flex-col gap-3">
+                <button
+                    class="btn btn-outline btn-info"
+                    onClick={() => {
+                      setShowQuitTasks(false);
+                      HideWindow();
+                    }}
+                >
+                  最小化到托盘，继续下载
+                </button>
+                <button
+                    class="btn btn-ghost"
+                    onClick={async () => {
+                      setShowQuitTasks(false);
+                      await ForceQuit();
+                      Application.Quit();
+                    }}
+                >
+                  仍要退出
+                </button>
+                <button
+                    class="btn btn-ghost btn-sm"
+                    onClick={() => setShowQuitTasks(false)}
                 >
                   取消
                 </button>

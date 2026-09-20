@@ -15,6 +15,13 @@ import { Call as $Call, CancellablePromise as $CancellablePromise } from "@wails
 import * as application$0 from "../../../../wailsapp/wails/v3/pkg/application/models.js";
 
 /**
+ * ActiveDownloads returns the number of download tasks still running.
+ */
+export function ActiveDownloads(): $CancellablePromise<number> {
+    return $Call.ByID(1056633457);
+}
+
+/**
  * Configure supplies the Wails objects after their construction. It is a
  * package function so it is not exported as a frontend service binding.
  */
@@ -41,6 +48,14 @@ export function HideWindow(): $CancellablePromise<void> {
  */
 export function SelectFFmpegPath(): $CancellablePromise<string> {
     return $Call.ByID(2827319556);
+}
+
+/**
+ * SetActiveTaskProbe registers a callback returning the number of download
+ * tasks still running, so close handling can warn before interrupting them.
+ */
+export function SetActiveTaskProbe(probe: any): $CancellablePromise<void> {
+    return $Call.ByID(117464545, probe);
 }
 
 /**
