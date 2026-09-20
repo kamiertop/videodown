@@ -1,8 +1,6 @@
 import {
-  GetBulkDownloadSleepTime,
   GetConcurrencyNum,
   GetSleepTime,
-  SetBulkDownloadSleepTime,
   SetConcurrencyNum,
   SetSleepTime,
 } from "@bindings/github.com/kamiertop/videodown/utils/settings";
@@ -18,71 +16,8 @@ function DownloadSection(): JSXElement {
       <div class="space-y-6 max-w-2xl mx-auto">
         <ConcurrencyNum/>
         <SleepAfterDownLoad/>
-        <BulkDownloadSleep/>
       </div>
   )
-}
-
-function BulkDownloadSleep(): JSXElement {
-  const [seconds, setSeconds] = createSignal(0);
-  const [loaded, setLoaded] = createSignal(false);
-  const {message, type, showToast} = useToast();
-  let timer: number | undefined;
-  const normalize = (value: number) => Math.max(0, Math.min(600, Math.round(Number.isFinite(value) ? value : 0)));
-  const update = (value: number) => {
-    const next = normalize(value);
-    setSeconds(next);
-    if (timer !== undefined) window.clearTimeout(timer);
-    timer = window.setTimeout(() => void SetBulkDownloadSleepTime(next).catch((e) => showToast(`保存一键下载休眠时间失败${e}`, "error")), 300);
-  };
-  onMount(async () => {
-    try {
-      setSeconds(normalize(Number(await GetBulkDownloadSleepTime())));
-    } catch (e) {
-      showToast(`获取一键下载休眠时间失败${e}`, "error");
-    } finally {
-      setLoaded(true);
-    }
-  });
-  onCleanup(() => {
-    if (timer !== undefined) window.clearTimeout(timer);
-  });
-  return (
-      <Show when={loaded()}
-            fallback={
-              <div class="card bg-base-100 shadow-xl">
-                <div class="card-body">
-                  <span class="loading loading-dots loading-sm"/>
-                </div>
-              </div>
-            }
-      >
-        <div class="card bg-base-100 shadow-xl">
-          <div class="card-body">
-            <div class="flex items-start justify-between gap-4">
-              <h2 class="card-title">一键下载全部功能 分页间隔休眠</h2>
-              <div class="badge badge-outline shrink-0">{seconds()} 秒</div>
-            </div>
-            <p class="text-sm text-base-content/70">
-              使用一键下载功能，自动分页加载所有视频时，每次请求之间随机休眠 0-{seconds()} 秒，降低触发限流的概率
-            </p>
-            <div class="flex items-center gap-3">
-              <input type="range" min="0" max="600" step="5"
-                     value={seconds()}
-                     class="range range-secondary flex-1"
-                     onInput={(e) => update(Number(e.currentTarget.value))}/>
-              <label class="input input-bordered flex w-32 items-center gap-2">
-                <input type="number" min="0" max="600"
-                       value={seconds()} class="w-full"
-                       onInput={(e) => update(Number(e.currentTarget.value))}/>
-                <span class="text-sm text-base-content/60">秒</span>
-              </label>
-            </div>
-          </div>
-        </div>
-        <Toast message={message()} type={type()}/>
-      </Show>
-  );
 }
 
 function ConcurrencyNum(): JSXElement {

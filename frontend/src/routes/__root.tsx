@@ -1,10 +1,14 @@
-import {createRootRoute, Outlet} from '@tanstack/solid-router'
-import {createSignal, type JSXElement, onMount, Show} from "solid-js";
-import {GetTheme, SetCloseToTray} from "@bindings/github.com/kamiertop/videodown/utils/settings";
 import {ForceQuit, HideWindow} from "@bindings/github.com/kamiertop/videodown/internal/app/controller";
-import {Application, Events} from "@wailsio/runtime";
-import {DownloadUpdate, InstallUpdate, LatestResult} from "@bindings/github.com/kamiertop/videodown/internal/updater/updater";
 import type {Result} from "@bindings/github.com/kamiertop/videodown/internal/updater";
+import {
+  DownloadUpdate,
+  InstallUpdate,
+  LatestResult
+} from "@bindings/github.com/kamiertop/videodown/internal/updater/updater";
+import {GetTheme, SetCloseToTray} from "@bindings/github.com/kamiertop/videodown/utils/settings";
+import {createRootRoute, Outlet} from '@tanstack/solid-router'
+import {Application, Events} from "@wailsio/runtime";
+import {createSignal, type JSXElement, onMount, Show} from "solid-js";
 import HomeHeader from "../components/Header.tsx";
 
 export const Route = createRootRoute({
@@ -51,10 +55,10 @@ function RootComponent(): JSXElement {
       if (!rememberChoice()) {
         await ForceQuit();
       }
-      Application.Quit();
+      await Application.Quit();
       return;
     }
-    HideWindow();
+    await HideWindow();
   }
 
   async function installUpdate() {
@@ -79,17 +83,21 @@ function RootComponent(): JSXElement {
 
         <Show when={update()}>
           {(result) => (
-            <div class="fixed bottom-4 left-4 z-40 w-[calc(100%-2rem)] max-w-md rounded-lg border border-info/30 bg-base-100 p-4 shadow-xl">
-              <button class="btn btn-ghost btn-sm btn-circle absolute right-2 top-2" aria-label="关闭更新提示" onClick={() => setUpdate(null)}>×</button>
-              <h3 class="font-semibold">发现新版本 {result().latestVersion}</h3>
-              <p class="mt-1 text-sm text-base-content/70">当前版本 {result().currentVersion}</p>
-              <Show when={result().releaseNotes}>
-                <p class="mt-2 max-h-20 overflow-y-auto whitespace-pre-wrap text-sm text-base-content/70">{result().releaseNotes}</p>
-              </Show>
-              <Show when={result().downloadURL}>
-                <button class="btn btn-info btn-sm mt-3" disabled={installing()} onClick={installUpdate}>{installing() ? "正在启动更新…" : "下载并安装更新"}</button>
-              </Show>
-            </div>
+              <div
+                  class="fixed bottom-4 left-4 z-40 w-[calc(100%-2rem)] max-w-md rounded-lg border border-info/30 bg-base-100 p-4 shadow-xl">
+                <button class="btn btn-ghost btn-sm btn-circle absolute right-2 top-2" aria-label="关闭更新提示"
+                        onClick={() => setUpdate(null)}>×
+                </button>
+                <h3 class="font-semibold">发现新版本 {result().latestVersion}</h3>
+                <p class="mt-1 text-sm text-base-content/70">当前版本 {result().currentVersion}</p>
+                <Show when={result().releaseNotes}>
+                  <p class="mt-2 max-h-20 overflow-y-auto whitespace-pre-wrap text-sm text-base-content/70">{result().releaseNotes}</p>
+                </Show>
+                <Show when={result().downloadURL}>
+                  <button class="btn btn-info btn-sm mt-3" disabled={installing()}
+                          onClick={installUpdate}>{installing() ? "正在启动更新…" : "下载并安装更新"}</button>
+                </Show>
+              </div>
           )}
         </Show>
 
@@ -119,7 +127,8 @@ function RootComponent(): JSXElement {
                     class="btn btn-outline btn-info"
                     onClick={() => handleChoice(true)}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                       stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
                   </svg>
                   最小化到托盘

@@ -1,5 +1,4 @@
 import {createSignal} from "solid-js";
-import {waitBulkDownloadPage} from "../bulkDownloadThrottle.ts";
 import {downloading, notifyDouyinDownload, runDouyinDownloadTasks, withDouyinDownloadLock} from "./downloadQueue.ts";
 import {addDouyinVideos, type DouyinDownloadItem, douyinVideoList, removeDouyinVideo} from "./store.ts";
 
@@ -26,7 +25,6 @@ export interface DouyinBatchSource {
 export type DouyinBatchStatus =
     | "downloading"
     | "loadingPage"
-    | "retrySleep"
     | "retrying"
     | "done"
     | "stopped";
@@ -41,7 +39,7 @@ export interface DouyinBatchState {
   /** 当前失败（待重试或最终仍失败）的数量。 */
   failedCount: number;
   status: DouyinBatchStatus;
-  /** 状态的动态补充文案，例如休眠剩余秒数。 */
+  /** 状态的动态补充文案。 */
   statusText: string;
   /** 已请求停止，正在等待当前批结束。 */
   stopping: boolean;
@@ -198,16 +196,12 @@ async function runSession(id: number, loader: DouyinBatchPageLoader | undefined)
       patchState(id, (prev) => ({loadedCount: prev.loadedCount + nextPage.length}));
     }
 
-    // 最终重试：失败任务不触发任务后休眠，重试前按分页休眠设置缓一口气（设为 0 则立即重试）。
+    // 最终重试：失败任务不触发任务后休眠。
     if (!stopRequested && failedItems.length > 0) {
-      patchState(id, {status: "retrySleep", statusText: "准备重试失败项"});
-      await waitBulkDownloadPage((message) => patchState(id, {statusText: message}));
-      if (!stopRequested) {
-        patchState(id, {status: "retrying", statusText: `正在重试 ${failedItems.length} 个失败项`});
-        addDouyinVideos(failedItems);
-        const retry = await runDouyinDownloadTasks(douyinVideoList());
-        patchState(id, (prev) => ({downloadedCount: prev.downloadedCount + retry.success}));
-      }
+      patchState(id, {status: "retrying", statusText: `正在重试 ${failedItems.length} 个失败项`});
+      addDouyinVideos(failedItems);
+      const retry = await runDouyinDownloadTasks(douyinVideoList());
+      patchState(id, (prev) => ({downloadedCount: prev.downloadedCount + retry.success}));
     }
 
     return true;
