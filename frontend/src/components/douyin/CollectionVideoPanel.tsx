@@ -5,7 +5,8 @@ import DetailLoading from "../DetailLoading.tsx";
 import EmptyState from "../EmptyState.tsx";
 import CollectionSidebar, {type CollectionSidebarItem} from "./CollectionSidebar.tsx";
 import VideoContentPanel, {type DouyinVideoContentKind} from "./VideoContentPanel.tsx";
-import {waitBulkDownloadPage} from "../../lib/bulkDownloadThrottle.ts";
+import {awemeToDownloadItem} from "../../lib/douyin/aweme.ts";
+import type {DouyinBatchPageLoader} from "../../lib/douyin/batchDownload.ts";
 
 export type DouyinListItem = model.CollectsList | model.CollectionItem | model.SeriesInfoItem;
 
@@ -52,7 +53,12 @@ function CollectionPage<T>(props: {
   contentHasMore: boolean;
   contentLoadingMore: boolean;
   onContentLoadMore: () => void;
-  onContentPrepareDownloadAll: (onStatus?: (message: string) => void) => Promise<void>;
+  /** 一键下载全部的批量会话描述，随选中项变化；没有分页取数器时不传。 */
+  contentBatchDownload?: {
+    title: string;
+    totalCount?: number;
+    createLoader: () => DouyinBatchPageLoader;
+  };
 }): JSXElement {
   return (
     <div classList={{"flex h-full min-h-0 w-full flex-1": props.active, "hidden": !props.active}}>
@@ -98,7 +104,7 @@ function CollectionPage<T>(props: {
                 hasMore={props.contentHasMore}
                 loadingMore={props.contentLoadingMore}
                 onLoadMore={props.onContentLoadMore}
-                prepareDownloadAll={props.onContentPrepareDownloadAll}
+                batchDownload={props.contentBatchDownload}
               />
             </Show>
           </main>
@@ -194,6 +200,11 @@ export default function CollectionVideoPanel(props: {
   showToast: (message: string, type?: "success" | "error" | "warning" | "info") => void;
   loadList: (cursor: number) => Promise<ListPage>;
   loadVideos: (item: DouyinListItem, cursor: number) => Promise<VideoPage>;
+  /**
+   * 构造收藏夹/合集详情的纯分页取数器，供批量下载会话在离开本页后继续翻页。
+   * 在点击“一键下载全部”时调用（组件仍挂载），实现里必须把所需 ID 烘焙进闭包。
+   */
+  createDetailPageFetcher?: (item: DouyinListItem) => (offset: number) => Promise<VideoPage>;
 }): JSXElement {
   const [listLoading, setListLoading] = createSignal(false);
   const [listError, setListError] = createSignal("");
@@ -316,17 +327,34 @@ export default function CollectionVideoPanel(props: {
     }
   }
 
-  async function prepareAllDetailVideos(onStatus?: (message: string) => void): Promise<void> {
+  // 批量下载描述随选中项变化；createLoader 在点击时才执行，此时组件仍挂载，
+  // 可以安全读取当前分页状态并烘焙成闭包值。
+  const detailBatchDownload = createMemo(() => {
     const item = selectedItem();
-    if (!item) return;
-    // 一键下载自动请求当前收藏夹/合集的所有分页。
-      while (detailHasMore()) {
-        const before = detailVideos().length;
-        await waitBulkDownloadPage(onStatus);
-        await loadDetail(item, true);
-      if (detailVideos().length === before) break;
-    }
-  }
+    const fetcherFactory = props.createDetailPageFetcher;
+    if (!item || !fetcherFactory) return undefined;
+
+    return {
+      title: itemTitle(item),
+      totalCount: itemCount(item) || undefined,
+      createLoader: (): DouyinBatchPageLoader => {
+        const fetchPage = fetcherFactory(item);
+        const sourceName = itemTitle(item);
+        const fallbackAuthor = itemSubtitle(item);
+        let offset = detailVideos().length;
+        let hasMore = detailHasMore();
+        return {
+          hasMore: () => hasMore,
+          loadNext: async () => {
+            const page = await fetchPage(offset);
+            offset += page.items.length;
+            hasMore = page.items.length > 0 && page.hasMore;
+            return page.items.map((aweme, index) => awemeToDownloadItem(aweme, sourceName, fallbackAuthor, index));
+          },
+        };
+      },
+    };
+  });
 
   createEffect(() => {
     if (!props.active) return;
@@ -405,7 +433,7 @@ export default function CollectionVideoPanel(props: {
         const item = selectedItem();
         if (item) void loadDetail(item, true);
       }}
-      onContentPrepareDownloadAll={prepareAllDetailVideos}
+      contentBatchDownload={detailBatchDownload()}
     />
   );
 }

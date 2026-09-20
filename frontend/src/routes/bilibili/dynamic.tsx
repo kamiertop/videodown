@@ -8,6 +8,7 @@ import NoCover from "../../components/NoCover";
 import Toast from "../../components/Toast";
 import {useToast} from "../../hooks/useToast";
 import {addVideos} from "../../lib/bilibili/store";
+import {startBilibiliBatch} from "../../lib/bilibili/batchDownload";
 import {parseBilibiliLengthToSeconds} from "../../lib/format";
 import type {MediaCardItem} from "../../lib/model";
 
@@ -100,6 +101,21 @@ function Dynamic(): JSXElement {
     await navigate({to: "/bilibili/download"});
   }
 
+  // 下载全部：走批量会话（无翻页来源），跳转后自动“解析地址 → 下载”并显示统计。
+  function downloadAll(): void {
+    const downloadable = items().filter((item) => item.bvid?.trim());
+    if (downloadable.length === 0) {
+      showToast("没有可下载的视频", "warning");
+      return;
+    }
+    const started = startBilibiliBatch({title: "关注动态", initialItems: downloadable.map(toMediaCardItem)});
+    if (!started) {
+      showToast("已有下载任务进行中，请稍后再试", "warning");
+      return;
+    }
+    void navigate({to: "/bilibili/download"});
+  }
+
   onMount(() => {
     void loadPage("", false);
   });
@@ -127,7 +143,7 @@ function Dynamic(): JSXElement {
             <button
                 class="btn btn-primary btn-sm"
                 type="button"
-                onClick={() => void enqueueAndGoDownload(items())}
+                onClick={downloadAll}
                 disabled={items().length === 0 || loading()}
             >
               下载全部

@@ -29,6 +29,11 @@ type Service struct {
 	publicHeaders func() (map[string]string, error)
 }
 
+// IsDone returns true if there are no ongoing download tasks
+func (d *Service) IsDone() bool {
+	return len(d.progress) == 0
+}
+
 func New(logger *logger.Logger, store *storage.Store, events *application.EventManager, publicHeaders func() (map[string]string, error)) *Service {
 	return &Service{
 		logger:        logger,

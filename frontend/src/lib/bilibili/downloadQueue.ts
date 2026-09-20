@@ -43,6 +43,12 @@ export interface DownloadProgress {
   sleepTotal?: number;
 }
 
+export interface BilibiliDownloadRunResult {
+  success: number;
+  failed: number;
+  failedItems: MediaCardItem[];
+}
+
 interface DownloadTask {
   item: MediaCardItem;
   cid: number;
@@ -56,15 +62,30 @@ interface DownloadTask {
 // 解析播放地址是异步副作用。这个 Set 防止 Solid effect 重跑时对同一个 BV 重复发起解析请求。
 const playResolveInFlight = new Set<string>();
 const [playResolveByBvid, setPlayResolveByBvid] = createSignal<Record<string, PlayResolveEntry>>({});
-const [downloading, setDownloading] = createSignal<boolean>(false);
+// downloading 是全局独占锁：手动“开始下载”、单个下载和批量会话共用，
+// 保证同一时刻只有一个下载流程在跑，避免同一个视频被并发写盘。
+export const [downloading, setDownloading] = createSignal<boolean>(false);
 const [downloadingByBvid, setDownloadingByBvid] = createSignal<Record<string, boolean>>({});
 const [progressByBvid, setProgressByBvid] = createSignal<Record<string, DownloadProgress>>({});
 
 let progressListenerReady = false;
 let activeToast: ShowToast | null = null;
+// 批量会话期间关闭“到页即全量解析”：解析改由会话按下载并发数分块驱动，
+// 避免会话入队/重置解析记录时 effect 抢先把整页 pending 一次性解析完。
+let autoResolveEnabled = true;
+
+/** 批量会话开始/结束时切换自动解析开关。 */
+export function setBilibiliAutoResolve(enabled: boolean): void {
+  autoResolveEnabled = enabled;
+}
 
 function notify(message: string, type?: ToastType): void {
   activeToast?.(message, type);
+}
+
+/** 供批量会话等模块级调用方复用下载页注册的 toast 通道。 */
+export function notifyBilibiliDownload(message: string, type?: ToastType): void {
+  notify(message, type);
 }
 
 function ensureProgressListener(): void {
@@ -87,7 +108,7 @@ function ensureProgressListener(): void {
   // 监听后端逐条推送的解析结果，实现渐进式 UI 更新。
   // 后端 BatchResolvePlayUrl 中每完成一条，就通过此事件推送。
   Events.On("bilibili-playurl-resolved", ({data: result}) => {
-    // 使用 requestCid（原始请求的 cid）计算 key，与 createEffect 中设置的 loading 状态 key 保持一致
+    // 使用 requestCid（原始请求的 cid）计算 key，与 refreshBilibiliPlayUrls 中设置的 loading 状态 key 保持一致
     const key = bilibiliPlayResolveKey({
       bvid: result?.bvid,
       cid: result?.requestCid && result.requestCid > 0 ? result.requestCid : null,
@@ -119,7 +140,7 @@ const eventHandledKeys = new Set<string>();
 
 /**
  * 将单条 PlayUrlResult 应用到 playResolveByBvid 状态中。
- * 被 createEffect 的批次回调和 bilibili-playurl-resolved 事件监听器共用。
+ * 被 refreshBilibiliPlayUrls 的批次回调和 bilibili-playurl-resolved 事件监听器共用。
  */
 function applyResolveResult(
     item: MediaCardItem,
@@ -172,6 +193,289 @@ function applyResolveResult(
   }
 }
 
+/**
+ * 解析视频的播放地址：清理已移除项的解析状态、收集 pending、调用
+ * BatchResolvePlayUrl 并等待完成。默认解析整个队列；批量会话传入当前小块，
+ * 只解析这一块（队列里其余待处理项保持未解析，等轮到它们的块再解析）。
+ * 下载页的 effect 与批量会话都会调用；playResolveInFlight 守卫保证不重复请求，
+ * eventHandledKeys 只在真正发起批次时清空，避免并发调用互踩。
+ */
+export async function refreshBilibiliPlayUrls(items: readonly MediaCardItem[] = videoList()): Promise<void> {
+  // 清理已移除视频的解析状态；清理范围始终是整个展示队列。
+  const list = videoList();
+  const bvSet = new Set(
+      list.map((i) => bilibiliPlayResolveKey(i)).filter((k): k is string => !!k),
+  );
+
+  setPlayResolveByBvid((prev) => {
+    const next: Record<string, PlayResolveEntry> = {...prev};
+    for (const k of Object.keys(next)) {
+      if (!bvSet.has(k)) {
+        playResolveInFlight.delete(k);
+        delete next[k];
+      }
+    }
+    return next;
+  });
+
+  const map = playResolveByBvid();
+
+  // 只收集传入子集中尚未解析的视频
+  const pending: Array<{ item: MediaCardItem; key: string }> = [];
+  for (const item of items) {
+    const key = bilibiliPlayResolveKey(item);
+    if (!key || playResolveInFlight.has(key)) continue;
+
+    const cur = map[key];
+    if (cur?.status === "loading" || cur?.status === "done" || cur?.status === "error") {
+      continue;
+    }
+
+    playResolveInFlight.add(key);
+    setPlayResolveByBvid((p) => ({...p, [key]: {status: "loading"}}));
+    pending.push({item, key});
+  }
+
+  if (pending.length === 0) return;
+
+  try {
+    // 清空上一轮的事件处理记录，开始新一轮批次
+    eventHandledKeys.clear();
+    const requests = pending.map(({item}) => ({
+      bvid: item.bvid!,
+      cid: item.cid || 0,
+      qn: 0,
+    } as PlayUrlRequest));
+    // BatchResolvePlayUrl 会在每条解析完成时通过 bilibili-playurl-resolved 事件推送结果，
+    // 前端事件监听器（ensureProgressListener）已经逐条更新了 UI。
+    // 这里等待批次返回值，对未被事件处理的条目做兜底处理。
+    const results = await BatchResolvePlayUrl(requests);
+
+    for (let i = 0; i < pending.length; i += 1) {
+      const {item, key} = pending[i];
+      // 事件监听器已处理的跳过，避免重复设置
+      if (eventHandledKeys.has(key)) continue;
+      applyResolveResult(item, key, results?.[i]);
+    }
+  } catch (e) {
+    const message = e instanceof Error ? (e.message ?? String(e)) : String(e);
+    for (const {key} of pending) {
+      // 事件监听器已处理的跳过，保留其成功/失败状态
+      if (eventHandledKeys.has(key)) continue;
+      if (!containsPlayKey(key)) continue;
+      setPlayResolveByBvid((p) => ({...p, [key]: {status: "error", message}}));
+    }
+  } finally {
+    for (const {key} of pending) {
+      playResolveInFlight.delete(key);
+    }
+  }
+}
+
+/** 删除这些视频的解析记录，下一次 refreshBilibiliPlayUrls 会重新解析（批量最终重试用）。 */
+export function resetBilibiliPlayResolve(items: readonly MediaCardItem[]): void {
+  for (const item of items) {
+    const key = bilibiliPlayResolveKey(item);
+    if (!key) continue;
+    playResolveInFlight.delete(key);
+    setPlayResolveByBvid((p) => {
+      const next = {...p};
+      delete next[key];
+      return next;
+    });
+  }
+}
+
+function buildDownloadTasks(items: readonly MediaCardItem[]): DownloadTask[] {
+  const map = playResolveByBvid();
+  const seenKeys = new Set<string>();
+  return items
+      .map((item) => {
+        // 同一解析键（BV 或 BV+cid）不重复提交；后端也会去重。
+        const key = bilibiliPlayResolveKey(item);
+        if (key) {
+          if (seenKeys.has(key)) return null;
+          seenKeys.add(key);
+        }
+
+        const entry = key ? map[key] : undefined;
+        if (entry?.status !== "done") return null;
+
+        // 这里已经是用户最终选择的视频/音频流地址；后端不再重新解析画质。
+        const videoURL = streamBaseUrl(entry.data.bestVideo);
+        if (!videoURL) return null;
+
+        const audioURL = entry.data.bestAudio ? streamBaseUrl(entry.data.bestAudio) : "";
+        const backendKey = bilibiliPlayResolveKey({bvid: entry.data.bvid, cid: entry.data.cid});
+        return {
+          item,
+          cid: entry.data.cid,
+          bvid: entry.data.bvid,
+          uiKey: key,
+          backendKey,
+          videoURL,
+          audioURL,
+        };
+      })
+      .filter((v): v is DownloadTask => v !== null);
+}
+
+// 后端批量接口只需要稳定地下载参数；目录规则由后端根据 kind/upperName/sourceName 统一判断。
+function toBackendTask(task: DownloadTask): Task {
+  return {
+    sourceName: task.item.sourceListName ?? "",
+    upperName: task.item.upperName ?? "",
+    bvid: task.bvid,
+    cid: task.cid,
+    title: task.item.title,
+    cover: task.item.cover ?? "",
+    duration: task.item.duration ?? 0,
+    play: task.item.play ?? 0,
+    danmaku: task.item.danmaku ?? 0,
+    pubtime: task.item.pubtime ?? 0,
+    videoURL: task.videoURL,
+    audioURL: task.audioURL,
+  };
+}
+
+/**
+ * 对列表里解析完成的视频执行一轮下载，不含自动重试，也不持有全局锁：
+ * 成功项移出列表，失败项留在返回值里由调用方决定去留。
+ * 批量会话用它逐批推进，失败项攒到最后统一重试。
+ */
+export async function runBilibiliDownloadTasks(items: readonly MediaCardItem[]): Promise<BilibiliDownloadRunResult> {
+  const tasks = buildDownloadTasks(items);
+  if (tasks.length === 0) {
+    // 不在此处 toast：批量会话按块调用，整块解析失败时会刷屏；调用方的汇总提示已足够。
+    return {success: 0, failed: items.length, failedItems: [...items]};
+  }
+
+  // 所有待提交任务先置为下载中；真实字节进度由后端事件逐条刷新。
+  for (const task of tasks) {
+    const key = task.uiKey;
+    if (key) {
+      setDownloadingByBvid((p) => ({...p, [key]: true}));
+    }
+  }
+
+  try {
+    // 真正地并发下载、休眠控制、缓存判断都在后端完成；前端只提交任务列表并等待最终结果。
+    const batch = await DownloadVideosByDash(tasks.map(toBackendTask));
+    const byKey = new Map(tasks.flatMap((task) => {
+      const pairs: Array<[string, MediaCardItem]> = [];
+      if (task.uiKey) pairs.push([task.uiKey, task.item]);
+      if (task.backendKey) pairs.push([task.backendKey, task.item]);
+      return pairs;
+    }));
+    const failedItems: MediaCardItem[] = [];
+
+    // 后端返回每条任务的最终结果，前端只移除成功项，失败项保留给用户重试。
+    for (const item of batch.results ?? []) {
+      const key = bilibiliPlayResolveKey({bvid: item.bvid, cid: item.cid});
+      const media = key ? byKey.get(key) : undefined;
+      if (!media) continue;
+
+      if (item.error) {
+        notify(`下载失败：${media.title}，${item.error}`, "error");
+        failedItems.push(media);
+      } else {
+        removeVideoAfterDownloadSuccess(media.bvid, item.cid);
+      }
+    }
+
+    return {success: batch.success ?? 0, failed: batch.failed ?? 0, failedItems};
+  } catch (e) {
+    notify(e instanceof Error ? e.message : String(e), "error");
+    return {success: 0, failed: tasks.length, failedItems: tasks.map((task) => task.item)};
+  } finally {
+    // 批量调用结束后清理按钮态；失败项仍留在列表，但进度条回到待下载状态。
+    for (const task of tasks) {
+      const key = task.uiKey;
+      if (key) {
+        setDownloadingByBvid((p) => ({...p, [key]: false}));
+      }
+      setProgressByBvid((p) => {
+        const next = {...p};
+        if (key) delete next[key];
+        if (task.backendKey) delete next[task.backendKey];
+        return next;
+      });
+    }
+  }
+}
+
+/**
+ * 获取全局下载锁后执行 fn；锁被占用时直接返回 undefined。
+ * 批量会话全程持锁，手动按钮因此在整个批量期间保持禁用。
+ */
+export async function withBilibiliDownloadLock<T>(fn: () => Promise<T>): Promise<T | undefined> {
+  if (downloading()) return undefined;
+  setDownloading(true);
+  try {
+    return await fn();
+  } finally {
+    setDownloading(false);
+  }
+}
+
+/** 手动“开始下载”入口：一轮下载后对失败项立即补一轮重试。 */
+export async function startBilibiliDownloadQueue(items: readonly MediaCardItem[] = videoList()): Promise<number> {
+  const result = await withBilibiliDownloadLock(async () => {
+    // 默认下载当前列表里的全部视频；单个卡片下载会传入只含一个 item 的数组。
+    if (items.length === 0) {
+      notify("暂无可下载视频", "warning");
+      return 0;
+    }
+
+    let {success, failed, failedItems} = await runBilibiliDownloadTasks(items);
+    if (failedItems.length > 0) {
+      notify(`有 ${failedItems.length} 个视频下载失败，其他任务完成后将自动重试`, "warning");
+      const retry = await runBilibiliDownloadTasks(failedItems);
+      success += retry.success;
+      failed = retry.failed;
+    }
+
+    if (failed === 0) {
+      notify(`下载完成：成功 ${success} 个`, "success");
+      return success;
+    }
+    notify(`下载完成：成功 ${success} 个，失败 ${failed} 个`, "warning");
+    return success;
+  });
+  return result ?? 0;
+}
+
+async function downloadOneItem(item: MediaCardItem): Promise<number> {
+  const key = bilibiliPlayResolveKey(item);
+  if (key && downloadingByBvid()[key]) return 0;
+
+  const entry = key ? playResolveByBvid()[key] : undefined;
+  if (entry?.status === "loading") {
+    notify("视频还在解析中，请稍候", "warning");
+    return 0;
+  }
+  if (entry?.status === "error") {
+    notify(`解析失败：${entry.message}`, "error");
+    return 0;
+  }
+
+  const result = await withBilibiliDownloadLock(async () => {
+    let {success, failed, failedItems} = await runBilibiliDownloadTasks([item]);
+    if (failedItems.length > 0) {
+      notify("下载失败，正在自动重试", "warning");
+      const retry = await runBilibiliDownloadTasks(failedItems);
+      success += retry.success;
+      failed = retry.failed;
+    }
+    if (failed === 0) {
+      notify(`下载完成：${item.title}`, "success");
+      return 1;
+    }
+    return 0;
+  });
+  return result ?? 0;
+}
+
 export function useBilibiliDownloadQueue(showToast: ShowToast) {
   ensureProgressListener();
   activeToast = showToast;
@@ -181,8 +485,6 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
       activeToast = null;
     }
   });
-  // playResolveByBvid：每个 BV 的 DASH 解析状态，卡片会根据它显示 loading/error/画质音质选择器。
-  // downloading 是整批下载的全局锁；downloadingByBvid 用来控制单张卡片的按钮和进度条。
 
   // 解析进度：从 playResolveByBvid 推导出全局解析计数，供 DownloadSummaryBar 展示。
   const resolveProgress = createMemo(() => {
@@ -208,77 +510,10 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
   });
 
   createEffect(() => {
-    // 只要全局 videoList 变化，就清理已移除视频的解析状态，并为新增视频批量解析 DASH。
-    const list = videoList();
-    const bvSet = new Set(
-        list.map((i) => bilibiliPlayResolveKey(i)).filter((k): k is string => !!k),
-    );
-
-    setPlayResolveByBvid((prev) => {
-      const next: Record<string, PlayResolveEntry> = {...prev};
-      for (const k of Object.keys(next)) {
-        if (!bvSet.has(k)) {
-          playResolveInFlight.delete(k);
-          delete next[k];
-        }
-      }
-      return next;
-    });
-
-    const map = playResolveByBvid();
-
-    // 收集所有待解析的视频
-    const pending: Array<{ item: MediaCardItem; key: string }> = [];
-    for (const item of list) {
-      const key = bilibiliPlayResolveKey(item);
-      if (!key || playResolveInFlight.has(key)) continue;
-
-      const cur = map[key];
-      if (cur?.status === "loading" || cur?.status === "done" || cur?.status === "error") {
-        continue;
-      }
-
-      playResolveInFlight.add(key);
-      setPlayResolveByBvid((p) => ({...p, [key]: {status: "loading"}}));
-      pending.push({item, key});
-    }
-
-    if (pending.length === 0) return;
-
-    void (async () => {
-      // 清空上一轮的事件处理记录，开始新一轮批次
-      eventHandledKeys.clear();
-      try {
-        const requests = pending.map(({item}) => ({
-          bvid: item.bvid!,
-          cid: item.cid || 0,
-          qn: 0,
-        } as PlayUrlRequest));
-        // BatchResolvePlayUrl 会在每条解析完成时通过 bilibili-playurl-resolved 事件推送结果，
-        // 前端事件监听器（ensureProgressListener）已经逐条更新了 UI。
-        // 这里等待批次返回值，对未被事件处理的条目做兜底处理。
-        const results = await BatchResolvePlayUrl(requests);
-
-        for (let i = 0; i < pending.length; i += 1) {
-          const {item, key} = pending[i];
-          // 事件监听器已处理的跳过，避免重复设置
-          if (eventHandledKeys.has(key)) continue;
-          applyResolveResult(item, key, results?.[i]);
-        }
-      } catch (e) {
-        const message = e instanceof Error ? (e.message ?? String(e)) : String(e);
-        for (const {key} of pending) {
-          // 事件监听器已处理的跳过，保留其成功/失败状态
-          if (eventHandledKeys.has(key)) continue;
-          if (!containsPlayKey(key)) continue;
-          setPlayResolveByBvid((p) => ({...p, [key]: {status: "error", message}}));
-        }
-      } finally {
-        for (const {key} of pending) {
-          playResolveInFlight.delete(key);
-        }
-      }
-    })();
+    // 手动路径：到达下载页即为列表里的视频解析 DASH（支持画质选择）。
+    // 批量会话期间由会话按块解析，这里跳过，防止整页 pending 被一次性解析。
+    if (!autoResolveEnabled) return;
+    void refreshBilibiliPlayUrls();
   });
 
   // 后端批量下载期间会持续推送事件；这里按 BV 归档，供每张卡片独立渲染进度条。
@@ -321,185 +556,6 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
     setPlayResolveByBvid((p) => ({...p, [key]: {status: "done", data: next}}));
   }
 
-  function buildDownloadTasks(items: MediaCardItem[]): DownloadTask[] {
-    const seenKeys = new Set<string>();
-    return items
-        .map((item) => {
-          // 同一解析键（BV 或 BV+cid）不重复提交；后端也会去重。
-          const key = bilibiliPlayResolveKey(item);
-          if (key) {
-            if (seenKeys.has(key)) return null;
-            seenKeys.add(key);
-          }
-
-          const entry = entryForItem(item);
-          if (entry?.status !== "done") return null;
-
-          // 这里已经是用户最终选择的视频/音频流地址；后端不再重新解析画质。
-          const videoURL = streamBaseUrl(entry.data.bestVideo);
-          if (!videoURL) return null;
-
-          const audioURL = entry.data.bestAudio ? streamBaseUrl(entry.data.bestAudio) : "";
-          const backendKey = bilibiliPlayResolveKey({bvid: entry.data.bvid, cid: entry.data.cid});
-          return {
-            item,
-            cid: entry.data.cid,
-            bvid: entry.data.bvid,
-            uiKey: key,
-            backendKey,
-            videoURL,
-            audioURL,
-          };
-        })
-        .filter((v): v is DownloadTask => v !== null);
-  }
-
-  // 后端批量接口只需要稳定地下载参数；目录规则由后端根据 kind/upperName/sourceName 统一判断。
-  function toBackendTask(task: DownloadTask): Task {
-    return {
-      sourceName: task.item.sourceListName ?? "",
-      upperName: task.item.upperName ?? "",
-      bvid: task.bvid,
-      cid: task.cid,
-      title: task.item.title,
-      cover: task.item.cover ?? "",
-      duration: task.item.duration ?? 0,
-      play: task.item.play ?? 0,
-      danmaku: task.item.danmaku ?? 0,
-      pubtime: task.item.pubtime ?? 0,
-      videoURL: task.videoURL,
-      audioURL: task.audioURL,
-    };
-  }
-
-  async function runDownloadTasks(tasks: DownloadTask[]): Promise<{ success: number; failed: number; failedItems: MediaCardItem[] }> {
-    // 所有待提交任务先置为下载中；真实字节进度由后端事件逐条刷新。
-    for (const task of tasks) {
-      const key = task.uiKey;
-      if (key) {
-        setDownloadingByBvid((p) => ({...p, [key]: true}));
-      }
-    }
-
-    try {
-      // 真正地并发下载、休眠控制、缓存判断都在后端完成；前端只提交任务列表并等待最终结果。
-      const batch = await DownloadVideosByDash(tasks.map(toBackendTask));
-      const byKey = new Map(tasks.flatMap((task) => {
-        const pairs: Array<[string, MediaCardItem]> = [];
-        if (task.uiKey) pairs.push([task.uiKey, task.item]);
-        if (task.backendKey) pairs.push([task.backendKey, task.item]);
-        return pairs;
-      }));
-      const failedItems: MediaCardItem[] = [];
-
-      // 后端返回每条任务的最终结果，前端只移除成功项，失败项保留给用户重试。
-      for (const item of batch.results ?? []) {
-        const key = bilibiliPlayResolveKey({bvid: item.bvid, cid: item.cid});
-        const media = key ? byKey.get(key) : undefined;
-        if (!media) continue;
-
-        if (item.error) {
-          notify(`下载失败：${media.title}，${item.error}`, "error");
-          failedItems.push(media);
-        } else {
-          removeVideoAfterDownloadSuccess(media.bvid, item.cid);
-        }
-      }
-
-      return {success: batch.success ?? 0, failed: batch.failed ?? 0, failedItems};
-    } catch (e) {
-      notify(e instanceof Error ? e.message : String(e), "error");
-      return {success: 0, failed: tasks.length, failedItems: tasks.map((task) => task.item)};
-    } finally {
-      // 批量调用结束后清理按钮态；失败项仍留在列表，但进度条回到待下载状态。
-      for (const task of tasks) {
-        const key = task.uiKey;
-        if (key) {
-          setDownloadingByBvid((p) => ({...p, [key]: false}));
-        }
-        setProgressByBvid((p) => {
-          const next = {...p};
-          if (key) delete next[key];
-          if (task.backendKey) delete next[task.backendKey];
-          return next;
-        });
-      }
-      setDownloading(false);
-    }
-  }
-
-  async function startDownload(items = videoList()): Promise<number> {
-    // 默认下载当前列表里的全部视频；单个卡片下载会传入只含一个 item 的数组。
-    if (downloading()) return 0;
-    if (items.length === 0) {
-      notify("暂无可下载视频", "warning");
-      return 0;
-    }
-
-    const tasks = buildDownloadTasks(items);
-    if (tasks.length === 0) {
-      notify("暂无可用流地址，请稍候重试", "warning");
-      return 0;
-    }
-
-    setDownloading(true);
-    let {success, failed, failedItems} = await runDownloadTasks(tasks);
-    if (failedItems.length > 0) {
-      notify(`有 ${failedItems.length} 个视频下载失败，其他任务完成后将自动重试`, "warning");
-      const retryTasks = buildDownloadTasks(failedItems);
-      if (retryTasks.length > 0) {
-        const retry = await runDownloadTasks(retryTasks);
-        success += retry.success;
-        failed = retry.failed;
-      }
-    }
-
-    if (failed === 0) {
-      notify(`下载完成：成功 ${success} 个`, "success");
-      return success;
-    }
-    notify(`下载完成：成功 ${success} 个，失败 ${failed} 个`, "warning");
-    return success;
-  }
-
-  async function downloadOne(item: MediaCardItem): Promise<number> {
-    const key = bilibiliPlayResolveKey(item);
-    if (downloading() || (key && downloadingByBvid()[key])) return 0;
-
-    const entry = entryForItem(item);
-    if (entry?.status === "loading") {
-      notify("视频还在解析中，请稍候", "warning");
-      return 0;
-    }
-    if (entry?.status === "error") {
-      notify(`解析失败：${entry.message}`, "error");
-      return 0;
-    }
-
-    const tasks = buildDownloadTasks([item]);
-    if (tasks.length === 0) {
-      notify("暂无可用流地址，请稍候重试", "warning");
-      return 0;
-    }
-
-    setDownloading(true);
-    let {success, failed, failedItems} = await runDownloadTasks(tasks);
-    if (failedItems.length > 0) {
-      notify("下载失败，正在自动重试", "warning");
-      const retryTasks = buildDownloadTasks(failedItems);
-      if (retryTasks.length > 0) {
-        const retry = await runDownloadTasks(retryTasks);
-        success += retry.success;
-        failed = retry.failed;
-      }
-    }
-    if (failed === 0) {
-      notify(`下载完成：${item.title}`, "success");
-      return 1;
-    }
-    return 0;
-  }
-
   function canDownload(item: MediaCardItem): boolean {
     return entryForItem(item)?.status === "done";
   }
@@ -518,19 +574,12 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
   }
 
   function retryResolve(item: MediaCardItem): void {
-    const key = bilibiliPlayResolveKey(item);
-    if (!key) return;
-    playResolveInFlight.delete(key);
-    setPlayResolveByBvid((p) => {
-      const next = {...p};
-      delete next[key];
-      return next;
-    });
+    resetBilibiliPlayResolve([item]);
   }
 
   return {
     canDownload,
-    downloadOne,
+    downloadOne: downloadOneItem,
     downloading,
     entryForItem,
     handlePickAudio,
@@ -539,6 +588,6 @@ export function useBilibiliDownloadQueue(showToast: ShowToast) {
     progressFor,
     resolveProgress,
     retryResolve,
-    startDownload,
+    startDownload: startBilibiliDownloadQueue,
   };
 }

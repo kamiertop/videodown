@@ -15,6 +15,7 @@ import {
   douyinMusicURL,
 } from "../../lib/douyin/media.ts";
 import {addDouyinVideos, type DouyinDownloadItem, type DouyinVideoOption} from "../../lib/douyin/store.ts";
+import {startDouyinBatch} from "../../lib/douyin/batchDownload.ts";
 import {formatCount, formatDate, formatDuration} from "../../lib/format.ts";
 
 type HistoryItem = model.HistoryItem;
@@ -356,6 +357,22 @@ function DouyinPlayHistoryPage(): JSXElement {
     await navigate({to: "/douyin/download"});
   }
 
+  // 一键下载全部：走批量会话（无翻页来源），跳转后自动开始下载并显示统计。
+  function startBatchDownloadAll(): void {
+    const downloadItems = cardItems().map((item) => item.downloadItem).filter((item) => item.videoURL);
+    if (downloadItems.length === 0) {
+      showToast("当前列表没有可用下载地址", "warning");
+      return;
+    }
+    const started = startDouyinBatch({title: "播放历史", initialItems: downloadItems});
+    if (!started) {
+      showToast("已有下载任务进行中，请稍后再试", "warning");
+      return;
+    }
+    clearSelection();
+    void navigate({to: "/douyin/download"});
+  }
+
   const selectedItems = createMemo(() => cardItems().filter((item) => isVideoSelected(item.id)));
   const hasActiveFilters = createMemo(() => status() !== -1 || category() !== 0 || duration() !== 0);
 
@@ -427,7 +444,7 @@ function DouyinPlayHistoryPage(): JSXElement {
                   onToggleAll={toggleSelectAll}
                   onClearSelection={clearSelection}
                   onDownloadSelected={() => void enqueueAndGoDownload(selectedItems())}
-                  onDownloadAll={() => void enqueueAndGoDownload(cardItems())}
+                  onDownloadAll={startBatchDownloadAll}
                   toolbarMiddle={<HistoryFilters/>}
                   refreshing={loading()}
                   onRefresh={() => void loadFirst()}

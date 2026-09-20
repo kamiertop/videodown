@@ -1,5 +1,6 @@
 import {useNavigate} from "@tanstack/solid-router";
 import {createEffect, createMemo, createSignal, type JSXElement, Show} from "solid-js";
+import {type BilibiliBatchPageLoader, startBilibiliBatch} from "../../lib/bilibili/batchDownload.ts";
 import {addVideos} from "../../lib/bilibili/store.ts";
 import type {MediaCardItem} from "../../lib/model.ts";
 import VirtualVideoGrid from "./VirtualVideoGrid";
@@ -15,14 +16,20 @@ export default function VideoListSection(props: {
   hasMore?: () => boolean;
   loadingMore?: () => boolean;
   onLoadMore?: () => void;
-  /** 一键下载前自动加载完剩余分页；完成后使用最新 medias 组建下载队列。 */
-  prepareDownloadAll?: (onStatus?: (message: string) => void) => Promise<void>;
+  /**
+   * 一键下载全部的批量会话描述。传入后点击按钮会立即跳转下载页并自动开始：
+   * 当前已加载内容作为首批，后续分页由 loader 在会话里“解析地址 → 下载”推进。
+   * 不传时不渲染一键下载按钮。
+   */
+  batchDownload?: {
+    title: string;
+    totalCount?: number;
+    createLoader: () => BilibiliBatchPageLoader;
+  };
 }): JSXElement {
   const navigate = useNavigate();
   const [selectedMediaIds, setSelectedMediaIds] = createSignal<number[]>([]);
   const [enqueueLoading, setEnqueueLoading] = createSignal(false);
-  const [downloadAllLoading, setDownloadAllLoading] = createSignal(false);
-  const [downloadAllStatus, setDownloadAllStatus] = createSignal("正在加载全部视频");
   const selectedSet = createMemo(() => new Set(selectedMediaIds()));
 
   function allSelected(): boolean {
@@ -75,16 +82,24 @@ export default function VideoListSection(props: {
     }
   }
 
-  async function handleDownloadAll(): Promise<void> {
-    if (downloadAllLoading() || enqueueLoading()) return;
-    setDownloadAllLoading(true);
-    try {
-      setDownloadAllStatus("正在加载全部视频");
-      await props.prepareDownloadAll?.(setDownloadAllStatus);
-      await enqueueAndGoDownload(props.medias());
-    } finally {
-      setDownloadAllLoading(false);
+  // 一键下载全部：立即跳转下载页并自动开始；后续分页由批量会话在下载页继续“解析 → 下载”。
+  async function startBatchDownload(): Promise<void> {
+    const batch = props.batchDownload;
+    if (!batch || enqueueLoading()) return;
+
+    const list = props.medias().filter(m => m.bvid?.trim());
+    const started = startBilibiliBatch({
+      title: batch.title,
+      totalCount: batch.totalCount,
+      initialItems: list,
+      loader: batch.createLoader(),
+    });
+    if (!started) {
+      props.showToast?.("已有下载任务进行中，请稍后再试", "warning");
+      return;
     }
+    clearSelection();
+    await navigate({to: "/bilibili/download"});
   }
 
   return (
@@ -114,21 +129,23 @@ export default function VideoListSection(props: {
                   disabled={selectedMediaIds().length === 0 || enqueueLoading()}>
             {enqueueLoading() ? "处理中..." : `下载已选 (${selectedMediaIds().length})`}
           </button>
-          <div class="group relative shrink-0">
-            <button class="btn btn-primary btn-sm"
-                    type="button"
-                    onClick={() => void handleDownloadAll()}
-                    disabled={props.medias().length === 0 || enqueueLoading() || downloadAllLoading()}
-                    aria-label="一键下载全部（自动加载全部分页）">
-              {enqueueLoading() ? "处理中..." : downloadAllLoading() ? "加载中..." : "一键下载全部"}
-            </button>
-            <span
-                role="tooltip"
-                class="pointer-events-none absolute right-0 top-full z-50 mt-1.5 w-max max-w-[min(220px,calc(100vw-24px))] whitespace-normal rounded-md bg-neutral px-2.5 py-1.5 text-center text-[11px] leading-4 text-neutral-content opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-            >
-              自动加载全部分页并加入下载队列
-            </span>
-          </div>
+          <Show when={props.batchDownload}>
+            <div class="group relative shrink-0">
+              <button class="btn btn-primary btn-sm"
+                      type="button"
+                      onClick={() => void startBatchDownload()}
+                      disabled={props.medias().length === 0 || enqueueLoading()}
+                      aria-label="一键下载全部（跳转下载页自动分页下载）">
+                {enqueueLoading() ? "处理中..." : "一键下载全部"}
+              </button>
+              <span
+                  role="tooltip"
+                  class="pointer-events-none absolute right-0 top-full z-50 mt-1.5 w-max max-w-[min(220px,calc(100vw-24px))] whitespace-normal rounded-md bg-neutral px-2.5 py-1.5 text-center text-[11px] leading-4 text-neutral-content opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                跳转下载页，自动分页解析并下载全部
+              </span>
+            </div>
+          </Show>
         </div>
         {/* 视频卡片网格 — 虚拟滚动，只渲染可见行 */}
         <VirtualVideoGrid
@@ -140,16 +157,6 @@ export default function VideoListSection(props: {
             loadingMore={props.loadingMore}
             onLoadMore={props.onLoadMore}
         />
-        <Show when={downloadAllLoading()}>
-          <div class="fixed inset-0 z-40 grid place-items-center bg-base-300/45 p-4 backdrop-blur-[2px]">
-            <div class="w-full max-w-sm rounded-xl border border-base-300 bg-base-100 p-5 text-center shadow-2xl">
-              <h3 class="text-base font-semibold text-base-content">{downloadAllStatus()}</h3>
-              <p class="mt-1 text-xs text-base-content/60">请稍候，完成后将自动加入下载队列</p>
-              <progress class="progress progress-primary mt-4 w-full" />
-              <p class="mt-2 text-xs tabular-nums text-base-content/55">已加载 {props.medias().length} 个视频</p>
-            </div>
-          </div>
-        </Show>
       </>
   );
 }
