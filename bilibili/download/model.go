@@ -26,6 +26,12 @@ type Result struct {
 	Error string `json:"error"`
 }
 
+// DownloadKey 标识一个待判断是否已下载的视频：多 P 收藏条目带具体 cid，普通列表项常只有 bvid。
+type DownloadKey struct {
+	Bvid string `json:"bvid"`
+	Cid  int64  `json:"cid"`
+}
+
 // BatchResult 汇总批量下载结果；失败不会中断整批任务。
 type BatchResult struct {
 	Results []Result `json:"results"`

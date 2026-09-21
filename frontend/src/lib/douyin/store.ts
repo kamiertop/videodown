@@ -69,6 +69,12 @@ export function removeDouyinVideo(awemeId: string): void {
   setDouyinVideoList((prev) => prev.filter((item) => item.awemeId.trim() !== key));
 }
 
+/** 批量移除（awemeId 已规范化）：一次过滤一次写入，避免逐条移除的 O(k·n) 列表重建与信号刷写。 */
+export function removeDouyinVideos(awemeIds: ReadonlySet<string>): void {
+  if (awemeIds.size === 0) return;
+  setDouyinVideoList((prev) => prev.filter((item) => !awemeIds.has(item.awemeId.trim())));
+}
+
 export function updateDouyinVideoOption(awemeId: string, optionId: string): void {
   const key = awemeId.trim();
   if (!key) return;

@@ -71,6 +71,13 @@ export function GetSavePreference(): $CancellablePromise<boolean> {
 }
 
 /**
+ * GetSkipDownloaded 获取增量下载开关（一键下载全部时跳过已下载内容）；读取出错时默认开启。
+ */
+export function GetSkipDownloaded(): $CancellablePromise<boolean> {
+    return $Call.ByID(3085458247);
+}
+
+/**
  * GetSleepTime 下载完一个视频之后的休眠时间；配置值按“秒”保存，避免把默认值 60 误解释成 60 纳秒。
  */
 export function GetSleepTime(): $CancellablePromise<number> {
@@ -168,6 +175,13 @@ export function SetParsePlayURLSleep(seconds: number): $CancellablePromise<void>
  */
 export function SetSavePreference(allowGroup: boolean): $CancellablePromise<void> {
     return $Call.ByID(1839644909, allowGroup);
+}
+
+/**
+ * SetSkipDownloaded 设置增量下载开关。
+ */
+export function SetSkipDownloaded(v: boolean): $CancellablePromise<void> {
+    return $Call.ByID(4129984187, v);
 }
 
 /**

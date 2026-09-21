@@ -38,6 +38,7 @@ func (s *Settings) init() error {
 		constant.AutoUpdateKey:        "true",
 		constant.FilenameTemplateKey:  "{title}",
 		constant.GroupingRuleKey:      "author_source",
+		constant.SkipDownloadedKey:    "true",
 	}
 
 	return s.store.InitPreferenceDefaults(defaults)
@@ -257,6 +258,24 @@ func (s *Settings) SetCloseToTray(v bool) error {
 		return s.store.Set(constant.CloseToTrayKey, "true")
 	}
 	return s.store.Set(constant.CloseToTrayKey, "false")
+}
+
+// GetSkipDownloaded 获取增量下载开关（一键下载全部时跳过已下载内容）；读取出错时默认开启。
+func (s *Settings) GetSkipDownloaded() (bool, error) {
+	val, err := s.store.Get(constant.SkipDownloadedKey)
+	if err != nil {
+		return true, nil
+	}
+
+	return val == "true", nil
+}
+
+// SetSkipDownloaded 设置增量下载开关。
+func (s *Settings) SetSkipDownloaded(v bool) error {
+	if v {
+		return s.store.Set(constant.SkipDownloadedKey, "true")
+	}
+	return s.store.Set(constant.SkipDownloadedKey, "false")
 }
 
 // ServiceShutdown closes resources when the Wails application shuts down.

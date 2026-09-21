@@ -31,6 +31,15 @@ export function removeVideo(id: number): void {
   setVideoList(prev => prev.filter(item => item.id !== id));
 }
 
+/** 批量移除：一次过滤一次写入，避免逐条 removeVideo 的 O(k·n) 列表重建；无命中时保持原引用。 */
+export function removeVideos(ids: ReadonlySet<number>): void {
+  if (ids.size === 0) return;
+  setVideoList(prev => {
+    if (!prev.some(item => ids.has(item.id))) return prev;
+    return prev.filter(item => !ids.has(item.id));
+  });
+}
+
 export function removeVideosByBvid(bvid: string): void {
   const key = bvid.trim().toUpperCase();
   if (!key) return;

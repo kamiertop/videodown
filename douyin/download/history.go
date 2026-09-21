@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json/v2"
 	"errors"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -78,6 +79,51 @@ func (d *Service) DownloadHistory() ([]HistoryItem, error) {
 	})
 
 	return items, nil
+}
+
+// isDownloaded 判断 awemeID 是否已下载：缓存存在且文件（或图文目录）仍在磁盘上。
+// 与 B 站 bilibili/download/util.go 的 isDownloaded 语义一致，文件被删后自动视为未下载。
+func (d *Service) isDownloaded(awemeID string) bool {
+	key := cacheKey(awemeID)
+	if key == "" {
+		return false
+	}
+	val, err := d.store.Get(key)
+	if err != nil {
+		return false
+	}
+	var history HistoryItem
+	if err := json.Unmarshal([]byte(val), &history); err != nil {
+		return false
+	}
+	if history.Path == "" {
+		return false
+	}
+	if _, err := os.Stat(history.Path); errors.Is(err, os.ErrNotExist) {
+		return false
+	}
+	return true
+}
+
+// DownloadedAwemeIDs 返回给定 awemeID 中已下载（且文件仍在）的子集，
+// 供前端批量会话做增量过滤。
+func (d *Service) DownloadedAwemeIDs(awemeIDs []string) ([]string, error) {
+	seen := make(map[string]struct{}, len(awemeIDs))
+	downloaded := make([]string, 0, len(awemeIDs))
+	for _, awemeID := range awemeIDs {
+		id := strings.TrimSpace(awemeID)
+		if id == "" {
+			continue
+		}
+		if _, ok := seen[id]; ok {
+			continue
+		}
+		seen[id] = struct{}{}
+		if d.isDownloaded(id) {
+			downloaded = append(downloaded, id)
+		}
+	}
+	return downloaded, nil
 }
 
 // markDownloaded 写入下载成功历史；缓存失败不影响已经落盘的文件。
