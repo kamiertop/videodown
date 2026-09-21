@@ -175,7 +175,7 @@ func (d *Service) downloadURLToFile(rawURL, targetPath string, task Task, phase 
 
 	total := resp.ContentLength
 	var downloaded int64
-	buf := make([]byte, 256*1024)
+	buf := make([]byte, 1024*1024)
 	lastEmit := time.Time{}
 	d.emitProgress(progress{
 		AwemeID: task.AwemeID,
@@ -251,7 +251,10 @@ func (d *Service) downloadTask(task Task) (string, error) {
 	d.mu.Lock()
 	delete(d.progress, task.AwemeID)
 	d.mu.Unlock()
-
+	p := progress{
+		AwemeID: task.AwemeID,
+		Title:   task.Title,
+	}
 	if len(task.Assets) > 0 || len(task.ImageURLs) > 0 {
 		// 图文/动图保存为一个目录，素材按 001.<原始扩展名> 顺序落盘，配乐单独保存为 music.mp3。
 		dirName := utils.FileName(task.Title)
@@ -276,13 +279,14 @@ func (d *Service) downloadTask(task Task) (string, error) {
 		if total == 0 {
 			return "", errors.New("素材下载地址为空")
 		}
+
 		for index, asset := range assets {
 			ext := douyinAssetExt(asset)
 			start := float64(index) / float64(total) * 100
 			weight := 100 / float64(total)
 			join := filepath.Join(dir, fmt.Sprintf("%03d%s", index+1, ext))
 			if err = d.downloadURLToFile(asset.URL, join, task, asset.Kind, start, weight); err != nil {
-				d.emitProgress(progress{AwemeID: task.AwemeID, Title: task.Title, Phase: "error"})
+				d.emitProgress(p.withPhase("error"))
 				return "", err
 			}
 		}
@@ -291,11 +295,11 @@ func (d *Service) downloadTask(task Task) (string, error) {
 			weight := 100 / float64(total)
 			join := filepath.Join(dir, "music.mp3")
 			if err = d.downloadURLToFile(task.MusicURL, join, task, "music", start, weight); err != nil {
-				d.emitProgress(progress{AwemeID: task.AwemeID, Title: task.Title, Phase: "error"})
+				d.emitProgress(p.withPhase("error"))
 				return "", err
 			}
 		}
-		d.emitProgress(progress{AwemeID: task.AwemeID, Title: task.Title, Phase: "done", Percent: 100})
+		d.emitProgress(p.withPhase("done").withPercent(100))
 		d.markDownloaded(task, dir, true, len(assets), kindAlbum)
 		return dir, nil
 	}
@@ -315,10 +319,10 @@ func (d *Service) downloadTask(task Task) (string, error) {
 	}
 	outPath := utils.UniqueFilePath(filepath.Join(targetDir, fileName+".mp4"))
 	if err = d.downloadURLToFile(task.VideoURL, outPath, task, "video", 0, 100); err != nil {
-		d.emitProgress(progress{AwemeID: task.AwemeID, Title: task.Title, Phase: "error"})
+		d.emitProgress(p.withPhase("error"))
 		return "", err
 	}
-	d.emitProgress(progress{AwemeID: task.AwemeID, Title: task.Title, Phase: "done", Percent: 100})
+	d.emitProgress(p.withPhase("done").withPercent(100))
 	d.markDownloaded(task, outPath, false, 0, kindVideo)
 
 	return outPath, nil

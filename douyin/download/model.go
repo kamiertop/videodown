@@ -48,3 +48,13 @@ type progress struct {
 	SleepRemaining int64   `json:"sleepRemaining"`
 	SleepTotal     int64   `json:"sleepTotal"`
 }
+
+func (p progress) withPhase(phase string) progress {
+	p.Phase = phase
+	return p
+}
+
+func (p progress) withPercent(percent float64) progress {
+	p.Percent = percent
+	return p
+}
