@@ -418,6 +418,29 @@ export async function withBilibiliDownloadLock<T>(fn: () => Promise<T>): Promise
   }
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * 等待全局下载锁空闲后执行 fn：批量会话排队启动时轮到它可能撞上手动下载，
+ * 每 500ms 重试，期间 shouldAbort 返回 true 则放弃等待、onWaiting 更新等待提示。
+ * 约定 fn 的返回值不能是 undefined（undefined 保留表示“未执行”）。
+ */
+export async function awaitBilibiliDownloadLock<T>(
+    fn: () => Promise<T>,
+    shouldAbort?: () => boolean,
+    onWaiting?: () => void,
+): Promise<T | undefined> {
+  for (; ;) {
+    if (shouldAbort?.()) return undefined;
+    const result = await withBilibiliDownloadLock(fn);
+    if (result !== undefined) return result;
+    onWaiting?.();
+    await sleep(500);
+  }
+}
+
 /** 手动“开始下载”入口：一轮下载后对失败项立即补一轮重试。 */
 export async function startBilibiliDownloadQueue(items: readonly MediaCardItem[] = videoList()): Promise<number> {
   const result = await withBilibiliDownloadLock(async () => {
@@ -460,11 +483,10 @@ async function downloadOneItem(item: MediaCardItem): Promise<number> {
   }
 
   const result = await withBilibiliDownloadLock(async () => {
-    let {success, failed, failedItems} = await runBilibiliDownloadTasks([item]);
+    let {failed, failedItems} = await runBilibiliDownloadTasks([item]);
     if (failedItems.length > 0) {
       notify("下载失败，正在自动重试", "warning");
       const retry = await runBilibiliDownloadTasks(failedItems);
-      success += retry.success;
       failed = retry.failed;
     }
     if (failed === 0) {

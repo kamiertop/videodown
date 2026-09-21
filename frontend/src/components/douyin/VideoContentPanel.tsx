@@ -213,7 +213,7 @@ export default function VideoContentPanel(props: {
       loader: batch.createLoader(),
     });
     if (!started) {
-      props.showToast("已有下载任务进行中，请稍后再试", "warning");
+      props.showToast("该内容已在批量下载队列中，或没有可下载的内容", "warning");
       return;
     }
     clearSelection();

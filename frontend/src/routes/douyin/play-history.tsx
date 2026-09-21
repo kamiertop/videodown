@@ -366,7 +366,7 @@ function DouyinPlayHistoryPage(): JSXElement {
     }
     const started = startDouyinBatch({title: "播放历史", initialItems: downloadItems});
     if (!started) {
-      showToast("已有下载任务进行中，请稍后再试", "warning");
+      showToast("该内容已在批量下载队列中，或没有可下载的内容", "warning");
       return;
     }
     clearSelection();

@@ -13,4 +13,5 @@ const (
 	ThemeKey             = "theme"
 	CloseToTrayKey       = "closeToTray"
 	FFmpegPathKey        = "ffmpeg_path"
+	SkipDownloadedKey    = "skipDownloaded"
 )

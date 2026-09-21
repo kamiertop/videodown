@@ -1,11 +1,14 @@
 import {
   GetConcurrencyNum,
+  GetSkipDownloaded,
   GetSleepTime,
   SetConcurrencyNum,
+  SetSkipDownloaded,
   SetSleepTime,
 } from "@bindings/github.com/kamiertop/videodown/utils/settings";
 import {createFileRoute} from '@tanstack/solid-router';
 import {createSignal, For, type JSXElement, onCleanup, onMount, Show} from "solid-js";
+import SettingsToggleCard from "../../components/SettingsToggleCard.tsx";
 import Toast from "../../components/Toast";
 import {useToast} from "../../hooks/useToast";
 
@@ -16,6 +19,7 @@ function DownloadSection(): JSXElement {
       <div class="space-y-6 max-w-2xl mx-auto">
         <ConcurrencyNum/>
         <SleepAfterDownLoad/>
+        <SkipDownloaded/>
       </div>
   )
 }
@@ -90,6 +94,27 @@ function ConcurrencyNum(): JSXElement {
           <Toast message={message()} type={type()}/>
         </div>
       </Show>
+  )
+}
+
+function SkipDownloaded(): JSXElement {
+  return (
+      <SettingsToggleCard
+          title="增量下载（跳过已下载）"
+          icon={
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M5 5l9 7-9 7V5zm10 0l9 7-9 7V5z" transform="scale(0.92) translate(1,0)"/>
+            </svg>
+          }
+          iconClass="bg-info/10 text-info"
+          label="一键下载全部时自动跳过已下载内容"
+          description="B 站 / 抖音跳过下载历史中已存在且文件仍在的视频（B 站在解析地址前判断，不浪费请求）；会翻完全部页逐页检查，确保无遗漏；文件被删除后会重新下载，关闭后恢复全量下载"
+          hint="如果发现功能异常（漏下载、误跳过等），请关闭本开关"
+          toggleClass="toggle-info"
+          name="增量下载"
+          get={GetSkipDownloaded}
+          set={SetSkipDownloaded}
+      />
   )
 }
 

@@ -110,7 +110,7 @@ function Dynamic(): JSXElement {
     }
     const started = startBilibiliBatch({title: "关注动态", initialItems: downloadable.map(toMediaCardItem)});
     if (!started) {
-      showToast("已有下载任务进行中，请稍后再试", "warning");
+      showToast("该内容已在批量下载队列中，或没有可下载的内容", "warning");
       return;
     }
     void navigate({to: "/bilibili/download"});

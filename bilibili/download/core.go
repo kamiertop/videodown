@@ -433,53 +433,6 @@ func (s *Service) DownloadVideosByDash(tasks []Task) (BatchResult, error) {
 	return result, nil
 }
 
-// FilterIncrementalTasks 将任务分为待下载和已下载两组；已下载项附带当时保存的文件路径。
-func (s *Service) FilterIncrementalTasks(tasks []Task) (toDownload []Task, alreadyDone []Result) {
-	tasks = uniqueDashDownloadTasks(tasks)
-	for _, task := range tasks {
-		if path, ok := s.isDownloaded(task.Cid); ok {
-			alreadyDone = append(alreadyDone, Result{
-				Bvid:  task.Bvid,
-				Cid:   task.Cid,
-				Title: task.Title,
-				Path:  path,
-			})
-		} else {
-			toDownload = append(toDownload, task)
-		}
-	}
-	return
-}
-
-// DownloadVideosByDashIncremental 增量下载：跳过已下载的视频，只下载新增部分。
-func (s *Service) DownloadVideosByDashIncremental(tasks []Task) (BatchResult, error) {
-	toDownload, alreadyDone := s.FilterIncrementalTasks(tasks)
-
-	result := BatchResult{
-		Results: make([]Result, 0, len(tasks)),
-	}
-
-	for _, item := range alreadyDone {
-		result.Results = append(result.Results, item)
-		result.Success += 1
-	}
-
-	if len(toDownload) == 0 {
-		return result, nil
-	}
-
-	batchResult, err := s.DownloadVideosByDash(toDownload)
-	if err != nil {
-		return result, err
-	}
-
-	result.Results = append(result.Results, batchResult.Results...)
-	result.Success += batchResult.Success
-	result.Failed += batchResult.Failed
-
-	return result, nil
-}
-
 // DownloadCover 下载视频封面到当前下载目录，返回保存后的文件路径。
 func (s *Service) DownloadCover(cover string, task Task) (string, error) {
 	cover = normalizeHTTPURL(cover)

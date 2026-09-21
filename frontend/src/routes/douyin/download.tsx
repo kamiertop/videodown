@@ -10,7 +10,7 @@ import NoCover from "../../components/NoCover.tsx";
 import Toast from "../../components/Toast.tsx";
 import {useToast} from "../../hooks/useToast.ts";
 import {awemeToDownloadItem} from "../../lib/douyin/aweme.ts";
-import {douyinBatchState} from "../../lib/douyin/batchDownload.ts";
+import {douyinBatchActive} from "../../lib/douyin/batchDownload.ts";
 import {type DouyinDownloadProgress, useDouyinDownloadQueue} from "../../lib/douyin/downloadQueue.ts";
 import {formatDataSize} from "../../lib/douyin/media.ts";
 import {
@@ -90,8 +90,7 @@ function DouyinDownloadCard(props: {
 
             <Show when={props.downloading && props.progress} fallback={<div class="h-14 w-14"/>}>
               {(progress) => (
-                  <div
-                      class="grid w-14 shrink-0 justify-self-end text-center justify-items-center gap-1">
+                  <div class="grid w-14 shrink-0 justify-self-end text-center justify-items-center gap-1">
                     <div
                         class="radial-progress text-info"
                         style={{
@@ -137,10 +136,11 @@ function DouyinDownloadCard(props: {
                       class="select select-bordered select-xs w-44 min-w-0"
                       value={props.item.selectedVideoOptionId ?? ""}
                       disabled={props.downloading}
-                      onChange={(event) => updateDouyinVideoOption(props.item.awemeId, event.currentTarget.value)}
+                      onChange={(event) =>
+                          updateDouyinVideoOption(props.item.awemeId, event.currentTarget.value)}
                   >
                     <For each={props.item.videoOptions ?? []}>
-                      {(option) => (
+                      {(option): JSXElement => (
                           <option value={option.id}>
                             {option.gearName} · {formatDataSize(option.dataSize)}
                           </option>
@@ -306,9 +306,9 @@ function DouyinDownloadPage(): JSXElement {
         {/* 批量任务卡片：一键下载全部的会话进度（已下载/总数、当前状态、停止）。 */}
         <DouyinBatchStatusCard/>
 
-        {/* 批量进行中列表里始终只有当前批的一页，“待下载 N 个”没有信息量，隐藏这行摘要；
-            批量结束后恢复显示，此时列表里的就是重试后仍失败的内容。 */}
-        <Show when={!douyinBatchState()?.active && (douyinVideoList().length > 0 || completedCount() > 0)}>
+        {/* 批量进行中（含排队）列表里始终只有当前批的一页，“待下载 N 个”没有信息量，隐藏这行摘要；
+            批量结束后恢复显示，此时列表里的就是重试后仍失败的内容 */}
+        <Show when={!douyinBatchActive() && (douyinVideoList().length > 0 || completedCount() > 0)}>
           <section class="mt-2 flex flex-row items-center justify-between rounded-lg p-3 shadow-sm">
             <div class="flex min-w-0 flex-1 flex-col gap-1">
               <div class="flex items-center gap-2">
@@ -338,7 +338,7 @@ function DouyinDownloadPage(): JSXElement {
               when={douyinVideoList().length > 0}
               fallback={
                 <EmptyState title="下载列表为空"
-                            description="可以解析视频链接，或从收藏、合集、用户页勾选后加入下载列表。"/>
+                            description="可以解析视频链接，或从收藏、合集、用户页勾选后加入下载列表"/>
               }
           >
             <div class="flex h-full flex-col gap-1.5 overflow-auto p-2">

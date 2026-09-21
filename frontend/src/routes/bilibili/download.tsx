@@ -10,7 +10,7 @@ import DownloadVideoCard from "../../components/bilibili/downloadPage/DownloadVi
 import Toast from "../../components/Toast";
 import {useToast} from "../../hooks/useToast";
 import {useBilibiliDownloadQueue} from "../../lib/bilibili/downloadQueue.ts";
-import {bilibiliBatchState} from "../../lib/bilibili/batchDownload.ts";
+import {bilibiliBatchActive} from "../../lib/bilibili/batchDownload.ts";
 import {addVideos, removeVideo, videoList} from "../../lib/bilibili/store.ts";
 import {extractBilibiliPartIndex, extractBvid} from "../../lib/format";
 import type {MediaCardItem} from "../../lib/model.ts";
@@ -364,9 +364,9 @@ function DownLoad(): JSXElement {
         {/* 批量任务卡片：一键下载全部的会话进度（解析/下载、已下载/总数、停止、继续）。 */}
         <BilibiliBatchStatusCard/>
 
-        {/* 批量进行中列表里始终只有当前批的一页，摘要行没有信息量且按钮被锁禁用，隐藏；
+        {/* 批量进行中（含排队）列表里始终只有当前批的一页，摘要行没有信息量且按钮被锁禁用，隐藏；
             批量结束后恢复显示，此时列表里的就是重试后仍失败的内容。 */}
-        <Show when={!bilibiliBatchState()?.active}>
+        <Show when={!bilibiliBatchActive()}>
           <DownloadSummaryBar
               count={videoList().length}
               downloading={queue.downloading()}

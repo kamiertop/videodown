@@ -23,6 +23,8 @@ export interface DouyinDownloadProgress {
 export interface DouyinDownloadRunResult {
   success: number;
   failed: number;
+  /** 本轮下载成功的 awemeId（已规范化）；批量会话用它剔除顺带下载的手动项，只统计会话自己的内容。 */
+  successIDs: string[];
   failedItems: DouyinDownloadItem[];
 }
 
@@ -107,7 +109,7 @@ export async function runDouyinDownloadTasks(items: readonly DouyinDownloadItem[
   const tasks = buildTasks(items);
   if (tasks.length === 0) {
     if (items.length > 0) notify("暂无可用下载地址，请稍后重试", "warning");
-    return {success: 0, failed: items.length, failedItems: [...items]};
+    return {success: 0, failed: items.length, successIDs: [], failedItems: [...items]};
   }
 
   for (const task of tasks) {
@@ -120,6 +122,7 @@ export async function runDouyinDownloadTasks(items: readonly DouyinDownloadItem[
     // 否则成功结果虽已返回，前端会因 Map 未命中而无法移除列表项。
     const byID = new Map(items.map((item) => [item.awemeId.trim(), item]));
     const failedItems: DouyinDownloadItem[] = [];
+    const successIDs: string[] = [];
 
     // 和 B 站一致：成功项自动移除，失败项保留并展示错误。
     for (const result of batch.results ?? []) {
@@ -131,14 +134,15 @@ export async function runDouyinDownloadTasks(items: readonly DouyinDownloadItem[
         notify(`下载失败：${item.title}，${result.error}`, "error");
         failedItems.push(item);
       } else {
+        successIDs.push(resultID);
         removeDouyinVideo(resultID);
       }
     }
 
-    return {success: batch.success ?? 0, failed: batch.failed ?? 0, failedItems};
+    return {success: batch.success ?? 0, failed: batch.failed ?? 0, successIDs, failedItems};
   } catch (error) {
     notify(error instanceof Error ? error.message : String(error), "error");
-    return {success: 0, failed: tasks.length, failedItems: [...items]};
+    return {success: 0, failed: tasks.length, successIDs: [], failedItems: [...items]};
   } finally {
     for (const task of tasks) {
       setDownloadingByID((prev) => ({...prev, [task.awemeId]: false}));
@@ -162,6 +166,29 @@ export async function withDouyinDownloadLock<T>(fn: () => Promise<T>): Promise<T
     return await fn();
   } finally {
     setDownloading(false);
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * 等待全局下载锁空闲后执行 fn：批量会话排队启动时轮到它可能撞上手动下载，
+ * 每 500ms 重试，期间 shouldAbort 返回 true 则放弃等待、onWaiting 更新等待提示。
+ * 约定 fn 的返回值不能是 undefined（undefined 保留表示“未执行”）。
+ */
+export async function awaitDouyinDownloadLock<T>(
+    fn: () => Promise<T>,
+    shouldAbort?: () => boolean,
+    onWaiting?: () => void,
+): Promise<T | undefined> {
+  for (; ;) {
+    if (shouldAbort?.()) return undefined;
+    const result = await withDouyinDownloadLock(fn);
+    if (result !== undefined) return result;
+    onWaiting?.();
+    await sleep(500);
   }
 }
 
@@ -193,11 +220,10 @@ export async function startDouyinDownloadQueue(items: readonly DouyinDownloadIte
 async function downloadOneItem(item: DouyinDownloadItem): Promise<number> {
   if (downloadingByID()[item.awemeId]) return 0;
   const result = await withDouyinDownloadLock(async () => {
-    let {success, failed, failedItems} = await runDouyinDownloadTasks([item]);
+    let {failed, failedItems} = await runDouyinDownloadTasks([item]);
     if (failedItems.length > 0) {
       notify("下载失败，正在自动重试", "warning");
       const retry = await runDouyinDownloadTasks(failedItems);
-      success += retry.success;
       failed = retry.failed;
     }
     if (failed === 0) {
