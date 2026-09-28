@@ -10,6 +10,7 @@ import (
 	"github.com/imroc/req/v3"
 
 	"github.com/kamiertop/videodown/douyin/model"
+	"github.com/kamiertop/videodown/douyin/websign"
 )
 
 // User 获取用户信息
@@ -85,22 +86,31 @@ func (d *Douyin) UserVideoList(secUserId string, count, maxCursor int) (model.Us
 		d.logger.Errorf("request user video list public headers error: %v", err)
 		return resp, fmt.Errorf("获取公共请求头失败: %w", err)
 	}
+	queryParams["sec_user_id"] = secUserId
+	queryParams["max_cursor"] = maxCursor
+	queryParams["count"] = count
+	queryParams["from_user_page"] = 1
+	queryParams["cut_version"] = 1
+	queryParams["whale_cut_token"] = ""
+	queryParams["need_time_list"] = 1
+	queryParams["time_list_query"] = 0
+	queryParams["locate_query"] = false
+	queryParams["show_live_replay_strategy"] = 1
+	queryParams["publish_video_strategy_type"] = 2
+	params := url.Values{}
+	for key, value := range queryParams {
+		params.Set(key, fmt.Sprint(value))
+	}
+	aBogus := GenerateABogus(params.Encode())
+	params.Set("a_bogus", aBogus)
+	signature, err := websign.XSecSdkWebSignature(
+		"https://www-hj.douyin.com/aweme/v1/web/aweme/post/?"+params.Encode(),
+		queryParams["uifid"].(string))
+	if err != nil {
+		return resp, fmt.Errorf("生成 SecSDK 签名失败: %w", err)
+	}
 	err = d.client.
-		Get("https://www-hj.douyin.com/aweme/v1/web/aweme/post/").
-		SetQueryParamsAnyType(queryParams).
-		SetQueryParamsAnyType(map[string]any{
-			"sec_user_id":                 secUserId,
-			"max_cursor":                  maxCursor,
-			"count":                       count,
-			"from_user_page":              1,
-			"cut_version":                 1,
-			"whale_cut_token":             "",
-			"need_time_list":              1,
-			"time_list_query":             0,
-			"locate_query":                false,
-			"show_live_replay_strategy":   1,
-			"publish_video_strategy_type": 2,
-		}).
+		Get(signature).
 		SetHeaders(publicHeaders).
 		SetHeader("Uifid", queryParams["uifid"].(string)).
 		Do().
