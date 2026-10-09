@@ -2,12 +2,12 @@ import type {HistoryItem} from "@bindings/github.com/kamiertop/videodown/douyin/
 import {
   ClearDownloadHistory,
   DeleteDownloadHistory,
-  DownloadHistory
+  DownloadHistoryPage
 } from "@bindings/github.com/kamiertop/videodown/douyin/download/service.ts";
 
 import {OpenDownloadLocation, OpenLocalFile} from "@bindings/github.com/kamiertop/videodown/utils/settings";
 import {createFileRoute} from "@tanstack/solid-router";
-import {createMemo, createResource, createSignal, For, type JSXElement, Match, Show, Switch} from "solid-js";
+import {createSignal, For, type JSXElement, Match, onMount, Show, Switch} from "solid-js";
 import DetailError from "../../components/DetailError.tsx";
 import IconChat from "../../components/icons/IconChat";
 import IconEye from "../../components/icons/IconEye";
@@ -20,41 +20,61 @@ import {useToast} from "../../hooks/useToast.ts";
 import {formatCount, formatDate, formatDuration} from "../../lib/format";
 import {formatDownloadedAt} from "../../utils/format.ts";
 
+// 历史按页加载：后端分页 + 关键字过滤，避免记录多时全量跨桥、全量渲染。
+const PAGE_SIZE = 50;
+
 
 export const Route = createFileRoute('/douyin/history')({
   component: History,
 })
 
-function readResource<T>(read: () => T | undefined): T | undefined {
-  try {
-    return read();
-  } catch {
-    return undefined;
-  }
-}
-
 function History(): JSXElement {
   const {message, type, showToast} = useToast();
-  const [items, {refetch, mutate}] = createResource(async () => {
-    const data = await DownloadHistory();
-    return data ?? [];
-  });
+  const [items, setItems] = createSignal<HistoryItem[]>([]);
+  const [total, setTotal] = createSignal(0);
+  const [hasMore, setHasMore] = createSignal(false);
+  const [loading, setLoading] = createSignal(false);
+  // 区分“还在加载”与“确实没有历史”，首次加载完成前不显示空态文案。
+  const [loaded, setLoaded] = createSignal(false);
+  const [errorMsg, setErrorMsg] = createSignal("");
   const [searchValue, setSearchValue] = createSignal<string>("");
+  // 竞态防护：搜索词快速变化时只认最后一次请求的结果。
+  let requestSeq = 0;
+  let searchTimer: number | undefined;
 
-  function historyItems(): HistoryItem[] {
-    return readResource(() => items()) ?? [];
+  async function loadPage(reset: boolean): Promise<void> {
+    const seq = ++requestSeq;
+    setLoading(true);
+    try {
+      const offset = reset ? 0 : items().length;
+      const page = await DownloadHistoryPage(offset, PAGE_SIZE, searchValue().trim());
+      if (seq !== requestSeq) return;
+      setErrorMsg("");
+      setTotal(page.total ?? 0);
+      setHasMore(page.hasMore);
+      setItems(reset ? page.items ?? [] : [...items(), ...(page.items ?? [])]);
+    } catch (error) {
+      if (seq === requestSeq) {
+        const msg = error instanceof Error ? error.message : String(error);
+        setErrorMsg(msg);
+        showToast(msg, "error");
+      }
+    } finally {
+      if (seq === requestSeq) {
+        setLoading(false);
+        setLoaded(true);
+      }
+    }
   }
 
-  const visibleItems = createMemo(() => {
-    const keyword = searchValue().trim().toLowerCase();
-    const allItems = historyItems();
-    if (!keyword) return allItems;
+  function searchInput(value: string): void {
+    setSearchValue(value);
+    // 防抖：输入停顿后再发起后端搜索。
+    window.clearTimeout(searchTimer);
+    searchTimer = window.setTimeout(() => void loadPage(true), 300);
+  }
 
-    return allItems.filter((item) =>
-        item.title?.toLowerCase().includes(keyword) ||
-        item.authorName?.toLowerCase().includes(keyword)
-    );
-  });
+  onMount(() => void loadPage(true));
 
   function historyBadge(item: HistoryItem): string {
     if (item.downloadKind === "cover") return "封面";
@@ -66,7 +86,8 @@ function History(): JSXElement {
     if (!awemeId) return;
     try {
       await DeleteDownloadHistory(awemeId);
-      mutate((current) => (current ?? []).filter((item) => item.awemeId !== awemeId));
+      setItems((current) => current.filter((item) => item.awemeId !== awemeId));
+      setTotal((current) => Math.max(0, current - 1));
       showToast("历史记录已删除", "success");
     } catch (error) {
       showToast(error instanceof Error ? error.message : String(error), "error");
@@ -74,11 +95,13 @@ function History(): JSXElement {
   };
 
   async function clearHistory(): Promise<void> {
-    if (historyItems().length === 0) return;
+    if (total() === 0 && items().length === 0) return;
     if (!window.confirm("确定要删除所有下载历史吗？本地文件不会被删除。")) return;
     try {
       await ClearDownloadHistory();
-      mutate([]);
+      setItems([]);
+      setTotal(0);
+      setHasMore(false);
       showToast("下载历史已清空", "success");
     } catch (error) {
       showToast(error instanceof Error ? error.message : String(error), "error");
@@ -107,9 +130,8 @@ function History(): JSXElement {
           <div>
             <h2 class="text-base font-bold">下载历史</h2>
             <p class="text-sm text-base-content/60">
-              已记录 {historyItems().length} 个抖音作品
-              <Show when={searchValue().trim()}>
-                ，匹配 {visibleItems().length} 个
+              <Show when={searchValue().trim()} fallback={<>已记录 {total()} 个抖音作品</>}>
+                匹配 {total()} 个抖音作品
               </Show>
             </p>
           </div>
@@ -117,19 +139,19 @@ function History(): JSXElement {
                  placeholder="输入作者或标题模糊搜索"
                  class="input"
                  value={searchValue()}
-                 onInput={(e) => setSearchValue(e.currentTarget.value)}
+                 onInput={(e) => searchInput(e.currentTarget.value)}
           />
           <div class="flex items-center gap-2">
-            <button class="btn btn-outline btn-sm gap-1.5" type="button" onClick={() => void refetch()}
-                    disabled={items.loading}>
-              <IconRefresh class={items.loading ? "h-4 w-4 animate-spin" : "h-4 w-4"}/>
-              {items.loading ? "刷新中..." : "刷新"}
+            <button class="btn btn-outline btn-sm gap-1.5" type="button" onClick={() => void loadPage(true)}
+                    disabled={loading()}>
+              <IconRefresh class={loading() ? "h-4 w-4 animate-spin" : "h-4 w-4"}/>
+              {loading() ? "刷新中..." : "刷新"}
             </button>
             <button
                 class="btn btn-outline btn-error btn-sm"
                 type="button"
                 onClick={() => void clearHistory()}
-                disabled={items.loading || historyItems().length === 0}
+                disabled={loading() || (total() === 0 && items().length === 0)}
             >
               删除全部历史记录
             </button>
@@ -138,27 +160,22 @@ function History(): JSXElement {
 
         <section class="min-h-0 flex-1 overflow-y-auto rounded-lg border border-base-300 bg-base-100">
           <Switch>
-            <Match when={items.loading}>
+            <Match when={!loaded()}>
               <div class="flex h-full items-center justify-center">
                 <span class="loading loading-spinner loading-md text-primary"/>
               </div>
             </Match>
-            <Match when={items.error}>
-              <DetailError message={String(items.error)} onRetry={() => void refetch()}/>
+            <Match when={errorMsg() && items().length === 0}>
+              <DetailError message={errorMsg()} onRetry={() => void loadPage(true)}/>
             </Match>
-            <Match when={historyItems().length === 0}>
+            <Match when={items().length === 0}>
               <div class="flex h-full items-center justify-center text-sm text-base-content/50">
-                暂无下载历史
+                {searchValue().trim() ? "没有匹配的下载历史" : "暂无下载历史"}
               </div>
             </Match>
-            <Match when={visibleItems().length === 0}>
-              <div class="flex h-full items-center justify-center text-sm text-base-content/50">
-                没有匹配的下载历史
-              </div>
-            </Match>
-            <Match when={visibleItems().length > 0}>
+            <Match when={items().length > 0}>
               <div class="divide-y divide-base-200">
-                <For each={visibleItems()}>
+                <For each={items()}>
                   {(item: HistoryItem): JSXElement => (
                       <article class="flex gap-3 p-3 flex-row">
                         {/*水平布局，左侧封面*/}
@@ -234,6 +251,14 @@ function History(): JSXElement {
                   )}
                 </For>
               </div>
+              <Show when={hasMore()}>
+                <div class="flex items-center justify-center p-4">
+                  <button class="btn btn-outline btn-sm" type="button" disabled={loading()}
+                          onClick={() => void loadPage(false)}>
+                    {loading() ? "加载中..." : `加载更多（已加载 ${items().length}/${total()}）`}
+                  </button>
+                </div>
+              </Show>
             </Match>
           </Switch>
         </section>

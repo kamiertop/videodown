@@ -1,10 +1,12 @@
 package download
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/logger"
@@ -48,5 +50,64 @@ func TestDownloadedAwemeIDs(t *testing.T) {
 	}
 	if want := []string{"a1", "v1"}; !slices.Equal(got, want) {
 		t.Fatalf("downloaded = %v, want %v", got, want)
+	}
+}
+
+// 分页 + 关键字过滤 + 缓存失效：翻页切片正确、搜索缩小 Total、删除后重建快照。
+func TestDownloadHistoryPage(t *testing.T) {
+	s := newTestService(t)
+	dir := t.TempDir()
+
+	for i := range 5 {
+		title := "普通视频"
+		if i%2 == 0 {
+			title = "猫咪视频"
+		}
+		path := filepath.Join(dir, fmt.Sprintf("v%d.mp4", i))
+		if err := os.WriteFile(path, []byte("x"), 0o644); err != nil {
+			t.Fatalf("write video: %v", err)
+		}
+		s.markDownloaded(Task{AwemeID: fmt.Sprintf("id%d", i), Title: title, AuthorName: "作者甲"}, path, false, 0, kindVideo)
+		// 拉开时间戳，保证倒序稳定等于写入逆序。
+		time.Sleep(2 * time.Millisecond)
+	}
+
+	page1, err := s.DownloadHistoryPage(0, 2, "")
+	if err != nil {
+		t.Fatalf("page1: %v", err)
+	}
+	if page1.Total != 5 || len(page1.Items) != 2 || !page1.HasMore {
+		t.Fatalf("page1 = total %d, %d items, hasMore %v; want 5, 2, true", page1.Total, len(page1.Items), page1.HasMore)
+	}
+	if page1.Items[0].AwemeID != "id4" {
+		t.Fatalf("page1 first = %s, want newest id4", page1.Items[0].AwemeID)
+	}
+
+	page3, err := s.DownloadHistoryPage(4, 2, "")
+	if err != nil {
+		t.Fatalf("page3: %v", err)
+	}
+	if len(page3.Items) != 1 || page3.HasMore {
+		t.Fatalf("page3 = %d items, hasMore %v; want 1, false", len(page3.Items), page3.HasMore)
+	}
+
+	search, err := s.DownloadHistoryPage(0, 50, "猫咪")
+	if err != nil {
+		t.Fatalf("search: %v", err)
+	}
+	if search.Total != 3 {
+		t.Fatalf("search total = %d, want 3 (id0/id2/id4)", search.Total)
+	}
+
+	// 删除一条后缓存必须失效，Total 反映最新记录数。
+	if err = s.DeleteDownloadHistory("id4"); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	after, err := s.DownloadHistoryPage(0, 50, "")
+	if err != nil {
+		t.Fatalf("after delete: %v", err)
+	}
+	if after.Total != 4 {
+		t.Fatalf("after delete total = %d, want 4", after.Total)
 	}
 }

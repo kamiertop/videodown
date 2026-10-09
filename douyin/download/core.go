@@ -30,6 +30,11 @@ type Service struct {
 	// active 记录正在执行（含休眠间隔）的任务数，供关闭程序前判断是否有任务未完成。
 	active        atomic.Int64
 	publicHeaders func() (map[string]string, error)
+	// 下载历史的内存缓存：按下载时间倒序，写入/删除/清空时失效，
+	// 历史页翻页只切内存，不必每次全量扫描 badger。
+	historyMu    sync.RWMutex
+	historyItems []HistoryItem
+	historyValid bool
 }
 
 // ActiveCount 返回正在执行的任务数；0 表示当前没有任务在进行。

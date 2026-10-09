@@ -5,6 +5,16 @@
 // @ts-ignore: Unused imports
 import * as model$0 from "../model/models.js";
 
+/**
+ * HistoryPage 下载历史的一页：keyword 为空时 Total 是全部记录数，非空时是
+ * 匹配记录数；HasMore 表示过滤后仍有下一页。
+ */
+export interface HistoryPage {
+    "items": model$0.DownloadHistoryItem[] | null;
+    "total": number;
+    "hasMore": boolean;
+}
+
 export interface PlayUrlRequest {
     "bvid": string;
     "cid": number;

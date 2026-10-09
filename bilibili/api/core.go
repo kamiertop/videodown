@@ -3,10 +3,12 @@ package api
 import (
 	"errors"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/imroc/req/v3"
+	"github.com/kamiertop/videodown/bilibili/model"
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/logger"
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -25,6 +27,12 @@ type BiliBili struct {
 	store  *storage.Store
 	events *application.EventManager
 	wbiKey *wbiKeys // lazy init
+	// 下载历史的内存缓存：按下载时间倒序。删除/清空在本包可直接失效；
+	// 写入发生在 download 包（无法跨包通知），用短 TTL 兜底新记录的可见性。
+	historyMu    sync.RWMutex
+	historyItems []model.DownloadHistoryItem
+	historyValid bool
+	historyStamp time.Time
 }
 
 func New(log *logger.Logger, store *storage.Store, events *application.EventManager) *BiliBili {
