@@ -9,6 +9,7 @@ import (
 	"github.com/imroc/req/v3"
 
 	"github.com/kamiertop/videodown/douyin/model"
+	"github.com/kamiertop/videodown/douyin/websign"
 )
 
 // ParseVideo 解析抖音视频链接，返回awemeID，为保证整体工作流，精选链接只返回awemeID，然后前端再次根据awemeID请求视频详情接口获取视频详情
@@ -54,15 +55,32 @@ func (d *Douyin) VideoDetail(awemeID string) (model.AwemeItem, error) {
 		StatusCode int             `json:"status_code"`
 		AwemeItem  model.AwemeItem `json:"aweme_detail"`
 	}
-	headers, err := d.publicHeaders()
+	queryParams, err := d.publicQueryParams()
+	if err != nil {
+		return resp.AwemeItem, fmt.Errorf("获取公共查询参数失败: %w", err)
+	}
+	publicHeaders, err := d.publicHeaders()
 	if err != nil {
 		return resp.AwemeItem, fmt.Errorf("获取公共请求头失败: %w", err)
 	}
-	params := detailParams(awemeID)
-	aBogus := GenerateABogus(params)
+	queryParams["aweme_id"] = awemeID
+
+	params := url.Values{}
+	for key, value := range queryParams {
+		params.Set(key, fmt.Sprint(value))
+	}
+	aBogus := GenerateABogus(params.Encode())
+	params.Set("a_bogus", aBogus)
+	signed, err := websign.XSecSdkWebSignature(
+		"https://www.douyin.com/aweme/v1/web/aweme/detail/?"+params.Encode(),
+		queryParams["uifid"].(string))
+	if err != nil {
+		return resp.AwemeItem, fmt.Errorf("生成 SecSDK 签名失败: %w", err)
+	}
 	err = d.client.
-		Get(fmt.Sprintf("https://www-hj.douyin.com/aweme/v1/web/aweme/detail/?%s&a_bogus=%s", params, url.QueryEscape(aBogus))).
-		SetHeaders(headers).
+		Get(signed).
+		SetHeaders(publicHeaders).
+		SetHeader("Uifid", queryParams["uifid"].(string)).
 		Do().
 		Into(&resp)
 	if err != nil {
