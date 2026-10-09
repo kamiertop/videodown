@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/kamiertop/videodown/internal/constant"
@@ -17,6 +18,32 @@ const (
 )
 
 const cachePrefix = "douyin:downloaded:"
+
+// trailingHashtags 匹配抖音简介尾部的话题标签串（如 " #猫咪 #养猫日常"）。
+// 每个标签前必须是行首或空白分隔（\s 不含全角空格，补 \p{Zs}），只剥
+// “独立的”标签串：纯标签标题因此剥到空、触发保留原文的守卫，而正文里
+// 内嵌的井号（如 “含#号的正文”）不会被误伤。
+var trailingHashtags = regexp.MustCompile(`(?:(?:^|[\s\p{Zs}]+)#[^\s#\p{Zs}]+)+[\s\p{Zs}]*$`)
+
+// cleanDouyinTitle 清洗用作文件名/目录名的抖音标题：去掉尾部的话题标签串。
+// 标签是检索用的元信息而非内容本身，却常常占据超长简介的大头；剥离后为空
+// 的纯标签标题保留原文，避免标题意外变空。
+func cleanDouyinTitle(title string) string {
+	trimmed := trailingHashtags.ReplaceAllString(strings.TrimSpace(title), "")
+	if strings.TrimSpace(trimmed) == "" {
+		return strings.TrimSpace(title)
+	}
+	return trimmed
+}
+
+// safeFileName 名字超过安全字节上限时退回 fallback（视频 ID）：
+// 抖音简介动辄数百字，超限名字会让 os.Stat/os.Create 返回 ENAMETOOLONG。
+func safeFileName(name, fallback string) string {
+	if len(name) > utils.MaxFileNameBytes {
+		return fallback
+	}
+	return name
+}
 
 func cacheKey(awemeID string) string {
 	id := strings.TrimSpace(awemeID)
@@ -94,8 +121,10 @@ func (d *Service) resolveDownloadDir(storagePath string, task Task) (string, err
 	if !allowGroup {
 		return storagePath, nil
 	}
-	rule, _ := d.store.Get(constant.GroupingRuleKey)
-
+	rule, err := d.store.Get(constant.GroupingRuleKey)
+	if err != nil {
+		return "", err
+	}
 	sourceName := utils.FileName(task.SourceName)
 	author := utils.FileName(task.AuthorName)
 
