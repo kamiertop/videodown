@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/kamiertop/videodown/internal/constant"
 	"github.com/kamiertop/videodown/utils"
@@ -135,6 +136,9 @@ func (d *Service) resolveDownloadDir(storagePath string, task Task) (string, err
 		return filepath.Join(storagePath, author), nil
 	case "author_source":
 		return filepath.Join(storagePath, author, sourceName), nil
+	case "date":
+		// 按下载当天的日期分目录；跨午夜的批量会自然落到两天的目录。
+		return filepath.Join(storagePath, time.Now().Format(time.DateOnly)), nil
 	default:
 		return filepath.Join(storagePath), nil
 	}

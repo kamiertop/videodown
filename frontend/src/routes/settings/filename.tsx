@@ -118,7 +118,8 @@ function FilenameSection(): JSXElement {
     none: {path: "/", desc: "所有文件直接保存到下载目录"},
     author: {path: "/作者名/", desc: "按视频作者分别保存到对应目录"},
     source: {path: "/来源名/", desc: "收藏夹名称、合集或系列名称"},
-    author_source: {path: "/作者名/来源名/", desc: "先按作者，再按收藏夹、合集或系列分类保存"}
+    author_source: {path: "/作者名/来源名/", desc: "先按作者，再按收藏夹、合集或系列分类保存"},
+    date: {path: "/下载日期/", desc: "按下载当天的日期（如 2026-10-09）分别保存到对应目录"}
   };
 
   function groupingDescription(rule: string) {
@@ -223,14 +224,14 @@ function FilenameSection(): JSXElement {
               <input type="checkbox" class="toggle toggle-primary" checked={grouping()}
                      onChange={e => setGrouping(e.currentTarget.checked)}/>
             </div>
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4" classList={{"opacity-50": !grouping()}}>
+            <div class="grid grid-cols-5 gap-2 mt-4" classList={{"opacity-50": !grouping()}}>
               <For
-                  each={[["none", "不分组"], ["author", "按作者"], ["author_source", "作者 + 来源"], ["source", "来源"]]}>
+                  each={[["none", "不分组"], ["author", "按作者"], ["author_source", "作者+来源"], ["source", "来源"], ["date", "下载日期"]]}>
                 {item => (
                     <button
                         type="button" disabled={!grouping()}
                         title={groupingDescription(item[0])}
-                        class={`btn btn-sm whitespace-nowrap px-2 sm:px-3 ${groupRule() === item[0] ? "btn-primary" : "btn-outline"}`}
+                        class={`btn btn-sm whitespace-nowrap px-1.5 sm:px-2 ${groupRule() === item[0] ? "btn-primary" : "btn-outline"}`}
                         onClick={() => setGroupRule(item[0])}>{item[1]}
                     </button>
                 )}
