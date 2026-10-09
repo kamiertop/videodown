@@ -48,10 +48,12 @@ func (d *Service) DownloadCover(covers []model.Cover, task Task) (string, error)
 		return "", fmt.Errorf("封面下载失败: %s", resp.Status)
 	}
 
-	fileName := utils.FileName(task.Title)
+	// 封面任务由前端直接传入，标题没有经过 downloadTask 的清洗，需就地处理。
+	fileName := utils.FileName(cleanDouyinTitle(task.Title))
 	if fileName == "" {
 		fileName = "cover"
 	}
+	fileName = safeFileName(fileName, task.AwemeID)
 	ext := utils.ImageExtFromResponse(coverURL, resp.Response)
 	outPath := utils.UniqueFilePath(filepath.Join(targetDir, fileName+ext))
 	if err = os.WriteFile(outPath, resp.Bytes(), 0o644); err != nil {

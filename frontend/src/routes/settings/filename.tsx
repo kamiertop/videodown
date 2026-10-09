@@ -201,6 +201,11 @@ function FilenameSection(): JSXElement {
             <p class="text-xs uppercase tracking-wide text-base-content/50 mb-1">文件名预览</p>
             <p class="font-medium break-all text-primary">{template() || "（未选择字段）"}.mp4</p>
           </div>
+          <div class="rounded-xl bg-base-200/70 border border-base-300 px-3 py-2 text-xs leading-relaxed text-base-content/60">
+            <span class="font-semibold text-base-content/75">超长文件名处理：</span>
+            文件名超过 200 字节（约 66 个汉字）时将自动改用视频 ID 命名，避免超出文件系统单名上限；
+            抖音标题尾部的话题标签（#话题）会先被去掉，不再占用文件名。
+          </div>
           <label class="flex items-center gap-3">
             <span class="text-sm font-semibold whitespace-nowrap">直接编辑模板</span>
             <span class="text-xs text-base-content/50 whitespace-nowrap">可输入 {"{title}"} 等变量</span>

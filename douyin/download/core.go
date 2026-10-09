@@ -228,7 +228,7 @@ func (d *Service) downloadURLToFile(rawURL, targetPath string, task Task, phase 
 // downloadTask 同时处理普通视频和图片合集；当前版本不在后端重新解析 bit_rate。
 func (d *Service) downloadTask(task Task) (string, error) {
 	task.AwemeID = strings.TrimSpace(task.AwemeID)
-	task.Title = strings.TrimSpace(task.Title)
+	task.Title = cleanDouyinTitle(task.Title)
 	if task.AwemeID == "" {
 		return "", errors.New("视频ID为空")
 	}
@@ -261,6 +261,7 @@ func (d *Service) downloadTask(task Task) (string, error) {
 		if dirName == "" {
 			dirName = "douyin"
 		}
+		dirName = safeFileName(dirName, task.AwemeID)
 		dir := utils.UniqueFilePath(filepath.Join(targetDir, dirName))
 		if err = os.MkdirAll(dir, 0o755); err != nil {
 			return "", errors.New("创建素材目录失败")
@@ -317,6 +318,7 @@ func (d *Service) downloadTask(task Task) (string, error) {
 	if fileName == "" {
 		fileName = "douyin"
 	}
+	fileName = safeFileName(fileName, task.AwemeID)
 	outPath := utils.UniqueFilePath(filepath.Join(targetDir, fileName+".mp4"))
 	if err = d.downloadURLToFile(task.VideoURL, outPath, task, "video", 0, 100); err != nil {
 		d.emitProgress(p.withPhase("error"))

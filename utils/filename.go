@@ -101,7 +101,15 @@ func isReservedWindowsName(name string) bool {
 	return false
 }
 
-// UniqueFilePath 在给定路径已存在时，生成一个唯一的文件路径
+// MaxFileNameBytes 文件/目录名单部分的安全字节上限：Linux 单个名字上限为
+// 255 字节（NAME_MAX），再预留扩展名（如 ".mp4"）和 UniqueFilePath 的
+// "(N)" 后缀空间。超过上限的名字必须由调用方退回短视频 ID 之类的短名字，
+// 否则 os.Stat/os.Create 会返回 ENAMETOOLONG。
+const MaxFileNameBytes = 200
+
+// UniqueFilePath 在给定路径已存在时，生成一个唯一的文件路径。
+// 注意：stat 返回“不存在”以外的错误（例如文件名过长的 ENAMETOOLONG）时
+// 必须直接返回，交给后续 os.Create 暴露真实原因，否则会在这里无限循环。
 func UniqueFilePath(path string) string {
 	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
 		return path
@@ -110,7 +118,14 @@ func UniqueFilePath(path string) string {
 	base := strings.TrimSuffix(path, ext)
 	for i := 1; ; i++ {
 		candidate := fmt.Sprintf("%s(%d)%s", base, i, ext)
-		if _, err := os.Stat(candidate); errors.Is(err, os.ErrNotExist) {
+		_, err := os.Stat(candidate)
+		switch {
+		case err == nil:
+			continue // 已存在，继续尝试下一个序号
+		case errors.Is(err, os.ErrNotExist):
+			return candidate
+		default:
+			// 无法确认存在性（权限、文件名过长等）：原样返回，让 Create 报错。
 			return candidate
 		}
 	}
