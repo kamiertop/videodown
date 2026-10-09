@@ -37,22 +37,110 @@ func (d *Service) DeleteDownloadHistory(awemeID string) error {
 	if key == "" {
 		return errors.New("视频ID为空")
 	}
-
-	return d.store.Delete(key)
+	if err := d.store.Delete(key); err != nil {
+		return err
+	}
+	d.invalidateHistory()
+	return nil
 }
 
 // ClearDownloadHistory 清空抖音下载历史；不会删除已经下载到本地的文件。
 func (d *Service) ClearDownloadHistory() error {
-	return d.store.DeletePrefix(cachePrefix)
+	if err := d.store.DeletePrefix(cachePrefix); err != nil {
+		return err
+	}
+	d.invalidateHistory()
+	return nil
 }
 
-// DownloadHistory 返回抖音下载历史，用于前端历史页展示。
-func (d *Service) DownloadHistory() ([]HistoryItem, error) {
+// HistoryPage 下载历史的一页：keyword 为空时 Total 是全部记录数，非空时是
+// 匹配记录数；HasMore 表示过滤后仍有下一页。
+type HistoryPage struct {
+	Items   []HistoryItem `json:"items"`
+	Total   int           `json:"total"`
+	HasMore bool          `json:"hasMore"`
+}
+
+const (
+	historyPageSizeDefault = 50
+	historyPageSizeMax     = 200
+)
+
+// DownloadHistoryPage 分页返回抖音下载历史：keyword 模糊匹配标题/作者（小写
+// 包含），offset 是过滤后列表的偏移。首次调用全量扫描并缓存排序结果，翻页
+// 与搜索只走内存，避免每次进历史页都全量扫描、全量跨桥、全量渲染。
+func (d *Service) DownloadHistoryPage(offset int, limit int, keyword string) (HistoryPage, error) {
+	if offset < 0 {
+		offset = 0
+	}
+	if limit <= 0 {
+		limit = historyPageSizeDefault
+	}
+	if limit > historyPageSizeMax {
+		limit = historyPageSizeMax
+	}
+
+	snapshot, err := d.historySnapshot()
+	if err != nil {
+		return HistoryPage{}, err
+	}
+
+	filtered := snapshot
+	if kw := strings.ToLower(strings.TrimSpace(keyword)); kw != "" {
+		matched := make([]HistoryItem, 0, len(snapshot))
+		for _, item := range snapshot {
+			if strings.Contains(strings.ToLower(item.Title), kw) ||
+				strings.Contains(strings.ToLower(item.AuthorName), kw) {
+				matched = append(matched, item)
+			}
+		}
+		filtered = matched
+	}
+
+	page := HistoryPage{Items: []HistoryItem{}, Total: len(filtered)}
+	if offset < len(filtered) {
+		end := min(offset+limit, len(filtered))
+		page.Items = filtered[offset:end]
+		page.HasMore = end < len(filtered)
+	}
+	return page, nil
+}
+
+// historySnapshot 返回按下载时间倒序的历史快照；缓存失效时重建一次。
+func (d *Service) historySnapshot() ([]HistoryItem, error) {
+	d.historyMu.RLock()
+	if d.historyValid {
+		items := d.historyItems
+		d.historyMu.RUnlock()
+		return items, nil
+	}
+	d.historyMu.RUnlock()
+
+	items, err := d.scanDownloadHistory()
+	if err != nil {
+		return nil, err
+	}
+
+	d.historyMu.Lock()
+	d.historyItems, d.historyValid = items, true
+	d.historyMu.Unlock()
+	return items, nil
+}
+
+// invalidateHistory 历史记录变化后调用，下次查询时重建快照。
+func (d *Service) invalidateHistory() {
+	d.historyMu.Lock()
+	d.historyItems, d.historyValid = nil, false
+	d.historyMu.Unlock()
+}
+
+// scanDownloadHistory 全量扫描 badger 中的下载缓存并按下载时间倒序排序。
+func (d *Service) scanDownloadHistory() ([]HistoryItem, error) {
 	items := make([]HistoryItem, 0)
 	prefix := []byte(cachePrefix)
 
 	err := d.store.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.DefaultIteratorOptions)
+		it := txn.NewIterator(badger.IteratorOptions{Prefix: prefix, PrefetchValues: false})
 		defer it.Close()
 
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
@@ -162,5 +250,7 @@ func (d *Service) markDownloaded(task Task, path string, isImageAlbum bool, imag
 	}
 	if err = d.store.Set(key, string(payload)); err != nil {
 		d.logger.Errorf("save douyin downloaded cache failed: %v", err)
+		return
 	}
+	d.invalidateHistory()
 }

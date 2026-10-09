@@ -7,6 +7,7 @@ export {
 };
 
 export type {
+    HistoryPage,
     PlayUrlRequest,
     PlayUrlResult
 } from "./models.js";

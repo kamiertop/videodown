@@ -55,10 +55,12 @@ export function DeleteDownloadHistory(cid: number): $CancellablePromise<void> {
 }
 
 /**
- * DownloadHistory 返回后端下载缓存记录；只读历史页使用，下载接口本身不暴露缓存命中细节。
+ * DownloadHistoryPage 分页返回 B 站下载历史：keyword 模糊匹配标题/UP 主名
+ * （小写包含），offset 是过滤后列表的偏移。首次调用全量扫描并缓存排序结果，
+ * 翻页与搜索只走内存，避免每次进历史页都全量扫描、全量跨桥、全量渲染。
  */
-export function DownloadHistory(): $CancellablePromise<model$0.DownloadHistoryItem[] | null> {
-    return $Call.ByID(933930544);
+export function DownloadHistoryPage(offset: number, limit: number, keyword: string): $CancellablePromise<$models.HistoryPage> {
+    return $Call.ByID(2822160187, offset, limit, keyword);
 }
 
 /**
