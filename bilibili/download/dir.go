@@ -22,9 +22,13 @@ func (s *Service) resolveTargetDir(storagePath string, task Task) (string, error
 	sourceName := utils.FileName(task.SourceName)
 	authorName := utils.FileName(task.UpperName)
 
-	rule, _ := s.store.Get(constant.GroupingRuleKey)
 	if authorName == "" {
 		authorName = "未知作者"
+	}
+
+	rule, err := s.store.Get(constant.GroupingRuleKey)
+	if err != nil {
+		return "", err
 	}
 
 	switch rule {

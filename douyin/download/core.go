@@ -313,11 +313,18 @@ func (d *Service) downloadTask(task Task) (string, error) {
 	if strings.TrimSpace(task.VideoURL) == "" {
 		return "", errors.New("视频下载地址为空")
 	}
-	template, _ := d.store.FilenameTemplate()
+	template, err := d.store.FilenameTemplate()
+	if err != nil {
+		return "", err
+	}
 	now := time.Now()
-	values := map[string]string{"title": task.Title, "id": task.AwemeID, "author": task.AuthorName, "author_id": "", "source": task.SourceName, "folder": "", "collection": task.SourceName, "publish_date": "", "date": now.Format("2006-01-02"), "time": now.Format("15-04-05")}
+	values := map[string]string{"title": task.Title,
+		"id": task.AwemeID, "author": task.AuthorName,
+		"author_id": "", "source": task.SourceName, "folder": "",
+		"collection": task.SourceName, "publish_date": "",
+		"date": now.Format(time.DateOnly), "time": now.Format(time.TimeOnly)}
 	if task.PublishTime > 0 {
-		values["publish_date"] = time.Unix(int64(task.PublishTime), 0).Format("2006-01-02")
+		values["publish_date"] = time.Unix(int64(task.PublishTime), 0).Format(time.DateOnly)
 	}
 	fileName := utils.ApplyFilenameTemplate(template, values)
 	if fileName == "" {
