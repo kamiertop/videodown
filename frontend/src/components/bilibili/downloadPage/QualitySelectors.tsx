@@ -35,7 +35,7 @@ export default function QualitySelectors(props: QualitySelectorsProps): JSXEleme
   return (
       <div class="flex min-w-0 flex-wrap items-center justify-start gap-2">
         <Show when={done()}>
-          {(data) => (
+          {(data): JSXElement => (
               <>
                 <div class="min-w-0">
                   <Show
@@ -72,7 +72,7 @@ export default function QualitySelectors(props: QualitySelectorsProps): JSXEleme
                       <div class="flex items-center gap-1.5">
                         <div class="shrink-0 text-xs text-base-content/60">音质</div>
                         <select
-                            class="select select-info select-xs w-30 bg-base-100 font-medium text-base-content"
+                            class="select select-info select-xs w-40 bg-base-100 font-medium text-base-content"
                             value={String(data().bestAudio?.id ?? "")}
                             onChange={(ev) => {
                               const id = Number(ev.currentTarget.value);
