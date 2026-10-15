@@ -230,11 +230,18 @@ func (s *Service) downloadDashTask(task Task) (string, bool, error) {
 		return "", false, errors.New("创建下载目录失败")
 	}
 
-	template, _ := s.store.FilenameTemplate()
+	template, err := s.store.FilenameTemplate()
+	if err != nil {
+		return "", false, err
+	}
 	now := time.Now()
-	values := map[string]string{"title": task.Title, "id": task.Bvid, "author": task.UpperName, "author_id": "", "source": task.SourceName, "folder": "", "collection": task.SourceName, "publish_date": "", "date": now.Format("2006-01-02"), "time": now.Format("15-04-05")}
+	values := map[string]string{
+		"title": task.Title, "id": task.Bvid, "author": task.UpperName,
+		"author_id": "", "source": task.SourceName, "folder": "", "collection": task.SourceName,
+		"publish_date": "", "date": now.Format(time.DateOnly), "time": now.Format(time.TimeOnly),
+	}
 	if task.Pubtime > 0 {
-		values["publish_date"] = time.Unix(int64(task.Pubtime), 0).Format("2006-01-02")
+		values["publish_date"] = time.Unix(int64(task.Pubtime), 0).Format(time.DateOnly)
 	}
 	fileName := utils.ApplyFilenameTemplate(template, values)
 	if fileName == "" {
@@ -259,36 +266,37 @@ func (s *Service) downloadDashTask(task Task) (string, bool, error) {
 	if task.AudioURL == "" {
 		videoWeight = 90.0
 	}
+	p := progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title}
 	if err = s.downloadToFile(task.VideoURL, videoTmp, task.Bvid, task.Title, task.Cid, "video", cookies, 0, videoWeight); err != nil {
-		s.emitProgress(progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "error"})
+		s.emitProgress(p.withPhase("error"))
 		return "", false, err
 	}
 
 	ff := utils.NewFFmpeg()
 	if task.AudioURL == "" {
-		s.emitProgress(progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "merge", Percent: 95})
+		s.emitProgress(p.withPhase("merge").withPercent(95))
 		if err = ff.Remux(videoTmp, outPath); err != nil {
-			s.emitProgress(progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "error"})
+			s.emitProgress(p.withPhase("error"))
 			return "", false, err
 		}
 		s.markDownloaded(task, outPath, kindVideo)
-		s.emitProgress(progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
+		s.emitProgress(p.withPhase("done").withPercent(100))
 		return outPath, false, nil
 	}
 
 	audioTmp := filepath.Join(tmpDir, "audio.m4s")
 	if err = s.downloadToFile(task.AudioURL, audioTmp, task.Bvid, task.Title, task.Cid, "audio", cookies, 60, 30); err != nil {
-		s.emitProgress(progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "error"})
+		s.emitProgress(p.withPhase("error"))
 		return "", false, err
 	}
-	s.emitProgress(progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "merge", Percent: 95})
+	s.emitProgress(p.withPhase("merge").withPercent(95))
 	if err = ff.Merge(videoTmp, audioTmp, outPath); err != nil {
-		s.emitProgress(progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "error"})
+		s.emitProgress(p.withPhase("error"))
 		return "", false, err
 	}
 
 	s.markDownloaded(task, outPath, kindVideo)
-	s.emitProgress(progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
+	s.emitProgress(p.withPhase("done").withPercent(100))
 	return outPath, false, nil
 }
 
