@@ -145,8 +145,12 @@ func (b *BiliBili) ClearDownloadHistory() error {
 }
 
 // DeleteDownloadHistory 删除单条下载历史；只清理缓存记录，不删除已经保存到本地的视频文件。
-func (b *BiliBili) DeleteDownloadHistory(cid int64) error {
+// 音频记录使用独立的 audio: 缓存键，需按下载类型反查；封面沿用负数 cid 编码。
+func (b *BiliBili) DeleteDownloadHistory(cid int64, downloadKind string) error {
 	key := util.DownloadCacheKey(cid)
+	if downloadKind == util.DownloadKindAudio {
+		key = util.AudioDownloadCacheKey(cid)
+	}
 	if key == "" {
 		return errors.New("视频CID为空")
 	}

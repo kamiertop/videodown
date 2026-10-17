@@ -75,11 +75,11 @@ function History(): JSXElement {
 
   onMount(() => void loadPage(true));
 
-  // 移除下载历史记录
-  async function removeHistory(cid: number): Promise<void> {
+  // 移除下载历史记录；音频记录使用独立缓存键，删除时需带上下载类型反查。
+  async function removeHistory(target: DownloadHistoryItem): Promise<void> {
     try {
-      await DeleteDownloadHistory(cid);
-      setItems((current) => current.filter((item) => item.cid !== cid));
+      await DeleteDownloadHistory(target.cid, target.downloadKind ?? "");
+      setItems((current) => current.filter((item) => item.cid !== target.cid || item.downloadKind !== target.downloadKind));
       setTotal((current) => Math.max(0, current - 1));
       showToast("历史记录已删除", "success");
     } catch (error) {
@@ -121,6 +121,7 @@ function History(): JSXElement {
 
   function historyBadge(item: DownloadHistoryItem): string {
     if (item.downloadKind === "cover") return "封面";
+    if (item.downloadKind === "audio") return "音频";
     return formatDuration(item.duration);
   }
 
@@ -163,7 +164,7 @@ function History(): JSXElement {
               <button
                   class="btn btn-ghost btn-xs shrink-0 text-error"
                   type="button"
-                  onClick={() => void removeHistory(item.cid)}
+                  onClick={() => void removeHistory(item)}
               >
                 删除
               </button>

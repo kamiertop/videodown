@@ -197,6 +197,28 @@ func (s *Service) downloadToFile(rawURL, targetPath, bvid, title string, cid int
 	return nil
 }
 
+// buildDownloadFileName 按设置中的命名模板生成不含扩展名的下载文件名；模板结果为空时回退到清理后的标题。
+func (s *Service) buildDownloadFileName(task Task) (string, error) {
+	template, err := s.store.FilenameTemplate()
+	if err != nil {
+		return "", err
+	}
+	now := time.Now()
+	values := map[string]string{
+		"title": task.Title, "id": task.Bvid, "author": task.UpperName,
+		"author_id": "", "source": task.SourceName, "folder": "", "collection": task.SourceName,
+		"publish_date": "", "date": now.Format(time.DateOnly), "time": now.Format(time.TimeOnly),
+	}
+	if task.Pubtime > 0 {
+		values["publish_date"] = time.Unix(int64(task.Pubtime), 0).Format(time.DateOnly)
+	}
+	fileName := utils.ApplyFilenameTemplate(template, values)
+	if fileName == "" {
+		fileName = sanitizeFilename(task.Title)
+	}
+	return fileName, nil
+}
+
 // downloadDashTask 下载一个 DASH 任务，供单个下载和批量下载复用；
 // 第二个返回值表示任务因已下载而被跳过，跳过的任务没有发起网络请求。
 func (s *Service) downloadDashTask(task Task) (string, bool, error) {
@@ -230,22 +252,9 @@ func (s *Service) downloadDashTask(task Task) (string, bool, error) {
 		return "", false, errors.New("创建下载目录失败")
 	}
 
-	template, err := s.store.FilenameTemplate()
+	fileName, err := s.buildDownloadFileName(task)
 	if err != nil {
 		return "", false, err
-	}
-	now := time.Now()
-	values := map[string]string{
-		"title": task.Title, "id": task.Bvid, "author": task.UpperName,
-		"author_id": "", "source": task.SourceName, "folder": "", "collection": task.SourceName,
-		"publish_date": "", "date": now.Format(time.DateOnly), "time": now.Format(time.TimeOnly),
-	}
-	if task.Pubtime > 0 {
-		values["publish_date"] = time.Unix(int64(task.Pubtime), 0).Format(time.DateOnly)
-	}
-	fileName := utils.ApplyFilenameTemplate(template, values)
-	if fileName == "" {
-		fileName = sanitizeFilename(task.Title)
 	}
 	if strings.TrimSpace(task.Bvid) == "" {
 		task.Bvid = "BV_UNKNOWN"
@@ -482,10 +491,76 @@ func (s *Service) DownloadCover(cover string, task Task) (string, error) {
 	if err = os.WriteFile(outPath, resp.Bytes(), 0o644); err != nil {
 		return "", err
 	}
-	if task.Cid > 0 {
-		task.Cid = -task.Cid
-		s.markDownloaded(task, outPath, kindCover)
+	// 封面以负数 cid 记入历史的逻辑收敛在 markDownloaded 里，这里只声明下载类型。
+	s.markDownloaded(task, outPath, kindCover)
+
+	return outPath, nil
+}
+
+// DownloadAudio 单独下载音频：拉取 DASH 音频流并用 ffmpeg 封装为 m4a，返回保存后的文件路径。
+// 供下载卡片上的“音频”按钮使用；记录写入独立的音频缓存键，不影响同一视频的已下载状态。
+func (s *Service) DownloadAudio(task Task) (string, error) {
+	s.active.Add(1)
+	defer s.active.Add(-1)
+
+	if strings.TrimSpace(task.AudioURL) == "" {
+		return "", errors.New("音频流地址为空")
 	}
+
+	cookies, err := s.getCookie()
+	if err != nil {
+		return "", err
+	}
+
+	storagePath, err := s.store.StoragePath()
+	if err != nil {
+		return "", err
+	}
+
+	targetDir, err := s.resolveTargetDir(storagePath, task)
+	if err != nil {
+		return "", err
+	}
+
+	if err = os.MkdirAll(targetDir, 0o755); err != nil {
+		return "", errors.New("创建下载目录失败")
+	}
+
+	fileName, err := s.buildDownloadFileName(task)
+	if err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(task.Bvid) == "" {
+		task.Bvid = "BV_UNKNOWN"
+	}
+	outPath := utils.UniqueFilePath(filepath.Join(targetDir, fileName+".m4a"))
+
+	tmpDir := filepath.Join(storagePath, ".tmp", fmt.Sprintf("%s-%d", task.Bvid, time.Now().UnixNano()))
+	if err = os.MkdirAll(tmpDir, 0o755); err != nil {
+		return "", errors.New("创建临时目录失败")
+	}
+	defer func() {
+		_ = os.RemoveAll(tmpDir)
+	}()
+
+	// 正式开始下载前才重置进度缓存，避免参数校验失败时把其他任务正在推进的进度清掉。
+	s.resetDownloadProgress(task.Bvid, task.Cid)
+	audioTmp := filepath.Join(tmpDir, "audio.m4s")
+	p := progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title}
+	if err = s.downloadToFile(task.AudioURL, audioTmp, task.Bvid, task.Title, task.Cid, "audio", cookies, 0, 90); err != nil {
+		s.emitProgress(p.withPhase("error"))
+		return "", err
+	}
+
+	// m4s 本质是 fMP4 封装的 AAC，直接流复制封装成 m4a，不重新编码。
+	s.emitProgress(p.withPhase("merge").withPercent(95))
+	if err = utils.NewFFmpeg().Remux(audioTmp, outPath); err != nil {
+		s.emitProgress(p.withPhase("error"))
+		return "", err
+	}
+
+	s.markDownloaded(task, outPath, kindAudio)
+	s.emitProgress(p.withPhase("done").withPercent(100))
 
 	return outPath, nil
 }
