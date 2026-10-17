@@ -49,9 +49,10 @@ export function CookieFunc(): $CancellablePromise<any> {
 
 /**
  * DeleteDownloadHistory 删除单条下载历史；只清理缓存记录，不删除已经保存到本地的视频文件。
+ * 音频记录使用独立的 audio: 缓存键，需按下载类型反查；封面沿用负数 cid 编码。
  */
-export function DeleteDownloadHistory(cid: number): $CancellablePromise<void> {
-    return $Call.ByID(3586557993, cid);
+export function DeleteDownloadHistory(cid: number, downloadKind: string): $CancellablePromise<void> {
+    return $Call.ByID(3586557993, cid, downloadKind);
 }
 
 /**

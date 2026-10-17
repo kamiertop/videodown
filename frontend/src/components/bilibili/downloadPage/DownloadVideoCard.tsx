@@ -8,7 +8,9 @@ import IconEye from "../../icons/IconEye.tsx";
 import QualitySelectors from "./QualitySelectors.tsx";
 
 interface DownloadVideoCardProps {
+  audioDownloading: boolean;
   canDownload: boolean;
+  canDownloadAudio: boolean;
   coverDownloading: boolean;
   downloading: boolean;
   item: MediaCardItem;
@@ -16,6 +18,7 @@ interface DownloadVideoCardProps {
   progress: DownloadProgress | undefined;
   onDownloadCover: () => void;
   onDownload: () => void;
+  onDownloadAudio: () => void;
   onPickAudio: (audioId: number) => void;
   onPickQn: (qn: number) => void;
   onRemove: () => void;
@@ -146,6 +149,14 @@ export default function DownloadVideoCard(props: DownloadVideoCardProps): JSXEle
                 disabled={props.coverDownloading || !props.item.cover}
             >
               {props.coverDownloading ? "保存中..." : "封面"}
+            </button>
+            <button
+                class="btn btn-ghost btn-xs"
+                type="button"
+                onClick={props.onDownloadAudio}
+                disabled={props.audioDownloading || !props.canDownloadAudio}
+            >
+              {props.audioDownloading ? "下载中..." : "音频"}
             </button>
             <button class="btn btn-warning btn-xs" type="button" onClick={props.onRemove}>
               移除

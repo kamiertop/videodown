@@ -1,5 +1,5 @@
 import {VideoDetailConciseBvid} from "@bindings/github.com/kamiertop/videodown/bilibili/api/bilibili";
-import {DownloadCover} from "@bindings/github.com/kamiertop/videodown/bilibili/download/service.ts";
+import {DownloadAudio, DownloadCover} from "@bindings/github.com/kamiertop/videodown/bilibili/download/service.ts";
 import {HasFFmpeg} from "@bindings/github.com/kamiertop/videodown/utils/settings";
 import {createFileRoute} from "@tanstack/solid-router";
 import {createMemo, createSignal, For, type JSXElement, onMount, Show} from "solid-js";
@@ -11,6 +11,7 @@ import Toast from "../../components/Toast";
 import {useToast} from "../../hooks/useToast";
 import {useBilibiliDownloadQueue} from "../../lib/bilibili/downloadQueue.ts";
 import {bilibiliBatchActive} from "../../lib/bilibili/batchDownload.ts";
+import {streamBaseUrl} from "../../lib/bilibili/playResolve.ts";
 import {addVideos, removeVideo, videoList} from "../../lib/bilibili/store.ts";
 import {extractBilibiliPartIndex, extractBvid} from "../../lib/format";
 import type {MediaCardItem} from "../../lib/model.ts";
@@ -164,6 +165,7 @@ function DownLoad(): JSXElement {
   const [parsedGroup, setParsedGroup] = createSignal<ParsedVideoGroup | null>(null);
   const [selectedGroupIds, setSelectedGroupIds] = createSignal<number[]>([]);
   const [coverDownloadingIds, setCoverDownloadingIds] = createSignal<number[]>([]);
+  const [audioDownloadingIds, setAudioDownloadingIds] = createSignal<number[]>([]);
   const [completedCount, setCompletedCount] = createSignal(0);
   const {message, type, showToast} = useToast();
   // 下载相关的副作用（监听 videoList、解析 DASH、接收进度事件）都集中在这个 hook 里。
@@ -208,6 +210,54 @@ function DownLoad(): JSXElement {
       else next.delete(id);
       return [...next];
     });
+  }
+
+  function setAudioDownloading(id: number, downloading: boolean): void {
+    setAudioDownloadingIds((prev) => {
+      const next = new Set(prev);
+      if (downloading) next.add(id);
+      else next.delete(id);
+      return [...next];
+    });
+  }
+
+  /** 取解析结果里用户当前选中的音频流地址；未解析完成或该稿无音轨时返回空串。 */
+  function resolvedAudioURL(item: MediaCardItem): string {
+    const entry = queue.entryForItem(item);
+    if (entry?.status !== "done" || !entry.data.bestAudio) return "";
+    return streamBaseUrl(entry.data.bestAudio);
+  }
+
+  async function downloadAudio(item: MediaCardItem): Promise<void> {
+    const audioURL = resolvedAudioURL(item);
+    if (!audioURL) {
+      showToast("当前视频没有可用的音频流", "warning");
+      return;
+    }
+    if (audioDownloadingIds().includes(item.id)) return;
+
+    setAudioDownloading(item.id, true);
+    try {
+      const path = await DownloadAudio(({
+        sourceName: item.sourceListName ?? "",
+        upperName: item.upperName ?? "",
+        bvid: item.bvid,
+        cid: item.cid ?? item.id,
+        title: item.title || item.bvid || "audio",
+        cover: item.cover ?? "",
+        duration: item.duration ?? 0,
+        play: item.play ?? 0,
+        danmaku: item.danmaku ?? 0,
+        pubtime: item.pubtime ?? 0,
+        videoURL: "",
+        audioURL,
+      }));
+      showToast(`音频已保存：${path}`, "success");
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e), "error");
+    } finally {
+      setAudioDownloading(item.id, false);
+    }
   }
 
   async function downloadCover(item: MediaCardItem): Promise<void> {
@@ -380,13 +430,16 @@ function DownLoad(): JSXElement {
             {(item) => (
                 // 每张卡片通过 bvid 到 queue 里取解析状态、画质音质和下载进度。
                 <DownloadVideoCard
+                    audioDownloading={audioDownloadingIds().includes(item.id)}
                     canDownload={queue.canDownload(item) && (!queue.downloading() || queue.isDownloading(item))}
+                    canDownloadAudio={resolvedAudioURL(item) !== ""}
                     coverDownloading={coverDownloadingIds().includes(item.id)}
                     downloading={queue.isDownloading(item)}
                     item={item}
                     entry={queue.entryForItem(item)}
                     progress={queue.progressFor(item)}
                     onDownloadCover={() => void downloadCover(item)}
+                    onDownloadAudio={() => void downloadAudio(item)}
                     onPickQn={(qn) => queue.handlePickQn(item, qn)}
                     onPickAudio={(audioId) => queue.handlePickAudio(item, audioId)}
                     onRemove={() => removeVideo(item.id)}

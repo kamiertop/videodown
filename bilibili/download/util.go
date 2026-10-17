@@ -18,6 +18,7 @@ import (
 const (
 	kindVideo = "video"
 	kindCover = "cover"
+	kindAudio = util.DownloadKindAudio
 )
 
 func normalizeHTTPURL(rawURL string) string {
@@ -117,14 +118,15 @@ func (s *Service) DownloadedVideoKeys(keys []DownloadKey) ([]int, error) {
 	}
 	candidates := make(map[string][]downloadedRecord, len(wanted))
 	prefix := []byte(util.CachePrefix)
-	// 封面记录按 key 前缀直接跳过（cover:<id>），不用解码排除；不预取 value，跳过的条目零开销。
+	// 封面、音频记录按 key 前缀直接跳过（cover:/audio: 前缀），不用解码排除；不预取 value，跳过的条目零开销。
 	coverPrefix := []byte(util.CachePrefix + "cover:")
+	audioPrefix := []byte(util.CachePrefix + "audio:")
 	err := s.store.View(func(txn *badger.Txn) error {
 		it := txn.NewIterator(badger.IteratorOptions{Prefix: prefix, PrefetchValues: false})
 		defer it.Close()
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
-			if bytes.HasPrefix(item.Key(), coverPrefix) {
+			if bytes.HasPrefix(item.Key(), coverPrefix) || bytes.HasPrefix(item.Key(), audioPrefix) {
 				continue
 			}
 			if err := item.Value(func(val []byte) error {
@@ -168,18 +170,31 @@ func (s *Service) DownloadedVideoKeys(keys []DownloadKey) ([]int, error) {
 }
 
 // markDownloaded 写入下载成功缓存；写缓存失败不影响已经完成的文件保存。
+// 封面以负数 cid 存进历史（历史页删除接口按同一编码反查）；音频用独立前缀，
+// 避免音频记录被视频已下载判断命中。
 func (s *Service) markDownloaded(task Task, path string, downloadKind string) {
-	key := util.DownloadCacheKey(task.Cid)
-	if key == "" {
-		return
-	}
 	if downloadKind == "" {
 		downloadKind = kindVideo
 	}
 
+	cid := task.Cid
+	key := util.DownloadCacheKey(cid)
+	switch downloadKind {
+	case kindCover:
+		if cid > 0 {
+			cid = -cid
+			key = util.DownloadCacheKey(cid)
+		}
+	case kindAudio:
+		key = util.AudioDownloadCacheKey(cid)
+	}
+	if key == "" {
+		return
+	}
+
 	payload, err := json.Marshal(model.DownloadHistoryItem{
 		Bvid:         strings.TrimSpace(task.Bvid),
-		Cid:          task.Cid,
+		Cid:          cid,
 		Title:        strings.TrimSpace(task.Title),
 		Cover:        strings.TrimSpace(task.Cover),
 		Duration:     task.Duration,
