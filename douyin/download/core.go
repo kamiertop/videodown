@@ -83,14 +83,15 @@ func (d *Service) DownloadVideos(tasks []Task) (BatchResult, error) {
 		wg.Go(func() {
 			for task := range jobs {
 				d.active.Add(1)
-				targetPath, err := d.downloadTask(task)
+				targetPath, skipped, err := d.downloadTask(task)
 				item := Result{AwemeID: task.AwemeID, Title: task.Title, Path: targetPath}
 				if err != nil {
 					d.logger.Errorf("download task failed, task: %v, err: %v", task, err)
 					item.Error = err.Error()
 				}
 				results <- item
-				if err == nil {
+				if err == nil && !skipped {
+					// 已下载而跳过的任务没有发起网络请求，无需休眠限速；下载成功才休眠，失败立即开始下一个任务
 					d.sleepAfterTask(task)
 				}
 				// 休眠结束后任务才算完成，避免休眠间隔内关闭程序被判定为无任务进行
@@ -231,26 +232,36 @@ func (d *Service) downloadURLToFile(rawURL, targetPath string, task Task, phase 
 }
 
 // downloadTask 同时处理普通视频和图片合集；当前版本不在后端重新解析 bit_rate。
-func (d *Service) downloadTask(task Task) (string, error) {
+// 第二个返回值表示任务因已下载而被跳过，跳过的任务没有发起网络请求。
+func (d *Service) downloadTask(task Task) (string, bool, error) {
 	task.AwemeID = strings.TrimSpace(task.AwemeID)
 	task.Title = cleanDouyinTitle(task.Title)
 	if task.AwemeID == "" {
-		return "", errors.New("视频ID为空")
+		return "", false, errors.New("视频ID为空")
 	}
 	if task.Title == "" {
 		task.Title = task.AwemeID
 	}
 
+	// 与 B 站一致：增量下载开启时跳过已下载的作品；关闭后即使缓存命中也重新下载（设置读取失败按开启兜底）。
+	if d.store.SkipDownloaded() {
+		// 下载前先检查是否已下载，避免重复下载同一作品；批量会话在前端已过滤，这里是手动路径和并发窗口的兜底。
+		if path, ok := d.isDownloaded(task.AwemeID); ok {
+			d.emitProgress(progress{AwemeID: task.AwemeID, Title: task.Title, Phase: "done", Percent: 100})
+			return path, true, nil
+		}
+	}
+
 	storagePath, err := d.store.StoragePath()
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	targetDir, err := d.resolveDownloadDir(storagePath, task)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	if err = os.MkdirAll(targetDir, 0o755); err != nil {
-		return "", errors.New("创建下载目录失败")
+		return "", false, errors.New("创建下载目录失败")
 	}
 
 	d.mu.Lock()
@@ -269,7 +280,7 @@ func (d *Service) downloadTask(task Task) (string, error) {
 		dirName = safeFileName(dirName, task.AwemeID)
 		dir := utils.UniqueFilePath(filepath.Join(targetDir, dirName))
 		if err = os.MkdirAll(dir, 0o755); err != nil {
-			return "", errors.New("创建素材目录失败")
+			return "", false, errors.New("创建素材目录失败")
 		}
 		assets := task.Assets
 		if len(assets) == 0 {
@@ -283,7 +294,7 @@ func (d *Service) downloadTask(task Task) (string, error) {
 			total++
 		}
 		if total == 0 {
-			return "", errors.New("素材下载地址为空")
+			return "", false, errors.New("素材下载地址为空")
 		}
 
 		for index, asset := range assets {
@@ -293,7 +304,7 @@ func (d *Service) downloadTask(task Task) (string, error) {
 			join := filepath.Join(dir, fmt.Sprintf("%03d%s", index+1, ext))
 			if err = d.downloadURLToFile(asset.URL, join, task, asset.Kind, start, weight); err != nil {
 				d.emitProgress(p.withPhase("error"))
-				return "", err
+				return "", false, err
 			}
 		}
 		if strings.TrimSpace(task.MusicURL) != "" {
@@ -302,20 +313,20 @@ func (d *Service) downloadTask(task Task) (string, error) {
 			join := filepath.Join(dir, "music.mp3")
 			if err = d.downloadURLToFile(task.MusicURL, join, task, "music", start, weight); err != nil {
 				d.emitProgress(p.withPhase("error"))
-				return "", err
+				return "", false, err
 			}
 		}
 		d.emitProgress(p.withPhase("done").withPercent(100))
 		d.markDownloaded(task, dir, true, len(assets), kindAlbum)
-		return dir, nil
+		return dir, false, nil
 	}
 
 	if strings.TrimSpace(task.VideoURL) == "" {
-		return "", errors.New("视频下载地址为空")
+		return "", false, errors.New("视频下载地址为空")
 	}
 	template, err := d.store.FilenameTemplate()
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	now := time.Now()
 	values := map[string]string{"title": task.Title,
@@ -334,12 +345,12 @@ func (d *Service) downloadTask(task Task) (string, error) {
 	outPath := utils.UniqueFilePath(filepath.Join(targetDir, fileName+".mp4"))
 	if err = d.downloadURLToFile(task.VideoURL, outPath, task, "video", 0, 100); err != nil {
 		d.emitProgress(p.withPhase("error"))
-		return "", err
+		return "", false, err
 	}
 	d.emitProgress(p.withPhase("done").withPercent(100))
 	d.markDownloaded(task, outPath, false, 0, kindVideo)
 
-	return outPath, nil
+	return outPath, false, nil
 }
 
 func (d *Service) sleepAfterTask(task Task) {

@@ -169,28 +169,28 @@ func (d *Service) scanDownloadHistory() ([]HistoryItem, error) {
 	return items, nil
 }
 
-// isDownloaded 判断 awemeID 是否已下载：缓存存在且文件（或图文目录）仍在磁盘上。
+// isDownloaded 判断 awemeID 是否已下载并返回已下载文件（或图文目录）路径：缓存存在且文件仍在磁盘上。
 // 与 B 站 bilibili/download/util.go 的 isDownloaded 语义一致，文件被删后自动视为未下载。
-func (d *Service) isDownloaded(awemeID string) bool {
+func (d *Service) isDownloaded(awemeID string) (string, bool) {
 	key := cacheKey(awemeID)
 	if key == "" {
-		return false
+		return "", false
 	}
 	val, err := d.store.Get(key)
 	if err != nil {
-		return false
+		return "", false
 	}
 	var history HistoryItem
 	if err := json.Unmarshal([]byte(val), &history); err != nil {
-		return false
+		return "", false
 	}
 	if history.Path == "" {
-		return false
+		return "", false
 	}
 	if _, err := os.Stat(history.Path); errors.Is(err, os.ErrNotExist) {
-		return false
+		return "", false
 	}
-	return true
+	return history.Path, true
 }
 
 // DownloadedAwemeIDs 返回给定 awemeID 中已下载（且文件仍在）的子集，
@@ -207,7 +207,7 @@ func (d *Service) DownloadedAwemeIDs(awemeIDs []string) ([]string, error) {
 			continue
 		}
 		seen[id] = struct{}{}
-		if d.isDownloaded(id) {
+		if _, ok := d.isDownloaded(id); ok {
 			downloaded = append(downloaded, id)
 		}
 	}
