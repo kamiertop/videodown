@@ -223,10 +223,13 @@ func (s *Service) buildDownloadFileName(task Task) (string, error) {
 // 第二个返回值表示任务因已下载而被跳过，跳过的任务没有发起网络请求。
 func (s *Service) downloadDashTask(task Task) (string, bool, error) {
 	s.resetDownloadProgress(task.Bvid, task.Cid)
-	// 下载前先检查是否已下载，避免重复下载同一 CID 的视频
-	if path, ok := s.isDownloaded(task.Cid); ok {
-		s.emitProgress(progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
-		return path, true, nil
+	// 增量下载开启时才跳过已下载的视频；关闭后即使缓存命中也重新下载（设置读取失败按开启兜底）。
+	if s.store.SkipDownloaded() {
+		// 下载前先检查是否已下载，避免重复下载同一 CID 的视频
+		if path, ok := s.isDownloaded(task.Cid); ok {
+			s.emitProgress(progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
+			return path, true, nil
+		}
 	}
 
 	if task.VideoURL == "" {
