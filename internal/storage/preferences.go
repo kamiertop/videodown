@@ -52,6 +52,16 @@ func (s *Store) SetSavePreference(allowGroup bool) error {
 	return s.Set(constant.AllowGroupOnSaveKey, strconv.FormatBool(allowGroup))
 }
 
+// SkipDownloaded 返回增量下载开关；开启时下载任务跳过历史中已存在且文件仍在的内容。
+// 读取出错时按开启兜底（与设置服务 GetSkipDownloaded 一致），避免异常情况下意外全量重下。
+func (s *Store) SkipDownloaded() bool {
+	value, err := s.Get(constant.SkipDownloadedKey)
+	if err != nil {
+		return true
+	}
+	return value == "true"
+}
+
 func (s *Store) SleepTime() (int64, error) {
 	value, err := s.Get(constant.SleepTimeKey)
 	if err != nil {
