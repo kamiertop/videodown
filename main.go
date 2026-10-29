@@ -19,6 +19,7 @@ import (
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/internal/updater"
 	"github.com/kamiertop/videodown/logger"
+	yt "github.com/kamiertop/videodown/youtube"
 )
 
 func main() {
@@ -55,7 +56,7 @@ func Run(dataDir string) (err error) {
 	downloader := bilidownload.New(vdlog, store, service.CookieFunc())
 	dyService := dyapi.New(vdlog, store)
 	dyDownloader := dydownload.New(vdlog, store, dyService.PublicHeaders())
-	shell := gui.NewShellWithOptions(gui.Options{UpdateChecker: updater.New(vdlog, store), Preferences: store, Settings: store, Bilibili: service, BilibiliDownload: downloader, Douyin: dyService, DouyinDownload: dyDownloader, ActiveDownloads: func() int { return downloader.ActiveCount() + dyDownloader.ActiveCount() }})
+	shell := gui.NewShellWithOptions(gui.Options{YouTube: yt.New(store), UpdateChecker: updater.New(vdlog, store), Preferences: store, Settings: store, Bilibili: service, BilibiliDownload: downloader, Douyin: dyService, DouyinDownload: dyDownloader, ActiveDownloads: func() int { return downloader.ActiveCount() + dyDownloader.ActiveCount() }})
 	defer shell.Wait()
 	mygo.App.WhenReady(shell.OpenWindow)
 

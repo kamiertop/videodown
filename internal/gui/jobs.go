@@ -112,7 +112,12 @@ func (s *Shell) pageRuntime() guiruntime.Runtime {
 		},
 	}
 }
-func (s *Shell) stopJobs() { s.pages.Bilibili.Stop(); s.pages.Douyin.Stop(); s.jobs.cancel() }
+func (s *Shell) stopJobs() {
+	s.pages.Bilibili.Stop()
+	s.pages.Douyin.Stop()
+	s.pages.YouTube.Stop()
+	s.jobs.cancel()
+}
 
 // Wait drains native jobs after App.Run, before the shared store is closed.
 func (s *Shell) Wait() { s.stopJobs(); s.jobs.wait.Wait() }

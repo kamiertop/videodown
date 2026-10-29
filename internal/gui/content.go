@@ -7,6 +7,9 @@ import (
 )
 
 func (s *Shell) content(c *ui.Context) {
+	if s.win != nil && !s.win.IsDestroyed() {
+		s.activatePlatform()
+	}
 	if current, ok := navigation.ByPath(s.router.Path()); !ok || current.ID != "bilibili" {
 		s.pages.Bilibili.Leave()
 	}
@@ -20,6 +23,21 @@ func (s *Shell) content(c *ui.Context) {
 		r.Title(p.Label)
 		if p.ID == "home" {
 			home.Render(c, s.router.Push)
+			return
+		}
+		if r.Match("/youtube/{section...}") {
+			s.pages.YouTube.Layout(c, s.router.Path(), s.router.Push, func() {
+				transition := s.router.Transition
+				s.router.Transition = ui.TransitionFade
+				defer func() { s.router.Transition = transition }()
+				r.View(c, func(part *ui.Route) {
+					path := "/youtube"
+					if part.Path() != "/" {
+						path += part.Path()
+					}
+					s.pages.YouTube.Form(c, path, s.scroll(path))
+				})
+			})
 			return
 		}
 		if r.Match("/settings/{section...}") {
@@ -87,4 +105,21 @@ func (s *Shell) content(c *ui.Context) {
 
 		ui.Text(c, "页面不存在："+r.Path())
 	})
+}
+
+// Activate only the current route, never pages retained for a transition.
+// Each platform guards its own initialization so returning preserves its state.
+func (s *Shell) activatePlatform() {
+	page, ok := navigation.ByPath(s.router.Path())
+	if !ok {
+		return
+	}
+	switch page.ID {
+	case "bilibili":
+		s.pages.Bilibili.Start()
+	case "douyin":
+		s.pages.Douyin.Start()
+	case "youtube":
+		s.pages.YouTube.Start()
+	}
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/kamiertop/videodown/internal/gui/pages"
 	"github.com/kamiertop/videodown/internal/gui/pages/bilibili"
 	"github.com/kamiertop/videodown/internal/gui/pages/douyin"
+	youtubepage "github.com/kamiertop/videodown/internal/gui/pages/youtube"
 	"github.com/kamiertop/videodown/internal/gui/preferences"
 	"github.com/kamiertop/videodown/internal/gui/style"
 	"github.com/kamiertop/videodown/internal/updater"
@@ -63,6 +64,7 @@ type Shell struct {
 // Options supplies shared persistent preferences and the download queue probe.
 // A nil probe reports zero active tasks.
 type Options struct {
+	YouTube          youtubepage.API
 	Bilibili         bilibili.API
 	BilibiliDownload bilibili.DownloadBackend
 	Douyin           douyin.API
@@ -87,6 +89,12 @@ func NewShellWithOptions(opts Options) *Shell {
 	}
 	s.jobs.ctx, s.jobs.cancel = context.WithCancel(context.Background())
 	s.jobs.images = make(chan struct{}, 4)
+	s.pages.YouTube.Configure(opts.YouTube, s.pageRuntime(), func(fn func()) {
+		win := s.win
+		if win != nil && !win.IsDestroyed() && s.jobs.ctx.Err() == nil {
+			win.Update(fn)
+		}
+	})
 	s.updateChecker = opts.UpdateChecker
 	s.runUpdateJob = s.pageRuntime().Background
 	s.pages.Bilibili.Configure(opts.Bilibili, s.pageRuntime())
@@ -134,8 +142,7 @@ func (s *Shell) OpenWindow() {
 		Transparent:       true,
 		Content:           ui.View(s.view),
 	})
-	s.pages.Bilibili.Start()
-	s.pages.Douyin.Start()
+	s.activatePlatform()
 	s.startUpdateCheck()
 	s.win.OnClosed(s.stopJobs)
 	// The taskbar and the window list show the app's icon.

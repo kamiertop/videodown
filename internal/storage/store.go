@@ -107,6 +107,9 @@ func openDB(dsn, configPath string) (*Store, error) {
 }
 
 func historyPlatform(key string) string {
+	if strings.HasPrefix(key, "youtube:downloaded:") {
+		return "youtube"
+	}
 	if strings.HasPrefix(key, "bilibili:downloaded:") {
 		return "bilibili"
 	}

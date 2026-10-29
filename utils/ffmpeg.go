@@ -28,6 +28,10 @@ func (f *FFmpeg) ensurePath() error {
 }
 
 func (f *FFmpeg) Merge(videoPath, audioPath, outputPath string) error {
+	return f.MergeContext(context.Background(), videoPath, audioPath, outputPath)
+}
+
+func (f *FFmpeg) MergeContext(ctx context.Context, videoPath, audioPath, outputPath string) error {
 	if err := f.ensurePath(); err != nil {
 		return err
 	}
@@ -35,7 +39,8 @@ func (f *FFmpeg) Merge(videoPath, audioPath, outputPath string) error {
 		return errors.New("video/audio/output path is empty")
 	}
 
-	cmd := exec.Command(
+	cmd := exec.CommandContext(
+		ctx,
 		f.path,
 		"-y",
 		"-loglevel", "error",

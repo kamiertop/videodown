@@ -12,7 +12,7 @@ func TestTitleBarNavigation(t *testing.T) {
 		s := NewShell()
 		test := ui.NewTester(s.view, width, 600)
 		test.Frame()
-		for _, label := range []string{"前往首页", "前往B 站", "前往抖音", "打开 GitHub 仓库", "打开设置", "最小化", "最大化", "关闭"} {
+		for _, label := range []string{"前往首页", "前往B 站", "前往抖音", "前往YouTube", "打开 GitHub 仓库", "打开设置", "最小化", "最大化", "关闭"} {
 			r, ok := test.Find(label)
 			if !ok || r.W <= 0 || r.X < 0 || r.X+r.W > float32(width) {
 				t.Errorf("width=%d %s: bounds=%+v exists=%v", width, label, r, ok)
@@ -22,7 +22,7 @@ func TestTitleBarNavigation(t *testing.T) {
 		if !ok || math.Abs(float64(brand.X+brand.W/2)-float64(width)/2) > 1 {
 			t.Errorf("brand is not centered at width %d: %+v", width, brand)
 		}
-		nav, _ := test.Find("前往抖音")
+		nav, _ := test.Find("前往YouTube")
 		github, _ := test.Find("打开 GitHub 仓库")
 		if nav.X+nav.W > brand.X || github.X < brand.X+brand.W {
 			t.Errorf("navigation overlaps brand at width %d", width)

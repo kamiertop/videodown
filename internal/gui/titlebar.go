@@ -62,15 +62,17 @@ func titleBrand(c *ui.Context) {
 // topNavigation links the main application pages. All hit areas
 // are buttons, so clicking them never starts a title-bar window drag.
 func (s *Shell) topNavigation(c *ui.Context) {
+	width, _ := c.Size()
+	compact := width < 1000
 	ui.Row(c.Key("top-nav")).Shrink(0).Gap(4).Margin(0, 8, 0, 0).Children(func() {
 		for _, item := range []struct{ path, label, icon string }{
-			{"/", "首页", "home"}, {"/bilibili", "B 站", "bilibili"}, {"/douyin", "抖音", "douyin"},
+			{"/", "首页", "home"}, {"/bilibili", "B 站", "bilibili"}, {"/douyin", "抖音", "douyin"}, {"/youtube", "YouTube", "youtube"},
 		} {
 			path := s.router.Path()
 			active := path == item.path || item.path != "/" && strings.HasPrefix(path, item.path+"/")
 			k := core.Tokens(c)
 			button := ui.ButtonBase(c.Key(item.path)).Height(32).Shrink(0).Padding(0, 8).Gap(5).
-				Radius(style.RadiusChrome).FontWeight(style.WeightSemibold).Label("前往" + item.label)
+				Radius(style.RadiusChrome).FontWeight(style.WeightSemibold).Label("前往" + item.label).Tooltip(item.label)
 			bg, fg := ui.Transparent, k.TextMuted
 			if active {
 				bg, fg = k.Selection, k.AccentText
@@ -83,7 +85,9 @@ func (s *Shell) topNavigation(c *ui.Context) {
 				} else {
 					ui.Image(c, assets.Platform(item.icon)).Size(16, 16)
 				}
-				ui.Text(c, item.label).SingleLine()
+				if !compact {
+					ui.Text(c, item.label).SingleLine()
+				}
 			})
 			button.OnClick(func() {
 				if !active {

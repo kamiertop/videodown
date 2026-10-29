@@ -18,10 +18,13 @@ var bilibiliSVG []byte
 //go:embed douyin.svg
 var douyinSVG []byte
 
+//go:embed youtube.svg
+var youtubeSVG []byte
+
 //go:embed github.svg
 var githubSVG []byte
 var GitHub = ui.MustParseSVG(githubSVG)
-var platforms = map[string]*ui.SVG{"bilibili": ui.MustParseSVG(bilibiliSVG), "douyin": ui.MustParseSVG(douyinSVG)}
+var platforms = map[string]*ui.SVG{"bilibili": ui.MustParseSVG(bilibiliSVG), "douyin": ui.MustParseSVG(douyinSVG), "youtube": ui.MustParseSVG(youtubeSVG)}
 var AppIcon = func() *ui.Bitmap {
 	image, err := ui.DecodeBitmap(AppIconPNG)
 	if err != nil {
