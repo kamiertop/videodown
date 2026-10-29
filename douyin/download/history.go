@@ -170,7 +170,7 @@ func (d *Service) isDownloaded(awemeID string) (string, bool) {
 }
 
 // DownloadedAwemeIDs 返回给定 awemeID 中已下载（且文件仍在）的子集，
-// 供前端批量会话做增量过滤。
+// 供界面批量会话做增量过滤。
 func (d *Service) DownloadedAwemeIDs(awemeIDs []string) ([]string, error) {
 	seen := make(map[string]struct{}, len(awemeIDs))
 	downloaded := make([]string, 0, len(awemeIDs))

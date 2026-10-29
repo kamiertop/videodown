@@ -1,62 +1,59 @@
 package download
 
-// Task 是前端提交给后端的最小任务协议。
-// 前端已经完成清晰度选择，所以后端只消费最终 videoURL；图片合集则使用 ImageURLs。
+// Task describes selected video streams, image collections, and related assets.
 type Task struct {
-	AwemeID      string   `json:"awemeId"`
-	SourceName   string   `json:"sourceName"`
-	Title        string   `json:"title"`
-	Cover        string   `json:"cover"`
-	Duration     int      `json:"duration"`
-	AuthorName   string   `json:"authorName"`
-	PublishTime  int      `json:"publishTime"`
-	DiggCount    int      `json:"diggCount"`
-	CollectCount int      `json:"collectCount"`
-	VideoURL     string   `json:"videoURL"`
-	ImageURLs    []string `json:"imageURLs"`
-	Assets       []Asset  `json:"assets"`
-	MusicURL     string   `json:"musicURL"`
+	AwemeID      string
+	SourceName   string
+	Title        string
+	Cover        string
+	Duration     int
+	AuthorName   string
+	PublishTime  int
+	DiggCount    int
+	CollectCount int
+	VideoURL     string
+	ImageURLs    []string
+	Assets       []Asset
+	MusicURL     string
 }
 
 type Asset struct {
-	URL  string `json:"url"`
-	Kind string `json:"kind"`
-	Ext  string `json:"ext"`
+	URL  string
+	Kind string
+	Ext  string
 }
 
 type Result struct {
-	AwemeID string `json:"awemeId"`
-	Title   string `json:"title"`
-	Path    string `json:"path"`
-	Error   string `json:"error"`
+	AwemeID string
+	Title   string
+	Path    string
+	Error   string
 }
 
 type BatchResult struct {
-	Results []Result `json:"results"`
-	Success int      `json:"success"`
-	Failed  int      `json:"failed"`
+	Results []Result
+	Success int
+	Failed  int
 }
 
-// progress describes download state published through the native listener.
-type progress struct {
-	AwemeID        string  `json:"awemeId"`
-	Title          string  `json:"title"`
-	Phase          string  `json:"phase"`
-	Downloaded     int64   `json:"downloaded"`
-	Total          int64   `json:"total"`
-	Percent        float64 `json:"percent"`
-	SleepRemaining int64   `json:"sleepRemaining"`
-	SleepTotal     int64   `json:"sleepTotal"`
+// Progress describes download state published through the native listener.
+type Progress struct {
+	AwemeID        string
+	Title          string
+	Phase          string
+	Downloaded     int64
+	Total          int64
+	Percent        float64
+	SleepRemaining int64
+	SleepTotal     int64
 }
 
-type Progress = progress
-
-func (p progress) withPhase(phase string) progress {
+func (p Progress) withPhase(phase string) Progress {
 	p.Phase = phase
 	return p
 }
 
-func (p progress) withPercent(percent float64) progress {
+func (p Progress) withPercent(percent float64) Progress {
 	p.Percent = percent
 	return p
 }

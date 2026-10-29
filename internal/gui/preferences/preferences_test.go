@@ -1,10 +1,10 @@
 package preferences
 
 import (
-	"github.com/kamiertop/videodown/internal/constant"
-	"github.com/kamiertop/videodown/internal/storage"
 	"path/filepath"
 	"testing"
+
+	"github.com/kamiertop/videodown/internal/storage"
 )
 
 func TestSavedSettingsSurviveRestart(t *testing.T) {
@@ -16,7 +16,7 @@ func TestSavedSettingsSurviveRestart(t *testing.T) {
 	if err := store.InitDefaults("/downloads"); err != nil {
 		t.Fatal(err)
 	}
-	values := map[string]string{constant.ThemeKey: "cupcake", constant.ConcurrencyNumKey: "4", constant.SleepTimeKey: "120", constant.ParsePlayURLNumKey: "2", constant.ParsePlayURLSleepKey: "10", constant.SkipDownloadedKey: "false", constant.AutoUpdateKey: "false", constant.FilenameTemplateKey: " {author}_{title} ", constant.GroupingRuleKey: "date", constant.AllowGroupOnSaveKey: "true"}
+	values := Changes{Theme: Value("cupcake"), Concurrency: Value(4), Sleep: Value(int64(120)), ParseConcurrency: Value(2), ParseSleep: Value(10), SkipDownloaded: Value(false), AutoUpdate: Value(false), Filename: Value(" {author}_{title} "), GroupingRule: Value("date"), Grouping: Value(true)}
 	if err := Save(store, values); err != nil {
 		t.Fatal(err)
 	}
@@ -28,10 +28,7 @@ func TestSavedSettingsSurviveRestart(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer store.Close()
-	data, err := Load(store)
-	if err != nil {
-		t.Fatal(err)
-	}
+	data := Load(store)
 	if data.Theme != "cupcake" || data.Concurrency != 4 || data.Sleep != 120 || data.ParseSleep != 10 || data.ParseConcurrency != 2 || data.SkipDownloaded || data.AutoUpdate || data.Filename != "{author}_{title}" || data.GroupingRule != "date" || !data.Grouping || data.Directory != "/downloads" {
 		t.Fatalf("saved data not restored: %+v", data)
 	}
@@ -48,20 +45,61 @@ func TestInvalidSettingsAreAtomic(t *testing.T) {
 	if err := store.InitDefaults("/downloads"); err != nil {
 		t.Fatal(err)
 	}
-	for _, values := range []map[string]string{
-		{constant.ThemeKey: "dark", constant.ConcurrencyNumKey: "0"},
-		{constant.FilenameTemplateKey: "", constant.GroupingRuleKey: "author"},
-		{constant.ParsePlayURLNumKey: "6"}, {constant.SleepTimeKey: "3601"},
+	for _, values := range []Changes{
+		{Theme: Value("dark"), Concurrency: Value(0)},
+		{Filename: Value(""), GroupingRule: Value("author")},
+		{Filename: Value("literal without variables")},
+		{ParseConcurrency: Value(6)}, {Sleep: Value(int64(3601))},
 	} {
 		if err := Save(store, values); err == nil {
 			t.Fatalf("invalid values accepted: %v", values)
 		}
 	}
-	data, err := Load(store)
+	data := Load(store)
+	if data.Theme != "light" || data.Filename != "{title}" || data.GroupingRule != "author_source" {
+		t.Fatal("failed validation partially wrote other settings")
+	}
+}
+
+func TestPartialChangesPreserveCredentialsAndMergeLatestValue(t *testing.T) {
+	store, err := storage.OpenMemory()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if data.Theme != "light" || data.Filename != "{title}" || data.GroupingRule != "author_source" {
-		t.Fatal("failed validation partially wrote other settings")
+	defer store.Close()
+	if err := store.UpdateConfig(func(c *storage.Config) error {
+		c.Douyin.Cookie = "fixture"
+		c.Bilibili.Auth.Cookie = "fixture"
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	first := Changes{Sleep: Value(int64(10))}
+	merged := first.Merge(Changes{Sleep: Value(int64(30)), AutoUpdate: Value(false)})
+	if err := Save(store, merged); err != nil {
+		t.Fatal(err)
+	}
+	c := store.Config()
+	if c.Download.SleepSeconds != 30 || c.App.AutoUpdate || c.Douyin.Cookie != "fixture" || c.Bilibili.Auth.Cookie != "fixture" {
+		t.Fatal("partial edit replaced unrelated data")
+	}
+	if *first.Sleep != 10 {
+		t.Fatal("merge mutated in-flight change")
+	}
+}
+
+func TestRestoreDoesNotDiscardPendingOrUnsavedEdits(t *testing.T) {
+	before := Defaults()
+	current := before
+	current.Filename = ""
+	current.Sleep = 30
+	current.Theme = "dark"
+	failed := Changes{Sleep: Value(int64(10)), Theme: Value("dark")}
+	restore := failed.Restore(before, Changes{Sleep: Value(int64(30))})
+	if err := current.Apply(restore); err != nil {
+		t.Fatal(err)
+	}
+	if current.Sleep != 30 || current.Theme != before.Theme || current.Filename != "" {
+		t.Fatal("rollback discarded pending edit or unsaved template")
 	}
 }

@@ -58,39 +58,41 @@ func (s *State) loadVideos(more bool) {
 }
 func (s *State) baseSource(kind string) source {
 	api := s.api
-	return source{Key: kind, Title: map[string]string{"favorite": "收藏视频", "dynamic": "关注动态", "play-history": "播放历史"}[kind], Load: func(cursor int) (videoPage, error) {
-		out := videoPage{}
-		switch kind {
-		case "favorite":
-			d, err := api.FavoriteVideo(pageSize, uint(cursor))
-			out = videoPage{d.AwemeList, int(d.Cursor), d.HasMore != 0}
-			if err == nil {
-				err = status(d.StatusCode)
+	return source{Key: kind,
+		Title: map[string]string{"favorite": "收藏视频", "dynamic": "关注动态", "play-history": "播放历史"}[kind],
+		Load: func(cursor int) (videoPage, error) {
+			out := videoPage{}
+			switch kind {
+			case "favorite":
+				d, err := api.FavoriteVideo(pageSize, uint(cursor))
+				out = videoPage{d.AwemeList, int(d.Cursor), d.HasMore != 0}
+				if err == nil {
+					err = status(d.StatusCode)
+				}
+				return out, err
+			case "dynamic":
+				d, err := api.Dynamic(cursor)
+				if err == nil {
+					err = status(d.StatusCode)
+				}
+				for _, v := range d.Data {
+					out.Items = append(out.Items, v.Aweme)
+				}
+				out.Next, out.More = int(d.Cursor), d.HasMore != 0
+				return out, err
+			case "play-history":
+				d, err := api.History(cursor, 0, 0, 0)
+				if err == nil {
+					err = status(d.StatusCode)
+				}
+				for _, v := range d.AwemeList {
+					out.Items = append(out.Items, model.AwemeItem{AwemeId: v.AwemeId, Desc: v.Desc, Caption: v.Caption, ItemTitle: v.ItemTitle, CreateTime: v.CreateTime, Author: v.Author, Images: v.Images, Video: v.Video, Music: v.Music, Statistics: v.Statistics, MediaType: v.MediaType, IsLivePhoto: v.IsLivePhoto, IsSliedes: v.IsSliedes, AwemeType: v.AwemeType, Duration: int(v.Video.Duration)})
+				}
+				out.Next, out.More = int(d.MaxCursor), d.HasMore != 0
+				return out, err
 			}
-			return out, err
-		case "dynamic":
-			d, err := api.Dynamic(cursor)
-			if err == nil {
-				err = status(d.StatusCode)
-			}
-			for _, v := range d.Data {
-				out.Items = append(out.Items, v.Aweme)
-			}
-			out.Next, out.More = int(d.Cursor), d.HasMore != 0
-			return out, err
-		case "play-history":
-			d, err := api.History(cursor, 0, 0, 0)
-			if err == nil {
-				err = status(d.StatusCode)
-			}
-			for _, v := range d.AwemeList {
-				out.Items = append(out.Items, model.AwemeItem{AwemeId: v.AwemeId, Desc: v.Desc, Caption: v.Caption, ItemTitle: v.ItemTitle, CreateTime: v.CreateTime, Author: v.Author, Images: v.Images, Video: v.Video, Music: v.Music, Statistics: v.Statistics, MediaType: v.MediaType, IsLivePhoto: v.IsLivePhoto, IsSliedes: v.IsSliedes, AwemeType: v.AwemeType, Duration: int(v.Video.Duration)})
-			}
-			out.Next, out.More = int(d.MaxCursor), d.HasMore != 0
-			return out, err
-		}
-		return out, errors.New("未知视频来源")
-	}}
+			return out, errors.New("未知视频来源")
+		}}
 }
 func (s *State) authorSource(uid, name string) source {
 	api := s.api

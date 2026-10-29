@@ -15,13 +15,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/imroc/req/v3"
 	"github.com/kamiertop/videodown/bilibili/util"
 	"github.com/kamiertop/videodown/internal/constant"
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/logger"
 	"github.com/kamiertop/videodown/utils"
-
-	"github.com/imroc/req/v3"
 )
 
 type Service struct {
@@ -56,7 +55,7 @@ func (s *Service) SetProgressListener(listener func(Progress)) {
 	s.mu.Unlock()
 }
 
-func NewService(logger *logger.Logger, store *storage.Store, getCookie func() (string, error)) *Service {
+func New(logger *logger.Logger, store *storage.Store, getCookie func() (string, error)) *Service {
 	return &Service{
 		store:  store,
 		logger: logger,
@@ -87,7 +86,7 @@ func (s *Service) resetDownloadProgress(bvid string, cid int64) {
 }
 
 // emitProgress publishes download state through the registered listener.
-func (s *Service) emitProgress(p progress) {
+func (s *Service) emitProgress(p Progress) {
 	key := progressKey(p.Bvid, p.Cid)
 	if key != "" {
 		p.Percent = utils.ClampPercent(p.Percent)
@@ -99,7 +98,7 @@ func (s *Service) emitProgress(p progress) {
 			p.Percent = 100
 			s.progress[key] = 100
 		case "error":
-			// 失败状态需要传给前端，但不能把进度条从已下载位置拉回 0。
+			// 失败状态需要传给界面，但不能把进度条从已下载位置拉回 0。
 			if ok && p.Percent < prev {
 				p.Percent = prev
 			}
@@ -155,8 +154,8 @@ func (s *Service) downloadToFile(rawURL, targetPath, bvid, title string, cid int
 	var downloaded int64
 	buf := make([]byte, 1024*1024)
 	lastEmit := time.Time{}
-	// 下载开始时先发一次事件，确保前端能及时更新状态；后续按时间间隔或下载完成时发事件
-	s.emitProgress(progress{
+	// 下载开始时先发一次事件，确保界面能及时更新状态；后续按时间间隔或下载完成时发事件
+	s.emitProgress(Progress{
 		Bvid:    bvid,
 		Cid:     cid,
 		Title:   title,
@@ -175,7 +174,7 @@ func (s *Service) downloadToFile(rawURL, targetPath, bvid, title string, cid int
 
 			now := time.Now()
 			if now.Sub(lastEmit) >= 200*time.Millisecond || (total > 0 && downloaded >= total) {
-				s.emitProgress(progress{
+				s.emitProgress(Progress{
 					Bvid:       bvid,
 					Cid:        cid,
 					Title:      title,
@@ -195,7 +194,7 @@ func (s *Service) downloadToFile(rawURL, targetPath, bvid, title string, cid int
 		}
 	}
 
-	s.emitProgress(progress{
+	s.emitProgress(Progress{
 		Bvid:       bvid,
 		Cid:        cid,
 		Title:      title,
@@ -234,7 +233,7 @@ func (s *Service) downloadDashTask(task Task) (string, bool, error) {
 	if s.store.Config().Download.SkipDownloaded {
 		// 下载前先检查是否已下载，避免重复下载同一 CID 的视频
 		if path, ok := s.isDownloaded(task.Cid); ok {
-			s.emitProgress(progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
+			s.emitProgress(Progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
 			return path, true, nil
 		}
 	}
@@ -282,13 +281,13 @@ func (s *Service) downloadDashTask(task Task) (string, bool, error) {
 	if task.AudioURL == "" {
 		videoWeight = 90.0
 	}
-	p := progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title}
+	p := Progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title}
 	if err = s.downloadToFile(task.VideoURL, videoTmp, task.Bvid, task.Title, task.Cid, "video", cookies, 0, videoWeight); err != nil {
 		s.emitProgress(p.withPhase("error"))
 		return "", false, err
 	}
 
-	ff := utils.NewFFmpeg()
+	ff := utils.NewFFmpeg(s.store.Config().Download.FFmpegPath)
 	if task.AudioURL == "" {
 		s.emitProgress(p.withPhase("merge").withPercent(95))
 		if err = ff.Remux(videoTmp, outPath); err != nil {
@@ -331,7 +330,7 @@ func (s *Service) sleepAfterTask(task Task) {
 	s.logger.Infof("download success, sleep %d second", sleepTime)
 
 	for remaining := sleepTime; remaining > 0; remaining-- {
-		s.emitProgress(progress{
+		s.emitProgress(Progress{
 			Bvid:           task.Bvid,
 			Cid:            task.Cid,
 			Title:          task.Title,
@@ -342,7 +341,7 @@ func (s *Service) sleepAfterTask(task Task) {
 		})
 		time.Sleep(time.Second)
 	}
-	s.emitProgress(progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
+	s.emitProgress(Progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
 }
 
 // dashDownloadDedupKey 生成下载去重键；同一 BV 单 P 只保留一个任务，多 P 按 cid 区分，避免进度事件互相覆盖
@@ -376,7 +375,7 @@ func uniqueDashDownloadTasks(tasks []Task) []Task {
 	return unique
 }
 
-// DownloadVideosByDash 批量下载 DASH 任务；后端负责并发、失败隔离和每个任务后的休眠控制。
+// DownloadVideosByDash 批量下载 DASH 任务；下载服务负责并发、失败隔离和每个任务后的休眠控制。
 func (s *Service) DownloadVideosByDash(tasks []Task) (BatchResult, error) {
 	tasks = uniqueDashDownloadTasks(tasks)
 	result := BatchResult{
@@ -403,14 +402,14 @@ func (s *Service) DownloadVideosByDash(tasks []Task) (BatchResult, error) {
 					s.logger.Errorf("download failed for BV %s CID %d: %v", task.Bvid, task.Cid, err)
 					item.Error = err.Error()
 				}
-				// 下载完成后把下载结果发送到 results 通道，供主协程统计成功失败数量和返回给前端
+				// 下载完成后把下载结果发送到 results 通道，供主协程统计成功失败数量和返回给界面
 				results <- item
 				if err == nil {
 					if !skipped {
 						// 已下载而跳过的任务没有发起网络请求，无需休眠限速；下载成功才休眠，失败立即开始下一个任务
 						s.sleepAfterTask(task)
 					}
-					// 休眠完成后逐条推送完成事件，前端收到后立即从列表移除该视频
+					// 休眠完成后逐条推送完成事件，界面收到后立即从列表移除该视频
 				}
 				// 休眠结束后任务才算完成，避免休眠间隔内关闭程序被判定为无任务进行
 				s.active.Add(-1)
@@ -529,7 +528,7 @@ func (s *Service) DownloadAudio(task Task) (string, error) {
 	// 正式开始下载前才重置进度缓存，避免参数校验失败时把其他任务正在推进的进度清掉。
 	s.resetDownloadProgress(task.Bvid, task.Cid)
 	audioTmp := filepath.Join(tmpDir, "audio.m4s")
-	p := progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title}
+	p := Progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title}
 	if err = s.downloadToFile(task.AudioURL, audioTmp, task.Bvid, task.Title, task.Cid, "audio", cookies, 0, 90); err != nil {
 		s.emitProgress(p.withPhase("error"))
 		return "", err
@@ -537,7 +536,7 @@ func (s *Service) DownloadAudio(task Task) (string, error) {
 
 	// m4s 本质是 fMP4 封装的 AAC，直接流复制封装成 m4a，不重新编码。
 	s.emitProgress(p.withPhase("merge").withPercent(95))
-	if err = utils.NewFFmpeg().Remux(audioTmp, outPath); err != nil {
+	if err = utils.NewFFmpeg(s.store.Config().Download.FFmpegPath).Remux(audioTmp, outPath); err != nil {
 		s.emitProgress(p.withPhase("error"))
 		return "", err
 	}

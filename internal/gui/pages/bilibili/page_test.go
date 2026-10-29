@@ -13,6 +13,7 @@ import (
 	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/egoist/mygo/ui"
 	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/internal/gui/imagecache"
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
 
@@ -601,7 +602,7 @@ func TestVideoCoverTouchesCardFrame(t *testing.T) {
 	cover := image.NewRGBA(image.Rect(0, 0, 160, 90))
 	want := color.RGBA{R: 220, G: 40, B: 40, A: 255}
 	draw.Draw(cover, cover.Bounds(), &image.Uniform{C: want}, image.Point{}, draw.Src)
-	s.images["test://cover"] = &imageEntry{bitmap: ui.NewBitmap(cover)}
+	s.images["test://cover"] = &imagecache.Entry{Bitmap: ui.NewBitmap(cover)}
 	view := ui.NewTester(func(c *ui.Context) {
 		core.Use(c, core.Settings{})
 		ui.Column(c).Padding(20).Width(240).Children(func() {
@@ -639,7 +640,7 @@ func TestPortraitCoverFillsVideoCard(t *testing.T) {
 	s := NewState()
 	cover := image.NewRGBA(image.Rect(0, 0, 60, 160))
 	draw.Draw(cover, cover.Bounds(), &image.Uniform{C: color.RGBA{R: 220, G: 40, B: 40, A: 255}}, image.Point{}, draw.Src)
-	s.images["test://portrait"] = &imageEntry{bitmap: ui.NewBitmap(cover)}
+	s.images["test://portrait"] = &imagecache.Entry{Bitmap: ui.NewBitmap(cover)}
 	view := ui.NewTester(func(c *ui.Context) {
 		core.Use(c, core.Settings{})
 		ui.Column(c).Padding(20).Width(240).Children(func() {

@@ -13,7 +13,10 @@ internal/gui/
   close.go                 关闭/退出事件、选择弹窗、记住选择
   closing/                 与窗口 API 无关的关闭决策
   settings.go              异步配置写入、文件选择和 FFmpeg 检测
-  preferences/             结构化配置的表单适配、校验与 FFmpeg 检测
+  jobs.go                  公共后台任务调度与退出等待
+  guiruntime/              页面共用的后台任务与文件操作接口
+  imagecache/              图片请求、解码与有容量限制的缓存
+  preferences/             结构化配置的表单适配与有类型的变更项
   theme.go                 主题名称与原生颜色映射
   style/tokens.go          原生字号、字重、圆角、边框、间距与常用尺寸
   content.go               路由组装与每页滚动
@@ -88,7 +91,7 @@ VIDEODOWN_GUI_LIFECYCLE=1 go test ./internal/gui -run '^TestNativeQuit$' -v -cou
 
 ```sh
 CGO_ENABLED=0 go test ./internal/gui/... ./douyin/... ./internal/storage/... ./utils/...
-CGO_ENABLED=0 CGO_ENABLED=0 go tool mygo vet ./internal/gui
+CGO_ENABLED=0 go tool mygo vet ./internal/gui
 ```
 
 测试使用本地模拟响应，不调用抖音远端；Cookie 有效性与平台风控结果需在真实账号下验证。

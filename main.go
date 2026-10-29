@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/egoist/mygo"
-
 	biliapi "github.com/kamiertop/videodown/bilibili/api"
 	bilidownload "github.com/kamiertop/videodown/bilibili/download"
 	dyapi "github.com/kamiertop/videodown/douyin/api"
@@ -53,7 +52,7 @@ func Run(dataDir string) (err error) {
 	defer func() { err = errors.Join(err, store.Close()) }()
 	vdlog := logger.New()
 	service := biliapi.New(vdlog, store)
-	downloader := bilidownload.NewService(vdlog, store, service.CookieFunc())
+	downloader := bilidownload.New(vdlog, store, service.CookieFunc())
 	dyService := dyapi.New(vdlog, store)
 	dyDownloader := dydownload.New(vdlog, store, dyService.PublicHeaders())
 	shell := gui.NewShellWithOptions(gui.Options{UpdateChecker: updater.New(vdlog, store), Preferences: store, Settings: store, Bilibili: service, BilibiliDownload: downloader, Douyin: dyService, DouyinDownload: dyDownloader, ActiveDownloads: func() int { return downloader.ActiveCount() + dyDownloader.ActiveCount() }})

@@ -9,10 +9,9 @@ import (
 	"github.com/egoist/mygo/ui"
 	dyDownload "github.com/kamiertop/videodown/douyin/download"
 	"github.com/kamiertop/videodown/douyin/model"
-	"github.com/kamiertop/videodown/internal/gui/pages/bilibili"
+	"github.com/kamiertop/videodown/internal/gui/guiruntime"
+	"github.com/kamiertop/videodown/internal/gui/imagecache"
 )
-
-type Runtime = bilibili.Runtime
 
 type API interface {
 	GetCookie() (string, error)
@@ -49,10 +48,6 @@ type resource[T any] struct {
 	Error           string
 	seq             uint64
 }
-type imageEntry struct {
-	loading bool
-	bitmap  *ui.Bitmap
-}
 type videoPage struct {
 	Items []model.AwemeItem
 	Next  int
@@ -70,7 +65,7 @@ type source struct {
 type State struct {
 	api                                    API
 	backend                                DownloadBackend
-	runtime                                Runtime
+	runtime                                guiruntime.Runtime
 	apiMu                                  sync.Mutex
 	ctx                                    context.Context
 	cancel                                 context.CancelFunc
@@ -105,7 +100,7 @@ type State struct {
 	sourceVersion                          uint64
 	selected                               map[string]bool
 	scrolls                                map[string]*ui.ScrollState
-	images                                 map[string]*imageEntry
+	images                                 imagecache.Cache
 	autoPending                            bool
 	autoAt                                 float32
 	autoFill                               int
@@ -120,9 +115,9 @@ type State struct {
 }
 
 func NewState() *State {
-	return &State{selected: map[string]bool{}, scrolls: map[string]*ui.ScrollState{}, images: map[string]*imageEntry{}, libraryTab: "favorite"}
+	return &State{selected: map[string]bool{}, scrolls: map[string]*ui.ScrollState{}, images: imagecache.Cache{}, libraryTab: "favorite"}
 }
-func (s *State) Configure(api API, backend DownloadBackend, runtime Runtime) {
+func (s *State) Configure(api API, backend DownloadBackend, runtime guiruntime.Runtime) {
 	s.api, s.backend, s.runtime = api, backend, runtime
 }
 func (s *State) Link() *string { return &s.link }
@@ -234,7 +229,7 @@ func (s *State) saveCookie(clear bool) {
 		s.profile = resource[model.User]{}
 		s.author.seq++
 		s.author = resource[model.User]{seq: s.author.seq}
-		s.images = map[string]*imageEntry{}
+		s.images = imagecache.Cache{}
 		s.follows = resource[model.FollowResponse]{}
 		if s.cancelFollowSearch != nil {
 			s.cancelFollowSearch()

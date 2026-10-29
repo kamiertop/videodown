@@ -1,17 +1,15 @@
 package gui
 
 import (
-	"maps"
 	"time"
 
 	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
-
-	"github.com/kamiertop/videodown/internal/constant"
 	"github.com/kamiertop/videodown/internal/gui/pages/settings"
 	"github.com/kamiertop/videodown/internal/gui/preferences"
 	"github.com/kamiertop/videodown/internal/gui/style"
+	"github.com/kamiertop/videodown/utils"
 )
 
 func (s *Shell) settingsServices() settings.Services {
@@ -23,31 +21,22 @@ func (s *Shell) settingsServices() settings.Services {
 		FFmpegChecking: s.ffmpegChecking, FFmpegChecked: s.ffmpegChecked, FFmpegPath: s.ffmpegPath, FFmpegVersion: s.ffmpegVersion, FFmpegError: s.ffmpegError,
 	}
 }
-func (s *Shell) saveSettings(values map[string]string) {
+func (s *Shell) saveSettings(values preferences.Changes) {
 	if s.settingsBusy {
-		if s.pendingSettings == nil {
-			s.pendingSettings = map[string]string{}
-		}
-		maps.Copy(s.pendingSettings, values)
+		s.pendingSettings = s.pendingSettings.Merge(values)
 		return
 	}
 	if s.settingsStore == nil {
 		s.notifySettings("配置存储尚未初始化", true)
 		return
 	}
-	values = maps.Clone(values)
-	before := s.savedSettings.Values()
+	values = (preferences.Changes{}).Merge(values)
+	before := s.savedSettings
 	s.settingsBusy = true
 	s.runJob(func() error { return preferences.Save(s.settingsStore, values) }, func(err error) {
 		s.settingsBusy = false
 		if err != nil {
-			restore := map[string]string{}
-			for key := range values {
-				if _, pending := s.pendingSettings[key]; !pending && key != constant.FilenameTemplateKey && key != constant.GroupingRuleKey && key != constant.AllowGroupOnSaveKey {
-					restore[key] = before[key]
-				}
-			}
-			_ = s.pages.Settings.Config.Apply(restore)
+			_ = s.pages.Settings.Config.Apply(values.Restore(before, s.pendingSettings))
 			s.pages.Settings.ApplyTheme()
 			s.notifySettings("保存失败："+err.Error(), true)
 		} else {
@@ -71,10 +60,12 @@ func (s *Shell) browseSetting(directory bool) {
 	s.browsingSettings = true
 	win := s.win
 	title := "选择下载目录"
-	key := constant.StorageKey
+	changes := func(value string) preferences.Changes {
+		return preferences.Changes{Directory: preferences.Value(value)}
+	}
 	if !directory {
 		title = "选择 FFmpeg 可执行文件"
-		key = constant.FFmpegPathKey
+		changes = func(value string) preferences.Changes { return preferences.Changes{FFmpeg: preferences.Value(value)} }
 	}
 	var chosen, path, version string
 	s.runJob(func() error {
@@ -84,12 +75,12 @@ func (s *Shell) browseSetting(directory bool) {
 		}
 		chosen = paths[0]
 		if !directory {
-			path, version, err = preferences.CheckFFmpeg(chosen)
+			path, version, err = utils.CheckFFmpeg(chosen)
 			if err != nil {
 				return err
 			}
 		}
-		return preferences.Save(s.settingsStore, map[string]string{key: chosen})
+		return preferences.Save(s.settingsStore, changes(chosen))
 	}, func(err error) {
 		s.settingsBusy = false
 		s.browsingSettings = false
@@ -101,7 +92,7 @@ func (s *Shell) browseSetting(directory bool) {
 		if chosen == "" {
 			return
 		}
-		values := map[string]string{key: chosen}
+		values := changes(chosen)
 		_ = s.pages.Settings.Config.Apply(values)
 		_ = s.savedSettings.Apply(values)
 		s.notifySettings("保存成功", false)
@@ -117,7 +108,7 @@ func (s *Shell) checkFFmpeg() {
 	s.ffmpegChecking = true
 	custom := s.pages.Settings.Config.FFmpeg
 	var path, version string
-	s.runJob(func() error { var err error; path, version, err = preferences.CheckFFmpeg(custom); return err }, func(err error) {
+	s.runJob(func() error { var err error; path, version, err = utils.CheckFFmpeg(custom); return err }, func(err error) {
 		s.ffmpegChecking = false
 		s.ffmpegChecked = true
 		s.ffmpegPath, s.ffmpegVersion = path, version
@@ -174,9 +165,9 @@ func (s *Shell) settingsNotification(c *ui.Context) {
 }
 
 func (s *Shell) flushPendingSettings() {
-	if len(s.pendingSettings) > 0 {
+	if !s.pendingSettings.Empty() {
 		pending := s.pendingSettings
-		s.pendingSettings = nil
+		s.pendingSettings = preferences.Changes{}
 		s.saveSettings(pending)
 		return
 	}

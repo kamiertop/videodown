@@ -2,11 +2,13 @@ package bilibili
 
 import (
 	"fmt"
-	bilidownload "github.com/kamiertop/videodown/bilibili/download"
-	"github.com/kamiertop/videodown/bilibili/model"
-	"github.com/kamiertop/videodown/internal/gui/navigation"
 	"strconv"
 	"strings"
+
+	bilidownload "github.com/kamiertop/videodown/bilibili/download"
+	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/internal/gui/imagecache"
+	"github.com/kamiertop/videodown/internal/gui/navigation"
 )
 
 const pageSize = 20
@@ -51,7 +53,7 @@ func (s *State) clearPrivateData() {
 	s.selectedSeason = 0
 	s.selectedSeries = 0
 	s.selected = make(map[string]*bool)
-	s.images = make(map[string]*imageEntry)
+	s.images = make(imagecache.Cache)
 	s.stagedFavorites = nil
 	s.stagedCollections = nil
 	s.stagedUploads = nil

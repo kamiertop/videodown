@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+
+	"github.com/kamiertop/videodown/utils"
 )
 
 // Config is the application's TOML model. Snapshot it with Store.Config;
@@ -60,8 +62,8 @@ func (c Config) Validate() error {
 	if !slices.Contains([]string{"system", "light", "dark", "cupcake", "caramellatte"}, c.App.Theme) {
 		return fmt.Errorf("不支持的主题：%s", c.App.Theme)
 	}
-	if strings.TrimSpace(c.Download.FilenameTemplate) == "" {
-		return errors.New("命名模板不能为空")
+	if strings.TrimSpace(c.Download.FilenameTemplate) == "" || !utils.SupportedFilenameTemplate(c.Download.FilenameTemplate) {
+		return errors.New("命名模板必须包含受支持的变量")
 	}
 	if !slices.Contains([]string{"none", "author", "source", "author_source", "date"}, c.Download.GroupingRule) {
 		return errors.New("无效的目录分组规则")

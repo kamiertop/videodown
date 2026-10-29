@@ -3,8 +3,8 @@ package settings
 import (
 	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/egoist/mygo/ui"
-	"github.com/kamiertop/videodown/internal/constant"
 	"github.com/kamiertop/videodown/internal/gui/components"
+	"github.com/kamiertop/videodown/internal/gui/preferences"
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
 
@@ -37,12 +37,12 @@ func (s *State) generalSettings(c *ui.Context, w Services) {
 			choice.Element.Radius(style.RadiusMenu)
 			if choice.Changed() {
 				s.ApplyTheme()
-				saveSetting(w, constant.ThemeKey, s.Config.Theme)
+				saveSetting(w, preferences.Changes{Theme: preferences.Value(s.Config.Theme)})
 			}
 		})
 		components.Muted(c, "当前主题："+s.Config.Theme)
 	})
-	toggleCard(c, "自动更新", "refresh-cw", "启动时检查新版本", "在后台检查 GitHub 是否有可用更新", &s.Config.AutoUpdate, w, constant.AutoUpdateKey)
+	toggleCard(c, "自动更新", "refresh-cw", "启动时检查新版本", "在后台检查 GitHub 是否有可用更新", &s.Config.AutoUpdate, w, func(v bool) preferences.Changes { return preferences.Changes{AutoUpdate: preferences.Value(v)} })
 	settingCard(c, "窗口关闭行为", "settings", func() {
 		value := w.CloseToTray
 		insetToggle(c, "关闭时缩小到任务栏托盘", "关闭时隐藏窗口到系统托盘，下载不受影响", &value, w.SavingClose || !w.TrayAvailable || w.SaveClosePreference == nil, func() { w.SaveClosePreference(value) })

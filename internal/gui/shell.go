@@ -4,20 +4,20 @@ package gui
 
 import (
 	"context"
+
+	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	bilidownload "github.com/kamiertop/videodown/bilibili/download"
 	dydownload "github.com/kamiertop/videodown/douyin/download"
-	"github.com/kamiertop/videodown/internal/gui/pages/douyin"
-	"github.com/kamiertop/videodown/internal/gui/style"
-	"github.com/kamiertop/videodown/internal/updater"
-
-	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/kamiertop/videodown/internal/gui/assets"
 	"github.com/kamiertop/videodown/internal/gui/closing"
 	"github.com/kamiertop/videodown/internal/gui/pages"
 	"github.com/kamiertop/videodown/internal/gui/pages/bilibili"
+	"github.com/kamiertop/videodown/internal/gui/pages/douyin"
 	"github.com/kamiertop/videodown/internal/gui/preferences"
+	"github.com/kamiertop/videodown/internal/gui/style"
+	"github.com/kamiertop/videodown/internal/updater"
 )
 
 // appName names the app across its window and title bar.
@@ -29,7 +29,7 @@ const windowRadius = style.RadiusWindow
 
 // Shell is the state the window shows.
 type Shell struct {
-	biliJobs                  bilibiliJobs
+	jobs                      backgroundJobs
 	router                    *ui.Router
 	win                       *mygo.Window
 	scrolls                   map[string]*ui.ScrollState
@@ -42,7 +42,7 @@ type Shell struct {
 	confirmedQuit             bool
 	runJob                    func(func() error, func(error))
 	settingsStore             preferences.Store
-	pendingSettings           map[string]string
+	pendingSettings           preferences.Changes
 	savedSettings             preferences.Data
 	settingsBusy              bool
 	settingsToast             *settingsNotification
@@ -76,42 +76,39 @@ type Options struct {
 func NewShell() *Shell { return NewShellWithOptions(Options{}) }
 func NewShellWithOptions(opts Options) *Shell {
 	s := &Shell{router: ui.NewRouter("/"), scrolls: make(map[string]*ui.ScrollState), pages: pages.NewState(), closing: closing.New(opts.Preferences), activeDownloads: opts.ActiveDownloads}
-	data, err := preferences.Load(opts.Settings)
+	data := preferences.Load(opts.Settings)
 	s.pages.Settings.Config = data
 	s.savedSettings = data
 	s.settingsStore = opts.Settings
 	s.pages.Settings.ApplyTheme()
-	if err != nil {
-		s.notifySettings("读取配置失败："+err.Error(), true)
-	}
 	s.runJob = func(work func() error, done func(error)) {
 		win := s.win
 		go func() { err := work(); win.Update(func() { done(err) }) }()
 	}
-	s.biliJobs.ctx, s.biliJobs.cancel = context.WithCancel(context.Background())
-	s.biliJobs.images = make(chan struct{}, 4)
+	s.jobs.ctx, s.jobs.cancel = context.WithCancel(context.Background())
+	s.jobs.images = make(chan struct{}, 4)
 	s.updateChecker = opts.UpdateChecker
-	s.runUpdateJob = s.bilibiliRuntime().Background
-	s.pages.Bilibili.Configure(opts.Bilibili, s.bilibiliRuntime())
+	s.runUpdateJob = s.pageRuntime().Background
+	s.pages.Bilibili.Configure(opts.Bilibili, s.pageRuntime())
 	s.pages.Bilibili.ConfigureDownloads(opts.BilibiliDownload)
 	if source, ok := opts.BilibiliDownload.(interface {
 		SetProgressListener(func(bilidownload.Progress))
 	}); ok {
 		source.SetProgressListener(func(progress bilidownload.Progress) {
 			win := s.win
-			if win == nil || win.IsDestroyed() || s.biliJobs.ctx.Err() != nil {
+			if win == nil || win.IsDestroyed() || s.jobs.ctx.Err() != nil {
 				return
 			}
 			win.Update(func() { s.pages.Bilibili.UpdateDownloadProgress(progress) })
 		})
 	}
-	s.pages.Douyin.Configure(opts.Douyin, opts.DouyinDownload, s.bilibiliRuntime())
+	s.pages.Douyin.Configure(opts.Douyin, opts.DouyinDownload, s.pageRuntime())
 	if source, ok := opts.DouyinDownload.(interface {
 		SetProgressListener(func(dydownload.Progress))
 	}); ok {
 		source.SetProgressListener(func(p dydownload.Progress) {
 			win := s.win
-			if win != nil && !win.IsDestroyed() && s.biliJobs.ctx.Err() == nil {
+			if win != nil && !win.IsDestroyed() && s.jobs.ctx.Err() == nil {
 				win.Update(func() { s.pages.Douyin.UpdateDownloadProgress(p) })
 			}
 		})
@@ -140,14 +137,14 @@ func (s *Shell) OpenWindow() {
 	s.pages.Bilibili.Start()
 	s.pages.Douyin.Start()
 	s.startUpdateCheck()
-	s.win.OnClosed(s.stopBilibili)
+	s.win.OnClosed(s.stopJobs)
 	// The taskbar and the window list show the app's icon.
 	_ = s.win.SetIcon(assets.AppIconPNG)
 	s.setupTray()
 	s.win.OnClose(s.beforeClose)
 	mygo.App.OnBeforeQuit(s.beforeQuit)
 	mygo.App.OnWillQuit(func(*mygo.QuitEvent) {
-		s.stopBilibili()
+		s.stopJobs()
 		if s.tray != nil {
 			s.tray.Destroy()
 			s.tray = nil

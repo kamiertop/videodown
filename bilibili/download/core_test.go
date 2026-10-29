@@ -2,7 +2,6 @@ package download
 
 import (
 	"errors"
-	"github.com/imroc/req/v3"
 	"io"
 	"net/http"
 	"os"
@@ -10,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/imroc/req/v3"
 	"github.com/kamiertop/videodown/internal/storage"
 )
 
@@ -46,8 +46,8 @@ func TestNativeProgressListenerReceivesUpdates(t *testing.T) {
 	s := newTestService(t)
 	var received []Progress
 	s.SetProgressListener(func(p Progress) { received = append(received, p) })
-	s.emitProgress(progress{Bvid: "BV1xx411c7mD", Cid: 42, Phase: "video", Percent: 35})
-	s.emitProgress(progress{Bvid: "BV1xx411c7mD", Cid: 42, Phase: "done", Percent: 95})
+	s.emitProgress(Progress{Bvid: "BV1xx411c7mD", Cid: 42, Phase: "video", Percent: 35})
+	s.emitProgress(Progress{Bvid: "BV1xx411c7mD", Cid: 42, Phase: "done", Percent: 95})
 	if len(received) != 2 || received[0].Percent != 35 || received[1].Percent != 100 {
 		t.Fatalf("progress not delivered to native listener: %+v", received)
 	}
