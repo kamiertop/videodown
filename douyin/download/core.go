@@ -17,21 +17,21 @@ import (
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/logger"
 	"github.com/kamiertop/videodown/utils"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type Service struct {
-	client   *req.Client
-	logger   *logger.Logger
-	store    *storage.Store
-	events   *application.EventManager
+	client *req.Client
+	logger *logger.Logger
+	store  *storage.Store
+
 	mu       sync.Mutex
 	progress map[string]float64
+	listener func(Progress)
 	// active 记录正在执行（含休眠间隔）的任务数，供关闭程序前判断是否有任务未完成。
 	active        atomic.Int64
 	publicHeaders func() (map[string]string, error)
 	// 下载历史的内存缓存：按下载时间倒序，写入/删除/清空时失效，
-	// 历史页翻页只切内存，不必每次全量扫描 badger。
+	// 历史页翻页只切内存，不必每次查询 SQLite。
 	historyMu    sync.RWMutex
 	historyItems []HistoryItem
 	historyValid bool
@@ -42,11 +42,15 @@ func (d *Service) ActiveCount() int {
 	return int(d.active.Load())
 }
 
-func New(logger *logger.Logger, store *storage.Store, events *application.EventManager, publicHeaders func() (map[string]string, error)) *Service {
+func (d *Service) DownloadConcurrency() int { return d.store.Config().Download.Concurrency }
+
+func (d *Service) SetProgressListener(fn func(Progress)) { d.mu.Lock(); d.listener = fn; d.mu.Unlock() }
+
+func New(logger *logger.Logger, store *storage.Store, publicHeaders func() (map[string]string, error)) *Service {
 	return &Service{
-		logger:        logger,
-		store:         store,
-		events:        events,
+		logger: logger,
+		store:  store,
+
 		mu:            sync.Mutex{},
 		publicHeaders: publicHeaders,
 		progress:      make(map[string]float64),
@@ -71,10 +75,7 @@ func (d *Service) DownloadVideos(tasks []Task) (BatchResult, error) {
 		return result, errors.New("下载列表为空")
 	}
 
-	workerCount, err := d.store.ConcurrencyNum()
-	if err != nil {
-		return result, err
-	}
+	workerCount := max(1, min(d.store.Config().Download.Concurrency, len(tasks)))
 
 	jobs := make(chan Task, len(tasks))
 	results := make(chan Result, len(tasks))
@@ -145,8 +146,11 @@ func (d *Service) emitProgress(p progress) {
 		d.progress[p.AwemeID] = p.Percent
 		d.mu.Unlock()
 	}
-	if d.events != nil {
-		d.events.Emit("douyin-download-progress", p)
+	d.mu.Lock()
+	listener := d.listener
+	d.mu.Unlock()
+	if listener != nil {
+		listener(p)
 	}
 }
 
@@ -244,7 +248,7 @@ func (d *Service) downloadTask(task Task) (string, bool, error) {
 	}
 
 	// 与 B 站一致：增量下载开启时跳过已下载的作品；关闭后即使缓存命中也重新下载（设置读取失败按开启兜底）。
-	if d.store.SkipDownloaded() {
+	if d.store.Config().Download.SkipDownloaded {
 		// 下载前先检查是否已下载，避免重复下载同一作品；批量会话在前端已过滤，这里是手动路径和并发窗口的兜底。
 		if path, ok := d.isDownloaded(task.AwemeID); ok {
 			d.emitProgress(progress{AwemeID: task.AwemeID, Title: task.Title, Phase: "done", Percent: 100})
@@ -252,10 +256,7 @@ func (d *Service) downloadTask(task Task) (string, bool, error) {
 		}
 	}
 
-	storagePath, err := d.store.StoragePath()
-	if err != nil {
-		return "", false, err
-	}
+	storagePath := d.store.DownloadDirectory()
 	targetDir, err := d.resolveDownloadDir(storagePath, task)
 	if err != nil {
 		return "", false, err
@@ -324,10 +325,7 @@ func (d *Service) downloadTask(task Task) (string, bool, error) {
 	if strings.TrimSpace(task.VideoURL) == "" {
 		return "", false, errors.New("视频下载地址为空")
 	}
-	template, err := d.store.FilenameTemplate()
-	if err != nil {
-		return "", false, err
-	}
+	template := d.store.Config().Download.FilenameTemplate
 	now := time.Now()
 	values := map[string]string{"title": task.Title,
 		"id": task.AwemeID, "author": task.AuthorName,
@@ -355,8 +353,8 @@ func (d *Service) downloadTask(task Task) (string, bool, error) {
 
 func (d *Service) sleepAfterTask(task Task) {
 	// 和 B 站下载保持一致：每个 worker 完成一条任务后按用户设置随机休眠，降低连续请求频率。
-	sleepTime, err := d.store.SleepTime()
-	if err != nil || sleepTime <= 0 {
+	sleepTime := d.store.Config().Download.SleepSeconds
+	if sleepTime <= 0 {
 		return
 	}
 	sleepTime = rand.Int64N(sleepTime)

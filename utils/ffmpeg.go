@@ -7,8 +7,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-
-	"github.com/dgraph-io/badger/v4"
 )
 
 type FFmpeg struct {
@@ -106,63 +104,4 @@ func (f *FFmpeg) searchFFmpeg() error {
 	}
 
 	return errors.New("ffmpeg not found")
-}
-
-// HasFFmpeg 检查系统中是否可用 ffmpeg
-func (s *Settings) HasFFmpeg() bool {
-	ffmpeg := NewFFmpeg()
-
-	return ffmpeg.ensurePath() == nil
-}
-
-func (s *Settings) FFmpegPath() (string, error) {
-	ffmpeg := NewFFmpeg()
-	// 优先使用设置中保存的路径
-	if path, err := s.store.Get(ffmpegPathKey); err == nil && path != "" {
-		ffmpeg.path = path
-		return path, nil
-	}
-	path, err := s.store.Get(ffmpegPathKey)
-	if err != nil {
-		if errors.Is(err, badger.ErrKeyNotFound) {
-			s.logger.Error("ffmpeg path not set in settings, will try to search")
-		}
-	}
-	// 如果key存在，也要判断是否有效，避免用户设置了错误路径后无法使用
-	_, err = exec.Command(path, "-version").CombinedOutput()
-	if err != nil {
-		s.logger.Errorf("ffmpeg path from settings is invalid: %v, will try to search", err)
-	} else {
-		return path, nil
-	}
-
-	// 设置中没有或路径无效时，尝试搜索
-	if err := ffmpeg.ensurePath(); err != nil {
-		return "", err
-	}
-
-	return ffmpeg.path, nil
-}
-
-const ffmpegPathKey = "ffmpeg_path"
-
-func (s *Settings) SetFFmpegPath(path string) error {
-	if path == "" {
-		return errors.New("ffmpeg path cannot be empty")
-	}
-	if _, err := os.Stat(path); err != nil {
-		return fmt.Errorf("invalid ffmpeg path: %w", err)
-	}
-
-	// 直接验证是否可执行
-	cmd := exec.Command(path, "-version")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("ffmpeg is not executable: %w: %s", err, string(out))
-	}
-
-	// 如果验证通过，保存路径
-	ffmpeg := NewFFmpeg()
-	ffmpeg.path = path
-
-	return s.store.Set(ffmpegPathKey, path)
 }

@@ -43,7 +43,7 @@ func (b *BiliBili) Info(spaceURLOrMid string) (model.UserInfoData, error) {
 	if err != nil {
 		return resp.Data, err
 	}
-	
+
 	err = b.client.
 		Get("https://api.bilibili.com/x/space/wbi/acc/info").
 		SetQueryParams(params).

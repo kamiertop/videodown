@@ -20,7 +20,6 @@ import (
 	"github.com/imroc/req/v3"
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/logger"
-	"github.com/wailsapp/wails/v3/pkg/application"
 	"golang.org/x/mod/semver"
 )
 
@@ -32,7 +31,7 @@ const (
 
 // Version is set by build flags, for example:
 // -X github.com/kamiertop/videodown/internal/updater.Version=1.0.0
-var Version string
+var Version = "dev"
 
 type Result struct {
 	Available      bool   `json:"available"`      // 是否有新版本可用
@@ -45,37 +44,26 @@ type Result struct {
 type Updater struct {
 	logger *logger.Logger
 	store  *storage.Store
-	events *application.EventManager
-	client *req.Client
+	// Callbacks are supplied by the host UI; no desktop runtime is required.
+	OnAvailable func(Result)
+	OnProgress  func(int64, int64)
+	Quit        func()
+	client      *req.Client
 
 	resultMu sync.RWMutex
 	result   *Result
 }
 
-func New(log *logger.Logger, store *storage.Store, events *application.EventManager) *Updater {
-	return &Updater{
-		logger: log.WithName("Updater"),
-		store:  store,
-		events: events,
-		client: req.C().SetCommonRetryCount(2),
-	}
+func New(log *logger.Logger, store *storage.Store) *Updater {
+	return &Updater{logger: log.WithName("Updater"), store: store, client: req.C().SetCommonRetryCount(2)}
 }
 
-// ServiceStartup starts the network check in the background and returns
-// immediately so application startup is never delayed by GitHub.
-func (u *Updater) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
-	go u.checkOnStartup(ctx)
-
-	return nil
-}
+// Start checks for updates without blocking the host application.
+func (u *Updater) Start(ctx context.Context) { go u.checkOnStartup(ctx) }
 
 func (u *Updater) checkOnStartup(parent context.Context) {
 	u.logger.Debugf("starting update check, current version: %s", Version)
-	enabled, err := u.store.AutoUpdate()
-	if err != nil {
-		u.logger.Errorf("read auto-update setting: %v", err)
-		return
-	}
+	enabled := u.store.Config().App.AutoUpdate
 	if !enabled {
 		u.logger.Infof("auto-update is disabled, skipping check")
 		return
@@ -92,9 +80,41 @@ func (u *Updater) checkOnStartup(parent context.Context) {
 		return
 	}
 	u.setResult(result)
-	if result.Available && u.events != nil {
-		u.events.Emit("update-available", result)
+	if result.Available && u.OnAvailable != nil {
+		u.OnAvailable(result)
 	}
+}
+
+// Check is the native host's cancellable, bounded update check.
+func (u *Updater) Check(parent context.Context) (Result, error) {
+	if err := parent.Err(); err != nil {
+		return Result{}, err
+	}
+	ctx, cancel := context.WithTimeout(parent, checkTimeout)
+	defer cancel()
+	result, err := u.check(ctx)
+	if err == nil {
+		u.setResult(result)
+	} else if !errors.Is(err, context.Canceled) {
+		u.logger.Warningf("检查版本更新失败: %v", err)
+	}
+	return result, err
+}
+
+// CurrentVersion normalizes production version flags, while keeping development builds explicit.
+func CurrentVersion() string {
+	version := strings.TrimSpace(Version)
+	if version == "" {
+		return "dev"
+	}
+	if !strings.HasPrefix(version, "v") && semver.IsValid("v"+version) {
+		return "v" + version
+	}
+	return version
+}
+func newerRelease(latest string) bool {
+	current := CurrentVersion()
+	return !semver.IsValid(current) || semver.Compare(latest, current) > 0
 }
 
 func (u *Updater) check(ctx context.Context) (Result, error) {
@@ -115,8 +135,8 @@ func (u *Updater) check(ctx context.Context) (Result, error) {
 		} else {
 			u.logger.Infof("latest release: %s, current version: %s", release.TagName, Version)
 			return Result{
-				Available:      semver.Compare(release.TagName, Version) > 0,
-				CurrentVersion: Version,
+				Available:      newerRelease(release.TagName),
+				CurrentVersion: CurrentVersion(),
 				LatestVersion:  release.TagName,
 				DownloadURL:    ParseDownloadURL(release.TagName),
 				ReleaseNotes:   release.Body,
@@ -132,18 +152,18 @@ func (u *Updater) check(ctx context.Context) (Result, error) {
 		return Result{}, fmt.Errorf("invalid release version %q", latestVersion)
 	}
 	return Result{
-		Available:      semver.Compare(latestVersion, Version) > 0,
-		CurrentVersion: Version,
+		Available:      newerRelease(latestVersion),
+		CurrentVersion: CurrentVersion(),
 		LatestVersion:  latestVersion,
 		DownloadURL:    ParseDownloadURL(latestVersion),
 	}, nil
 }
 
 func (u *Updater) GetVersion() string {
-	return Version
+	return CurrentVersion()
 }
 
-// NeedUpdate performs an explicit update check for frontend callers.
+// NeedUpdate performs an explicit update check for callers.
 func (u *Updater) NeedUpdate() (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), checkTimeout)
 	defer cancel()
@@ -158,6 +178,9 @@ func (u *Updater) NeedUpdate() (bool, error) {
 
 // InstallUpdate starts the standalone updater and exits the current process.
 func (u *Updater) InstallUpdate(packagePath string) error {
+	if u.Quit == nil {
+		return errors.New("未配置更新完成后的退出操作")
+	}
 	if packagePath == "" {
 		return errors.New("更新包路径为空")
 	}
@@ -182,22 +205,24 @@ func (u *Updater) InstallUpdate(packagePath string) error {
 	if logFile, logErr := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644); logErr == nil {
 		cmd.Stdout, cmd.Stderr = logFile, logFile
 	}
-	if err := cmd.Start(); err != nil {
+	if err = cmd.Start(); err != nil {
 		return fmt.Errorf("启动更新程序失败: %w", err)
 	}
-	go func() { application.Get().Quit() }()
+	go u.Quit()
+
 	return nil
 }
 
-// DownloadUpdate downloads an update package and emits progress events.
+// DownloadUpdate downloads an update package and reports progress through OnProgress.
 func (u *Updater) DownloadUpdate(ctx context.Context, downloadURL string) (string, error) {
 	// Download URLs from GitHub Releases normally return a 302 to the asset;
 	// explicitly use the normal redirect policy in case the client was used for
 	// a no-redirect version lookup previously.
-	resp, err := u.client.Clone().SetRedirectPolicy(req.DefaultRedirectPolicy()).R().SetContext(ctx).Get(downloadURL)
+	resp, err := u.client.Clone().SetRedirectPolicy(req.DefaultRedirectPolicy()).R().SetContext(ctx).DisableAutoReadResponse().Get(downloadURL)
 	if err != nil {
 		return "", err
 	}
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("download returned HTTP %d", resp.StatusCode)
 	}
@@ -226,8 +251,8 @@ func (u *Updater) DownloadUpdate(ctx context.Context, downloadURL string) (strin
 				return "", err
 			}
 			downloaded += int64(n)
-			if u.events != nil {
-				u.events.Emit("update-download-progress", map[string]int64{"downloaded": downloaded, "total": total})
+			if u.OnProgress != nil {
+				u.OnProgress(downloaded, total)
 			}
 		}
 		if readErr == io.EOF {
@@ -282,7 +307,7 @@ func (u *Updater) setResult(result Result) {
 	u.result = &result
 }
 
-// LatestResult lets the frontend recover a result if the startup event was
+// LatestResult returns a result if the startup event was
 // emitted before its event listener was registered.
 func (u *Updater) LatestResult() *Result {
 	u.resultMu.RLock()

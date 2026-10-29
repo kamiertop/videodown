@@ -1,16 +1,11 @@
 package download
 
 import (
-	"bytes"
 	"encoding/json/v2"
 	"errors"
 	"os"
-	"sort"
 	"strings"
 	"time"
-
-	"github.com/dgraph-io/badger/v4"
-	"github.com/kamiertop/videodown/utils"
 )
 
 type HistoryItem struct {
@@ -27,7 +22,7 @@ type HistoryItem struct {
 	IsImageAlbum bool   `json:"isImageAlbum"`
 	ImageCount   int    `json:"imageCount"`
 	DownloadKind string `json:"downloadKind"`
-	// Wails 绑定生成不支持直接暴露 time.Time，保存为 RFC3339 字符串给前端解析。
+	// Downloaded is stored in RFC3339 format.
 	Downloaded string `json:"downloaded"`
 }
 
@@ -37,7 +32,7 @@ func (d *Service) DeleteDownloadHistory(awemeID string) error {
 	if key == "" {
 		return errors.New("视频ID为空")
 	}
-	if err := d.store.Delete(key); err != nil {
+	if err := d.store.DeleteHistory(key); err != nil {
 		return err
 	}
 	d.invalidateHistory()
@@ -46,7 +41,7 @@ func (d *Service) DeleteDownloadHistory(awemeID string) error {
 
 // ClearDownloadHistory 清空抖音下载历史；不会删除已经下载到本地的文件。
 func (d *Service) ClearDownloadHistory() error {
-	if err := d.store.DeletePrefix(cachePrefix); err != nil {
+	if err := d.store.DeleteHistoryPrefix(cachePrefix); err != nil {
 		return err
 	}
 	d.invalidateHistory()
@@ -134,38 +129,19 @@ func (d *Service) invalidateHistory() {
 	d.historyMu.Unlock()
 }
 
-// scanDownloadHistory 全量扫描 badger 中的下载缓存并按下载时间倒序排序。
+// scanDownloadHistory 从 SQLite 按下载时间倒序读取历史。
 func (d *Service) scanDownloadHistory() ([]HistoryItem, error) {
 	items := make([]HistoryItem, 0)
-	prefix := []byte(cachePrefix)
-
-	err := d.store.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.IteratorOptions{Prefix: prefix, PrefetchValues: false})
-		defer it.Close()
-
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			item := it.Item()
-			if err := item.Value(func(val []byte) error {
-				var history HistoryItem
-				if err := json.Unmarshal(bytes.Clone(val), &history); err != nil {
-					return nil
-				}
-				items = append(items, history)
-				return nil
-			}); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	rows, err := d.store.HistoryRows("douyin")
 	if err != nil {
 		return nil, err
 	}
-
-	sort.Slice(items, func(i, j int) bool {
-		return utils.ParseDownloadHistoryTime(items[i].Downloaded).After(utils.ParseDownloadHistoryTime(items[j].Downloaded))
-	})
-
+	for _, row := range rows {
+		var history HistoryItem
+		if json.Unmarshal([]byte(row), &history) == nil {
+			items = append(items, history)
+		}
+	}
 	return items, nil
 }
 
@@ -176,7 +152,7 @@ func (d *Service) isDownloaded(awemeID string) (string, bool) {
 	if key == "" {
 		return "", false
 	}
-	val, err := d.store.Get(key)
+	val, err := d.store.History(key)
 	if err != nil {
 		return "", false
 	}
@@ -248,7 +224,7 @@ func (d *Service) markDownloaded(task Task, path string, isImageAlbum bool, imag
 		d.logger.Errorf("marshal douyin downloaded cache failed: %v", err)
 		return
 	}
-	if err = d.store.Set(key, string(payload)); err != nil {
+	if err = d.store.SaveHistory(key, string(payload)); err != nil {
 		d.logger.Errorf("save douyin downloaded cache failed: %v", err)
 		return
 	}

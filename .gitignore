@@ -6,18 +6,18 @@
 
 *.exe
 
-node_modules
 
 dist
 
 *.db
 *.db-*
+*.sqlite*
+/videodown-data/
 
 .codex
 
-build/bin
+/build/
 
-frontend/package.json.md5
 .cursor
 .vscode
 
@@ -37,5 +37,12 @@ tests
 
 .task/
 
-# iOS is not currently supported by this project.
-build/ios/
+# Portable runtime files (may contain account credentials).
+/config.toml
+/.config-*.tmp
+/appicon.png
+/videodown
+/videodown-updater
+
+# Generated Windows executable resources.
+/zz_appicon_windows_*.syso

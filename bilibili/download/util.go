@@ -1,7 +1,6 @@
 package download
 
 import (
-	"bytes"
 	"encoding/json/v2"
 	"errors"
 	"os"
@@ -9,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dgraph-io/badger/v4"
 	"github.com/kamiertop/videodown/bilibili/model"
 	"github.com/kamiertop/videodown/bilibili/util"
 	"github.com/kamiertop/videodown/utils"
@@ -44,7 +42,7 @@ func (s *Service) downloadedCachePath(cid int64) (string, bool) {
 		return "", false
 	}
 
-	raw, err := s.store.Get(key)
+	raw, err := s.store.History(key)
 	if err != nil {
 		return "", false
 	}
@@ -117,38 +115,19 @@ func (s *Service) DownloadedVideoKeys(keys []DownloadKey) ([]int, error) {
 		path string
 	}
 	candidates := make(map[string][]downloadedRecord, len(wanted))
-	prefix := []byte(util.CachePrefix)
-	// 封面、音频记录按 key 前缀直接跳过（cover:/audio: 前缀），不用解码排除；不预取 value，跳过的条目零开销。
-	coverPrefix := []byte(util.CachePrefix + "cover:")
-	audioPrefix := []byte(util.CachePrefix + "audio:")
-	err := s.store.View(func(txn *badger.Txn) error {
-		it := txn.NewIterator(badger.IteratorOptions{Prefix: prefix, PrefetchValues: false})
-		defer it.Close()
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			item := it.Item()
-			if bytes.HasPrefix(item.Key(), coverPrefix) || bytes.HasPrefix(item.Key(), audioPrefix) {
-				continue
-			}
-			if err := item.Value(func(val []byte) error {
-				// Unmarshal 同步完成、不持有入参缓冲，无需 Clone。
-				var history model.DownloadHistoryItem
-				if err := json.Unmarshal(val, &history); err != nil {
-					return nil
-				}
-				bv := normalizeBvid(history.Bvid)
-				if _, ok := wanted[bv]; !ok {
-					return nil
-				}
-				candidates[bv] = append(candidates[bv], downloadedRecord{cid: history.Cid, path: history.Path})
-				return nil
-			}); err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	rows, err := s.store.BilibiliVideoRows()
 	if err != nil {
 		return nil, err
+	}
+	for _, row := range rows {
+		var history model.DownloadHistoryItem
+		if json.Unmarshal([]byte(row), &history) != nil {
+			continue
+		}
+		bv := normalizeBvid(history.Bvid)
+		if _, ok := wanted[bv]; ok {
+			candidates[bv] = append(candidates[bv], downloadedRecord{cid: history.Cid, path: history.Path})
+		}
 	}
 
 	for i, key := range keys {
@@ -211,7 +190,7 @@ func (s *Service) markDownloaded(task Task, path string, downloadKind string) {
 		s.logger.Errorf("marshal downloaded cache failed: %v", err)
 		return
 	}
-	if err = s.store.Set(key, string(payload)); err != nil {
+	if err = s.store.SaveHistory(key, string(payload)); err != nil {
 		s.logger.Errorf("save downloaded cache failed: %v", err)
 	}
 }

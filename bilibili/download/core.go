@@ -22,16 +22,16 @@ import (
 	"github.com/kamiertop/videodown/utils"
 
 	"github.com/imroc/req/v3"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type Service struct {
-	store    *storage.Store
-	logger   *logger.Logger
-	events   *application.EventManager
-	client   *req.Client
-	mu       sync.Mutex
-	progress map[string]float64
+	store  *storage.Store
+	logger *logger.Logger
+
+	client           *req.Client
+	mu               sync.Mutex
+	progress         map[string]float64
+	progressListener func(Progress)
 	// active 记录正在执行（含休眠间隔）的任务数，供关闭程序前判断是否有任务未完成。
 	active    atomic.Int64
 	getCookie func() (string, error)
@@ -42,11 +42,25 @@ func (s *Service) ActiveCount() int {
 	return int(s.active.Load())
 }
 
-func NewService(logger *logger.Logger, store *storage.Store, events *application.EventManager, getCookie func() (string, error)) *Service {
+// DownloadConcurrency is shared with the native scheduler.
+func (s *Service) DownloadConcurrency() int { return s.store.Config().Download.Concurrency }
+
+// SkipDownloaded reports the current incremental download preference.
+func (s *Service) SkipDownloaded() bool { return s.store.Config().Download.SkipDownloaded }
+
+// SetProgressListener delivers progress on the download worker goroutine.
+// UI callers must dispatch the update to their window thread.
+func (s *Service) SetProgressListener(listener func(Progress)) {
+	s.mu.Lock()
+	s.progressListener = listener
+	s.mu.Unlock()
+}
+
+func NewService(logger *logger.Logger, store *storage.Store, getCookie func() (string, error)) *Service {
 	return &Service{
-		store:     store,
-		logger:    logger,
-		events:    events,
+		store:  store,
+		logger: logger,
+
 		progress:  make(map[string]float64),
 		mu:        sync.Mutex{},
 		getCookie: getCookie,
@@ -72,7 +86,7 @@ func (s *Service) resetDownloadProgress(bvid string, cid int64) {
 	s.mu.Unlock()
 }
 
-// emitProgress 通过 Wails 事件把下载进度推给前端，前端按 bvid 更新对应卡片。
+// emitProgress publishes download state through the registered listener.
 func (s *Service) emitProgress(p progress) {
 	key := progressKey(p.Bvid, p.Cid)
 	if key != "" {
@@ -99,15 +113,11 @@ func (s *Service) emitProgress(p progress) {
 		}
 		s.mu.Unlock()
 	}
-	if s.events != nil {
-		s.events.Emit("bilibili-download-progress", p)
-	}
-}
-
-// emitDownloadCompleted 下载+休眠全部完成后推送给前端，前端收到后立即从列表移除该视频卡片。
-func (s *Service) emitDownloadCompleted(item Result) {
-	if s.events != nil {
-		s.events.Emit("bilibili-download-completed", item)
+	s.mu.Lock()
+	listener := s.progressListener
+	s.mu.Unlock()
+	if listener != nil {
+		listener(p)
 	}
 }
 
@@ -126,7 +136,7 @@ func (s *Service) downloadToFile(rawURL, targetPath, bvid, title string, cid int
 		return err
 	}
 	defer func() {
-		err = resp.Body.Close()
+		err = errors.Join(err, resp.Body.Close())
 	}()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -138,7 +148,7 @@ func (s *Service) downloadToFile(rawURL, targetPath, bvid, title string, cid int
 		return err
 	}
 	defer func() {
-		err = f.Close()
+		err = errors.Join(err, f.Close())
 	}()
 
 	total := resp.ContentLength
@@ -199,10 +209,7 @@ func (s *Service) downloadToFile(rawURL, targetPath, bvid, title string, cid int
 
 // buildDownloadFileName 按设置中的命名模板生成不含扩展名的下载文件名；模板结果为空时回退到清理后的标题。
 func (s *Service) buildDownloadFileName(task Task) (string, error) {
-	template, err := s.store.FilenameTemplate()
-	if err != nil {
-		return "", err
-	}
+	template := s.store.Config().Download.FilenameTemplate
 	now := time.Now()
 	values := map[string]string{
 		"title": task.Title, "id": task.Bvid, "author": task.UpperName,
@@ -224,7 +231,7 @@ func (s *Service) buildDownloadFileName(task Task) (string, error) {
 func (s *Service) downloadDashTask(task Task) (string, bool, error) {
 	s.resetDownloadProgress(task.Bvid, task.Cid)
 	// 增量下载开启时才跳过已下载的视频；关闭后即使缓存命中也重新下载（设置读取失败按开启兜底）。
-	if s.store.SkipDownloaded() {
+	if s.store.Config().Download.SkipDownloaded {
 		// 下载前先检查是否已下载，避免重复下载同一 CID 的视频
 		if path, ok := s.isDownloaded(task.Cid); ok {
 			s.emitProgress(progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
@@ -241,10 +248,7 @@ func (s *Service) downloadDashTask(task Task) (string, bool, error) {
 		return "", false, err
 	}
 
-	storagePath, err := s.store.StoragePath()
-	if err != nil {
-		return "", false, err
-	}
+	storagePath := s.store.DownloadDirectory()
 
 	targetDir, err := s.resolveTargetDir(storagePath, task)
 	if err != nil {
@@ -312,27 +316,11 @@ func (s *Service) downloadDashTask(task Task) (string, bool, error) {
 	return outPath, false, nil
 }
 
-// DownloadVideoByDash 下载单个视频，保留旧入口以兼容前端或其他调用方。
-func (s *Service) DownloadVideoByDash(sourceName, bvid, title, videoURL, audioURL string) (string, error) {
-	s.active.Add(1)
-	defer s.active.Add(-1)
-
-	path, _, err := s.downloadDashTask(Task{
-		SourceName: sourceName,
-		UpperName:  "",
-		Bvid:       bvid,
-		Title:      title,
-		VideoURL:   videoURL,
-		AudioURL:   audioURL,
-	})
-	return path, err
-}
-
 // sleepAfterTask 按设置项在同一个 worker 中休眠，避免连续请求过快；并发 worker 互不阻塞。
 // 根据设置的时间上下浮动
 func (s *Service) sleepAfterTask(task Task) {
-	sleepTime, err := s.store.SleepTime()
-	if err != nil || sleepTime <= 0 {
+	sleepTime := s.store.Config().Download.SleepSeconds
+	if sleepTime <= 0 {
 		return
 	}
 
@@ -398,10 +386,7 @@ func (s *Service) DownloadVideosByDash(tasks []Task) (BatchResult, error) {
 		return result, errors.New("下载列表为空")
 	}
 
-	workerCount, err := s.store.ConcurrencyNum()
-	if err != nil {
-		return result, err
-	}
+	workerCount := min(s.store.Config().Download.Concurrency, len(tasks))
 
 	jobs := make(chan Task, len(tasks))
 	results := make(chan Result, len(tasks))
@@ -426,7 +411,6 @@ func (s *Service) DownloadVideosByDash(tasks []Task) (BatchResult, error) {
 						s.sleepAfterTask(task)
 					}
 					// 休眠完成后逐条推送完成事件，前端收到后立即从列表移除该视频
-					s.emitDownloadCompleted(item)
 				}
 				// 休眠结束后任务才算完成，避免休眠间隔内关闭程序被判定为无任务进行
 				s.active.Add(-1)
@@ -455,15 +439,14 @@ func (s *Service) DownloadVideosByDash(tasks []Task) (BatchResult, error) {
 
 // DownloadCover 下载视频封面到当前下载目录，返回保存后的文件路径。
 func (s *Service) DownloadCover(cover string, task Task) (string, error) {
+	s.active.Add(1)
+	defer s.active.Add(-1)
 	cover = normalizeHTTPURL(cover)
 	if !strings.HasPrefix(cover, "http://") && !strings.HasPrefix(cover, "https://") {
 		return "", errors.New("封面地址无效")
 	}
 
-	storagePath, err := s.store.StoragePath()
-	if err != nil {
-		return "", err
-	}
+	storagePath := s.store.DownloadDirectory()
 	targetDir, err := s.resolveTargetDir(storagePath, task)
 	if err != nil {
 		return "", err
@@ -515,10 +498,7 @@ func (s *Service) DownloadAudio(task Task) (string, error) {
 		return "", err
 	}
 
-	storagePath, err := s.store.StoragePath()
-	if err != nil {
-		return "", err
-	}
+	storagePath := s.store.DownloadDirectory()
 
 	targetDir, err := s.resolveTargetDir(storagePath, task)
 	if err != nil {

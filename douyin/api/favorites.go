@@ -106,7 +106,7 @@ func (d *Douyin) FavoriteVideo(count, cursor uint) (model.FavoriteVideoResponse,
 }
 
 // FavoritesVideoList 获取指定收藏夹中的视频列表。
-// 收藏夹 ID 可能超过 JS 安全整数范围，前端应传 collects_id_str，避免 Wails number 精度丢失。
+// 收藏夹 ID 按接口返回的 collects_id_str 原样传入。
 func (d *Douyin) FavoritesVideoList(collectIDStr string, cursor, count int) (model.FavoriteVideoResponse, error) {
 	var resp model.FavoriteVideoResponse
 	if collectIDStr == "" {

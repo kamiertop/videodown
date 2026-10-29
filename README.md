@@ -2,8 +2,9 @@
 
 > ⚠️下载哔哩哔哩视频请安装FFmpeg
 
-VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.dev) 和 [SolidJS](https://www.solidjs.com/)
-开发的桌面视频下载工具（初期使用Tauri+Rust，但是tmd占用磁盘太多了😅，一看40多个G），主要支持哔哩哔哩和抖音。
+VideoDown 是一个使用 [Go](https://go.dev)、[MyGo](https://github.com/egoist/mygo) 和
+[MujicaUI](https://github.com/ELY-Open-Source/MujicaUI) 开发的原生桌面视频下载工具，支持哔哩哔哩和抖音。
+界面与业务逻辑均使用 Go 编写，构建不需要 CGO、Node.js 或浏览器运行时。
 
 > 本项目仍可能受到平台接口变化影响。如果接口返回结构、鉴权参数或风控策略变化，部分功能可能需要同步调整。
 
@@ -51,7 +52,7 @@ VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.d
 
 - [x] Windows
 - [x] Linux
-- [ ] MacOS (没有设备，无法测试，但是依赖 WebView，理论是可以的)
+- [ ] macOS（原生构建，实际桌面行为仍需在设备上验证）
 
 ### 哔哩哔哩
 
@@ -83,70 +84,56 @@ VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.d
 
 ## 技术栈
 
-- 桌面框架：Wails v3
-- 后端：Go、BadgerDB、req/v3
-- 前端：SolidJS、TanStack Router、Tailwind CSS、DaisyUI
+- 原生界面与窗口：MyGo、MujicaUI
+- 业务逻辑：Go、req/v3
+- 配置与 Cookie：结构化 TOML
+- 下载历史：SQLite、sqlx、无 CGO 的 SQLite 驱动
 
 ## 开发
 
-### 环境要求
+需要 Go 1.27.3 或更新版本。B 站视频通常需要合并视频流和音频流，请安装 FFmpeg，并在设置中选择路径或确保其在 PATH 中。
 
-- Go 1.27+
-- Node.js 和 npm
-- Wails CLI
-- ffmpeg
-- Fedora44下载libwebkit41, 开发时使用：`wails3 dev -tags webkit2_41`
+启动应用：
 
-哔哩哔哩下载通常需要合并视频流和音频流，因此必须安装 `ffmpeg` 并确保命令行可以直接访问：
-
-```bash
-ffmpeg -version
+```sh
+CGO_ENABLED=0 go run .
+# 指定配置及历史所在目录
+CGO_ENABLED=0 go run . -data-dir /path/to/videodown
 ```
 
-如果系统无法识别 `ffmpeg`，请先安装并配置环境变量。
+运行测试和原生 UI 检查：
 
-### 运行
-
-安装前端依赖：
-
-```bash
-cd frontend
-npm install
+```sh
+CGO_ENABLED=0 go test ./...
+CGO_ENABLED=0 go tool mygo vet .
 ```
 
-返回项目根目录后启动 Wails 开发模式：
+构建应用：
 
-```bash
-wails3 dev
+```sh
+CGO_ENABLED=0 go build -o build/bin/videodown .
+# Windows
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-H=windowsgui" -o build/bin/videodown.exe .
 ```
 
-前端单独构建：
-
-```bash
-cd frontend
-npm run build
-```
-
-生成 Wails 前端绑定：
-
-```bash
-# 生成 interface 风格的 TypeScript 绑定
-wails3 generate bindings -ts -i
-```
-
-运行后端测试：
-
-### 构建
-
-在项目根目录执行：
-
-```bash
-wails3 build
-```
-
-构建产物会输出到 Wails 默认的 build 目录中。不同平台的打包依赖请参考 Wails 官方文档。
+使用 `just package` 或 `go run ./cmd/package` 构建便携文件夹 `dist/videodown`，其中包含主程序、独立更新器和 `appicon.png`；Windows 打包会同时将图标写入 EXE 资源，供资源管理器显示。可通过 `-os`、`-arch`、`-version` 和 `-out` 指定目标与输出位置。`just run` 启动开发版本，`just check` 执行检查。界面代码位于 `internal/gui`，启动与服务初始化位于 `main.go`。
+发布工作流使用原生 Go 构建并生成便携归档。启动时遵循设置中的自动更新开关，在后台检查新版本；发现更新后展示版本和发布说明，可打开对应发布页。检查失败不会阻塞应用。
 
 ## 使用说明
+
+便携文件夹首次运行后的结构：
+
+```text
+videodown/
+  videodown                 # Windows 为 videodown.exe
+  videodown-updater         # Windows 带 .exe 后缀
+  appicon.png               # 图标同时内嵌在程序中
+  config.toml               # 首次启动自动创建，含账号凭证，请勿公开
+  history.sqlite            # 首次启动自动创建
+  download/                 # 下载时创建
+```
+
+开发时使用 `go run .`，配置和数据库保存在当前工作目录；`-data-dir` 可以显式指定数据文件夹。应用程序日志保存在二进制旁边。
 
 ### 基础设置
 
@@ -173,8 +160,8 @@ wails3 build
 
 > 本项目绝对不会私自收集、上传用户信息
 
-- 本地配置、Cookie、下载历史等数据存储在本地的 BadgerDB 中。
-- 下载文件默认保存到设置页指定的目录。
+- 配置和 Cookie 存储在可执行文件同目录的 `config.toml` 中，下载历史存储在同目录的 `history.sqlite` 中。首次启动自动创建缺失的配置、数据库和图标，已有配置会保留。配置结构参考 [config.example.toml](config.example.toml)。
+- 默认下载目录为程序文件夹中的 `download/`；相对路径以配置文件所在目录为基准，整体移动文件夹后仍然有效。也可在设置页选择其他下载位置。
 - 启用自动分组后，后端会按来源类型创建目录，例如收藏合集、用户合集、收藏视频或用户作品。
 
 ## 注意事项

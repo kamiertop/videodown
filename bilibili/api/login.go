@@ -14,9 +14,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/dgraph-io/badger/v4"
 	"github.com/kamiertop/videodown/bilibili/util"
 	"github.com/kamiertop/videodown/internal/constant"
+	"github.com/kamiertop/videodown/internal/storage"
 
 	"github.com/kamiertop/videodown/bilibili/model"
 )
@@ -133,12 +133,10 @@ func (b *BiliBili) PollQRCode(qrcodeKey string) (model.PollQRCodeData, error) {
 
 // IsLoggedIn 检测是否已登录, 通过检查数据库中是否存在有效的 cookies 来判断登录状态
 func (b *BiliBili) IsLoggedIn() bool {
-	cookies, err := b.getCookies()
+	_, err := b.getCookies()
 	if err != nil {
-		b.logger.Errorf("failed to get bilibili cookies: %v", err)
 		return false
 	}
-	b.logger.Info(cookies)
 
 	if _, err = b.getCSRF(); err != nil {
 		b.logger.Errorf("failed to get bilibili csrf: %v", err)
@@ -152,25 +150,7 @@ func (b *BiliBili) IsLoggedIn() bool {
 
 // getCookies 获取已登录的 cookies
 func (b *BiliBili) getCookies() (string, error) {
-	var cookie string
-	err := b.store.View(func(txn *badger.Txn) error {
-		item, err := txn.Get([]byte(bilibiliCookieKey))
-		if err != nil {
-			return err
-		}
-
-		return item.Value(func(val []byte) error {
-			cookie = string(val)
-			return nil
-		})
-	})
-	if errors.Is(err, badger.ErrKeyNotFound) {
-		return "", errors.New("未登录")
-	}
-	if err != nil {
-		b.logger.Errorf("failed to get bilibili cookies: %v", err)
-		return "", errors.New("获取登录信息失败")
-	}
+	cookie := b.store.Config().Bilibili.Auth.Cookie
 	if cookie == "" {
 		b.logger.Error("bilibili cookies in db are empty")
 		return "", errors.New("未登录")
@@ -205,19 +185,17 @@ func (b *BiliBili) saveCookieMap(cookieMap map[string]string) error {
 	}
 
 	cookieStr := strings.Join(parts, ";")
-	b.logger.Infof("bilibili cookies assembled successfully: %s", cookieStr)
+	b.logger.Info("bilibili login cookies assembled successfully")
 
 	csrf := cookieMap[bilibiliCSRFKey]
 	if csrf == "" {
 		b.logger.Error("missing bili_jct in login cookies")
 		return errors.New("保存登录信息失败")
 	}
-	if err := b.store.Update(func(txn *badger.Txn) error {
-		if err := txn.Set([]byte(bilibiliCSRFKey), []byte(csrf)); err != nil {
-			b.logger.Errorf("failed to save bilibili cookies with [bili_jct], cookies: %v,err: %e", cookieMap, err)
-			return err
-		}
-		return txn.Set([]byte(bilibiliCookieKey), []byte(cookieStr))
+	if err := b.store.UpdateConfig(func(c *storage.Config) error {
+		c.Bilibili.Auth.CSRF = csrf
+		c.Bilibili.Auth.Cookie = cookieStr
+		return nil
 	}); err != nil {
 		b.logger.Errorf("failed to save bilibili cookies: %v", err)
 		return errors.New("保存登录信息失败")
@@ -256,7 +234,7 @@ func (b *BiliBili) saveRefreshToken(refreshToken string) error {
 		b.logger.Error("bilibili refresh_token is empty")
 		return errors.New("保存刷新令牌失败")
 	}
-	if err := b.store.Set(bilibiliRefreshTokenKey, refreshToken); err != nil {
+	if err := b.store.UpdateConfig(func(c *storage.Config) error { c.Bilibili.Auth.RefreshToken = refreshToken; return nil }); err != nil {
 		b.logger.Errorf("failed to save bilibili refresh_token: %v", err)
 		return errors.New("保存刷新令牌失败")
 	}
@@ -264,13 +242,9 @@ func (b *BiliBili) saveRefreshToken(refreshToken string) error {
 }
 
 func (b *BiliBili) getRefreshToken() (string, error) {
-	refreshToken, err := b.store.Get(bilibiliRefreshTokenKey)
-	if errors.Is(err, badger.ErrKeyNotFound) || strings.TrimSpace(refreshToken) == "" {
+	refreshToken := b.store.Config().Bilibili.Auth.RefreshToken
+	if strings.TrimSpace(refreshToken) == "" {
 		return "", errors.New("缺少刷新令牌，请重新登录")
-	}
-	if err != nil {
-		b.logger.Errorf("failed to get bilibili refresh_token: %v", err)
-		return "", errors.New("获取刷新令牌失败")
 	}
 
 	return refreshToken, nil
@@ -509,12 +483,8 @@ JNrRuoEUXpabUzGB8QIDAQAB
 }
 
 // LogOut 退出登录, 通过调用退出登录接口并清除本地保存的 cookies 来实现退出登录功能
-func (b *BiliBili) LogOut() (model.LogOut, error) {
-	defer func() {
-		if err := b.clearAuthState(); err != nil {
-			b.logger.Errorf("failed to clear auth state: %v", err)
-		}
-	}()
+func (b *BiliBili) LogOut() (result model.LogOut, err error) {
+	defer func() { err = errors.Join(err, b.clearAuthState()) }()
 	var response model.LogOut
 	cookies, err := b.getCookies()
 	if err != nil {

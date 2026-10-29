@@ -182,7 +182,7 @@ func (d *DynamicInt) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// DynamicArchivePage is a Wails-friendly single return value for one dynamic page.
+// DynamicArchivePage contains one page of video posts.
 type DynamicArchivePage struct {
 	Items   []DynamicArchiveItem `json:"items"`
 	Offset  string               `json:"offset"`

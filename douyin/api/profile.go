@@ -39,6 +39,7 @@ func (d *Douyin) Profile() (model.MyInfoResponse, error) {
 		return resp, fmt.Errorf("请求信息接口错误: %d", resp.StatusCode)
 	}
 	d.secUserID = resp.User.SecUid
+	d.userID = resp.User.Uid
 
 	return resp, nil
 }
