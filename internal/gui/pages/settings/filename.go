@@ -1,18 +1,18 @@
 package settings
 
 import (
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/input"
-	"github.com/egoist/mygo/ui"
-	"github.com/kamiertop/videodown/internal/constant"
-	"github.com/kamiertop/videodown/internal/gui/components"
-	"github.com/kamiertop/videodown/internal/gui/style"
-	"github.com/kamiertop/videodown/utils"
 	"path/filepath"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
+
+	"github.com/ELY-Open-Source/MujicaUI/core"
+	"github.com/ELY-Open-Source/MujicaUI/input"
+	"github.com/egoist/mygo/ui"
+	"github.com/kamiertop/videodown/internal/gui/components"
+	"github.com/kamiertop/videodown/internal/gui/preferences"
+	"github.com/kamiertop/videodown/internal/gui/style"
+	"github.com/kamiertop/videodown/utils"
 )
 
 var filenameTokens = regexp.MustCompile(`\{(?:title|source|author|folder|collection|publish_date|date|time|id|author_id)\}`)
@@ -76,7 +76,7 @@ func (s *State) filenameSettings(c *ui.Context, w Services) {
 }
 func (s *State) saveFilename(w Services) {
 	if w.SaveSetting != nil {
-		w.SaveSetting(map[string]string{constant.FilenameTemplateKey: s.Config.Filename, constant.AllowGroupOnSaveKey: strconv.FormatBool(s.Config.Grouping), constant.GroupingRuleKey: s.Config.GroupingRule})
+		w.SaveSetting(preferences.Changes{Filename: preferences.Value(s.Config.Filename), Grouping: preferences.Value(s.Config.Grouping), GroupingRule: preferences.Value(s.Config.GroupingRule)})
 	}
 }
 func (s *State) toggleFilenameField(token string) {

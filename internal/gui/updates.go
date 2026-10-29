@@ -27,7 +27,7 @@ func (s *Shell) startUpdateCheck() {
 	if !s.pages.Settings.Config.AutoUpdate {
 		return
 	}
-	checker, ctx := s.updateChecker, s.biliJobs.ctx
+	checker, ctx := s.updateChecker, s.jobs.ctx
 	var result updater.Result
 	s.runUpdateJob(func() (err error) { result, err = checker.Check(ctx); return err }, func(err error) {
 		if ctx.Err() != nil || err != nil || !s.pages.Settings.Config.AutoUpdate || !result.Available || !semver.IsValid(result.LatestVersion) {

@@ -12,6 +12,7 @@ import (
 	"github.com/egoist/mygo/ui"
 	dyDownload "github.com/kamiertop/videodown/douyin/download"
 	"github.com/kamiertop/videodown/douyin/model"
+	"github.com/kamiertop/videodown/internal/gui/guiruntime"
 )
 
 type testAPI struct {
@@ -87,9 +88,9 @@ type testRuntime struct {
 	timers []func()
 }
 
-func (r *testRuntime) runtime() Runtime {
+func (r *testRuntime) runtime() guiruntime.Runtime {
 	run := func(w func() error, d func(error)) { r.jobs = append(r.jobs, job{w, d}) }
-	return Runtime{Run: run, Background: run, After: func(_ time.Duration, f func()) func() { r.timers = append(r.timers, f); return func() {} }}
+	return guiruntime.Runtime{Run: run, Background: run, After: func(_ time.Duration, f func()) func() { r.timers = append(r.timers, f); return func() {} }}
 }
 func (r *testRuntime) finish(t *testing.T, index int) {
 	t.Helper()

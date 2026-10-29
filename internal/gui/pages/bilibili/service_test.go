@@ -3,13 +3,15 @@ package bilibili
 import (
 	"errors"
 	"fmt"
+	"strconv"
+	"testing"
+	"time"
+
 	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/egoist/mygo/ui"
 	biliapi "github.com/kamiertop/videodown/bilibili/api"
 	"github.com/kamiertop/videodown/bilibili/model"
-	"strconv"
-	"testing"
-	"time"
+	"github.com/kamiertop/videodown/internal/gui/guiruntime"
 )
 
 type fakeAPI struct {
@@ -153,8 +155,8 @@ type fakeRuntime struct {
 	timers []*testTimer
 }
 
-func (r *fakeRuntime) runtime() Runtime {
-	return Runtime{
+func (r *fakeRuntime) runtime() guiruntime.Runtime {
+	return guiruntime.Runtime{
 		Run: func(work func() error, done func(error)) { r.jobs = append(r.jobs, queuedJob{work, done}) },
 		After: func(_ time.Duration, fn func()) func() {
 			timer := &testTimer{fn: fn}

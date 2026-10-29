@@ -1,65 +1,62 @@
 package download
 
-// Task 是前端提交给后端的最小下载任务；流地址已经由前端按用户选择的画质/音质确定。
+// Task describes a download with the selected video and audio streams.
 type Task struct {
-	SourceName string `json:"sourceName"`
-	UpperName  string `json:"upperName"`
-	Bvid       string `json:"bvid"`
+	SourceName string
+	UpperName  string
+	Bvid       string
 	// Cid 为分 P 稿件某一 P 的 cid；单 P 或未填时为 0，行为与旧版一致。
-	Cid      int64  `json:"cid"`
-	Title    string `json:"title"`
-	Cover    string `json:"cover"`
-	Duration int    `json:"duration"`
-	Play     int    `json:"play"`
-	Danmaku  int    `json:"danmaku"`
-	Pubtime  int    `json:"pubtime"`
-	VideoURL string `json:"videoURL"`
-	AudioURL string `json:"audioURL"`
+	Cid      int64
+	Title    string
+	Cover    string
+	Duration int
+	Play     int
+	Danmaku  int
+	Pubtime  int
+	VideoURL string
+	AudioURL string
 }
 
-// Result 记录单个任务的结果，前端据此移除已完成的视频并保留失败项。
+// Result records the outcome of one download task.
 type Result struct {
-	Bvid  string `json:"bvid"`
-	Cid   int64  `json:"cid"`
-	Title string `json:"title"`
-	Path  string `json:"path"`
-	Error string `json:"error"`
+	Bvid  string
+	Cid   int64
+	Title string
+	Path  string
+	Error string
 }
 
 // DownloadKey 标识一个待判断是否已下载的视频：多 P 收藏条目带具体 cid，普通列表项常只有 bvid。
 type DownloadKey struct {
-	Bvid string `json:"bvid"`
-	Cid  int64  `json:"cid"`
+	Bvid string
+	Cid  int64
 }
 
 // BatchResult 汇总批量下载结果；失败不会中断整批任务。
 type BatchResult struct {
-	Results []Result `json:"results"`
-	Success int      `json:"success"`
-	Failed  int      `json:"failed"`
+	Results []Result
+	Success int
+	Failed  int
 }
 
-type progress struct {
-	Bvid           string  `json:"bvid"`
-	Cid            int64   `json:"cid"`
-	Title          string  `json:"title"`
-	Phase          string  `json:"phase"`
-	Downloaded     int64   `json:"downloaded"`
-	Total          int64   `json:"total"`
-	Percent        float64 `json:"percent"`
-	SleepRemaining int64   `json:"sleepRemaining"`
-	SleepTotal     int64   `json:"sleepTotal"`
+type Progress struct {
+	Bvid           string
+	Cid            int64
+	Title          string
+	Phase          string
+	Downloaded     int64
+	Total          int64
+	Percent        float64
+	SleepRemaining int64
+	SleepTotal     int64
 }
 
-// Progress is a download update that the native UI can display without a web event bridge.
-type Progress = progress
-
-func (p progress) withPhase(phase string) progress {
+func (p Progress) withPhase(phase string) Progress {
 	p.Phase = phase
 	return p
 }
 
-func (p progress) withPercent(percent float64) progress {
+func (p Progress) withPercent(percent float64) Progress {
 	p.Percent = percent
 	return p
 }

@@ -2,11 +2,11 @@ package bilibili
 
 import (
 	"context"
-	"github.com/egoist/mygo/ui"
+
 	biliapi "github.com/kamiertop/videodown/bilibili/api"
 	bilidownload "github.com/kamiertop/videodown/bilibili/download"
 	"github.com/kamiertop/videodown/bilibili/model"
-	"time"
+	"github.com/kamiertop/videodown/internal/gui/guiruntime"
 )
 
 // API is implemented directly by *api.BiliBili. Views retain its Go models.
@@ -46,17 +46,6 @@ type DownloadExtras interface {
 	DownloadAudio(bilidownload.Task) (string, error)
 }
 
-// Runtime schedules work outside the view, and delivers completion on the UI
-// thread. After's returned callback cancels a scheduled timer.
-type Runtime struct {
-	Run          func(work func() error, done func(error))
-	Background   func(work func() error, done func(error))
-	Image        func(work func() error, done func(error))
-	After        func(time.Duration, func()) func()
-	OpenFile     func(string) error
-	OpenLocation func(string) error
-}
-
 type resource[T any] struct {
 	Data            T
 	Loading, Loaded bool
@@ -90,8 +79,8 @@ func load[T any](s *State, r *resource[T], work func() (T, error), after func(T)
 	})
 }
 
-func (s *State) Configure(api API, runtime Runtime)         { s.api = api; s.runtime = runtime }
-func (s *State) ConfigureDownloads(backend DownloadBackend) { s.downloadBackend = backend }
+func (s *State) Configure(api API, runtime guiruntime.Runtime) { s.api = api; s.runtime = runtime }
+func (s *State) ConfigureDownloads(backend DownloadBackend)    { s.downloadBackend = backend }
 func (s *State) Start() {
 	if s.api == nil || s.started {
 		return
@@ -150,11 +139,6 @@ func (s *State) enter(section string) {
 	case "favorite", "collection":
 		s.ensureLibrary()
 	}
-}
-
-type imageEntry struct {
-	bitmap  *ui.Bitmap
-	loading bool
 }
 
 // Leave stops account polling when another platform or settings becomes active.

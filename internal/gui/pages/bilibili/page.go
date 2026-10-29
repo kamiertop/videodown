@@ -3,6 +3,7 @@ package bilibili
 
 import (
 	"context"
+
 	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/ELY-Open-Source/MujicaUI/icons"
 	"github.com/ELY-Open-Source/MujicaUI/input"
@@ -12,6 +13,8 @@ import (
 	bilidownload "github.com/kamiertop/videodown/bilibili/download"
 	"github.com/kamiertop/videodown/bilibili/model"
 	"github.com/kamiertop/videodown/internal/gui/components"
+	"github.com/kamiertop/videodown/internal/gui/guiruntime"
+	"github.com/kamiertop/videodown/internal/gui/imagecache"
 	"github.com/kamiertop/videodown/internal/gui/navigation"
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
@@ -24,7 +27,7 @@ type State struct {
 
 	api             API
 	downloadBackend DownloadBackend
-	runtime         Runtime
+	runtime         guiruntime.Runtime
 
 	started, stopped, loggedIn, checking, loggingOut bool
 	activePath, authorTarget                         string
@@ -38,7 +41,7 @@ type State struct {
 	qrImage   *ui.Bitmap
 	qrExpired bool
 	qrStatus  string
-	images    map[string]*imageEntry
+	images    imagecache.Cache
 
 	follows    resource[model.FollowData]
 	followPage int
@@ -126,7 +129,7 @@ type State struct {
 }
 
 func NewState() *State {
-	return &State{images: make(map[string]*imageEntry), stagedKeys: make(map[string]bool), stagedSourceNames: make(map[string]string), queueResolves: make(map[string]*queueResolve), queueProgress: make(map[string]bilidownload.Progress), queueExtraBusy: make(map[string]string), selected: make(map[string]*bool), dynamicSelected: make(map[string]bool), playHistorySelected: make(map[string]*bool), authorTab: "uploads", favoriteTab: "favorite", searches: make(map[string]*string), scrolls: make(map[string]*ui.ScrollState), autoPages: make(map[string]*autoPageState)}
+	return &State{images: make(imagecache.Cache), stagedKeys: make(map[string]bool), stagedSourceNames: make(map[string]string), queueResolves: make(map[string]*queueResolve), queueProgress: make(map[string]bilidownload.Progress), queueExtraBusy: make(map[string]string), selected: make(map[string]*bool), dynamicSelected: make(map[string]bool), playHistorySelected: make(map[string]*bool), authorTab: "uploads", favoriteTab: "favorite", searches: make(map[string]*string), scrolls: make(map[string]*ui.ScrollState), autoPages: make(map[string]*autoPageState)}
 }
 func (s *State) Link() *string { return &s.link }
 

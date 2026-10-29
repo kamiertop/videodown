@@ -27,7 +27,7 @@ type Services struct {
 	SettingsAvailable                      bool
 	SettingsBusy                           bool
 	BrowsingSettings                       bool
-	SaveSetting                            func(map[string]string)
+	SaveSetting                            func(preferences.Changes)
 	BrowseDirectory                        func()
 	BrowseFFmpeg                           func()
 	CheckFFmpeg                            func()

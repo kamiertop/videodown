@@ -35,7 +35,7 @@ func sanitizeFilename(name string) string {
 	return t
 }
 
-// downloadedCachePath 返回已下载缓存中的文件路径；缓存只在后端使用，不增加前端协议字段。
+// downloadedCachePath 返回已下载缓存中的文件路径；缓存只在下载服务使用，不增加界面传输字段。
 func (s *Service) downloadedCachePath(cid int64) (string, bool) {
 	key := util.DownloadCacheKey(cid)
 	if key == "" {
@@ -78,7 +78,7 @@ func (s *Service) isDownloaded(cid int64) (string, bool) {
 }
 
 // DownloadedVideoKeys 返回 keys 中已下载（缓存存在且文件仍在）元素的下标，
-// 供前端批量会话在解析播放地址前做增量过滤，省掉对整页已下载视频的解析请求。
+// 供界面批量会话在解析播放地址前做增量过滤，省掉对整页已下载视频的解析请求。
 // cid > 0 时精确匹配该分 P；未提供 cid 时该 bvid 任意分 P 已下载即视为已下载。
 func (s *Service) DownloadedVideoKeys(keys []DownloadKey) ([]int, error) {
 	// 全部带 cid 时直接按缓存 key 点查，不必扫描下载历史（cid 全局唯一，命中即该视频）。

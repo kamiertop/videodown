@@ -105,7 +105,7 @@ func TestStartupUpdatePreferencesFailuresAndClosure(t *testing.T) {
 				s.pages.Settings.Config.AutoUpdate = false
 			}
 			if test.cancel {
-				s.stopBilibili()
+				s.stopJobs()
 			}
 			done(err)
 			if s.updateOpen {

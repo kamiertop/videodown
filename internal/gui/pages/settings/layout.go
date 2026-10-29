@@ -1,16 +1,14 @@
 package settings
 
 import (
-	"strconv"
-
 	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/ELY-Open-Source/MujicaUI/icons"
 	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/ELY-Open-Source/MujicaUI/layout"
 	"github.com/egoist/mygo/ui"
-
 	"github.com/kamiertop/videodown/internal/gui/components"
 	"github.com/kamiertop/videodown/internal/gui/navigation"
+	"github.com/kamiertop/videodown/internal/gui/preferences"
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
 
@@ -110,15 +108,14 @@ func settingCard(c *ui.Context, title, icon string, body func()) {
 		body()
 	})
 }
-func saveSetting(w Services, key, value string) {
+func saveSetting(w Services, changes preferences.Changes) {
 	if w.SaveSetting != nil {
-		w.SaveSetting(map[string]string{key: value})
+		w.SaveSetting(changes)
 	}
 }
-func number(value float64) string { return strconv.Itoa(int(value)) }
-func toggleCard(c *ui.Context, title, icon, label, description string, value *bool, w Services, key string) {
+func toggleCard(c *ui.Context, title, icon, label, description string, value *bool, w Services, changes func(bool) preferences.Changes) {
 	settingCard(c, title, icon, func() {
-		insetToggle(c, label, description, value, false, func() { saveSetting(w, key, strconv.FormatBool(*value)) })
+		insetToggle(c, label, description, value, false, func() { saveSetting(w, changes(*value)) })
 	})
 }
 func insetToggle(c *ui.Context, label, description string, value *bool, disabled bool, changed func()) {

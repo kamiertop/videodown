@@ -40,6 +40,7 @@ func first(urls []string) string {
 	}
 	return ""
 }
+
 func title(v model.AwemeItem) string {
 	for _, s := range []string{v.ItemTitle, v.Caption, v.Desc, v.AwemeId} {
 		if strings.TrimSpace(s) != "" {
@@ -48,6 +49,7 @@ func title(v model.AwemeItem) string {
 	}
 	return "未命名作品"
 }
+
 func cover(v model.AwemeItem) string {
 	for _, c := range []model.Cover{v.Video.Cover, v.Video.OriginCover, v.Video.DynamicCover} {
 		if u := first(c.UrlList); u != "" {
@@ -59,6 +61,7 @@ func cover(v model.AwemeItem) string {
 	}
 	return ""
 }
+
 func bestTrack(v model.AwemeItem) int {
 	index, rate := -1, -1
 	for i, track := range v.Video.BitRate {
@@ -68,6 +71,7 @@ func bestTrack(v model.AwemeItem) int {
 	}
 	return index
 }
+
 func taskFor(v model.AwemeItem, track int, sourceName string) (dyDownload.Task, error) {
 	task := dyDownload.Task{AwemeID: v.AwemeId, SourceName: sourceName, Title: title(v), Cover: cover(v), AuthorName: v.Author.Nickname, Duration: videoDuration(v), PublishTime: v.CreateTime, DiggCount: int(v.Statistics.DiggCount), CollectCount: int(v.Statistics.CollectCount), MusicURL: first(v.Music.PlayUrl.UrlList)}
 	if v.PreventDownload {
@@ -102,6 +106,7 @@ func taskFor(v model.AwemeItem, track int, sourceName string) (dyDownload.Task, 
 	}
 	return task, nil
 }
+
 func (s *State) stage(v model.AwemeItem) {
 	if v.AwemeId == "" {
 		return
@@ -113,6 +118,7 @@ func (s *State) stage(v model.AwemeItem) {
 	}
 	s.staged = append(s.staged, &queuedVideo{Data: v, Track: bestTrack(v), ResolvedAt: time.Now()})
 }
+
 func (s *State) stageSelected(navigate func(string)) {
 	for _, v := range s.videos.Data.Items {
 		if s.selected[v.AwemeId] {
@@ -122,6 +128,7 @@ func (s *State) stageSelected(navigate func(string)) {
 	s.selected = map[string]bool{}
 	navigate("/douyin/download")
 }
+
 func (s *State) parse() {
 	if s.parsing || s.api == nil || s.runtime.Run == nil {
 		return
@@ -163,6 +170,7 @@ func (s *State) parse() {
 		s.stage(video)
 	})
 }
+
 func (s *State) request(items []*queuedVideo) {
 	if s.backend == nil {
 		return
@@ -182,6 +190,7 @@ func (s *State) request(items []*queuedVideo) {
 	s.groups = append(s.groups, &downloadGroup{ID: s.nextGroup, Order: s.nextGroup, Status: "queued", Items: pending, Seen: map[string]bool{}})
 	s.pump()
 }
+
 func (s *State) requestAll(navigate func(string)) {
 	if s.source.Load == nil || s.backend == nil {
 		return
@@ -197,6 +206,7 @@ func (s *State) requestAll(navigate func(string)) {
 	navigate("/douyin/download")
 	s.pump()
 }
+
 func (s *State) PendingDownloadCount() int {
 	n := 0
 	for _, item := range s.staged {
@@ -211,6 +221,7 @@ func (s *State) PendingDownloadCount() int {
 	}
 	return n
 }
+
 func (s *State) pump() {
 	if s.stopped || s.backend == nil || s.runtime.Background == nil {
 		return
@@ -229,6 +240,7 @@ func (s *State) pump() {
 		s.advance(next)
 	}
 }
+
 func (s *State) advance(g *downloadGroup) {
 	if s.stopped || g.Status != "active" || g.Loading {
 		return
@@ -305,6 +317,7 @@ func (s *State) advance(g *downloadGroup) {
 	}
 	s.pump()
 }
+
 func (s *State) runItem(g *downloadGroup, item *queuedVideo) {
 	item.Status, item.Error, item.Progress = "active", "", dyDownload.Progress{}
 	g.InFlight++

@@ -2,13 +2,15 @@ package gui
 
 import (
 	"fmt"
-	"github.com/egoist/mygo/ui"
-	"github.com/kamiertop/videodown/bilibili/model"
-	"github.com/kamiertop/videodown/internal/gui/pages/bilibili"
 	"image/png"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/egoist/mygo/ui"
+	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/internal/gui/guiruntime"
+	"github.com/kamiertop/videodown/internal/gui/pages/bilibili"
 )
 
 type historyAuthorAPI struct {
@@ -55,7 +57,7 @@ func TestLibraryTabAndAuthorUseTitlebarHistory(t *testing.T) {
 			done func(error)
 		}
 		var jobs []job
-		s.pages.Bilibili.Configure(api, bilibili.Runtime{Run: func(work func() error, done func(error)) { jobs = append(jobs, job{work, done}) }})
+		s.pages.Bilibili.Configure(api, guiruntime.Runtime{Run: func(work func() error, done func(error)) { jobs = append(jobs, job{work, done}) }})
 		s.pages.Bilibili.Start()
 		flush := func() {
 			for len(jobs) > 0 {
@@ -113,7 +115,7 @@ func TestAuthorDetailUsesTitlebarHistory(t *testing.T) {
 			done func(error)
 		}
 		var jobs []job
-		s.pages.Bilibili.Configure(api, bilibili.Runtime{Run: func(work func() error, done func(error)) { jobs = append(jobs, job{work, done}) }})
+		s.pages.Bilibili.Configure(api, guiruntime.Runtime{Run: func(work func() error, done func(error)) { jobs = append(jobs, job{work, done}) }})
 		s.pages.Bilibili.Start()
 		defer s.pages.Bilibili.Stop()
 		flush := func() {

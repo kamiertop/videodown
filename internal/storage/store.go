@@ -155,7 +155,7 @@ func (s *Store) HistoryRows(platform string) ([]string, error) {
 
 // BilibiliVideoRows excludes audio and cover records for downloaded-video matching.
 func (s *Store) BilibiliVideoRows() ([]string, error) {
-	rows := []string{}
+	var rows []string
 	err := s.db.Select(&rows, `SELECT payload FROM download_history WHERE platform='bilibili' AND cid>0 AND key NOT LIKE 'bilibili:downloaded:audio:%' AND key NOT LIKE 'bilibili:downloaded:cover:%'`)
 	return rows, err
 }

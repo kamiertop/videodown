@@ -1,14 +1,15 @@
 package gui
 
 import (
-	"github.com/egoist/mygo/ui"
-	"github.com/kamiertop/videodown/internal/constant"
-	"github.com/kamiertop/videodown/internal/storage"
 	"image/png"
 	"math"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/egoist/mygo/ui"
+	"github.com/kamiertop/videodown/internal/gui/preferences"
+	"github.com/kamiertop/videodown/internal/storage"
 )
 
 func TestSettingsLayoutAndPersistence(t *testing.T) {
@@ -149,9 +150,9 @@ func TestQueuedSettingsKeepLatestValue(t *testing.T) {
 	s := NewShellWithOptions(Options{Settings: store, Preferences: store})
 	var jobs []func()
 	s.runJob = func(work func() error, done func(error)) { jobs = append(jobs, func() { done(work()) }) }
-	s.saveSettings(map[string]string{constant.SleepTimeKey: "10"})
-	s.saveSettings(map[string]string{constant.SleepTimeKey: "30"})
-	s.saveSettings(map[string]string{constant.SleepTimeKey: "120"})
+	s.saveSettings(preferences.Changes{Sleep: preferences.Value(int64(10))})
+	s.saveSettings(preferences.Changes{Sleep: preferences.Value(int64(30))})
+	s.saveSettings(preferences.Changes{Sleep: preferences.Value(int64(120))})
 	if len(jobs) != 1 {
 		t.Fatal("concurrent config writers were started")
 	}

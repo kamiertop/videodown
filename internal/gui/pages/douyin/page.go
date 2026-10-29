@@ -230,11 +230,7 @@ func (s *State) libraryPage(c *ui.Context, path string, navigate func(string)) {
 				}
 			}
 
-			name := s.source.Title
-			if name == "" {
-				name = "请选择列表"
-			}
-			ui.Text(c, name).Grow(1).MinWidth(0).MaxLines(1).FontWeight(style.WeightSemibold)
+			ui.Row(c).Grow(1).MinWidth(0)
 			caption(c, fmt.Sprintf("已加载 %d", len(s.videos.Data.Items)))
 			button(c, "刷新视频", input.ButtonOptions{Variant: input.Outline, Loading: s.videos.Loading, Disabled: s.source.Load == nil}).OnClick(func() { s.useSource(s.source) })
 			count := 0
