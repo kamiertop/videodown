@@ -70,7 +70,7 @@ func TestRouterHistory(t *testing.T) {
 	}
 }
 
-// The landing page must center both platform entry targets in the available
+// The landing page must center all platform entry targets in the available
 // content area, with no welcome cards or form controls.
 func TestHomeLayout(t *testing.T) {
 	for _, size := range [][2]int{{1200, 880}, {760, 600}} {
@@ -83,15 +83,16 @@ func TestHomeLayout(t *testing.T) {
 		}
 		bili, okBili := test.Find("进入BiliBili")
 		douyin, okDouyin := test.Find("进入抖音")
-		if !okBili || !okDouyin {
+		youtube, okYouTube := test.Find("进入YouTube")
+		if !okBili || !okDouyin || !okYouTube {
 			t.Fatal("platform entries missing")
 		}
 		centerX := content.X + content.W/2
 		centerY := content.Y + content.H/2
-		if math.Abs(float64((bili.X+douyin.X+douyin.W)/2-centerX)) > 1 || math.Abs(float64(bili.Y+bili.H/2-centerY)) > 1 || bili.Y != douyin.Y {
+		if math.Abs(float64((bili.X+youtube.X+youtube.W)/2-centerX)) > 1 || math.Abs(float64(bili.Y+bili.H/2-centerY)) > 1 || bili.Y != douyin.Y || bili.Y != youtube.Y {
 			t.Fatalf("entries are not centered at %v: content=%+v bili=%+v douyin=%+v", size, content, bili, douyin)
 		}
-		if bili.X < content.X || douyin.X+douyin.W > content.X+content.W || bili.Y < content.Y || bili.Y+bili.H > content.Y+content.H {
+		if bili.X < content.X || youtube.X+youtube.W > content.X+content.W || bili.Y < content.Y || bili.Y+bili.H > content.Y+content.H {
 			t.Fatal("home entries overflow")
 		}
 		if test.HasText("欢迎使用") || test.HasText("快捷操作") {

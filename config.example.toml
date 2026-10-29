@@ -31,3 +31,6 @@ refresh_token = ""
 
 [douyin]
 cookie = ""
+
+[youtube]
+cookie = ""

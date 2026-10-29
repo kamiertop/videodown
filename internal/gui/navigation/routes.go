@@ -26,6 +26,7 @@ func (p Page) Path() string {
 var catalog = []Page{
 	{ID: "bilibili", Label: "BiliBili", Hint: "收藏夹与视频下载"},
 	{ID: "douyin", Label: "抖音", Hint: "作品解析与下载"},
+	{ID: "youtube", Label: "YouTube", Hint: "视频解析与下载"},
 	{ID: "settings", Label: "设置", Hint: "下载目录与偏好"},
 	{ID: "home", Label: "首页", Hint: "从喜欢的平台开始，整理与下载你的视频。"},
 }
@@ -67,6 +68,8 @@ func (p Page) Sections() []Section {
 			sections = append(sections, Section{"collection", "合集"})
 		}
 		return sections
+	case "youtube":
+		return []Section{{"download", "视频下载"}, {"history", "下载历史"}, {"profile", "账号"}}
 	case "settings":
 		return []Section{{"", "通用"}, {"bilibili", "哔哩哔哩"}, {"download", "下载"}, {"filename", "命名模板"}, {"ffmpeg", "FFmpeg"}, {"about", "关于"}}
 	}
@@ -84,7 +87,7 @@ func (p Page) CurrentSection(path string) string {
 	}
 	id := strings.TrimPrefix(path, p.Path())
 	id = strings.TrimPrefix(id, "/")
-	if id == "" && (p.ID == "bilibili" || p.ID == "douyin") {
+	if id == "" && (p.ID == "bilibili" || p.ID == "douyin" || p.ID == "youtube") {
 		return "download"
 	}
 	return id
@@ -97,7 +100,7 @@ func All() []Page { return append([]Page(nil), catalog...) }
 func Platforms() []Page {
 	var result []Page
 	for _, p := range catalog {
-		if p.ID == "bilibili" || p.ID == "douyin" {
+		if p.ID == "bilibili" || p.ID == "douyin" || p.ID == "youtube" {
 			result = append(result, p)
 		}
 	}

@@ -20,7 +20,7 @@ func (s *Store) setHistory(key, platform, payload string) error {
 		return err
 	}
 	author := meta.UpperName
-	if platform == "douyin" {
+	if platform == "douyin" || platform == "youtube" {
 		author = meta.AuthorName
 	}
 	_, err := s.db.NamedExec(`INSERT INTO download_history(key,platform,bvid,cid,title,author,downloaded,payload)

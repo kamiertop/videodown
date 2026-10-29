@@ -12,6 +12,7 @@ import (
 // Config is the application's TOML model. Snapshot it with Store.Config;
 // commit edits through Store.UpdateConfig to preserve concurrent updates.
 type Config struct {
+	YouTube  YouTubeConfig  `toml:"youtube"`
 	App      AppConfig      `toml:"app"`
 	Download DownloadConfig `toml:"download"`
 	Bilibili BilibiliConfig `toml:"bilibili"`
@@ -44,6 +45,10 @@ type BilibiliAuth struct {
 	UID          uint64 `toml:"uid"`
 	RefreshToken string `toml:"refresh_token"`
 }
+type YouTubeConfig struct {
+	Cookie string `toml:"cookie"`
+}
+
 type DouyinConfig struct {
 	Cookie string `toml:"cookie"`
 }

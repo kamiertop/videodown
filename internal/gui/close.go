@@ -13,7 +13,7 @@ import (
 )
 
 func (s *Shell) activeCount() int {
-	count := s.pages.Bilibili.PendingDownloadCount() + s.pages.Douyin.PendingDownloadCount()
+	count := s.pages.Bilibili.PendingDownloadCount() + s.pages.Douyin.PendingDownloadCount() + s.pages.YouTube.PendingDownloadCount()
 	if s.activeDownloads != nil {
 		count = max(count, s.activeDownloads())
 	}
