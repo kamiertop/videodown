@@ -31,7 +31,7 @@ func (d *Douyin) FollowList(offset int) (model.FollowResponse, error) {
 			"offset":               offset, // 偏移量，初始为0，后续每次请求加上返回的count
 			"min_time":             0,
 			"max_time":             0,
-			"count":                20,
+			"count":                12,
 			"source_type":          4,
 			"gps_access":           0,
 			"is_top":               1,

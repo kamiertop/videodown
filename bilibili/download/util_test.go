@@ -17,7 +17,7 @@ func newTestService(t *testing.T) *Service {
 		t.Fatalf("open memory store: %v", err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-	return NewService(logger.New(), store, nil, func() (string, error) { return "", nil })
+	return NewService(logger.New(), store, func() (string, error) { return "", nil })
 }
 
 func TestDownloadedVideoKeys(t *testing.T) {

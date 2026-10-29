@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/kamiertop/videodown/bilibili/model"
@@ -44,6 +45,7 @@ func (b *BiliBili) FollowList(pn, ps int) (model.FollowData, error) {
 	}
 	if resp.Code != model.SuccessCode {
 		b.logger.Errorf("request follow list error, code: %d, message: %s", resp.Code, resp.Message)
+		return resp.Data, errors.New("获取关注列表失败: " + resp.Message)
 	}
 
 	return resp.Data, nil

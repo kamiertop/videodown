@@ -15,3 +15,11 @@ func TestParseMid(t *testing.T) {
 	NoError(t, err)
 	Equal(t, "325864133", mid)
 }
+
+func TestParseMidMissingUID(t *testing.T) {
+	for _, raw := range []string{"space.bilibili.com", "https://space.bilibili.com", "https://space.bilibili.com/", "https://space.bilibili.com/not-a-mid"} {
+		if _, err := ParseMid(raw); err == nil {
+			t.Errorf("expected invalid UID for %q", raw)
+		}
+	}
+}

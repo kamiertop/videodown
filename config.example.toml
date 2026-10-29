@@ -1,0 +1,33 @@
+# 与可执行文件放在同一文件夹中的 config.toml 使用以下结构。
+# 首次启动会自动创建配置；相对下载路径基于配置文件所在目录解析。
+# 布尔值和数字直接填写；省略的字段使用默认值。
+
+[app]
+theme = "light"
+auto_update = true
+# 首次关闭时询问；取消注释可固定关闭行为。
+# close_to_tray = true
+
+[download]
+directory = "./download"
+ffmpeg_path = ""
+filename_template = "{title}"
+grouping = true
+grouping_rule = "author_source"
+concurrency = 1
+sleep_seconds = 60
+skip_downloaded = true
+
+[bilibili]
+default_quality = 0
+parse_concurrency = 3
+parse_sleep_seconds = 5
+
+[bilibili.auth]
+cookie = ""
+csrf = ""
+uid = 0
+refresh_token = ""
+
+[douyin]
+cookie = ""

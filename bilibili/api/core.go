@@ -1,97 +1,67 @@
 package api
 
 import (
-	"errors"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/dgraph-io/badger/v4"
 	"github.com/imroc/req/v3"
-	"github.com/kamiertop/videodown/bilibili/model"
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/logger"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-const (
-	bilibiliCookieKey       = "bilibili_cookies"
-	bilibiliCSRFKey         = "bili_jct"
-	bilibiliMidKey          = "bilibili_mid"
-	bilibiliRefreshTokenKey = "bilibili_refresh_token"
-)
+const bilibiliCSRFKey = "bili_jct"
 
 type BiliBili struct {
 	logger *logger.Logger
 	client *req.Client
 	store  *storage.Store
-	events *application.EventManager
+
 	wbiKey *wbiKeys // lazy init
-	// 下载历史的内存缓存：按下载时间倒序。删除/清空在本包可直接失效；
-	// 写入发生在 download 包（无法跨包通知），用短 TTL 兜底新记录的可见性。
-	historyMu    sync.RWMutex
-	historyItems []model.DownloadHistoryItem
-	historyValid bool
-	historyStamp time.Time
+	wbiMu  sync.Mutex
 }
 
-func New(log *logger.Logger, store *storage.Store, events *application.EventManager) *BiliBili {
+func New(log *logger.Logger, store *storage.Store) *BiliBili {
 	var client = req.C().
 		EnableAutoDecompress().
+		SetTimeout(20*time.Second).
 		SetCommonRetryCount(2).
 		SetCommonRetryBackoffInterval(300*time.Millisecond, 2*time.Second)
 	if logger.IsDevMode() {
-		client.SetLogger(log).EnableDebugLog()
+		client.SetLogger(log)
 	}
 	return &BiliBili{
 		logger: log.WithName("BiliBili"),
 		client: client,
 		store:  store,
-		events: events,
 	}
 }
 
-func (b *BiliBili) getParsePlayURLNumSafe() int {
-	value, err := b.store.ParsePlayURLNum()
-	if err != nil || value <= 0 {
-		return 3
-	}
-	return value
-}
-
-func (b *BiliBili) getParsePlayURLSleepSafe() int {
-	value, err := b.store.ParsePlayURLSleep()
-	if err != nil || value < 0 {
-		return 5
-	}
-	return value
-}
+func (b *BiliBili) getParsePlayURLNumSafe() int   { return b.store.Config().Bilibili.ParseConcurrency }
+func (b *BiliBili) getParsePlayURLSleepSafe() int { return b.store.Config().Bilibili.ParseSleepSeconds }
 
 func (b *BiliBili) getCSRF() (string, error) {
-	return b.store.Get(bilibiliCSRFKey)
+	value := b.store.Config().Bilibili.Auth.CSRF
+	if value == "" {
+		return "", storage.ErrNotFound
+	}
+	return value, nil
 }
 
 func (b *BiliBili) saveMid(mid uint64) error {
-	return b.store.Set(bilibiliMidKey, strconv.FormatUint(mid, 10))
+	return b.store.UpdateConfig(func(c *storage.Config) error { c.Bilibili.Auth.UID = mid; return nil })
 }
 
 func (b *BiliBili) getMid() (string, error) {
-	return b.store.Get(bilibiliMidKey)
+	uid := b.store.Config().Bilibili.Auth.UID
+	if uid == 0 {
+		return "", storage.ErrNotFound
+	}
+	return strconv.FormatUint(uid, 10), nil
 }
 
 func (b *BiliBili) clearAuthState() error {
-	keys := []string{bilibiliCookieKey, bilibiliCSRFKey, bilibiliMidKey, bilibiliRefreshTokenKey}
-
-	return b.store.Update(func(txn *badger.Txn) error {
-		for _, key := range keys {
-			err := txn.Delete([]byte(key))
-			if err != nil && !errors.Is(err, badger.ErrKeyNotFound) {
-				return err
-			}
-		}
-
-		return nil
-	})
+	return b.store.UpdateConfig(func(c *storage.Config) error { c.Bilibili.Auth = storage.BilibiliAuth{}; return nil })
 }
 
 func (b *BiliBili) CookieFunc() func() (string, error) {

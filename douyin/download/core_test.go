@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/kamiertop/videodown/internal/constant"
+	"github.com/kamiertop/videodown/internal/storage"
 )
 
 // 与 B 站对齐：增量开关控制已下载跳过。开启（含未设置时的默认开启）时缓存命中直接跳过、
@@ -15,10 +15,10 @@ func TestDownloadTaskRespectsIncrementalSwitch(t *testing.T) {
 
 	// downloadTask 在跳过检查之后才解析下载目录，先准备好基础设置避免目录解析报错挡在前面。
 	dir := t.TempDir()
-	if err := s.store.Set(constant.StorageKey, dir); err != nil {
+	if err := s.store.UpdateConfig(func(c *storage.Config) error { c.Download.Directory = dir; return nil }); err != nil {
 		t.Fatalf("set storage path: %v", err)
 	}
-	if err := s.store.Set(constant.GroupingRuleKey, "none"); err != nil {
+	if err := s.store.UpdateConfig(func(c *storage.Config) error { c.Download.GroupingRule = "none"; return nil }); err != nil {
 		t.Fatalf("set grouping rule: %v", err)
 	}
 
@@ -37,7 +37,7 @@ func TestDownloadTaskRespectsIncrementalSwitch(t *testing.T) {
 	}
 
 	// 关闭增量下载：不再跳过，老老实实重新下载。
-	if err = s.store.Set(constant.SkipDownloadedKey, "false"); err != nil {
+	if err = s.store.UpdateConfig(func(c *storage.Config) error { c.Download.SkipDownloaded = false; return nil }); err != nil {
 		t.Fatalf("set skipDownloaded: %v", err)
 	}
 	_, skipped, err = s.downloadTask(task)

@@ -11,8 +11,7 @@ permissions:
 
 env:
   APP_NAME: videodown
-  WAILS_VERSION: v3.0.0-beta.13
-  NODE_OPTIONS: --max-old-space-size=4096
+  CGO_ENABLED: '0'
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
@@ -25,20 +24,16 @@ jobs:
         include:
           - name: linux-amd64
             os: ubuntu-latest
-            platform: linux/amd64
+            target: linux
             archive: videodown-linux-amd64.tar.gz
-            build_tags: webkit2_41
           - name: windows-amd64
             os: windows-latest
-            platform: windows/amd64
+            target: windows
             archive: videodown-windows-amd64.zip
-            build_tags: ""
           - name: macos-universal
             os: macos-latest
-            platform: darwin/universal
+            target: darwin
             archive: videodown-macos-universal.tar.gz
-            build_tags: ""
-
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -46,96 +41,50 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v7.0.0
         with:
-          go-version: "1.27.0"
-          token: ${{ github.token }}
+          go-version-file: go.mod
           cache: true
           cache-dependency-path: go.sum
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "24"
-          cache: npm
-          check-latest: false
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install Linux build dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev xvfb
-
-      - name: Add Go bin to PATH
+      - name: Test and check native UI
         shell: bash
-        run: echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
-
-      - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@${{ env.WAILS_VERSION }}
-
-      - name: Build Wails app
-        shell: bash
-        env:
-          mode: prod
         run: |
-          LDFLAGS="-X github.com/kamiertop/videodown/internal/updater.Version=${{ github.ref_name }} -X github.com/kamiertop/videodown/logger.Mode=prod"
-          target_os="${{ matrix.platform }}"
-          target_arch="${target_os#*/}"
-          target_os="${target_os%%/*}"
-          if [ "$target_arch" = "universal" ]; then
-            target_arch="arm64"
-          fi
-          output="build/bin/${{ env.APP_NAME }}"
-          if [ "$target_os" = "windows" ]; then
-            output="$output.exe"
-          fi
-          # The TypeScript bindings are generated artifacts and are not committed.
-          # Generate them before compiling the frontend so imports under @bindings exist
-          # in a clean CI checkout.
-          wails3 generate bindings -clean=true -ts -i
-          cd frontend && npm ci && npm run build && cd ..
-          GOOS="$target_os" GOARCH="$target_arch" go build -buildvcs=false -ldflags "$LDFLAGS" -o "$output"
-          updater_output="build/bin/${{ env.APP_NAME }}-updater"
-          if [ "$target_os" = "windows" ]; then
-            updater_output="$updater_output.exe"
-          fi
-          GOOS="$target_os" GOARCH="$target_arch" go build -buildvcs=false -o "$updater_output" ./cmd/updater
-          if [ "${{ runner.os }}" = "Linux" ]; then
-            xvfb-run --auto-servernum true
+          go test ./...
+          go tool mygo vet .
+
+      - name: Build native app and updater
+        shell: bash
+        run: |
+          mkdir -p build/bin
+          version="${{ github.ref_name }}"
+          target="${{ matrix.target }}"
+          if [ "$target" = darwin ]; then
+            for arch in amd64 arm64; do
+              go run ./cmd/package -os darwin -arch "$arch" -version "$version" -out "build/$arch"
+            done
+            lipo -create build/amd64/videodown build/arm64/videodown -output build/bin/videodown
+            lipo -create build/amd64/videodown-updater build/arm64/videodown-updater -output build/bin/videodown-updater
           else
-            true
+            go run ./cmd/package -os "$target" -arch amd64 -version "$version" -out build/bin
           fi
 
-      - name: Package Linux artifact
-        if: runner.os == 'Linux'
+      - name: Package Unix artifact
+        if: runner.os != 'Windows'
         shell: bash
         run: |
-          package_dir="dist/package/${{ env.APP_NAME }}"
+          package_dir="dist/package/videodown"
           mkdir -p "$package_dir"
-          cp "build/bin/${{ env.APP_NAME }}" "$package_dir/"
-          cp "build/bin/${{ env.APP_NAME }}-updater" "$package_dir/"
-          cp "build/appicon.png" "$package_dir/"
-          tar -czf "dist/${{ matrix.archive }}" -C "dist/package" "${{ env.APP_NAME }}"
+          cp build/bin/videodown build/bin/videodown-updater internal/gui/assets/appicon.png "$package_dir/"
+          chmod +x "$package_dir/videodown" "$package_dir/videodown-updater"
+          tar -czf "dist/${{ matrix.archive }}" -C dist/package videodown
 
       - name: Package Windows artifact
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $PackageDir = "dist/package/${{ env.APP_NAME }}"
+          $PackageDir = "dist/package/videodown"
           New-Item -ItemType Directory -Force -Path "$PackageDir" | Out-Null
-          Copy-Item "build/bin/${{ env.APP_NAME }}.exe" "$PackageDir/"
-          Copy-Item "build/bin/${{ env.APP_NAME }}-updater.exe" "$PackageDir/"
+          Copy-Item build/bin/videodown.exe, build/bin/videodown-updater.exe, internal/gui/assets/appicon.png -Destination "$PackageDir/"
           Compress-Archive -Path "$PackageDir" -DestinationPath "dist/${{ matrix.archive }}" -Force
-
-      - name: Package macOS artifact
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          package_dir="dist/package/${{ env.APP_NAME }}"
-          mkdir -p "$package_dir"
-          cp "build/bin/${{ env.APP_NAME }}" "$package_dir/"
-          cp "build/bin/${{ env.APP_NAME }}-updater" "$package_dir/"
-          chmod +x "$package_dir/${{ env.APP_NAME }}"
-          tar -czf "dist/${{ matrix.archive }}" -C "dist/package" "${{ env.APP_NAME }}"
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v6

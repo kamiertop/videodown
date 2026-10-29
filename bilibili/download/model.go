@@ -51,6 +51,9 @@ type progress struct {
 	SleepTotal     int64   `json:"sleepTotal"`
 }
 
+// Progress is a download update that the native UI can display without a web event bridge.
+type Progress = progress
+
 func (p progress) withPhase(phase string) progress {
 	p.Phase = phase
 	return p

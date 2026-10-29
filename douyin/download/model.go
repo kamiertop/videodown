@@ -37,7 +37,7 @@ type BatchResult struct {
 	Failed  int      `json:"failed"`
 }
 
-// progress 通过 Wails 事件推给前端，前端按 awemeId 更新对应卡片进度。
+// progress describes download state published through the native listener.
 type progress struct {
 	AwemeID        string  `json:"awemeId"`
 	Title          string  `json:"title"`
@@ -48,6 +48,8 @@ type progress struct {
 	SleepRemaining int64   `json:"sleepRemaining"`
 	SleepTotal     int64   `json:"sleepTotal"`
 }
+
+type Progress = progress
 
 func (p progress) withPhase(phase string) progress {
 	p.Phase = phase
