@@ -23,7 +23,7 @@ func (s *State) Layout(c *ui.Context, path string, navigate func(string), conten
 			Padding(8).Gap(6).Background(k.Surface).BorderColor(k.Border).BorderWidth(0, 1, 0, 0).
 			Children(func() {
 				ui.Text(c, "YouTube").FillWidth().TextAlign(ui.Center).FontSize(style.Font(c, style.FontCompact)).TextColor(k.TextMuted)
-				for _, item := range []struct{ id, label, icon string }{{"download", "下载", "download"}, {"history", "下载历史", "clock"}} {
+				for _, item := range []struct{ id, label, icon string }{{"download", "下载", "download"}, {"playlist", "播放列表", "list"}, {"history", "下载历史", "clock"}} {
 					s.navButton(c, item.id, item.label, item.icon, section == item.id, navigate)
 				}
 				ui.Column(c).Grow(1)

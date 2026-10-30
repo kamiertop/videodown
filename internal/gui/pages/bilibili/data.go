@@ -209,6 +209,7 @@ func (s *State) loadSeason(id, page int, more bool) {
 		s.seasonPage = page
 	})
 }
+
 func (s *State) loadSeries(id, page int, more bool) {
 	mid := strconv.FormatUint(s.authorInfo.Data.Mid, 10)
 	if id == s.selectedSeries && s.seriesVideos.Loading {

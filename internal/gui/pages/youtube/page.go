@@ -16,6 +16,10 @@ import (
 )
 
 func (s *State) Form(c *ui.Context, path string, scroll *ui.ScrollState) {
+	if strings.HasSuffix(path, "/playlist") {
+		s.playlistPage(c, scroll)
+		return
+	}
 	if strings.HasSuffix(path, "/profile") {
 		s.accountPage(c, scroll)
 		return
@@ -45,7 +49,7 @@ func (s *State) Form(c *ui.Context, path string, scroll *ui.ScrollState) {
 					)
 					field.Element.Grow(1).MinWidth(0)
 					field.Input.OnSubmit(s.resolve)
-					components.Button(c.Key("parse"), "解析视频", input.ButtonOptions{Variant: input.Primary, Loading: s.busy && !s.downloading, Disabled: s.busy || s.api == nil || strings.TrimSpace(s.Link) == ""}).OnClick(s.resolve)
+					components.Button(c.Key("parse"), "解析视频", input.ButtonOptions{Variant: input.Primary, Loading: s.busy, Disabled: s.busy || s.api == nil || strings.TrimSpace(s.Link) == ""}).OnClick(s.resolve)
 				})
 			if s.message != "" {
 				components.Muted(c, s.message)
@@ -54,11 +58,13 @@ func (s *State) Form(c *ui.Context, path string, scroll *ui.ScrollState) {
 				ui.Column(c).
 					FillWidth().
 					MinWidth(0).
+					Padding(0, style.ScrollbarGutter, 0, 0).
 					Gap(style.SpaceMedium).
 					Children(func() {
 						if s.video.ID != "" {
 							s.downloadCard(c)
 						}
+						s.queueView(c)
 					})
 			}).Grow(1).MinWidth(0).MinHeight(0)
 		})
@@ -80,46 +86,21 @@ func (s *State) downloadCard(c *ui.Context) {
 				}
 			}
 		})
-		ui.Column(c).
-			Grow(1).
-			MinWidth(0).
-			Height(81).
-			Gap(style.SpaceSmall).
-			Children(func() {
-				ui.Text(c, s.video.Title).FillWidth().MaxLines(2).FontWeight(style.WeightSemibold).Tooltip(s.video.Title)
-				ui.Box(c).Grow(1)
-				if s.downloading {
-					text := transferStatus(s.progress)
-					ui.Text(c, text).FillWidth().MinWidth(0).MaxLines(1).FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted).Tooltip(text)
-				} else {
-					ui.Text(c, fmt.Sprintf("%s · %s", s.video.Author, s.video.Duration.Round(1e9))).
-						FillWidth().
-						MinWidth(0).MaxLines(1).
-						FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted)
-				}
-
+		ui.Column(c).Grow(1).MinWidth(0).Height(81).Gap(4).Children(func() {
+			ui.Column(c).Grow(1).FillWidth().MinWidth(0).MinHeight(0).Gap(4).Children(func() {
+				ui.Text(c, s.video.Title).FillWidth().MaxLines(1).FontWeight(style.WeightSemibold).Tooltip(s.video.Title)
+				ui.Text(c, fmt.Sprintf("%s · %s", s.video.Author, s.video.Duration.Round(1e9))).FillWidth().MaxLines(1).FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted)
 			})
-		ui.Row(c).Shrink(0).Gap(style.SpaceSmall).AlignItems(ui.Center).
-			Children(func() {
+			ui.Row(c).FillWidth().MinWidth(0).Shrink(0).Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
 				s.qualitySelect(c)
-				if s.downloading {
-					components.Button(c.Key("cancel"), "取消下载", input.ButtonOptions{Variant: input.Outline}).Shrink(0).OnClick(func() {
-						if s.cancel != nil {
-							s.cancel()
-						}
-					})
-				} else {
-					components.Button(c.Key("download"), "下载视频", input.ButtonOptions{Variant: input.Primary, Disabled: s.busy}).
-						Shrink(0).
-						OnClick(s.download)
+				ui.Box(c).Grow(1)
+				audio := components.Button(c.Key("audio-only"), "音频", input.ButtonOptions{Variant: input.Ghost, Label: "解析卡片音频模式", Disabled: s.busy || len(s.video.AudioFormats) == 0}).MinWidth(0).Padding(4, 8).Tooltip("仅下载音频，再次点击恢复视频").OnClick(func() { s.audioOnly = !s.audioOnly; s.selectDefaultFormat() })
+				if s.audioOnly {
+					audio.Background(k.Selection).TextColor(k.AccentText)
 				}
-				if s.output != "" && s.runtime.OpenLocation != nil {
-					components.Button(c.Key("open"), "", input.ButtonOptions{Variant: input.Outline, Icon: icons.Must("folder"), Label: "打开所在目录"}).
-						Size(32, 32).MinWidth(32).Padding(0).
-						Shrink(0).Tooltip("打开所在目录").
-						OnClick(func() { _ = s.runtime.OpenLocation(s.output) })
-				}
+				components.Button(c.Key("download"), "加入队列", input.ButtonOptions{Variant: input.Primary, Disabled: s.busy || len(s.formats()) == 0}).Shrink(0).Tooltip("加入待下载区，确认设置后手动开始").OnClick(s.stagePreview)
 			})
+		})
 	})
 }
 

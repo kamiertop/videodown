@@ -2,7 +2,6 @@ package youtube
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -14,31 +13,52 @@ type API interface {
 	Cookie() string
 	SetCookie(string) error
 	Resolve(context.Context, string) (yt.Video, error)
+	Playlist(context.Context, string, string) (yt.Playlist, error)
 	Download(context.Context, yt.Video, int, func(yt.Progress)) (string, error)
 	History() ([]yt.History, error)
+	DownloadConcurrency() int
 }
 type State struct {
-	started                       bool
-	Link, cookie, message, output string
-	authMessage                   string
-	cookieSaved                   bool
-	busy, downloading, stopped    bool
-	video                         yt.Video
-	format                        int
-	progress                      yt.Progress
-	history                       []yt.History
-	historySearch                 string
-	cover                         *ui.Bitmap
-	api                           API
-	runtime                       guiruntime.Runtime
-	dispatch                      func(func())
-	cancel                        context.CancelFunc
-	ctx                           context.Context
-	stop                          context.CancelFunc
-	generation                    uint64
-	coverGeneration               uint64
-	coverError                    string
-	coverLoading                  bool
+	started               bool
+	detailsInFlight       int
+	audioOnly             bool
+	queue                 []*queueItem
+	queueGroups           []*queueGroup
+	playlistTasks         map[string]*queueItem
+	thumbnails            map[string]*thumbnail
+	thumbnailUse          uint64
+	thumbnailLoader       func(context.Context, []string) (*ui.Bitmap, error)
+	nextQueue             uint64
+	active                map[*queueItem]context.CancelFunc
+	queuePaused           bool
+	parseCancel           context.CancelFunc
+	playlistLink          string
+	playlist              yt.Playlist
+	playlistRows          []*playlistRow
+	playlistRemoved       map[string]bool
+	playlistLoading       bool
+	playlistError         string
+	playlistSource        string
+	playlistGeneration    uint64
+	playlistCancel        context.CancelFunc
+	Link, cookie, message string
+	authMessage           string
+	cookieSaved           bool
+	busy, stopped         bool
+	video                 yt.Video
+	format                int
+	history               []yt.History
+	historySearch         string
+	cover                 *ui.Bitmap
+	api                   API
+	runtime               guiruntime.Runtime
+	dispatch              func(func())
+	ctx                   context.Context
+	stop                  context.CancelFunc
+	generation            uint64
+	coverGeneration       uint64
+	coverError            string
+	coverLoading          bool
 }
 
 func NewState() *State { return &State{} }
@@ -61,15 +81,19 @@ func (s *State) Start() {
 	var history []yt.History
 	s.runtime.Background(func() error { var err error; history, err = api.History(); return err }, func(err error) {
 		if !s.stopped && err == nil {
-			s.history = history
+			s.mergeHistory(history)
 		}
 	})
 }
-func (s *State) PendingDownloadCount() int {
-	if s.downloading {
-		return 1
+func (s *State) PendingDownloadCount() int { return len(s.active) + s.waitingCount() }
+func (s *State) waitingCount() int {
+	count := 0
+	for _, item := range s.queue {
+		if item.Status == "queued" {
+			count++
+		}
 	}
-	return 0
+	return count
 }
 func (s *State) Stop() {
 	s.stopped = true
@@ -77,8 +101,14 @@ func (s *State) Stop() {
 		s.stop()
 	}
 	s.generation++
-	if s.cancel != nil {
-		s.cancel()
+	if s.parseCancel != nil {
+		s.parseCancel()
+	}
+	if s.playlistCancel != nil {
+		s.playlistCancel()
+	}
+	for _, cancel := range s.active {
+		cancel()
 	}
 }
 func (s *State) resolve() {
@@ -86,8 +116,8 @@ func (s *State) resolve() {
 		return
 	}
 	s.busy = true
+	s.audioOnly = false
 	s.message = ""
-	s.output = ""
 	s.video = yt.Video{}
 	s.cover = nil
 	s.coverGeneration++
@@ -95,7 +125,7 @@ func (s *State) resolve() {
 	s.generation++
 	generation := s.generation
 	ctx, cancel := context.WithTimeout(s.ctx, 60*time.Second)
-	s.cancel = cancel
+	s.parseCancel = cancel
 	api, input := s.api, s.Link
 	var video yt.Video
 
@@ -115,12 +145,12 @@ func (s *State) resolve() {
 			return
 		}
 		s.video = video
-		s.format = video.Formats[0].ID
+		s.selectDefaultFormat()
 		s.loadCover()
 	})
 }
 func (s *State) saveCookie() {
-	if s.busy || s.api == nil || s.runtime.Background == nil {
+	if s.busy || s.readyCount() > 0 || s.PendingDownloadCount() > 0 || s.api == nil || s.runtime.Background == nil {
 		return
 	}
 	s.busy = true
@@ -137,62 +167,37 @@ func (s *State) saveCookie() {
 		}
 		s.cookie = api.Cookie()
 		s.cookieSaved = s.cookie != ""
+		if s.playlistCancel != nil {
+			s.playlistCancel()
+		}
+		s.playlistGeneration++
+		s.playlistRows = nil
+		s.playlist = yt.Playlist{}
+		s.playlistLoading = false
+		s.playlistError = ""
 		s.video = yt.Video{}
-		s.progress = yt.Progress{}
-		s.output = ""
 		s.cover = nil
 		s.coverGeneration++
 		s.authMessage = "Cookie 已保存"
 	})
 }
-func (s *State) download() {
-	if s.busy || s.api == nil || s.runtime.Background == nil || s.dispatch == nil || s.video.ID == "" {
+func (s *State) stagePreview() {
+	if s.busy || s.video.ID == "" {
 		return
 	}
-	s.busy = true
-	s.downloading = true
-	s.message = ""
-	s.output = ""
-	s.progress = yt.Progress{}
-	ctx, cancel := context.WithCancel(s.ctx)
-	s.cancel = cancel
-	s.generation++
-	generation := s.generation
-	api, video, format, dispatch := s.api, s.video, s.format, s.dispatch
-	var path string
-	var history []yt.History
-	s.runtime.Background(func() error {
-		defer cancel()
-		var last time.Time
-		var err error
-		path, err = api.Download(ctx, video, format, func(p yt.Progress) {
-			if p.Percent < 100 && time.Since(last) < 150*time.Millisecond {
-				return
-			}
-			last = time.Now()
-			dispatch(func() {
-				if !s.stopped && s.generation == generation {
-					s.progress = p
-				}
-			})
-		})
-		history, _ = api.History()
-		return err
-	}, func(err error) {
-		if s.stopped || s.generation != generation {
-			return
-		}
-		s.busy = false
-		s.downloading = false
-		s.output = path
-		s.history = history
-		if errors.Is(err, context.Canceled) {
-			s.message = "已取消下载"
-		} else if err != nil {
-			s.message = err.Error()
-		} else {
-			s.message = "下载完成"
-			s.progress.Percent = 100
-		}
-	})
+	if s.enqueue(s.video, s.format, s.audioOnly) {
+		s.video = yt.Video{}
+		s.cover = nil
+		s.coverGeneration++
+	}
+}
+
+func (s *State) formats() []yt.Format {
+	if s.audioOnly {
+		return s.video.AudioFormats
+	}
+	return s.video.Formats
+}
+func (s *State) selectDefaultFormat() {
+	s.format = 0
 }

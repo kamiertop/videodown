@@ -2,6 +2,7 @@ package youtube
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/ELY-Open-Source/MujicaUI/core"
@@ -13,6 +14,24 @@ import (
 	"github.com/kamiertop/videodown/internal/gui/style"
 	yt "github.com/kamiertop/videodown/youtube"
 )
+
+// Concurrent jobs can publish history snapshots out of completion order.
+// Merge by saved path so an older callback cannot hide another finished file.
+func (s *State) mergeHistory(items []yt.History) {
+	byPath := make(map[string]int, len(s.history))
+	for i, item := range s.history {
+		byPath[item.Path] = i
+	}
+	for _, item := range items {
+		if i, ok := byPath[item.Path]; ok {
+			s.history[i] = item
+		} else {
+			byPath[item.Path] = len(s.history)
+			s.history = append(s.history, item)
+		}
+	}
+	sort.SliceStable(s.history, func(i, j int) bool { return s.history[i].Downloaded > s.history[j].Downloaded })
+}
 
 func (s *State) historyPage(c *ui.Context, scroll *ui.ScrollState) {
 	ui.Column(c).Label("YouTube 下载历史页面").Fill().MinWidth(0).MinHeight(0).Padding(style.PagePadding).Gap(style.SpaceMedium).Children(func() {
@@ -43,7 +62,12 @@ func (s *State) historyPage(c *ui.Context, scroll *ui.ScrollState) {
 						}
 						row.Children(func() {
 							ui.Column(c).Grow(1).MinWidth(0).Gap(style.SpaceSmall).Children(func() {
-								ui.Text(c, item.Title).FillWidth().MaxLines(1).FontWeight(style.WeightSemibold).Tooltip(item.Title)
+								ui.Row(c).FillWidth().MinWidth(0).Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
+									ui.Text(c, item.Title).Grow(1).MinWidth(0).MaxLines(1).FontWeight(style.WeightSemibold).Tooltip(item.Title)
+									if item.Kind == "audio" {
+										ui.Text(c, "音频").Shrink(0).FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted)
+									}
+								})
 								path := item.Path
 								if path == "" {
 									path = "未记录保存路径"

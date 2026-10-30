@@ -11,7 +11,8 @@ import (
 	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/ELY-Open-Source/MujicaUI/layout"
 	"github.com/egoist/mygo/ui"
-	bilidownload "github.com/kamiertop/videodown/bilibili/download"
+
+	"github.com/kamiertop/videodown/bilibili/download"
 	"github.com/kamiertop/videodown/bilibili/model"
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
@@ -129,7 +130,7 @@ func (s *State) stagedMediaCard(c *ui.Context, bvid, title, cover, author, lengt
 			}
 			details.Children(func() {
 				ui.Text(c, title).FillWidth().FontWeight(style.WeightSemibold).MaxLines(2)
-				metadata := []string{}
+				var metadata []string
 				if author != "" {
 					metadata = append(metadata, author)
 				}
@@ -299,7 +300,7 @@ func (s *State) clearStaged() {
 	s.stagedDynamics = nil
 	s.stagedPlayHistory = nil
 	s.stagedManual = nil
-	s.queueProgress = make(map[string]bilidownload.Progress)
+	s.queueProgress = make(map[string]download.Progress)
 	s.queueExtraBusy = make(map[string]string)
 	s.notice = ""
 }
