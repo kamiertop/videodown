@@ -10,19 +10,14 @@ import (
 )
 
 func (s *State) loadCover() {
-	if s.runtime.Image == nil || s.video.ID == "" {
+	if s.video.ID == "" {
 		return
 	}
-	id, generation, ctx := s.video.ID, s.coverGeneration, s.ctx
-	urls := []string{s.video.Cover, "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg", "https://img.youtube.com/vi/" + id + "/hqdefault.jpg"}
-	s.coverError = ""
-	s.coverLoading = true
-	var bitmap *ui.Bitmap
-	s.runtime.Image(func() error {
-		var err error
-		bitmap, err = loadCover(ctx, urls)
-		return err
-	}, func(err error) { s.finishCover(generation, bitmap, err) })
+	entry := s.thumbnailEntry(s.video)
+	if entry.Bitmap == nil && !entry.Loading {
+		s.requestThumbnail(s.video, entry)
+	}
+	s.cover, s.coverLoading, s.coverError = entry.Bitmap, entry.Loading, entry.Error
 }
 
 func (s *State) finishCover(generation uint64, bitmap *ui.Bitmap, err error) {

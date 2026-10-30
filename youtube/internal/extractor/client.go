@@ -318,7 +318,7 @@ func (c *Client) httpDo(req *http.Request) (*http.Response, error) {
 	req.Header.Set("User-Agent", c.client.UserAgent)
 	if c.Cookie != "" && (req.URL.Hostname() == "youtube.com" || strings.HasSuffix(req.URL.Hostname(), ".youtube.com")) {
 		req.Header.Set("Cookie", c.Cookie)
-		if req.URL.Scheme == "https" && strings.HasPrefix(req.URL.Path, "/youtubei/v1/") && c.client.Name == "TVHTML5" {
+		if req.URL.Scheme == "https" && strings.HasPrefix(req.URL.Path, "/youtubei/v1/") && (c.client.Name == "TVHTML5" || c.client.Name == "WEB") {
 			if auth := sidAuthorization(c.Cookie, "https://www.youtube.com", time.Now(), c.userSessionID); auth != "" {
 				req.Header.Set("Authorization", auth)
 				req.Header.Set("X-Origin", "https://www.youtube.com")
@@ -413,6 +413,8 @@ func (c *Client) httpPost(ctx context.Context, url string, body interface{}) (*h
 	clientID := "101"
 	if c.client.Name == "TVHTML5" {
 		clientID = "7"
+	} else if c.client.Name == "WEB" {
+		clientID = "1"
 	}
 	req.Header.Set("X-Youtube-Client-Name", clientID)
 	req.Header.Set("X-Youtube-Client-Version", c.client.Version)

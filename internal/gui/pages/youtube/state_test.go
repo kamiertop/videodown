@@ -18,8 +18,12 @@ type fakeAPI struct {
 	canceled bool
 }
 
+func (a *fakeAPI) DownloadConcurrency() int { return 1 }
 func (a *fakeAPI) Cookie() string           { return a.cookie }
 func (a *fakeAPI) SetCookie(v string) error { a.cookie = v; return nil }
+func (a *fakeAPI) Playlist(context.Context, string, string) (yt.Playlist, error) {
+	return yt.Playlist{}, nil
+}
 func (a *fakeAPI) Resolve(ctx context.Context, v string) (yt.Video, error) {
 	return yt.Video{ID: "jNQXAC9IVRw", Title: "YouTube 测试视频", Author: "测试作者", Formats: []yt.Format{{ID: 18, Label: "360p · H.264 · MP4 · 30帧 · 1.20 Mbps · 含音频 · #18", Audio: true}, {ID: 137, Label: "1080p · AV1 · MP4 · 60帧 · 2.50 Mbps · 需合并音频 · #399"}}}, nil
 }
@@ -55,20 +59,27 @@ func TestFormResolveDownloadCancelAndCookie(t *testing.T) {
 	if s.video.ID == "" || s.busy {
 		t.Fatal("resolve failed")
 	}
-	s.download()
+	s.stagePreview()
+	s.startItem(s.queue[len(s.queue)-1])
 	if s.PendingDownloadCount() != 1 {
 		t.Fatal("download not counted")
 	}
-	s.cancel()
+	s.cancelItem(s.queue[0])
 	flush()
 	if !api.canceled || s.PendingDownloadCount() != 0 {
 		t.Fatal("cancellation failed")
 	}
-	s.download()
+	s.resolve()
 	flush()
-	if s.output != "/tmp/video.mp4" || s.progress.Percent != 100 {
+	s.stagePreview()
+	s.startItem(s.queue[len(s.queue)-1])
+	flush()
+	last := s.queue[len(s.queue)-1]
+	if last.Path != "/tmp/video.mp4" || last.Progress.Percent != 100 || s.video.ID != "" {
 		t.Fatal("download completion failed")
 	}
+	s.resolve()
+	flush()
 	for _, width := range []int{760, 1200} {
 		scroll := &ui.ScrollState{}
 		test := ui.NewTester(func(c *ui.Context) { core.Use(c, core.Settings{}); s.Form(c, "/youtube/download", scroll) }, width, 600)
@@ -76,11 +87,11 @@ func TestFormResolveDownloadCancelAndCookie(t *testing.T) {
 		card, _ := test.Find("YouTube 下载视频卡片")
 		cover, _ := test.Find("YouTube 视频封面")
 		selectBox, _ := test.Find("YouTube 下载画质")
-		download, _ := test.Find("下载视频")
+		download, _ := test.Find("加入队列")
 		if card.H > 120 || selectBox.Y >= cover.Y+cover.H || download.Y >= cover.Y+cover.H {
 			t.Fatalf("card too tall or controls below cover: card=%+v cover=%+v select=%+v download=%+v", card, cover, selectBox, download)
 		}
-		for _, label := range []string{"YouTube 下载画质", "下载视频", "YouTube 测试视频"} {
+		for _, label := range []string{"YouTube 下载画质", "加入队列", "YouTube 测试视频"} {
 			if bounds, ok := test.Find(label); !ok || bounds.X+bounds.W > float32(width) {
 				t.Fatalf("clipped %s: %+v", label, bounds)
 			}
@@ -207,7 +218,7 @@ func TestCompactCardWithSidebarAndFormatPopup(t *testing.T) {
 		s.Layout(c, "/youtube/download", func(string) {}, func() { s.Form(c, "/youtube/download", scroll) })
 	}, 760, 600)
 	test.Frame()
-	for _, label := range []string{"YouTube 下载画质", "下载视频"} {
+	for _, label := range []string{"YouTube 下载画质", "加入队列"} {
 		b, ok := test.Find(label)
 		if !ok || b.X+b.W > 760 {
 			t.Fatalf("clipped %s: %+v", label, b)
@@ -246,7 +257,7 @@ func TestCompactCardWithSidebarAndFormatPopup(t *testing.T) {
 }
 
 func TestTransferStatusShowsSpeedBeforeLongDetails(t *testing.T) {
-	text := transferStatus(yt.Progress{Phase: "下载视频", Downloaded: 30 << 20, Total: 100 << 20, Speed: 2 << 20, Percent: 27})
+	text := transferStatus(yt.Progress{Phase: "加入队列", Downloaded: 30 << 20, Total: 100 << 20, Speed: 2 << 20, Percent: 27})
 	if !strings.HasPrefix(text, "2.0 MB/s · 27%") || !strings.Contains(text, "30.0 MB / 100.0 MB") {
 		t.Fatalf("missing transfer details: %s", text)
 	}

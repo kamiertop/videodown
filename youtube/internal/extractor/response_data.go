@@ -107,6 +107,7 @@ type Format struct {
 	ApproxDurationMs string `json:"approxDurationMs"`
 	AudioSampleRate  string `json:"audioSampleRate"`
 	AudioChannels    int    `json:"audioChannels"`
+	IsDRC            bool   `json:"isDrc"`
 
 	// InitRange is only available for adaptive formats
 	InitRange *struct {

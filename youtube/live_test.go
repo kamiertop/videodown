@@ -18,6 +18,43 @@ import (
 
 // Live checks run only when explicitly enabled through VIDEODOWN_YOUTUBE_*.
 // Saved credentials are read only when a configuration path is supplied.
+func TestLivePlaylist(t *testing.T) {
+	input := os.Getenv("VIDEODOWN_YOUTUBE_PLAYLIST")
+	if input == "" {
+		t.Skip("requires explicit playlist URL")
+	}
+	store, err := storage.OpenMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	service := New(store)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	page, err := service.Playlist(ctx, input, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Videos) == 0 {
+		t.Fatal("empty public playlist")
+	}
+	t.Logf("playlist=%s entries=%d continuation=%v", page.Title, len(page.Videos), page.Continuation != "")
+	if os.Getenv("VIDEODOWN_YOUTUBE_PLAYLIST_COVER") == "1" {
+		bitmap, err := imagecache.Load(ctx, page.Videos[0].Cover, "https://www.youtube.com/")
+		if err != nil || bitmap == nil {
+			t.Fatalf("playlist thumbnail: %v", err)
+		}
+		t.Log("playlist thumbnail decoded")
+	}
+	if page.Continuation != "" {
+		next, err := service.Playlist(ctx, input, page.Continuation)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Logf("next entries=%d continuation=%v", len(next.Videos), next.Continuation != "")
+	}
+}
+
 func TestLiveYouTube(t *testing.T) {
 	if os.Getenv("VIDEODOWN_YOUTUBE_LIVE") != "1" {
 		t.Skip("requires network")

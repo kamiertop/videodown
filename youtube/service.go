@@ -1,4 +1,4 @@
-// Package youtube implements single-video downloads without an external downloader.
+// Package youtube implements video, audio and playlist downloads without an external downloader.
 package youtube
 
 import (
@@ -35,6 +35,7 @@ type Video struct {
 	ID, Title, Author, Cover string
 	Duration                 time.Duration
 	Formats                  []Format
+	AudioFormats             []Format
 }
 type Progress struct {
 	Phase             string
@@ -48,6 +49,7 @@ type History struct {
 	Author     string `json:"authorName"`
 	Path       string `json:"path"`
 	Downloaded string `json:"downloaded"`
+	Kind       string `json:"kind,omitempty"`
 }
 
 var errAuthenticatedPlayback = errors.New("YouTube 已确认账号登录，但当前解析器未通过播放器校验")
@@ -60,13 +62,17 @@ type cachedVideo struct {
 
 type Service struct {
 	parseMu   sync.Mutex
+	publishMu sync.Mutex
 	cache     map[string]cachedVideo
 	store     *storage.Store
 	transport http.RoundTripper
 }
 
 func New(store *storage.Store) *Service { return &Service{store: store} }
-func (s *Service) Cookie() string       { return s.store.Config().YouTube.Cookie }
+func (s *Service) DownloadConcurrency() int {
+	return max(1, min(10, s.store.Config().Download.Concurrency))
+}
+func (s *Service) Cookie() string { return s.store.Config().YouTube.Cookie }
 func (s *Service) SetCookie(value string) error {
 	value = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(value), "Cookie:"))
 	if strings.ContainsAny(value, "\r\n") {
@@ -135,6 +141,9 @@ func describe(v *extractor.Video) Video {
 
 		out.Formats = append(out.Formats, Format{ID: f.ItagNo, Label: label, Summary: formatSummary(f), Height: f.Height, Audio: f.AudioChannels > 0, Mime: f.MimeType})
 	}
+	for _, f := range selectableAudioFormats(v.Formats) {
+		out.AudioFormats = append(out.AudioFormats, audioFormat(*f))
+	}
 	sort.SliceStable(out.Formats, func(i, j int) bool { return out.Formats[i].Height > out.Formats[j].Height })
 	return out
 }
@@ -192,7 +201,7 @@ func (s *Service) Resolve(ctx context.Context, input string) (Video, error) {
 		return Video{}, s.parseError(err)
 	}
 	v := describe(raw)
-	if len(v.Formats) == 0 {
+	if len(v.Formats) == 0 && len(v.AudioFormats) == 0 {
 		return Video{}, errors.New("未找到可下载的视频格式，可能需要登录或播放器规则已变化")
 	}
 	return v, nil
@@ -238,6 +247,26 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 		}
 	}
 	cfg := s.store.Config()
+	if formatID <= 0 {
+		formats := video.Formats
+		if formatID == -1 {
+			formats = video.AudioFormats
+		}
+		if len(formats) == 0 {
+			resolved, err := s.Resolve(ctx, video.ID)
+			if err != nil {
+				return "", err
+			}
+			formats = resolved.Formats
+			if formatID == -1 {
+				formats = resolved.AudioFormats
+			}
+		}
+		if len(formats) == 0 {
+			return "", errors.New("没有可下载的对应格式")
+		}
+		formatID = formats[0].ID
+	}
 	key := "youtube:downloaded:" + video.ID + fmt.Sprintf(":%d", formatID)
 	if cfg.Download.SkipDownloaded {
 		if raw, e := s.store.History(key); e == nil {
@@ -256,22 +285,33 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 		return "", err
 	}
 	var selected *extractor.Format
-	for i := range raw.Formats {
-		if raw.Formats[i].ItagNo == formatID {
-			selected = &raw.Formats[i]
+	audioFormats := selectableAudioFormats(raw.Formats)
+	for _, f := range audioFormats {
+		if audioID(f) == formatID {
+			selected = f
 			break
+		}
+	}
+	if selected == nil {
+		for i := range raw.Formats {
+			f := &raw.Formats[i]
+			if f.AudioTrack != nil && !f.AudioTrack.AudioIsDefault {
+				continue
+			}
+			if f.ItagNo == formatID && strings.HasPrefix(f.MimeType, "video/") {
+				selected = f
+				break
+			}
 		}
 	}
 	if selected == nil {
 		return "", errors.New("所选画质已不可用，请重新解析")
 	}
+	audioOnly := strings.HasPrefix(selected.MimeType, "audio/")
 	var audio *extractor.Format
-	if selected.AudioChannels == 0 {
-		for i := range raw.Formats {
-			f := &raw.Formats[i]
-			if strings.HasPrefix(f.MimeType, "audio/") && (audio == nil || f.Bitrate > audio.Bitrate) {
-				audio = f
-			}
+	if !audioOnly && selected.AudioChannels == 0 {
+		if len(audioFormats) > 0 {
+			audio = audioFormats[0]
 		}
 		if audio == nil {
 			return "", errors.New("未找到配套音频")
@@ -304,10 +344,12 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 	if strings.Contains(selected.MimeType, "webm") {
 		ext = ".webm"
 	}
+	if audioOnly && strings.Contains(selected.MimeType, "mp4") {
+		ext = ".m4a"
+	}
 	if audio != nil {
 		ext = ".mkv"
 	}
-	final := utils.UniqueFilePath(filepath.Join(dir, name+ext))
 	temp, err := os.MkdirTemp(dir, ".youtube-")
 	if err != nil {
 		return "", err
@@ -319,7 +361,11 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 		if total > 0 {
 			p = float64(done) / float64(total) * 90
 		}
-		emit(Progress{Phase: "下载视频", Downloaded: done, Total: total, Percent: p})
+		phase := "下载视频"
+		if audioOnly {
+			phase = "下载音频"
+		}
+		emit(Progress{Phase: phase, Downloaded: done, Total: total, Percent: p})
 	})
 	if err != nil {
 		return "", err
@@ -345,10 +391,18 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 	if err = ctx.Err(); err != nil {
 		return "", err
 	}
-	if err = os.Rename(ready, final); err != nil {
+	s.publishMu.Lock()
+	final := utils.UniqueFilePath(filepath.Join(dir, name+ext))
+	err = os.Rename(ready, final)
+	s.publishMu.Unlock()
+	if err != nil {
 		return "", err
 	}
-	payload, _ := json.Marshal(History{ID: raw.ID, Title: raw.Title, Author: raw.Author, Path: final, Downloaded: time.Now().UTC().Format(time.RFC3339)})
+	kind := "video"
+	if audioOnly {
+		kind = "audio"
+	}
+	payload, _ := json.Marshal(History{Kind: kind, ID: raw.ID, Title: raw.Title, Author: raw.Author, Path: final, Downloaded: time.Now().UTC().Format(time.RFC3339)})
 	if err = s.store.SaveHistory(key, string(payload)); err != nil {
 		return final, fmt.Errorf("视频已保存，但历史记录写入失败：%w", err)
 	}
@@ -394,7 +448,7 @@ func (s *Service) fetchVideo(ctx context.Context, id string) (*extractor.Client,
 
 	client := s.client()
 	video, err := client.GetVideoContext(ctx, id)
-	if err == nil && len(describe(video).Formats) > 0 {
+	if err == nil && usableFormats(video) {
 		return remember(client, video)
 	}
 	if ctx.Err() != nil {
@@ -403,7 +457,7 @@ func (s *Service) fetchVideo(ctx context.Context, id string) (*extractor.Client,
 	if client.Cookie != "" {
 		anonymous := &extractor.Client{HTTPClient: client.HTTPClient}
 		fallback, fallbackErr := anonymous.GetVideoContext(ctx, id)
-		if fallbackErr == nil && len(describe(fallback).Formats) > 0 {
+		if fallbackErr == nil && usableFormats(fallback) {
 			return remember(anonymous, fallback)
 		}
 	}

@@ -35,9 +35,9 @@ func (s *State) accountPage(c *ui.Context, scroll *ui.ScrollState) {
 							Label:       "YouTube Cookie",
 							Placeholder: "可选：粘贴浏览器请求头中的 Cookie；留空保存可清除",
 							MinHeight:   400,
-							Disabled:    s.busy || s.api == nil},
+							Disabled:    s.busy || s.readyCount() > 0 || s.PendingDownloadCount() > 0 || s.api == nil},
 					).Element.FillWidth()
-					components.Button(c.Key("save-cookie"), "保存 Cookie", input.ButtonOptions{Variant: input.Primary, Loading: s.busy && !s.downloading, Disabled: s.busy || s.api == nil}).OnClick(s.saveCookie)
+					components.Button(c.Key("save-cookie"), "保存 Cookie", input.ButtonOptions{Variant: input.Primary, Loading: s.busy, Disabled: s.busy || s.readyCount() > 0 || s.PendingDownloadCount() > 0 || s.api == nil}).OnClick(s.saveCookie)
 					if s.authMessage != "" {
 						components.Muted(c, s.authMessage)
 					}
