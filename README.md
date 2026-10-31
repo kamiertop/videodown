@@ -87,7 +87,7 @@ VideoDown 是一个使用 [Go](https://go.dev)、[MyGo](https://github.com/egois
 - 原生界面与窗口：MyGo、MujicaUI
 - 业务逻辑：Go、req/v3
 - 配置与 Cookie：结构化 TOML
-- 下载历史：SQLite、sqlx、无 CGO 的 SQLite 驱动
+- 下载历史：SQLite、sqlx、[glebarez/go-sqlite](https://github.com/glebarez/go-sqlite) 纯 Go 驱动（无需 CGO）
 
 ## 开发
 
@@ -96,9 +96,10 @@ VideoDown 是一个使用 [Go](https://go.dev)、[MyGo](https://github.com/egois
 启动应用：
 
 ```sh
-CGO_ENABLED=0 go run .
-# 指定配置及历史所在目录
-CGO_ENABLED=0 go run . -data-dir /path/to/videodown
+just run
+# 或构建便携目录后启动
+CGO_ENABLED=0 go run ./cmd/package
+./dist/videodown/videodown
 ```
 
 运行测试和原生 UI 检查：
@@ -131,13 +132,17 @@ videodown/
   config.toml               # 首次启动自动创建，含账号凭证，请勿公开
   history.sqlite            # 首次启动自动创建
   download/                 # 下载时创建
+  tmp/                      # 应用及子进程临时文件
+  cache/                    # 界面库等组件的缓存
+  videodown.log             # 生产模式日志
+  videodown-updater.log     # 更新器日志
 ```
 
-开发时使用 `go run .`，配置和数据库保存在当前工作目录；`-data-dir` 可以显式指定数据文件夹。应用程序日志保存在二进制旁边。
+应用自身文件以主程序实际存放目录为根：配置、历史、图标、日志、更新器、更新包和更新解压文件均位于该目录，默认下载与临时文件分别位于其子目录；视频下载目录允许用户修改。启动不依赖当前工作目录，也不提供 `-data-dir` 覆盖。开发请使用 `just run` 构建并启动便携目录；直接 `go run .` 的数据会位于 Go 的临时二进制目录中。目录不可写时直接报错，不回退到用户目录。
 
 ### 基础设置
 
-1. 打开“设置”页面，选择下载目录。
+1. 打开“设置”页面，按需修改下载目录。
 2. 根据需要设置下载后休眠时间、并发数量和保存时是否自动分组。
 3. 确认 `ffmpeg` 已安装，尤其是下载 B 站 DASH 视频时。
 
@@ -176,7 +181,7 @@ YouTube 左侧菜单提供下载、播放列表、下载历史和账号页；在
 > 本项目绝对不会私自收集、上传用户信息
 
 - 配置和 Cookie 存储在可执行文件同目录的 `config.toml` 中，下载历史存储在同目录的 `history.sqlite` 中。首次启动自动创建缺失的配置、数据库和图标，已有配置会保留。配置结构参考 [config.example.toml](config.example.toml)。
-- 默认下载目录为程序文件夹中的 `download/`；相对路径以配置文件所在目录为基准，整体移动文件夹后仍然有效。也可在设置页选择其他下载位置。
+- 默认下载目录为程序文件夹中的 `download/`；相对路径以配置文件所在目录为基准，整体移动文件夹后仍然有效。允许在设置页修改为其他位置，包括程序目录之外的文件夹。
 - 启用自动分组后，后端会按来源类型创建目录，例如收藏合集、用户合集、收藏视频或用户作品。
 
 ## 注意事项

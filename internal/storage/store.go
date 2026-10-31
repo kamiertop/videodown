@@ -12,8 +12,9 @@ import (
 	"strings"
 	"sync"
 
+	_ "github.com/glebarez/go-sqlite"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/ncruces/go-sqlite3/driver"
+	"github.com/kamiertop/videodown/internal/apppaths"
 	"github.com/pelletier/go-toml/v2"
 )
 
@@ -40,6 +41,11 @@ func Open(path string) (*Store, error) {
 		return nil, err
 	}
 	dbPath := filepath.Join(path, "history.sqlite")
+	for _, name := range []string{"history.sqlite", "history.sqlite-journal", "history.sqlite-wal", "history.sqlite-shm", "config.toml"} {
+		if _, err := apppaths.Inside(path, name); err != nil {
+			return nil, err
+		}
+	}
 	f, err := os.OpenFile(dbPath, os.O_CREATE|os.O_RDWR, 0600)
 	if err != nil {
 		return nil, err
@@ -87,7 +93,7 @@ func Open(path string) (*Store, error) {
 func OpenMemory() (*Store, error) { return openDB("file::memory:", "") }
 
 func openDB(dsn, configPath string) (*Store, error) {
-	db, err := sqlx.Open("sqlite3", dsn)
+	db, err := sqlx.Open("sqlite", dsn)
 	if err != nil {
 		return nil, err
 	}

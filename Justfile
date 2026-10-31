@@ -11,4 +11,5 @@ package version="dev":
     CGO_ENABLED=0 go run ./cmd/package -version {{quote(version)}}
 
 run:
-    CGO_ENABLED=0 go run .
+    CGO_ENABLED=0 go run ./cmd/package
+    ./dist/videodown/videodown

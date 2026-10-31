@@ -10,17 +10,6 @@ import (
 	"github.com/kamiertop/videodown/internal/storage"
 )
 
-func TestPortableDefaultDataDirectory(t *testing.T) {
-	for _, tc := range []struct{ exe, cwd, temp, want string }{
-		{"/opt/videodown/videodown", "/unrelated", "/tmp", "/opt/videodown"},
-		{"/tmp/go-build123/b001/exe/videodown", "/work/project", "/tmp", "/work/project"},
-		{"/tmp/portable/videodown", "/elsewhere", "/tmp", "/tmp/portable"},
-	} {
-		if got := defaultDataDir(filepath.FromSlash(tc.exe), filepath.FromSlash(tc.cwd), filepath.FromSlash(tc.temp)); got != filepath.FromSlash(tc.want) {
-			t.Fatalf("data directory: got %s want %s", got, tc.want)
-		}
-	}
-}
 func TestFirstLaunchCreatesFilesAndPreservesExistingData(t *testing.T) {
 	dir := t.TempDir()
 	store, err := openAppData(dir)
@@ -88,5 +77,51 @@ func TestPortableFolderCanMove(t *testing.T) {
 	defer store.Close()
 	if store.DownloadDirectory() != filepath.Join(after, "download") || store.Config().Download.Directory != "./download" {
 		t.Fatal("moving folder retained old download path")
+	}
+}
+
+func TestDownloadDirectoryCanBeChangedOutsideApplication(t *testing.T) {
+	root := t.TempDir()
+	store, err := openAppData(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	outside := t.TempDir()
+	if err := store.UpdateConfig(func(c *storage.Config) error { c.Download.Directory = outside; return nil }); err != nil {
+		t.Fatal(err)
+	}
+	if store.DownloadDirectory() != outside {
+		t.Fatal("custom download directory ignored")
+	}
+}
+
+func TestPortableRuntimeIgnoresLaunchingDirectory(t *testing.T) {
+	root := t.TempDir()
+	t.Chdir(t.TempDir())
+	for _, key := range []string{"TMPDIR", "TMP", "TEMP", "XDG_CACHE_HOME", "LOCALAPPDATA", "XDG_CONFIG_HOME", "XDG_DATA_HOME", "APPDATA"} {
+		t.Setenv(key, "")
+	}
+	if err := configurePortableRuntime(root); err != nil {
+		t.Fatal(err)
+	}
+	cwd, err := os.Getwd()
+	canonical, _ := filepath.EvalSymlinks(root)
+	if err != nil || cwd != canonical {
+		t.Fatalf("working directory: %s %v", cwd, err)
+	}
+	if os.TempDir() != filepath.Join(root, "tmp") {
+		t.Fatal("temporary files escape portable directory")
+	}
+	if os.Getenv("XDG_CACHE_HOME") != filepath.Join(root, "cache") {
+		t.Fatal("library cache escapes portable directory")
+	}
+	store, err := openAppData(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	if store.DownloadDirectory() != filepath.Join(root, "download") {
+		t.Fatal("default download depends on launching directory")
 	}
 }
