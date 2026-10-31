@@ -117,7 +117,7 @@ CGO_ENABLED=0 go build -o build/bin/videodown .
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-H=windowsgui" -o build/bin/videodown.exe .
 ```
 
-使用 `just package` 或 `go run ./cmd/package` 构建便携文件夹 `dist/videodown`，其中包含主程序、独立更新器和 `appicon.png`；Windows 打包会同时将图标写入 EXE 资源，供资源管理器显示。可通过 `-os`、`-arch`、`-version` 和 `-out` 指定目标与输出位置。`just run` 启动开发版本，`just check` 执行检查。界面代码位于 `internal/gui`，启动与服务初始化位于 `main.go`。
+使用 `just package` 或 `go run ./cmd/package` 构建便携文件夹 `dist/videodown`，其中包含主程序和独立更新器，图标通过 `go:embed` 在编译时嵌入；Windows 打包会同时将图标写入 EXE 资源，供资源管理器显示。可通过 `-os`、`-arch`、`-version` 和 `-out` 指定目标与输出位置。`just run` 启动开发版本，`just check` 执行检查。界面代码位于 `internal/gui`，启动与服务初始化位于 `main.go`。
 发布工作流使用原生 Go 构建并生成便携归档。启动时遵循设置中的自动更新开关，在后台检查新版本；发现更新后展示版本和发布说明，可打开对应发布页。检查失败不会阻塞应用。
 
 ## 使用说明
@@ -128,7 +128,6 @@ CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-H=windowsgui" -o bui
 videodown/
   videodown                 # Windows 为 videodown.exe
   videodown-updater         # Windows 带 .exe 后缀
-  appicon.png               # 图标同时内嵌在程序中
   config.toml               # 首次启动自动创建，含账号凭证，请勿公开
   history.sqlite            # 首次启动自动创建
   download/                 # 下载时创建
@@ -138,7 +137,7 @@ videodown/
   videodown-updater.log     # 更新器日志
 ```
 
-应用自身文件以主程序实际存放目录为根：配置、历史、图标、日志、更新器、更新包和更新解压文件均位于该目录，默认下载与临时文件分别位于其子目录；视频下载目录允许用户修改。启动不依赖当前工作目录，也不提供 `-data-dir` 覆盖。开发请使用 `just run` 构建并启动便携目录；直接 `go run .` 的数据会位于 Go 的临时二进制目录中。目录不可写时直接报错，不回退到用户目录。
+应用自身文件以主程序实际存放目录为根：配置、历史、日志、更新器、更新包和更新解压文件均位于该目录，默认下载与临时文件分别位于其子目录；视频下载目录允许用户修改。启动不依赖当前工作目录，也不提供 `-data-dir` 覆盖。开发请使用 `just run` 构建并启动便携目录；直接 `go run .` 的数据会位于 Go 的临时二进制目录中。目录不可写时直接报错，不回退到用户目录。
 
 ### 基础设置
 
@@ -180,7 +179,7 @@ YouTube 左侧菜单提供下载、播放列表、下载历史和账号页；在
 
 > 本项目绝对不会私自收集、上传用户信息
 
-- 配置和 Cookie 存储在可执行文件同目录的 `config.toml` 中，下载历史存储在同目录的 `history.sqlite` 中。首次启动自动创建缺失的配置、数据库和图标，已有配置会保留。配置结构参考 [config.example.toml](config.example.toml)。
+- 配置和 Cookie 存储在可执行文件同目录的 `config.toml` 中，下载历史存储在同目录的 `history.sqlite` 中。首次启动自动创建缺失的配置和数据库，已有配置会保留。配置结构参考 [config.example.toml](config.example.toml)。
 - 默认下载目录为程序文件夹中的 `download/`；相对路径以配置文件所在目录为基准，整体移动文件夹后仍然有效。允许在设置页修改为其他位置，包括程序目录之外的文件夹。
 - 启用自动分组后，后端会按来源类型创建目录，例如收藏合集、用户合集、收藏视频或用户作品。
 

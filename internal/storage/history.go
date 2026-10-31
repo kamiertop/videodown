@@ -29,6 +29,7 @@ func (s *Store) setHistory(key, platform, payload string) error {
 		"key": key, "platform": platform, "bvid": strings.ToUpper(strings.TrimSpace(meta.Bvid)), "cid": meta.Cid,
 		"title": meta.Title, "author": author, "downloaded": meta.Downloaded, "payload": payload,
 	})
+
 	return err
 }
 
@@ -46,7 +47,7 @@ func (s *Store) QueryHistory(platform string, offset, limit int, keyword string)
 	if err = tx.Get(&total, "SELECT count(*)"+filter, args...); err != nil {
 		return nil, 0, err
 	}
-	rows := []string{}
+	var rows []string
 	args = append(args, limit, offset)
 	if err = tx.Select(&rows, "SELECT payload"+filter+" ORDER BY downloaded DESC,key DESC LIMIT ? OFFSET ?", args...); err != nil {
 		return nil, 0, err
@@ -54,5 +55,6 @@ func (s *Store) QueryHistory(platform string, offset, limit int, keyword string)
 	if err = tx.Commit(); err != nil {
 		return nil, 0, err
 	}
+
 	return rows, total, nil
 }

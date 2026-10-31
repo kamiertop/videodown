@@ -99,6 +99,7 @@ func (u *Updater) Check(parent context.Context) (Result, error) {
 	} else if !errors.Is(err, context.Canceled) {
 		u.logger.Warningf("检查版本更新失败: %v", err)
 	}
+
 	return result, err
 }
 
@@ -111,10 +112,12 @@ func CurrentVersion() string {
 	if !strings.HasPrefix(version, "v") && semver.IsValid("v"+version) {
 		return "v" + version
 	}
+
 	return version
 }
 func newerRelease(latest string) bool {
 	current := CurrentVersion()
+
 	return !semver.IsValid(current) || semver.Compare(latest, current) > 0
 }
 
@@ -211,7 +214,7 @@ func (u *Updater) InstallUpdate(packagePath string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := os.Stat(updaterPath); err != nil {
+	if _, err = os.Stat(updaterPath); err != nil {
 		return fmt.Errorf("更新程序不存在: %w", err)
 	}
 	cmd := exec.Command(updaterPath, "--package", packagePath, "--target", current)

@@ -8,13 +8,13 @@ import (
 	"os"
 
 	"github.com/egoist/mygo"
+
 	biliapi "github.com/kamiertop/videodown/bilibili/api"
 	bilidownload "github.com/kamiertop/videodown/bilibili/download"
 	dyapi "github.com/kamiertop/videodown/douyin/api"
 	dydownload "github.com/kamiertop/videodown/douyin/download"
 	"github.com/kamiertop/videodown/internal/apppaths"
 	"github.com/kamiertop/videodown/internal/gui"
-	"github.com/kamiertop/videodown/internal/gui/assets"
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/internal/updater"
 	"github.com/kamiertop/videodown/logger"
@@ -28,6 +28,7 @@ func main() {
 		os.Exit(1)
 	}
 }
+
 func Run() (err error) {
 	dataDir, err := apppaths.Directory()
 	if err != nil {
@@ -71,45 +72,29 @@ func configurePortableRuntime(directory string) error {
 		if err != nil {
 			return err
 		}
-		if err := os.MkdirAll(path, 0700); err != nil {
+		if err = os.MkdirAll(path, 0700); err != nil {
 			return err
 		}
 		for _, key := range entry.keys {
-			if err := os.Setenv(key, path); err != nil {
+			if err = os.Setenv(key, path); err != nil {
 				return err
 			}
 		}
 	}
+
 	return nil
 }
 
-// openAppData creates first-run files without replacing existing preferences or icons.
+// openAppData creates first-run data files without replacing existing preferences.
 func openAppData(directory string) (*storage.Store, error) {
 	store, err := storage.Open(directory)
 	if err != nil {
 		return nil, err
 	}
-	if err = store.InitDefaults("./download"); err == nil {
-		err = ensureAppIcon(directory)
-	}
-	if err != nil {
+	if err = store.InitDefaults("./download"); err != nil {
 		_ = store.Close()
 		return nil, err
 	}
+
 	return store, nil
-}
-func ensureAppIcon(directory string) error {
-	iconPath, err := apppaths.Inside(directory, "appicon.png")
-	if err != nil {
-		return err
-	}
-	f, err := os.OpenFile(iconPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
-	if errors.Is(err, os.ErrExist) {
-		return nil
-	}
-	if err != nil {
-		return fmt.Errorf("创建应用图标: %w", err)
-	}
-	_, writeErr := f.Write(assets.AppIconPNG)
-	return errors.Join(writeErr, f.Close())
 }

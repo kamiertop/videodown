@@ -73,7 +73,7 @@ jobs:
         run: |
           package_dir="dist/package/videodown"
           mkdir -p "$package_dir"
-          cp build/bin/videodown build/bin/videodown-updater internal/gui/assets/appicon.png "$package_dir/"
+          cp build/bin/videodown build/bin/videodown-updater "$package_dir/"
           chmod +x "$package_dir/videodown" "$package_dir/videodown-updater"
           tar -czf "dist/${{ matrix.archive }}" -C dist/package videodown
 
@@ -83,7 +83,7 @@ jobs:
         run: |
           $PackageDir = "dist/package/videodown"
           New-Item -ItemType Directory -Force -Path "$PackageDir" | Out-Null
-          Copy-Item build/bin/videodown.exe, build/bin/videodown-updater.exe, internal/gui/assets/appicon.png -Destination "$PackageDir/"
+          Copy-Item build/bin/videodown.exe, build/bin/videodown-updater.exe -Destination "$PackageDir/"
           Compress-Archive -Path "$PackageDir" -DestinationPath "dist/${{ matrix.archive }}" -Force
 
       - name: Upload workflow artifact

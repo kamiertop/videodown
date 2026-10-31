@@ -17,7 +17,7 @@ func main() {
 	version := flag.String("version", "dev", "应用版本号")
 	flag.Parse()
 	if err := buildFolder(*out, *targetOS, *targetArch, *version); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		_, _ = fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
@@ -82,9 +82,6 @@ func buildFolder(out, targetOS, targetArch, version string) error {
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("构建 %s: %w", target.name, err)
 		}
-	}
-	if err = os.WriteFile(filepath.Join(out, "appicon.png"), icon, 0644); err != nil {
-		return err
 	}
 	fmt.Println("便携程序已生成：" + out)
 	return nil
