@@ -14,8 +14,9 @@ import (
 
 	_ "github.com/glebarez/go-sqlite"
 	"github.com/jmoiron/sqlx"
-	"github.com/kamiertop/videodown/internal/apppaths"
 	"github.com/pelletier/go-toml/v2"
+
+	"github.com/kamiertop/videodown/internal/apppaths"
 )
 
 var ErrNotFound = errors.New("存储项不存在")
@@ -42,7 +43,7 @@ func Open(path string) (*Store, error) {
 	}
 	dbPath := filepath.Join(path, "history.sqlite")
 	for _, name := range []string{"history.sqlite", "history.sqlite-journal", "history.sqlite-wal", "history.sqlite-shm", "config.toml"} {
-		if _, err := apppaths.Inside(path, name); err != nil {
+		if _, err = apppaths.Inside(path, name); err != nil {
 			return nil, err
 		}
 	}
@@ -70,23 +71,24 @@ func Open(path string) (*Store, error) {
 		}
 	}
 	if len(content) != 0 {
-		if err := toml.NewDecoder(bytes.NewReader(content)).DisallowUnknownFields().Decode(&s.config); err != nil {
+		if err = toml.NewDecoder(bytes.NewReader(content)).DisallowUnknownFields().Decode(&s.config); err != nil {
 			s.Close()
-			var unknown *toml.StrictMissingError
-			if errors.As(err, &unknown) {
+			if unknown, ok := errors.AsType[*toml.StrictMissingError](err); ok {
 				fields := make([]string, 0, min(4, len(unknown.Errors)))
 				for _, field := range unknown.Errors[:min(4, len(unknown.Errors))] {
 					fields = append(fields, strings.Join(field.Key(), "."))
 				}
 				return nil, fmt.Errorf("配置包含不支持的字段：%s；请参考 config.example.toml 使用 app、download、bilibili、douyin 分组", strings.Join(fields, "、"))
 			}
+
 			return nil, fmt.Errorf("读取配置: %w", err)
 		}
-		if err := s.config.Validate(); err != nil {
+		if err = s.config.Validate(); err != nil {
 			s.Close()
 			return nil, fmt.Errorf("配置无效: %w", err)
 		}
 	}
+
 	return s, nil
 }
 
@@ -104,11 +106,12 @@ func openDB(dsn, configPath string) (*Store, error) {
 		`CREATE INDEX IF NOT EXISTS download_history_platform_time ON download_history(platform, downloaded DESC)`,
 		`CREATE INDEX IF NOT EXISTS download_history_bvid ON download_history(platform, bvid)`,
 	} {
-		if _, err := db.Exec(query); err != nil {
+		if _, err = db.Exec(query); err != nil {
 			db.Close()
 			return nil, err
 		}
 	}
+
 	return &Store{db: db, configPath: configPath, config: DefaultConfig("")}, nil
 }
 
@@ -139,11 +142,13 @@ func (s *Store) SaveHistory(key, value string) error {
 	if platform := historyPlatform(key); platform != "" {
 		return s.setHistory(key, platform, value)
 	}
+
 	return errors.New("无效的下载历史键")
 }
 
 func (s *Store) DeleteHistory(key string) error {
 	_, err := s.db.Exec(`DELETE FROM download_history WHERE key=?`, key)
+
 	return err
 }
 
@@ -152,6 +157,7 @@ func (s *Store) DeleteHistoryPrefix(prefix string) error {
 		return errors.New("unsupported prefix")
 	}
 	_, err := s.db.Exec(`DELETE FROM download_history WHERE substr(key,1,length(?))=?`, prefix, prefix)
+
 	return err
 }
 
@@ -159,7 +165,8 @@ func (s *Store) DeleteHistoryPrefix(prefix string) error {
 func (s *Store) HistoryRows(platform string) ([]string, error) {
 	var rows []string
 
-	return rows, s.db.Select(&rows, `SELECT payload FROM download_history WHERE platform=? ORDER BY downloaded DESC`, platform)
+	return rows, s.db.
+		Select(&rows, `SELECT payload FROM download_history WHERE platform=? ORDER BY downloaded DESC`, platform)
 }
 
 // BilibiliVideoRows excludes audio and cover records for downloaded-video matching.
@@ -171,6 +178,7 @@ func (s *Store) BilibiliVideoRows() ([]string, error) {
 
 func (s *Store) Close() error { return s.db.Close() }
 
+// writeConfig 把当前配置写入 config.toml，通过创建临时文件并重命名来保证原子性，避免损坏配置文件
 func (s *Store) writeConfig(config Config) error {
 	if s.configPath == "" {
 		return nil
@@ -185,21 +193,22 @@ func (s *Store) writeConfig(config Config) error {
 		return err
 	}
 	defer os.Remove(f.Name())
-	if err := f.Chmod(0600); err != nil {
+	if err = f.Chmod(0600); err != nil {
 		f.Close()
 		return err
 	}
-	if _, err := f.Write(data); err != nil {
+	if _, err = f.Write(data); err != nil {
 		f.Close()
 		return err
 	}
-	if err := f.Sync(); err != nil {
+	if err = f.Sync(); err != nil {
 		f.Close()
 		return err
 	}
-	if err := f.Close(); err != nil {
+	if err = f.Close(); err != nil {
 		return err
 	}
+
 	return os.Rename(f.Name(), s.configPath)
 }
 
@@ -209,5 +218,6 @@ func (s *Store) DownloadDirectory() string {
 	if directory != "" && !filepath.IsAbs(directory) && s.configPath != "" {
 		return filepath.Join(filepath.Dir(s.configPath), directory)
 	}
+
 	return directory
 }

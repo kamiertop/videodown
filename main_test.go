@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/kamiertop/videodown/internal/gui/assets"
 	"github.com/kamiertop/videodown/internal/storage"
 )
 
@@ -16,14 +15,13 @@ func TestFirstLaunchCreatesFilesAndPreservesExistingData(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"config.toml", "history.sqlite", "appicon.png"} {
+	for _, name := range []string{"config.toml", "history.sqlite"} {
 		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
 			t.Fatalf("first launch missing %s: %v", name, err)
 		}
 	}
-	icon, err := os.ReadFile(filepath.Join(dir, "appicon.png"))
-	if err != nil || !bytes.Equal(icon, assets.AppIconPNG) {
-		t.Fatal("bundled icon not exported")
+	if _, err := os.Stat(filepath.Join(dir, "appicon.png")); !os.IsNotExist(err) {
+		t.Fatalf("startup should use the embedded icon without exporting it: %v", err)
 	}
 	if got := store.DownloadDirectory(); got != filepath.Join(dir, "download") {
 		t.Fatalf("default download escaped application folder: %s", got)
