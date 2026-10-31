@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/imroc/req/v3"
+	"github.com/kamiertop/videodown/internal/apppaths"
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/logger"
 	"golang.org/x/mod/semver"
@@ -187,7 +188,18 @@ func (u *Updater) InstallUpdate(packagePath string) error {
 	if _, err := os.Stat(packagePath); err != nil {
 		return fmt.Errorf("更新包不存在: %w", err)
 	}
+	appDir, err := apppaths.Directory()
+	if err != nil {
+		return err
+	}
+	packagePath, err = apppaths.Inside(appDir, packagePath)
+	if err != nil {
+		return err
+	}
 	current, err := os.Executable()
+	if err == nil {
+		current, err = filepath.EvalSymlinks(current)
+	}
 	if err != nil {
 		return fmt.Errorf("获取当前程序路径失败: %w", err)
 	}
@@ -195,14 +207,21 @@ func (u *Updater) InstallUpdate(packagePath string) error {
 	if runtime.GOOS == "windows" {
 		name += ".exe"
 	}
-	updaterPath := filepath.Join(filepath.Dir(current), name)
+	updaterPath, err := apppaths.Inside(appDir, name)
+	if err != nil {
+		return err
+	}
 	if _, err := os.Stat(updaterPath); err != nil {
 		return fmt.Errorf("更新程序不存在: %w", err)
 	}
 	cmd := exec.Command(updaterPath, "--package", packagePath, "--target", current)
 	cmd.Dir = filepath.Dir(current)
-	logPath := filepath.Join(filepath.Dir(current), "videodown-updater.log")
+	logPath, err := apppaths.Inside(appDir, "videodown-updater.log")
+	if err != nil {
+		return err
+	}
 	if logFile, logErr := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644); logErr == nil {
+		defer logFile.Close()
 		cmd.Stdout, cmd.Stderr = logFile, logFile
 	}
 	if err = cmd.Start(); err != nil {
@@ -232,11 +251,11 @@ func (u *Updater) DownloadUpdate(ctx context.Context, downloadURL string) (strin
 	}
 	// Keep the package beside the running application so users can inspect it
 	// and the standalone updater can access it reliably.
-	appPath, err := os.Executable()
+	appDir, err := apppaths.Directory()
 	if err != nil {
 		return "", fmt.Errorf("获取当前程序路径失败: %w", err)
 	}
-	f, err := os.CreateTemp(filepath.Dir(appPath), "videodown-update-*"+ext)
+	f, err := os.CreateTemp(appDir, "videodown-update-*"+ext)
 	if err != nil {
 		return "", err
 	}

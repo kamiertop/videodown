@@ -3,8 +3,8 @@ package logger
 import (
 	"io"
 	"os"
-	"path/filepath"
 
+	"github.com/kamiertop/videodown/internal/apppaths"
 	"github.com/rs/zerolog"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
@@ -32,9 +32,13 @@ func (l *Logger) WithName(name string) *Logger {
 
 func logWriter() io.Writer {
 	if IsProdMode() {
-		logPath := "videodown.log"
-		if execPath, err := os.Executable(); err == nil {
-			logPath = filepath.Join(filepath.Dir(execPath), "videodown.log")
+		root, err := apppaths.Directory()
+		if err != nil {
+			return os.Stderr
+		}
+		logPath, err := apppaths.Inside(root, "videodown.log")
+		if err != nil {
+			return os.Stderr
 		}
 		return &lumberjack.Logger{
 			Filename:   logPath,
