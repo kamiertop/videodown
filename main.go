@@ -34,9 +34,6 @@ func Run() (err error) {
 	if err != nil {
 		return err
 	}
-	if err = configurePortableRuntime(dataDir); err != nil {
-		return err
-	}
 
 	store, err := openAppData(dataDir)
 	if err != nil {
@@ -48,41 +45,21 @@ func Run() (err error) {
 	downloader := bilidownload.New(vdlog, store, service.CookieFunc())
 	dyService := dyapi.New(vdlog, store)
 	dyDownloader := dydownload.New(vdlog, store, dyService.PublicHeaders())
-	shell := gui.NewShellWithOptions(gui.Options{YouTube: yt.New(store), UpdateChecker: updater.New(vdlog, store), Preferences: store, Settings: store, Bilibili: service, BilibiliDownload: downloader, Douyin: dyService, DouyinDownload: dyDownloader, ActiveDownloads: func() int { return downloader.ActiveCount() + dyDownloader.ActiveCount() }})
+	shell := gui.NewShellWithOptions(gui.Options{
+		YouTube:          yt.New(store),
+		UpdateChecker:    updater.New(vdlog, store),
+		Preferences:      store,
+		Settings:         store,
+		Bilibili:         service,
+		BilibiliDownload: downloader,
+		Douyin:           dyService,
+		DouyinDownload:   dyDownloader,
+		ActiveDownloads:  func() int { return downloader.ActiveCount() + dyDownloader.ActiveCount() },
+	})
 	defer shell.Wait()
 	mygo.App.WhenReady(shell.OpenWindow)
 
 	return mygo.App.Run()
-}
-
-// configurePortableRuntime anchors relative paths and library caches to the binary folder.
-func configurePortableRuntime(directory string) error {
-	if err := os.Chdir(directory); err != nil {
-		return err
-	}
-	for _, entry := range []struct {
-		name string
-		keys []string
-	}{
-		{"tmp", []string{"TMPDIR", "TMP", "TEMP"}},
-		{"cache", []string{"XDG_CACHE_HOME", "LOCALAPPDATA"}},
-		{".", []string{"XDG_CONFIG_HOME", "XDG_DATA_HOME", "APPDATA"}},
-	} {
-		path, err := apppaths.Inside(directory, entry.name)
-		if err != nil {
-			return err
-		}
-		if err = os.MkdirAll(path, 0700); err != nil {
-			return err
-		}
-		for _, key := range entry.keys {
-			if err = os.Setenv(key, path); err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
 }
 
 // openAppData creates first-run data files without replacing existing preferences.

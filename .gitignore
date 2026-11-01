@@ -22,7 +22,7 @@ dist
 .vscode
 
 downloads
-
+gvfs-metadata
 download
 !bilibili/download
 !douyin/download
@@ -34,7 +34,8 @@ tests
 .agents
 
 .claude
-
+cache
+tmp
 .task/
 
 # Portable runtime files (may contain account credentials).

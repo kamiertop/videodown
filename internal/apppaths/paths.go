@@ -3,24 +3,31 @@ package apppaths
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
 )
 
+var customDir = flag.String("data", "", "Data directory for storing preferences and history")
+
 func Directory() (string, error) {
+	// 使用指定的目录，用作测试或后续扩展
+	if *customDir != "" {
+		return filepath.Abs(*customDir)
+	}
+
+	// 使用可执行文件所在目录作为数据目录
 	executable, err := os.Executable()
 	if err != nil {
 		return "", err
 	}
+
 	executable, err = filepath.EvalSymlinks(executable)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Dir(executable), nil
+
+	return filepath.Dir(executable), err
 }
 
-// Inside also checks existing parent symlinks before a new path is created.
 func Inside(root, name string) (string, error) {
 	root, err := filepath.Abs(root)
 	if err != nil {
