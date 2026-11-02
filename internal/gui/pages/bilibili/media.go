@@ -97,7 +97,10 @@ func (s *State) mediaCardWithSelection(c *ui.Context, bvid, title, cover, author
 			}
 		})
 }
-func duration(seconds int) string { return fmt.Sprintf("%d:%02d", seconds/60, seconds%60) }
+func duration(seconds int) string {
+	return fmt.Sprintf("%d:%02d", seconds/60, seconds%60)
+}
+
 func (s *State) stagingNotice(c *ui.Context) {
 	if s.notice != "" {
 		caption(c, s.notice)

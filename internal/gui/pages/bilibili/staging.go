@@ -89,6 +89,7 @@ func (s *State) stageSelectedAuthorVideos() int {
 			}
 		}
 	}
+
 	return count
 }
 
@@ -103,6 +104,7 @@ func (s *State) authorSourceName() string {
 			}
 		}
 	}
+
 	return ""
 }
 func (s *State) currentVideoCount() int {
@@ -111,6 +113,7 @@ func (s *State) currentVideoCount() int {
 	}
 	return len(s.favoriteDetail.Data.Medias)
 }
+
 func (s *State) selectedCount() int {
 	count := 0
 	for _, key := range s.libraryVideoKeys() {
@@ -118,8 +121,10 @@ func (s *State) selectedCount() int {
 			count++
 		}
 	}
+
 	return count
 }
+
 func (s *State) selectLibrary() {
 	query := *s.search(s.favoriteTab)
 	if s.favoriteTab == "collection" {
@@ -137,6 +142,7 @@ func (s *State) selectLibrary() {
 		}
 	}
 }
+
 func (s *State) stageSelectedLibrary() {
 	if s.favoriteTab == "collection" {
 		for _, v := range s.collectionDetail.Data.Medias {

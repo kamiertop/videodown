@@ -4,8 +4,8 @@ go 1.27.3
 
 require (
 	github.com/ELY-Open-Source/MujicaUI v0.0.0-20261022023808-e475536b6081
-	github.com/dop251/goja v0.0.0-20261030192516-032d024709ca
-	github.com/egoist/mygo v0.7.3
+	github.com/dop251/goja v0.0.0-20261031103838-cf2ff0ec0b31
+	github.com/egoist/mygo v0.7.4
 	github.com/glebarez/go-sqlite v1.23.0
 	github.com/imroc/req/v3 v3.61.0
 	github.com/jmoiron/sqlx v1.4.0

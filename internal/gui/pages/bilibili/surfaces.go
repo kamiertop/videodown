@@ -44,6 +44,7 @@ func textInput(c *ui.Context, value *string, label, placeholder string, submit .
 	if editor.Focused() {
 		frame.Border(style.BorderWidth, k.Focus)
 	}
+
 	return frame
 }
 
