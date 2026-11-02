@@ -32,14 +32,17 @@ func (s *State) imageWithAspect(c *ui.Context, url string, width, height float32
 	} else {
 		frame.Size(width, height)
 	}
-	// Only request images intersecting the window; long grids build offscreen cards too.
+	// Preload nearby rows so scrolling does not have to wait for each cover.
 	bounds := frame.Bounds()
 	windowWidth, windowHeight := c.Size()
-	visible := bounds.W > 0 && bounds.H > 0 && bounds.X < windowWidth && bounds.Y < windowHeight && bounds.X+bounds.W > 0 && bounds.Y+bounds.H > 0
+	visible := imagecache.NearViewport(bounds, windowWidth, windowHeight)
 	if bounds.W == 0 || bounds.H == 0 {
 		c.After(time.Millisecond)
 	}
-	entry := s.images.Get(url)
+	var entry *imagecache.Entry
+	if visible {
+		entry = s.images.Get(url)
+	}
 	if entry == nil && visible && url != "" && s.runtime.Image != nil && !s.stopped {
 		entry = s.images.Add(url)
 		ctx := s.ctx
@@ -48,7 +51,7 @@ func (s *State) imageWithAspect(c *ui.Context, url string, width, height float32
 		var bitmap *ui.Bitmap
 		s.runtime.Image(func() error {
 			var err error
-			bitmap, err = imagecache.Load(ctx, url, "https://www.douyin.com/")
+			bitmap, err = imagecache.LoadThumbnail(ctx, url, "https://www.douyin.com/")
 			return err
 		}, func(err error) {
 			if s.stopped || epoch != s.epoch {

@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"time"
 
+	"golang.org/x/image/draw"
+
 	"github.com/egoist/mygo/ui"
 )
 
@@ -53,6 +55,18 @@ func (c Cache) Add(url string) *Entry {
 }
 
 func Load(ctx context.Context, url, referer string) (*ui.Bitmap, error) {
+	return load(ctx, url, referer, false)
+}
+
+// ThumbnailMaxSide bounds retained RGBA pixels to 1 MiB per card image.
+const ThumbnailMaxSide = 512
+
+// LoadThumbnail keeps card caches independent of the source image resolution.
+func LoadThumbnail(ctx context.Context, url, referer string) (*ui.Bitmap, error) {
+	return load(ctx, url, referer, true)
+}
+
+func load(ctx context.Context, url, referer string, thumbnail bool) (*ui.Bitmap, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -80,5 +94,31 @@ func Load(ctx context.Context, url, referer string) (*ui.Bitmap, error) {
 	if config.Width <= 0 || config.Height <= 0 || config.Width > 8192 || config.Height > 8192 || int64(config.Width)*int64(config.Height) > 16<<20 {
 		return nil, errors.New("图片尺寸过大")
 	}
-	return ui.DecodeBitmap(data)
+	if !thumbnail {
+		return ui.DecodeBitmap(data)
+	}
+	img, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return nil, err
+	}
+	return ui.NewBitmap(orientThumbnail(resizeThumbnail(img), jpegOrientation(data))), nil
+}
+
+func resizeThumbnail(img image.Image) image.Image {
+	bounds := img.Bounds()
+	w, h := bounds.Dx(), bounds.Dy()
+	longest := max(w, h)
+	if longest <= ThumbnailMaxSide {
+		return img
+	}
+	w, h = max(1, w*ThumbnailMaxSide/longest), max(1, h*ThumbnailMaxSide/longest)
+	dst := image.NewRGBA(image.Rect(0, 0, w, h))
+	draw.BiLinear.Scale(dst, dst.Bounds(), img, bounds, draw.Src, nil)
+	return dst
+}
+
+// NearViewport includes a small look-ahead region without loading the whole grid.
+func NearViewport(bounds ui.Rect, width, height float32) bool {
+	const margin float32 = 512
+	return bounds.W > 0 && bounds.H > 0 && bounds.X < width && bounds.X+bounds.W > 0 && bounds.Y < height+margin && bounds.Y+bounds.H > -margin
 }

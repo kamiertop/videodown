@@ -35,11 +35,13 @@ func (s *State) resetAutoPage(key, scrollKey string) {
 	scroll.MaxY = 0
 }
 
+const autoPagePreloadDistance float32 = 600
+
 func (p *autoPageState) nearEnd(scroll *ui.ScrollState) bool {
 	if scroll.MaxY <= 0 {
 		return p.fillPages < style.DynamicAutoFillLimit
 	}
-	return scroll.Y > p.atY+1 && scroll.Y+style.DynamicAutoLoadThreshold >= scroll.MaxY
+	return scroll.Y > p.atY+1 && scroll.Y+autoPagePreloadDistance >= scroll.MaxY
 }
 
 // ready is evaluated again when the timer fires, after the new layout has
