@@ -4,6 +4,7 @@ import (
 	"image/png"
 	"math"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/ELY-Open-Source/MujicaUI/core"
@@ -72,7 +73,7 @@ func TestHistoryRowsAlignAndShowPaths(t *testing.T) {
 			t.Fatal("opened the wrong directory")
 		}
 		if width == 760 {
-			f, err := os.Create("/tmp/youtube-history-aligned.png")
+			f, err := os.Create(filepath.Join(os.TempDir(), "youtube-history-aligned.png"))
 			if err != nil {
 				t.Fatal(err)
 			}

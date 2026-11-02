@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/png"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -94,7 +95,7 @@ func TestShellAllRoutesAndSizes(t *testing.T) {
 						}
 					}
 					if size[0] == 1200 {
-						file, err := os.Create("/tmp/" + p.ID + "-navigation.png")
+						file, err := os.Create(filepath.Join(os.TempDir(), p.ID+"-navigation.png"))
 						if err != nil {
 							t.Fatal(err)
 						}
@@ -106,7 +107,7 @@ func TestShellAllRoutesAndSizes(t *testing.T) {
 					}
 				}
 				if p.ID == "bilibili" && path == "/bilibili/favorite" {
-					f, err := os.Create(fmt.Sprintf("/tmp/bilibili-native-%d.png", size[0]))
+					f, err := os.Create(filepath.Join(os.TempDir(), fmt.Sprintf("bilibili-native-%d.png", size[0])))
 					if err != nil {
 						t.Fatal(err)
 					}
@@ -129,7 +130,7 @@ func TestShellAllRoutesAndSizes(t *testing.T) {
 	test.SetSize(1200, 880)
 	test.Frame()
 	test.Advance(300 * time.Millisecond)
-	f, err := os.Create("/tmp/shell-home.png")
+	f, err := os.Create(filepath.Join(os.TempDir(), "shell-home.png"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +142,7 @@ func TestShellAllRoutesAndSizes(t *testing.T) {
 	test.SetSize(760, 600)
 	test.Frame()
 	test.Advance(300 * time.Millisecond)
-	narrow, err := os.Create("/tmp/shell-settings.png")
+	narrow, err := os.Create(filepath.Join(os.TempDir(), "shell-settings.png"))
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image/png"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -152,7 +153,7 @@ func TestFollowsSearchLayoutAndNavigation(t *testing.T) {
 			t.Fatal("manual paging button still visible")
 		}
 	}
-	f, err := os.Create("/tmp/douyin-follows.png")
+	f, err := os.Create(filepath.Join(os.TempDir(), "douyin-follows.png"))
 	if err != nil {
 		t.Fatal(err)
 	}

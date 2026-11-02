@@ -108,3 +108,16 @@ func TestFirstOpenCreatesConfigurationWithSpecialDirectoryName(t *testing.T) {
 		t.Fatal("history did not persist in special-character directory")
 	}
 }
+
+func TestSQLiteFileURIHandlesDriveLettersAndSpecialCharacters(t *testing.T) {
+	for _, tc := range []struct{ path, want string }{
+		{"C:/Users/runneradmin/AppData/Local/Temp/history.sqlite", "file:///C:/Users/runneradmin/AppData/Local/Temp/history.sqlite"},
+		{"D:/portable # folder/history.sqlite", "file:///D:/portable%20%23%20folder/history.sqlite"},
+		{"/tmp/portable # folder/history.sqlite", "file:///tmp/portable%20%23%20folder/history.sqlite"},
+		{"/tmp/portable?name/history.sqlite", "file:///tmp/portable%3Fname/history.sqlite"},
+	} {
+		if got := sqliteFileURI(tc.path); got != tc.want {
+			t.Errorf("URI for %q: got %q, want %q", tc.path, got, tc.want)
+		}
+	}
+}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"image/png"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -50,7 +51,7 @@ func TestStartupUpdateCheckIsDeferredOnceAndShowsRelease(t *testing.T) {
 			t.Fatalf("missing update content %q", text)
 		}
 	}
-	f, err := os.Create("/tmp/videodown-update-dialog.png")
+	f, err := os.Create(filepath.Join(os.TempDir(), "videodown-update-dialog.png"))
 	if err != nil {
 		t.Fatal(err)
 	}

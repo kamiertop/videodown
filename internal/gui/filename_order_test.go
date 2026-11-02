@@ -3,6 +3,7 @@ package gui
 import (
 	"image/png"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -122,7 +123,7 @@ func TestFilenameOrderWrappedRowEnd(t *testing.T) {
 	tt.Move(source.X+20, source.Y+10)
 	tt.Move(x, y)
 	// Keep a snapshot of the insertion marker before dropping.
-	file, err := os.Create("/tmp/filename-order-drag.png")
+	file, err := os.Create(filepath.Join(os.TempDir(), "filename-order-drag.png"))
 	if err != nil {
 		t.Fatal(err)
 	}

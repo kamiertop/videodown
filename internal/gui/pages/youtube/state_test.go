@@ -4,6 +4,7 @@ import (
 	"context"
 	"image/png"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -99,7 +100,7 @@ func TestFormResolveDownloadCancelAndCookie(t *testing.T) {
 			}
 		}
 		if width == 760 {
-			f, err := os.Create("/tmp/youtube-download-ready.png")
+			f, err := os.Create(filepath.Join(os.TempDir(), "youtube-download-ready.png"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -171,7 +172,7 @@ func TestSidebarAccountCookieAndHistory(t *testing.T) {
 			t.Fatal("account cookie was not saved")
 		}
 		if width == 760 {
-			f, err := os.Create("/tmp/youtube-account-sidebar.png")
+			f, err := os.Create(filepath.Join(os.TempDir(), "youtube-account-sidebar.png"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -196,7 +197,7 @@ func TestSidebarAccountCookieAndHistory(t *testing.T) {
 			t.Fatal("navigation lost download input")
 		}
 		if width == 760 {
-			f, err := os.Create("/tmp/youtube-download-sidebar.png")
+			f, err := os.Create(filepath.Join(os.TempDir(), "youtube-download-sidebar.png"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -228,7 +229,7 @@ func TestCompactCardWithSidebarAndFormatPopup(t *testing.T) {
 	}
 	save := func(path string) {
 		t.Helper()
-		f, err := os.Create(path)
+		f, err := os.Create(filepath.Join(os.TempDir(), filepath.Base(path)))
 		if err != nil {
 			t.Fatal(err)
 		}

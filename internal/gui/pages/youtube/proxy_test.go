@@ -3,6 +3,7 @@ package youtube
 import (
 	"image/png"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -71,7 +72,7 @@ func TestAccountProxySaveValidateAndClear(t *testing.T) {
 	s.proxy = netclient.DefaultProxy
 	s.saveProxy()
 	view.Advance(300 * time.Millisecond)
-	f, err := os.Create("/tmp/videodown-youtube-proxy.png")
+	f, err := os.Create(filepath.Join(os.TempDir(), "videodown-youtube-proxy.png"))
 	if err != nil {
 		t.Fatal(err)
 	}

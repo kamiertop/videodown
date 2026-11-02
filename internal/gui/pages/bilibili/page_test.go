@@ -7,6 +7,7 @@ import (
 	"image/draw"
 	"image/png"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -216,7 +217,7 @@ func TestLibraryAuthorHoverLeavesCardNeutral(t *testing.T) {
 
 func saveImage(t *testing.T, test *ui.Tester, path string) {
 	t.Helper()
-	f, err := os.Create(path)
+	f, err := os.Create(filepath.Join(os.TempDir(), filepath.Base(path)))
 	if err != nil {
 		t.Fatal(err)
 	}

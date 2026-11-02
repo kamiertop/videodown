@@ -3,6 +3,7 @@ package douyin
 import (
 	"image/png"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -71,7 +72,7 @@ func TestCompactCardFitsTwoLineTitleAndSVGPhotoBadge(t *testing.T) {
 	if !ok || badge.W != 24 || badge.H != 24 {
 		t.Fatalf("missing compact SVG media badge: %+v", badge)
 	}
-	f, err := os.Create("/tmp/douyin-compact-live-photo.png")
+	f, err := os.Create(filepath.Join(os.TempDir(), "douyin-compact-live-photo.png"))
 	if err != nil {
 		t.Fatal(err)
 	}
