@@ -104,6 +104,7 @@ func (s *State) authorSource(uid, name string) source {
 		return videoPage{d.AwemeList, int(d.MaxCursor), d.HasMore != 0}, err
 	}}
 }
+
 func (s *State) folderSource(kind string, f folder) source {
 	api := s.api
 	return source{Key: kind + ":" + f.Key, Title: f.Title, Load: func(cursor int) (videoPage, error) {
@@ -322,15 +323,22 @@ func (s *State) loadFolders(more bool) {
 		}
 	})
 }
+
+// Request the next page roughly one card row before the end.
+const videoPreloadDistance float32 = 600
+
 func (s *State) maybeMore() {
 	scroll := s.scroll("videos")
-	if s.runtime.After == nil || s.autoPending || !s.videos.Data.More || s.videos.Loading || s.more.Loading || s.more.Error != "" {
-		return
+	ready := func() bool {
+		if !s.videos.Loaded || !s.videos.Data.More || s.videos.Loading || s.more.Loading || s.videos.Error != "" || s.more.Error != "" {
+			return false
+		}
+		if scroll.MaxY <= 0 {
+			return s.autoFill < 6
+		}
+		return scroll.Y > s.autoAt+1 && scroll.Y+videoPreloadDistance >= scroll.MaxY
 	}
-	if scroll.MaxY > 0 && (scroll.Y <= s.autoAt+1 || scroll.Y+120 < scroll.MaxY) {
-		return
-	}
-	if scroll.MaxY <= 0 && s.autoFill >= 6 {
+	if s.runtime.After == nil || s.autoPending || !ready() {
 		return
 	}
 	s.autoPending = true
@@ -340,13 +348,21 @@ func (s *State) maybeMore() {
 			return
 		}
 		s.autoPending = false
+		// The build can still see the previous layout's zero scroll range.
+		// Recheck after layout commits before requesting another page.
+		if !ready() {
+			return
+		}
 		if scroll.MaxY <= 0 {
 			s.autoFill++
+		} else {
+			s.autoFill = 0
 		}
 		s.autoAt = scroll.Y
 		s.loadVideos(true)
 	})
 }
+
 func (s *State) enter(path string) {
 	if path == s.activePath {
 		return

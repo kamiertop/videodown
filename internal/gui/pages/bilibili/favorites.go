@@ -240,9 +240,6 @@ func (s *State) libraryVideos(c *ui.Context, navigate func(string)) {
 	s.stagingNotice(c)
 	s.errorRow(c, s.stageError, nil)
 	if s.favoriteTab == "collection" {
-		if s.collectionDetail.Loading {
-			caption(c, "正在加载合集视频")
-		}
 		if s.collectionID == 0 {
 			empty(c, "请选择合集", "star")
 			return
@@ -252,6 +249,9 @@ func (s *State) libraryVideos(c *ui.Context, navigate func(string)) {
 				s.mediaCardWithAuthor(c.Key(video.ID), video.Bvid, video.Title, video.Cover, video.Upper.Name, duration(video.Duration), video.CntInfo.Play, video.CntInfo.Danmaku, video.Pubtime, uint64(max(0, video.Upper.Mid)), navigate)
 			}
 		})
+		if s.collectionDetail.Loading {
+			caption(c, "正在加载合集视频")
+		}
 		s.errorRow(c, s.collectionDetail.Error, func() { s.loadCollection(s.collectionID, s.collectionDetailPage+1, s.collectionDetail.Loaded) })
 		if len(s.collectionDetail.Data.Medias) == 0 && !s.collectionDetail.Loading {
 			empty(c, "暂无视频", "play")
@@ -265,9 +265,6 @@ func (s *State) libraryVideos(c *ui.Context, navigate func(string)) {
 			}
 		}
 	} else {
-		if s.favoriteDetail.Loading {
-			caption(c, "正在加载收藏视频")
-		}
 		if s.favoriteID == 0 {
 			empty(c, "请选择收藏夹", "star")
 			return
@@ -281,6 +278,9 @@ func (s *State) libraryVideos(c *ui.Context, navigate func(string)) {
 				s.mediaCardWithAuthor(c.Key(video.ID), bvid, video.Title, video.Cover, video.Upper.Name, duration(video.Duration), video.CntInfo.Play, video.CntInfo.Danmaku, video.PubTime, uint64(max(int64(0), video.Upper.Mid)), navigate)
 			}
 		})
+		if s.favoriteDetail.Loading {
+			caption(c, "正在加载收藏视频")
+		}
 		s.errorRow(c, s.favoriteDetail.Error, func() { s.loadFavorite(s.favoriteID, s.favoritePage+1, s.favoriteDetail.Loaded) })
 		if len(s.favoriteDetail.Data.Medias) == 0 && !s.favoriteDetail.Loading {
 			empty(c, "暂无视频", "play")

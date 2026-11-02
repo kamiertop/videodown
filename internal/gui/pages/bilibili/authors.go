@@ -115,11 +115,12 @@ func (s *State) authorVideoContent(c *ui.Context) {
 	s.errorRow(c, s.stageError, nil)
 	switch {
 	case s.authorTab == "uploads":
-		if s.uploads.Loading {
-			caption(c, "正在加载投稿")
-		}
 		if len(s.uploads.Data.List.Vlist) == 0 {
-			empty(c, "暂无投稿", "play")
+			if s.uploads.Loading {
+				caption(c, "正在加载投稿")
+			} else {
+				empty(c, "暂无投稿", "play")
+			}
 			return
 		}
 		ui.Grid(c).
@@ -131,6 +132,9 @@ func (s *State) authorVideoContent(c *ui.Context) {
 					s.mediaCard(c.Key(video.Bvid), video.Bvid, video.Title, video.Pic, video.Author, video.Length, video.Play, video.VideoReview, video.Created)
 				}
 			})
+		if s.uploads.Loading {
+			caption(c, "正在加载投稿")
+		}
 		s.errorRow(c, s.uploads.Error, func() { s.loadUploads(max(1, s.authorPage+1), s.uploads.Loaded) })
 		if len(s.uploads.Data.List.Vlist) < s.uploads.Data.Page.Count {
 			key := fmt.Sprintf("author-videos/%d", s.authorInfo.Data.Mid)
@@ -187,9 +191,6 @@ func (s *State) authorListsView(c *ui.Context) {
 							s.loadAuthorLists(1, false)
 						}
 					})
-					if s.authorLists.Loading {
-						caption(c, "正在加载列表")
-					}
 					for _, item := range lists.SeasonsList {
 						if item.Meta.SeasonId <= 0 {
 							continue
@@ -207,6 +208,9 @@ func (s *State) authorListsView(c *ui.Context) {
 						}
 						authorListItem(c.Key(fmt.Sprintf("series-%d", item.Meta.SeriesId)), item.Meta.Name, "系列", item.Meta.Total,
 							item.Meta.SeriesId == s.selectedSeries, func() { s.loadSeries(item.Meta.SeriesId, 1, false) })
+					}
+					if s.authorLists.Loading {
+						caption(c, "正在加载列表")
 					}
 					if len(lists.SeasonsList)+len(lists.SeriesList) < lists.Page.Total {
 						key := fmt.Sprintf("author-lists/%d", s.authorInfo.Data.Mid)
@@ -405,14 +409,14 @@ func (s *State) authorContentControls(c *ui.Context, navigate func(string)) {
 	})
 }
 func (s *State) authorSeason(c *ui.Context) {
-	if s.seasonVideos.Loading {
-		caption(c, "正在加载合集视频")
-	}
 	ui.Grid(c).Columns(s.columns(c, true)).FillWidth().Gap(style.SpaceMedium).Children(func() {
 		for _, video := range s.seasonVideos.Data.Archives {
 			s.mediaCard(c.Key(video.Bvid), video.Bvid, video.Title, video.Pic, s.authorInfo.Data.Name, duration(video.Duration), video.Stat.View, video.Stat.Danmaku, video.Pubdate)
 		}
 	})
+	if s.seasonVideos.Loading {
+		caption(c, "正在加载合集视频")
+	}
 	s.errorRow(c, s.seasonVideos.Error, func() { s.loadSeason(s.selectedSeason, max(1, s.seasonPage+1), s.seasonVideos.Loaded) })
 	if len(s.seasonVideos.Data.Archives) == 0 && !s.seasonVideos.Loading {
 		empty(c, "暂无合集视频", "play")
@@ -427,14 +431,14 @@ func (s *State) authorSeason(c *ui.Context) {
 	}
 }
 func (s *State) authorSeries(c *ui.Context) {
-	if s.seriesVideos.Loading {
-		caption(c, "正在加载系列视频")
-	}
 	ui.Grid(c).Columns(s.columns(c, true)).FillWidth().Gap(style.SpaceMedium).Children(func() {
 		for _, video := range s.seriesVideos.Data.Archives {
 			s.mediaCard(c.Key(video.Bvid), video.Bvid, video.Title, video.Pic, s.authorInfo.Data.Name, duration(video.Duration), video.Stat.View, video.Stat.Danmaku, video.PubDate)
 		}
 	})
+	if s.seriesVideos.Loading {
+		caption(c, "正在加载系列视频")
+	}
 	s.errorRow(c, s.seriesVideos.Error, func() { s.loadSeries(s.selectedSeries, max(1, s.seriesPage+1), s.seriesVideos.Loaded) })
 	if len(s.seriesVideos.Data.Archives) == 0 && !s.seriesVideos.Loading {
 		empty(c, "暂无系列视频", "play")

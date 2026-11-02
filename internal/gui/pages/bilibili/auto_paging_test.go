@@ -306,3 +306,53 @@ func TestFavoriteScrollPaginationErrorAndRetry(t *testing.T) {
 		t.Fatalf("favorite retry did not append: count=%d page=%d error=%q hasNew=%v hasOldError=%v", len(s.favoriteDetail.Data.Medias), s.favoritePage, s.favoriteDetail.Error, view.HasText("重试后的收藏"), view.HasText("收藏分页失败"))
 	}
 }
+
+func TestAutoPagePreloadsAheadWithoutLoadingAtTop(t *testing.T) {
+	page := &autoPageState{}
+	scroll := &ui.ScrollState{MaxY: 1000}
+	if page.nearEnd(scroll) {
+		t.Fatal("scrollable page must wait for scrolling")
+	}
+	scroll.Y = 450
+	if !page.nearEnd(scroll) {
+		t.Fatal("next page should preload before the last 120 units")
+	}
+	page.atY = scroll.Y
+	if page.nearEnd(scroll) {
+		t.Fatal("unchanged scroll position should not repeatedly preload")
+	}
+}
+
+func TestAuthorPaginationKeepsExistingCardsInPlace(t *testing.T) {
+	s, api, runtime := setup(t, true)
+	s.authorInfo = resource[model.UserInfoData]{Data: model.UserInfoData{Mid: 1, Name: "测试作者"}, Loaded: true}
+	s.follows.Loaded = true
+	items := make([]model.VListItem, 20)
+	for i := range items {
+		items[i] = model.VListItem{Bvid: fmt.Sprintf("BVstable%02d", i), Title: fmt.Sprintf("稳定卡片 %02d", i)}
+	}
+	s.uploads = resource[model.VideoListData]{Data: model.VideoListData{Page: model.VideoListPage{Count: 40}, List: model.VideoList{Vlist: items}}, Loaded: true}
+	s.authorPage = 1
+	api.upload = func(_ uint, _, page int) (model.VideoListData, error) {
+		return model.VideoListData{Page: model.VideoListPage{Count: 40}, List: model.VideoList{Vlist: []model.VListItem{{Bvid: "BVnext", Title: "下一页卡片"}}}}, nil
+	}
+	path := "/bilibili/up/1"
+	view := autoPagingView(s, &path)
+	view.Frame()
+	before, ok := view.Find("选择视频：稳定卡片 00")
+	if !ok {
+		t.Fatal("missing first card")
+	}
+	s.loadUploads(2, true)
+	view.Frame()
+	during, ok := view.Find("选择视频：稳定卡片 00")
+	if !ok || during.X != before.X || during.Y != before.Y || during.W != before.W || during.H != before.H {
+		t.Fatalf("loading moved existing card: before=%+v during=%+v", before, during)
+	}
+	runtime.flush(t)
+	view.Frame()
+	after, ok := view.Find("选择视频：稳定卡片 00")
+	if !ok || after.X != before.X || after.Y != before.Y || after.W != before.W || after.H != before.H {
+		t.Fatalf("appending moved existing card: before=%+v after=%+v", before, after)
+	}
+}
