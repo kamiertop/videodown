@@ -41,6 +41,8 @@ type lazyYouTubeAPI struct {
 	reads int
 }
 
+func (a *lazyYouTubeAPI) ProxyEnabled() bool             { return false }
+func (a *lazyYouTubeAPI) Proxy() string                  { return "" }
 func (a *lazyYouTubeAPI) Cookie() string                 { return "" }
 func (a *lazyYouTubeAPI) History() ([]yt.History, error) { a.reads++; return nil, nil }
 func TestPlatformsInitializeOnlyOnFirstEntry(t *testing.T) {

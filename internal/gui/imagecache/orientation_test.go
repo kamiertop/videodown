@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/kamiertop/videodown/internal/netclient"
 )
 
 func orientedJPEG(t *testing.T, orientation uint16, order binary.ByteOrder) []byte {
@@ -67,9 +68,9 @@ func TestThumbnailOrientation(t *testing.T) {
 func TestLoadThumbnailKeepsDirectionAndSizeBound(t *testing.T) {
 	data := orientedJPEG(t, 6, binary.LittleEndian)
 	previous := imageClient
-	imageClient = &http.Client{Transport: imageRoundTripper(func(r *http.Request) (*http.Response, error) {
+	imageClient = netclient.New("", 0, imageRoundTripper(func(r *http.Request) (*http.Response, error) {
 		return &http.Response{StatusCode: 200, Body: io.NopCloser(bytes.NewReader(data)), Header: make(http.Header)}, nil
-	})}
+	}))
 	defer func() { imageClient = previous }()
 	thumbnail, err := LoadThumbnail(context.Background(), "https://fixture.test/cover.jpg", "")
 	if err != nil {

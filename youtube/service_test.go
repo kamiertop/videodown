@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kamiertop/videodown/internal/netclient"
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/youtube/internal/extractor"
 )
@@ -244,5 +245,75 @@ func TestParseCacheExpiresAndCookieChangesInvalidate(t *testing.T) {
 	}
 	if requests != 3 {
 		t.Fatal("cookie change reused old cache")
+	}
+	previousClient := service.requestClient()
+	if err := service.SetProxy(" http://127.0.0.1:7890/ ", true); err != nil {
+		t.Fatal(err)
+	}
+	if service.Proxy() != "http://127.0.0.1:7890" {
+		t.Fatal("proxy was not normalized and persisted")
+	}
+	if service.requestClient() == previousClient {
+		t.Fatal("proxy change reused old network client")
+	}
+	if _, err := service.Resolve(context.Background(), "KWGhxyu5osA"); err != nil {
+		t.Fatal(err)
+	}
+	if requests != 4 {
+		t.Fatal("proxy change reused a signed URL from the old network")
+	}
+	if err := service.SetProxy("ftp://invalid.test", true); err == nil {
+		t.Fatal("accepted unsupported proxy")
+	}
+	if service.Proxy() != "http://127.0.0.1:7890" {
+		t.Fatal("failed save changed the proxy")
+	}
+	if err := service.SetProxy("", false); err != nil {
+		t.Fatal(err)
+	}
+	if service.ProxyEnabled() || service.Proxy() != netclient.DefaultProxy {
+		t.Fatal("proxy was not disabled")
+	}
+
+}
+
+func TestProxySwitchDefaultsAndPersistence(t *testing.T) {
+	dir := t.TempDir()
+	store, err := storage.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := New(store)
+	if service.Proxy() != netclient.DefaultProxy || service.ProxyEnabled() {
+		t.Fatal("proxy should default to the local address, disabled")
+	}
+	if err := service.SetProxy("socks5://127.0.0.1:1080", true); err != nil {
+		t.Fatal(err)
+	}
+	enabledClient := service.requestClient()
+	if err := service.SetProxy(service.Proxy(), false); err != nil {
+		t.Fatal(err)
+	}
+	if service.requestClient() == enabledClient {
+		t.Fatal("disabling proxy reused the old client")
+	}
+	if service.Proxy() != "socks5://127.0.0.1:1080" || service.ProxyEnabled() {
+		t.Fatal("disabling should preserve the address")
+	}
+	store.Close()
+	store, err = storage.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	service = New(store)
+	if service.Proxy() != "socks5://127.0.0.1:1080" || service.ProxyEnabled() {
+		t.Fatal("proxy settings were not persisted")
+	}
+	if err := service.SetProxy(service.Proxy(), true); err != nil {
+		t.Fatal(err)
+	}
+	if !service.ProxyEnabled() {
+		t.Fatal("could not re-enable saved proxy")
 	}
 }

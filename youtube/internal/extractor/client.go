@@ -3,7 +3,6 @@
 package extractor
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -18,6 +17,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/imroc/req/v3"
+	"github.com/kamiertop/videodown/internal/netclient"
 )
 
 const ContentPlaybackNonceAlphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
@@ -38,8 +40,8 @@ type Client struct {
 	Cookie                                          string
 	userSessionID, delegatedSessionID, sessionIndex string
 	// HTTPClient can be used to set a custom HTTP client.
-	// If not set, http.DefaultClient will be used
-	HTTPClient *http.Client
+	// If not set, a default req client will be used
+	HTTPClient *req.Client
 
 	// playerCache caches the JavaScript code of a player response
 	playerCache playerCache
@@ -309,48 +311,60 @@ func (c *Client) GetStreamURLContext(ctx context.Context, video *Video, format *
 }
 
 // httpDo sends an HTTP request and returns an HTTP response.
-func (c *Client) httpDo(req *http.Request) (*http.Response, error) {
+func (c *Client) httpDo(ctx context.Context, method, rawURL string, headers http.Header, body any) (*http.Response, error) {
+	target, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, err
+	}
+	if headers == nil {
+		headers = make(http.Header)
+	}
 	client := c.HTTPClient
 	if client == nil {
-		client = http.DefaultClient
+		client = netclient.New("", 30*time.Second, nil)
+		c.HTTPClient = client
 	}
 
-	req.Header.Set("User-Agent", c.client.UserAgent)
-	if c.Cookie != "" && (req.URL.Hostname() == "youtube.com" || strings.HasSuffix(req.URL.Hostname(), ".youtube.com")) {
-		req.Header.Set("Cookie", c.Cookie)
-		if req.URL.Scheme == "https" && strings.HasPrefix(req.URL.Path, "/youtubei/v1/") && (c.client.Name == "TVHTML5" || c.client.Name == "WEB") {
+	headers.Set("User-Agent", c.client.UserAgent)
+	if c.Cookie != "" && (target.Hostname() == "youtube.com" || strings.HasSuffix(target.Hostname(), ".youtube.com")) {
+		headers.Set("Cookie", c.Cookie)
+		if target.Scheme == "https" && strings.HasPrefix(target.Path, "/youtubei/v1/") && (c.client.Name == "TVHTML5" || c.client.Name == "WEB") {
 			if auth := sidAuthorization(c.Cookie, "https://www.youtube.com", time.Now(), c.userSessionID); auth != "" {
-				req.Header.Set("Authorization", auth)
-				req.Header.Set("X-Origin", "https://www.youtube.com")
+				headers.Set("Authorization", auth)
+				headers.Set("X-Origin", "https://www.youtube.com")
 				index := c.sessionIndex
 				if index == "" {
 					index = "0"
 				}
-				req.Header.Set("X-Goog-AuthUser", index)
+				headers.Set("X-Goog-AuthUser", index)
 				if c.delegatedSessionID != "" {
-					req.Header.Set("X-Goog-PageId", c.delegatedSessionID)
+					headers.Set("X-Goog-PageId", c.delegatedSessionID)
 				}
-				req.Header.Set("X-Youtube-Bootstrap-Logged-In", "true")
+				headers.Set("X-Youtube-Bootstrap-Logged-In", "true")
 			}
 		}
 	}
-	req.Header.Set("Origin", "https://www.youtube.com")
-	req.Header.Set("Sec-Fetch-Mode", "navigate")
+	headers.Set("Origin", "https://www.youtube.com")
+	headers.Set("Sec-Fetch-Mode", "navigate")
 
 	if len(c.consentID) == 0 {
 		c.consentID = strconv.Itoa(rand.Intn(899) + 100) //nolint:gosec
 	}
 
-	req.AddCookie(&http.Cookie{
-		Name:   "CONSENT",
-		Value:  "YES+cb.20210328-17-p0.en+FX+" + c.consentID,
-		Path:   "/",
-		Domain: ".youtube.com",
-	})
+	request := client.R().SetContext(ctx)
+	request.Headers = headers
+	if body != nil {
+		request.SetBody(body)
+	}
+	request.SetCookies(&http.Cookie{Name: "CONSENT", Value: "YES+cb.20210328-17-p0.en+FX+" + c.consentID})
 
-	res, err := client.Do(req)
+	response, err := request.Send(method, rawURL)
+	var res *http.Response
+	if response != nil {
+		res = response.Response
+	}
 
-	log := slog.With("method", req.Method, "url", req.URL)
+	log := slog.With("method", method, "url", target)
 
 	if err == nil && res.StatusCode != http.StatusOK {
 		err = ErrUnexpectedStatusCode(res.StatusCode)
@@ -369,12 +383,7 @@ func (c *Client) httpDo(req *http.Request) (*http.Response, error) {
 
 // httpGet does a HTTP GET request, checks the response to be a 200 OK and returns it
 func (c *Client) httpGet(ctx context.Context, url string) (*http.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := c.httpDo(req)
+	resp, err := c.httpDo(ctx, http.MethodGet, url, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -405,10 +414,7 @@ func (c *Client) httpPost(ctx context.Context, url string, body interface{}) (*h
 		return nil, err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(data))
-	if err != nil {
-		return nil, err
-	}
+	headers := make(http.Header)
 
 	clientID := "101"
 	if c.client.Name == "TVHTML5" {
@@ -416,18 +422,18 @@ func (c *Client) httpPost(ctx context.Context, url string, body interface{}) (*h
 	} else if c.client.Name == "WEB" {
 		clientID = "1"
 	}
-	req.Header.Set("X-Youtube-Client-Name", clientID)
-	req.Header.Set("X-Youtube-Client-Version", c.client.Version)
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+	headers.Set("X-Youtube-Client-Name", clientID)
+	headers.Set("X-Youtube-Client-Version", c.client.Version)
+	headers.Set("Content-Type", "application/json")
+	headers.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 
 	if xgoogvisitorid, err := c.getVisitorId(ctx); err != nil {
 		return nil, err
 	} else {
-		req.Header.Set("x-goog-visitor-id", xgoogvisitorid)
+		headers.Set("x-goog-visitor-id", xgoogvisitorid)
 	}
 
-	resp, err := c.httpDo(req)
+	resp, err := c.httpDo(ctx, http.MethodPost, url, headers, data)
 	if err != nil {
 		return nil, err
 	}
@@ -453,12 +459,7 @@ func (c *Client) getVisitorId(ctx context.Context) (string, error) {
 
 func (c *Client) refreshVisitorId(ctx context.Context) error {
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://www.youtube.com", nil)
-	if err != nil {
-		return err
-	}
-
-	resp, err := c.httpDo(req)
+	resp, err := c.httpDo(ctx, http.MethodGet, "https://www.youtube.com", nil, nil)
 	if err != nil {
 		return err
 	}

@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/kamiertop/videodown/internal/netclient"
 	"github.com/kamiertop/videodown/utils"
 )
 
@@ -46,7 +47,9 @@ type BilibiliAuth struct {
 	RefreshToken string `toml:"refresh_token"`
 }
 type YouTubeConfig struct {
-	Cookie string `toml:"cookie"`
+	ProxyEnabled bool   `toml:"proxy_enabled"`
+	Proxy        string `toml:"proxy"`
+	Cookie       string `toml:"cookie"`
 }
 
 type DouyinConfig struct {
@@ -55,7 +58,8 @@ type DouyinConfig struct {
 
 func DefaultConfig(directory string) Config {
 	return Config{
-		App: AppConfig{Theme: "light", AutoUpdate: true},
+		App:     AppConfig{Theme: "light", AutoUpdate: true},
+		YouTube: YouTubeConfig{Proxy: netclient.DefaultProxy},
 		Download: DownloadConfig{
 			Directory: directory, FilenameTemplate: "{title}", Grouping: true, GroupingRule: "author_source", Concurrency: 1, SleepSeconds: 60, SkipDownloaded: true,
 		},
@@ -64,6 +68,9 @@ func DefaultConfig(directory string) Config {
 }
 
 func (c Config) Validate() error {
+	if _, err := netclient.NormalizeProxy(c.YouTube.Proxy); err != nil {
+		return err
+	}
 	if !slices.Contains([]string{"system", "light", "dark", "cupcake", "caramellatte"}, c.App.Theme) {
 		return fmt.Errorf("不支持的主题：%s", c.App.Theme)
 	}

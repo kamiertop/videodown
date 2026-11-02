@@ -193,11 +193,8 @@ func TestLiveYouTubeResolveURL(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer file.Close()
-			transport := service.transport
-			if transport == nil {
-				transport = mediaTransport
-			}
-			httpClient := &http.Client{Timeout: 0, Transport: transport}
+			httpClient := client.HTTPClient.Clone().SetTimeout(0)
+			defer httpClient.GetClient().CloseIdleConnections()
 			single := *base
 			q := single.Query()
 			q.Set("range", fmt.Sprintf("0-%d", total-1))

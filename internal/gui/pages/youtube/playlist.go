@@ -22,7 +22,7 @@ type playlistRow struct {
 }
 
 func (s *State) loadPlaylist(more bool) {
-	if s.stopped || s.api == nil || s.runtime.Background == nil {
+	if s.stopped || s.proxyBusy || s.api == nil || s.runtime.Background == nil {
 		return
 	}
 	input, token := strings.TrimSpace(s.playlistLink), ""
@@ -127,7 +127,7 @@ func (s *State) playlistPage(c *ui.Context, scroll *ui.ScrollState) {
 	ui.Column(c).Label("YouTube 播放列表页面").Fill().MinWidth(0).MinHeight(0).Padding(style.PagePadding).Gap(style.SpaceMedium).Children(func() {
 		panel(c.Key("playlist-input"), "YouTube 播放列表输入栏", func() {
 			ui.Row(c).FillWidth().MinWidth(0).Padding(style.SpaceSmall).Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
-				field := input.TextInput(c.Key("link"), &s.playlistLink, input.TextInputOptions{Label: "YouTube 播放列表链接", Placeholder: "粘贴包含 list= 的 YouTube 播放列表链接"})
+				field := roundedInput(c.Key("link"), &s.playlistLink, "YouTube 播放列表链接", "粘贴包含 list= 的 YouTube 播放列表链接", false)
 				field.Element.Grow(1).MinWidth(0)
 				field.Input.OnSubmit(func() { s.loadPlaylist(false) })
 				components.Button(c.Key("parse"), "解析列表", input.ButtonOptions{Variant: input.Primary, Loading: s.playlistLoading, Disabled: s.api == nil || strings.TrimSpace(s.playlistLink) == "" || s.playlistLoading}).OnClick(func() { s.loadPlaylist(false) })

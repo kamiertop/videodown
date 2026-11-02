@@ -23,7 +23,7 @@ func (s *State) readyCount() int {
 }
 
 func (s *State) startItem(item *queueItem) {
-	if s.stopped || !editableTask(item) {
+	if s.stopped || s.proxyBusy || !editableTask(item) {
 		return
 	}
 	s.cancelDetails(item)

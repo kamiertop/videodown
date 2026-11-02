@@ -14,8 +14,10 @@ import (
 )
 
 type fakeAPI struct {
-	cookie   string
-	canceled bool
+	proxy        string
+	proxyEnabled bool
+	cookie       string
+	canceled     bool
 }
 
 func (a *fakeAPI) DownloadConcurrency() int { return 1 }
@@ -262,3 +264,11 @@ func TestTransferStatusShowsSpeedBeforeLongDetails(t *testing.T) {
 		t.Fatalf("missing transfer details: %s", text)
 	}
 }
+
+func (a *fakeAPI) Proxy() string { return a.proxy }
+func (a *fakeAPI) SetProxy(value string, enabled bool) error {
+	a.proxy = value
+	a.proxyEnabled = enabled
+	return nil
+}
+func (a *fakeAPI) ProxyEnabled() bool { return a.proxyEnabled }

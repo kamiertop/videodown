@@ -12,6 +12,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/kamiertop/videodown/internal/netclient"
 )
 
 func TestParallelRangesWriteInOrderAndReportMonotonicProgress(t *testing.T) {
@@ -20,7 +22,7 @@ func TestParallelRangesWriteInOrderAndReportMonotonicProgress(t *testing.T) {
 	var active, peak atomic.Int32
 	var release sync.Once
 	ready := make(chan struct{})
-	client := &http.Client{Transport: transportFunc(func(r *http.Request) (*http.Response, error) {
+	client := netclient.New("", 0, transportFunc(func(r *http.Request) (*http.Response, error) {
 		n := active.Add(1)
 		defer active.Add(-1)
 		for {
@@ -43,7 +45,7 @@ func TestParallelRangesWriteInOrderAndReportMonotonicProgress(t *testing.T) {
 		}
 		data := bytes.Repeat([]byte{byte(start / streamChunkSize)}, int(end-start+1))
 		return &http.Response{StatusCode: 200, ContentLength: int64(len(data)), Body: io.NopCloser(bytes.NewReader(data)), Header: make(http.Header)}, nil
-	})}
+	}))
 	file, err := os.CreateTemp(t.TempDir(), "parts")
 	if err != nil {
 		t.Fatal(err)
@@ -75,14 +77,14 @@ func TestParallelRangesWriteInOrderAndReportMonotonicProgress(t *testing.T) {
 }
 func TestRangeRetryDoesNotDoubleCountOrCorruptFile(t *testing.T) {
 	requests := 0
-	client := &http.Client{Transport: transportFunc(func(r *http.Request) (*http.Response, error) {
+	client := netclient.New("", 0, transportFunc(func(r *http.Request) (*http.Response, error) {
 		requests++
 		data := "abcd"
 		if requests == 1 {
 			data = "ab"
 		}
 		return &http.Response{StatusCode: 200, ContentLength: 4, Body: io.NopCloser(bytes.NewBufferString(data)), Header: make(http.Header)}, nil
-	})}
+	}))
 	file, err := os.CreateTemp(t.TempDir(), "retry")
 	if err != nil {
 		t.Fatal(err)
