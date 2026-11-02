@@ -41,7 +41,7 @@ internal/gui/
 
 ## 配置与退出
 
-应用配置和 Cookie 存储在结构化的 `config.toml` 中，下载历史使用 SQLite 的 `history.sqlite`，都位于可执行文件所在文件夹。首次启动自动生成缺失文件，已有配置不覆盖；默认下载目录 `./download` 按配置所在文件夹解析，即二进制所在目录下的 `download/`。启动始终以二进制实际存放目录为准；开发使用 `just run` 构建并启动便携目录。临时文件和组件缓存使用系统默认位置，视频下载目录允许用户修改。图标通过 `go:embed` 在编译时嵌入二进制，窗口和托盘直接使用嵌入数据，无需外部图标文件。配置结构见根目录的 `config.example.toml`。
+应用配置和 Cookie 存储在结构化的 `config.toml` 中，下载历史使用 SQLite 的 `history.sqlite`，都位于可执行文件所在文件夹。首次启动自动生成缺失文件，已有配置不覆盖；默认下载目录 `./download` 按配置所在文件夹解析，即二进制所在目录下的 `download/`。启动始终以二进制实际存放目录为准；开发使用 `just run`（`go run . -data .`），数据保存在项目目录，不执行发布打包。临时文件和组件缓存使用系统默认位置，视频下载目录允许用户修改。图标通过 `go:embed` 在编译时嵌入二进制，窗口和托盘直接使用嵌入数据，无需外部图标文件。配置结构见根目录的 `config.example.toml`。
 
 代码通过 `store.Config()` 获取有类型的快照，通过 `store.UpdateConfig` 校验并原子提交修改。SQLite 仅保存下载历史，使用 sqlx 和无 CGO 的 SQLite 驱动。
 

@@ -97,9 +97,8 @@ VideoDown 是一个使用 [Go](https://go.dev)、[MyGo](https://github.com/egois
 
 ```sh
 just run
-# 或构建便携目录后启动
-CGO_ENABLED=0 go run ./cmd/package
-./dist/videodown/videodown
+# 或直接运行，开发数据保存在项目目录
+CGO_ENABLED=0 go run . -data .
 ```
 
 运行测试和原生 UI 检查：
@@ -117,7 +116,8 @@ CGO_ENABLED=0 go build -o build/bin/videodown .
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-H=windowsgui" -o build/bin/videodown.exe .
 ```
 
-使用 `just package` 或 `go run ./cmd/package` 构建便携文件夹 `dist/videodown`，其中包含主程序和独立更新器，图标通过 `go:embed` 在编译时嵌入；Windows 打包会同时将图标写入 EXE 资源，供资源管理器显示。可通过 `-os`、`-arch`、`-version` 和 `-out` 指定目标与输出位置。`just run` 启动开发版本，`just check` 执行检查。界面代码位于 `internal/gui`，启动与服务初始化位于 `main.go`。
+本地开发使用 `just run`，只运行主程序，不执行发布打包；`just check` 执行检查。界面代码位于 `internal/gui`，启动与服务初始化位于 `main.go`。
+发布构建由 GitHub Actions 直接编译主程序和独立更新器，附带 `appicon.png` 并生成归档；Windows EXE 图标资源仅在 CI 中通过固定版本的 go-winres 生成。窗口和托盘图标仍通过 `go:embed` 嵌入程序。
 发布工作流使用原生 Go 构建并生成便携归档。启动时遵循设置中的自动更新开关，在后台检查新版本；发现更新后展示版本和发布说明，可打开对应发布页。检查失败不会阻塞应用。
 
 ## 使用说明
@@ -128,6 +128,7 @@ CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-H=windowsgui" -o bui
 videodown/
   videodown                 # Windows 为 videodown.exe
   videodown-updater         # Windows 带 .exe 后缀
+  appicon.png              # 应用图标
   config.toml               # 首次启动自动创建，含账号凭证，请勿公开
   history.sqlite            # 首次启动自动创建
   download/                 # 下载时创建
@@ -135,7 +136,7 @@ videodown/
   videodown-updater.log     # 更新器日志
 ```
 
-应用自身文件以主程序实际存放目录为根：配置、历史、日志、更新器、更新包和更新解压文件均位于该目录，默认下载到该目录下的 `download/`；视频下载目录允许用户修改。临时文件和组件缓存使用系统默认位置。启动不依赖当前工作目录。开发请使用 `just run` 构建并启动便携目录；直接 `go run .` 的数据会位于 Go 的临时二进制目录中。目录不可写时直接报错，不回退到用户目录。
+应用自身文件以主程序实际存放目录为根：配置、历史、日志、更新器、更新包和更新解压文件均位于该目录，默认下载到该目录下的 `download/`；视频下载目录允许用户修改。临时文件和组件缓存使用系统默认位置。启动不依赖当前工作目录。开发使用 `just run` 或 `go run . -data .`，通过 `-data .` 将数据保存在项目目录；无需构建便携目录。目录不可写时直接报错，不回退到用户目录。
 
 ### 基础设置
 
