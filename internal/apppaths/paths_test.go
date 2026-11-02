@@ -61,7 +61,11 @@ func TestInsideRejectsEscapesAndSymlinks(t *testing.T) {
 			t.Fatalf("accepted outside path %q", path)
 		}
 	}
-	if got, err := Inside(root, "download/new"); err != nil || got != filepath.Join(root, "download/new") {
+	// Inside canonicalizes the root. On macOS the temporary directory may
+	// itself be reached through a symlink, so compare canonical paths.
+	canonicalRoot, err := filepath.EvalSymlinks(root)
+	utils.NoError(t, err)
+	if got, err := Inside(root, "download/new"); err != nil || got != filepath.Join(canonicalRoot, "download/new") {
 		t.Fatalf("inside path: %s %v", got, err)
 	}
 	if err := os.Symlink(outside, filepath.Join(root, "link")); err != nil {
@@ -69,5 +73,28 @@ func TestInsideRejectsEscapesAndSymlinks(t *testing.T) {
 	}
 	if _, err := Inside(root, "link/new/file"); err == nil {
 		t.Fatal("accepted external symlink")
+	}
+}
+
+func TestInsideWithSymlinkedRoot(t *testing.T) {
+	root := t.TempDir()
+	alias := filepath.Join(t.TempDir(), "root-link")
+	if err := os.Symlink(root, alias); err != nil {
+		t.Skip(err)
+	}
+	canonicalRoot, err := filepath.EvalSymlinks(root)
+	utils.NoError(t, err)
+	got, err := Inside(alias, "download/new")
+	utils.NoError(t, err)
+	utils.Equal(t, filepath.Join(canonicalRoot, "download/new"), got)
+	outside := t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(root, "escape")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Inside(alias, "escape/new/file"); err == nil {
+		t.Fatal("symlinked root allowed an escape through another symlink")
+	}
+	if _, err := Inside(alias, "../outside"); err == nil {
+		t.Fatal("symlinked root allowed a parent directory escape")
 	}
 }

@@ -3,6 +3,7 @@ package gui
 import (
 	"image/png"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -51,7 +52,7 @@ func TestYouTubeEntryAndForm(t *testing.T) {
 			t.Fatal("navigation lost input")
 		}
 		if size[0] == 760 {
-			file, err := os.Create("/tmp/youtube-page.png")
+			file, err := os.Create(filepath.Join(os.TempDir(), "youtube-page.png"))
 			if err != nil {
 				t.Fatal(err)
 			}

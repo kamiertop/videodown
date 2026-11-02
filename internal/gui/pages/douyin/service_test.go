@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"image/png"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -348,7 +349,7 @@ func TestNativePagesInteractionAndRendering(t *testing.T) {
 	r.flush(t)
 	test.Frame()
 	test.Advance(time.Second)
-	file, err := os.Create("/tmp/douyin-native-download.png")
+	file, err := os.Create(filepath.Join(os.TempDir(), "douyin-native-download.png"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -361,7 +362,7 @@ func TestNativePagesInteractionAndRendering(t *testing.T) {
 	r.flush(t)
 	test.Frame()
 	test.Advance(time.Second)
-	file2, err := os.Create("/tmp/douyin-native-library.png")
+	file2, err := os.Create(filepath.Join(os.TempDir(), "douyin-native-library.png"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -454,7 +455,7 @@ func TestLoggedOutPromptKeepsMessageAndActionTogether(t *testing.T) {
 	}
 	test.SetSize(1200, 800)
 	test.Frame()
-	f, err := os.Create("/tmp/douyin-login-prompt.png")
+	f, err := os.Create(filepath.Join(os.TempDir(), "douyin-login-prompt.png"))
 	if err != nil {
 		t.Fatal(err)
 	}

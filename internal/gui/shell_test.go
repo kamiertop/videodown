@@ -4,6 +4,7 @@ import (
 	"image/png"
 	"math"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -30,7 +31,7 @@ func TestShellCornerAlpha(t *testing.T) {
 	if a := img.RGBAAt(w/2, h/2).A; a == 0 {
 		t.Error("center alpha = 0, want opaque content")
 	}
-	f, err := os.Create("/tmp/shell-frame.png")
+	f, err := os.Create(filepath.Join(os.TempDir(), "shell-frame.png"))
 	if err != nil {
 		t.Fatal(err)
 	}

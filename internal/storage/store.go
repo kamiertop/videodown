@@ -54,7 +54,7 @@ func Open(path string) (*Store, error) {
 	if err = f.Close(); err != nil {
 		return nil, err
 	}
-	dsn := (&url.URL{Scheme: "file", Path: filepath.ToSlash(dbPath)}).String()
+	dsn := sqliteFileURI(dbPath)
 	s, err := openDB(dsn, filepath.Join(path, "config.toml"))
 	if err != nil {
 		return nil, err
@@ -220,4 +220,14 @@ func (s *Store) DownloadDirectory() string {
 	}
 
 	return directory
+}
+
+// sqliteFileURI preserves Windows drive letters as a URI path, never as an
+// authority (file://C:/...). URL encoding also protects #, ? and spaces.
+func sqliteFileURI(path string) string {
+	path = filepath.ToSlash(path)
+	if len(path) >= 2 && path[1] == ':' {
+		path = "/" + path
+	}
+	return (&url.URL{Scheme: "file", Path: path}).String()
 }

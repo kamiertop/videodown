@@ -5,6 +5,7 @@ import (
 	"errors"
 	"image/png"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/ELY-Open-Source/MujicaUI/core"
@@ -258,7 +259,7 @@ func TestQueuePlaylistAndAudioLayouts(t *testing.T) {
 
 func saveQueueScreenshot(t *testing.T, test *ui.Tester, path string) {
 	t.Helper()
-	f, err := os.Create(path)
+	f, err := os.Create(filepath.Join(os.TempDir(), filepath.Base(path)))
 	if err != nil {
 		t.Fatal(err)
 	}

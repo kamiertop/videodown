@@ -5,6 +5,7 @@ import (
 	"image/png"
 	"math"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/ELY-Open-Source/MujicaUI/core"
@@ -46,7 +47,7 @@ func TestDownloadStatusSharesTitleAndQualityRow(t *testing.T) {
 		if math.Abs(float64(heading.Y+heading.H/2-quality.Y-quality.H/2)) > 1 || math.Abs(float64(progress.Y+progress.H/2-quality.Y-quality.H/2)) > 1 {
 			t.Fatalf("status not on title row: title=%+v quality=%+v progress=%+v", heading, quality, progress)
 		}
-		f, err := os.Create(fmt.Sprintf("/tmp/douyin-compact-download-%s.png", phase))
+		f, err := os.Create(filepath.Join(os.TempDir(), fmt.Sprintf("douyin-compact-download-%s.png", phase)))
 		if err != nil {
 			t.Fatal(err)
 		}

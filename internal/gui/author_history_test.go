@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/png"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -145,7 +146,7 @@ func TestAuthorDetailUsesTitlebarHistory(t *testing.T) {
 		if s.router.Path() != "/bilibili/up/2" || !view.HasText("作者的视频卡片") {
 			t.Fatalf("detail not routed: %s", s.router.Path())
 		}
-		file, err := os.Create(fmt.Sprintf("/tmp/bilibili-up-detail-%d.png", width))
+		file, err := os.Create(filepath.Join(os.TempDir(), fmt.Sprintf("bilibili-up-detail-%d.png", width)))
 		if err != nil {
 			t.Fatal(err)
 		}

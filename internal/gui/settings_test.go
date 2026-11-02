@@ -4,6 +4,7 @@ import (
 	"image/png"
 	"math"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -78,7 +79,7 @@ func TestSettingsLayoutAndPersistence(t *testing.T) {
 				if name == "" {
 					name = "general"
 				}
-				file, err := os.Create("/tmp/settings-" + name + ".png")
+				file, err := os.Create(filepath.Join(os.TempDir(), "settings-"+name+".png"))
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -242,7 +243,7 @@ func TestSettingsSaveDoesNotMoveFormAndToastExpires(t *testing.T) {
 			t.Fatal("missing save feedback")
 		}
 		if save == 0 {
-			file, err := os.Create("/tmp/settings-save-feedback.png")
+			file, err := os.Create(filepath.Join(os.TempDir(), "settings-save-feedback.png"))
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -320,7 +321,7 @@ func TestFFmpegInstallGuideLinkAndCopy(t *testing.T) {
 	if !test.HasText("brew install ffmpeg") {
 		t.Fatal("copy feedback removed the code block")
 	}
-	file, err := os.Create("/tmp/settings-ffmpeg-guide.png")
+	file, err := os.Create(filepath.Join(os.TempDir(), "settings-ffmpeg-guide.png"))
 	if err != nil {
 		t.Fatal(err)
 	}
