@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/kamiertop/videodown/internal/netclient"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -22,7 +24,7 @@ func TestSIDAuthorizationAndClientHeaders(t *testing.T) {
 		t.Fatal("incorrect session signature")
 	}
 	called := false
-	c := &Client{Cookie: "SAPISID=fixture; LOGIN_INFO=fixture", HTTPClient: &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+	c := &Client{Cookie: "SAPISID=fixture; LOGIN_INFO=fixture", HTTPClient: netclient.New("", 0, roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		data := `<script src="/s/player/test/player_ias/base.js"></script>`
 		if strings.HasSuffix(r.URL.Path, "base.js") {
 			data = "signatureTimestamp:12345"
@@ -53,7 +55,7 @@ func TestSIDAuthorizationAndClientHeaders(t *testing.T) {
 			t.Error("authorization leaked outside API")
 		}
 		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(data)), Request: r}, nil
-	})}}
+	}))}
 	if _, err := c.GetVideoContext(context.Background(), "KWGhxyu5osA"); err != nil {
 		t.Fatal(err)
 	}

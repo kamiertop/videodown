@@ -1,6 +1,7 @@
 package youtube
 
 import (
+	"context"
 	"time"
 
 	"github.com/ELY-Open-Source/MujicaUI/core"
@@ -52,6 +53,11 @@ func (s *State) requestThumbnail(video yt.Video, entry *thumbnail) {
 	loader := s.thumbnailLoader
 	if loader == nil {
 		loader = loadCover
+		if client := s.imageClient; client != nil {
+			loader = func(ctx context.Context, urls []string) (*ui.Bitmap, error) {
+				return loadCoverUsingClient(ctx, urls, client)
+			}
+		}
 	}
 	urls := []string{video.Cover, "https://i.ytimg.com/vi/" + video.ID + "/hqdefault.jpg", "https://img.youtube.com/vi/" + video.ID + "/hqdefault.jpg"}
 	var bitmap *ui.Bitmap

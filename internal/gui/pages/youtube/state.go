@@ -5,11 +5,16 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/imroc/req/v3"
 	"github.com/kamiertop/videodown/internal/gui/guiruntime"
+	"github.com/kamiertop/videodown/internal/netclient"
 	yt "github.com/kamiertop/videodown/youtube"
 )
 
 type API interface {
+	Proxy() string
+	SetProxy(string, bool) error
+	ProxyEnabled() bool
 	Cookie() string
 	SetCookie(string) error
 	Resolve(context.Context, string) (yt.Video, error)
@@ -18,7 +23,16 @@ type API interface {
 	History() ([]yt.History, error)
 	DownloadConcurrency() int
 }
+
 type State struct {
+	proxy                 string
+	proxyEnabled          bool
+	proxyMessage          string
+	proxySaveSeq          uint64
+	proxySaveCancel       func()
+	proxySavePending      bool
+	proxyBusy             bool
+	imageClient           *req.Client
 	started               bool
 	detailsInFlight       int
 	audioOnly             bool
@@ -68,6 +82,9 @@ func (s *State) Configure(api API, runtime guiruntime.Runtime, dispatch func(fun
 	s.runtime = runtime
 	s.dispatch = dispatch
 	if api != nil {
+		s.proxy = api.Proxy()
+		s.proxyEnabled = api.ProxyEnabled()
+		s.imageClient = netclient.NewWithProxy(s.proxy, s.proxyEnabled, 12*time.Second, nil)
 		s.cookie = api.Cookie()
 		s.cookieSaved = s.cookie != ""
 	}
@@ -97,6 +114,13 @@ func (s *State) waitingCount() int {
 }
 func (s *State) Stop() {
 	s.stopped = true
+	s.proxySaveSeq++
+	if s.proxySaveCancel != nil {
+		s.proxySaveCancel()
+	}
+	if s.imageClient != nil {
+		s.imageClient.GetClient().CloseIdleConnections()
+	}
 	if s.stop != nil {
 		s.stop()
 	}
@@ -112,7 +136,7 @@ func (s *State) Stop() {
 	}
 }
 func (s *State) resolve() {
-	if s.busy || s.api == nil || s.runtime.Background == nil {
+	if s.busy || s.proxyBusy || s.api == nil || s.runtime.Background == nil {
 		return
 	}
 	s.busy = true
@@ -150,7 +174,7 @@ func (s *State) resolve() {
 	})
 }
 func (s *State) saveCookie() {
-	if s.busy || s.readyCount() > 0 || s.PendingDownloadCount() > 0 || s.api == nil || s.runtime.Background == nil {
+	if s.busy || s.proxyBusy || s.readyCount() > 0 || s.PendingDownloadCount() > 0 || s.api == nil || s.runtime.Background == nil {
 		return
 	}
 	s.busy = true
@@ -200,4 +224,88 @@ func (s *State) formats() []yt.Format {
 }
 func (s *State) selectDefaultFormat() {
 	s.format = 0
+}
+
+const proxySaveDelay = 500 * time.Millisecond
+
+func (s *State) scheduleProxySave() {
+	s.proxyMessage = ""
+	s.proxySaveSeq++
+	seq := s.proxySaveSeq
+	if s.proxySaveCancel != nil {
+		s.proxySaveCancel()
+		s.proxySaveCancel = nil
+	}
+	if s.runtime.After == nil {
+		s.saveProxy()
+		return
+	}
+	s.proxySaveCancel = s.runtime.After(proxySaveDelay, func() {
+		if s.stopped || seq != s.proxySaveSeq {
+			return
+		}
+		s.proxySaveCancel = nil
+		s.saveProxy()
+	})
+}
+
+func (s *State) saveProxy() {
+	if s.stopped {
+		return
+	}
+	if s.proxyBusy {
+		s.proxySavePending = true
+		return
+	}
+	if s.api == nil || s.runtime.Background == nil {
+		return
+	}
+	if s.busy || s.playlistLoading || s.detailsInFlight > 0 || s.readyCount() > 0 || s.PendingDownloadCount() > 0 {
+		s.proxySavePending = true
+		return
+	}
+	s.proxySavePending = false
+	s.proxySaveSeq++
+	if s.proxySaveCancel != nil {
+		s.proxySaveCancel()
+		s.proxySaveCancel = nil
+	}
+	s.proxyBusy = true
+	s.proxyMessage = ""
+	api, value, enabled := s.api, s.proxy, s.proxyEnabled
+	s.runtime.Background(func() error { return api.SetProxy(value, enabled) }, func(err error) {
+		if s.stopped {
+			return
+		}
+		s.proxyBusy = false
+		unchanged := s.proxy == value && s.proxyEnabled == enabled
+		if err != nil {
+			if unchanged {
+				s.proxyEnabled = api.ProxyEnabled()
+				s.proxyMessage = err.Error()
+			}
+		} else {
+			savedProxy, savedEnabled := api.Proxy(), api.ProxyEnabled()
+			if unchanged {
+				s.proxy = savedProxy
+				s.proxyEnabled = savedEnabled
+			}
+			if s.imageClient != nil {
+				s.imageClient.GetClient().CloseIdleConnections()
+			}
+			s.imageClient = netclient.NewWithProxy(savedProxy, savedEnabled, 12*time.Second, nil)
+			for _, entry := range s.thumbnails {
+				entry.Generation++
+			}
+			s.thumbnails = nil
+			s.cover = nil
+			s.coverGeneration++
+			s.coverLoading = false
+			s.coverError = ""
+		}
+		if s.proxySavePending {
+			s.proxySavePending = false
+			s.saveProxy()
+		}
+	})
 }

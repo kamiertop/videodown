@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/kamiertop/videodown/internal/netclient"
 )
 
 type playlistTransport func(*http.Request) (*http.Response, error)
@@ -18,7 +20,7 @@ func TestPlaylistPaginationKeepsOrderAndSkipsUnavailable(t *testing.T) {
 	initial := `{"metadata":{"playlistMetadataRenderer":{"title":"课程列表"}},"contents":{"twoColumnBrowseResultsRenderer":{"tabs":[{"tabRenderer":{"content":{"sectionListRenderer":{"contents":[{"itemSectionRenderer":{"contents":[{"playlistVideoListRenderer":{"contents":[{"playlistVideoRenderer":{"videoId":"jNQXAC9IVRw","title":{"runs":[{"text":"第一课"}]},"lengthSeconds":"90","shortBylineText":{"runs":[{"text":"作者"}]}}},{"playlistVideoRenderer":{"videoId":"private0001","title":{"simpleText":"[Private video]"},"isPlayable":false}},{"continuationItemRenderer":{"continuationEndpoint":{"continuationCommand":{"token":"page2"}}}}]}}]}}]}}}}]}}}`
 	next := `{"onResponseReceivedActions":[{"appendContinuationItemsAction":{"continuationItems":[{"playlistVideoRenderer":{"videoId":"KWGhxyu5osA","title":{"simpleText":"第二课"},"isPlayable":true}}]}}]}`
 	posts := 0
-	client := &Client{Cookie: "SID=fixture", HTTPClient: &http.Client{Transport: playlistTransport(func(r *http.Request) (*http.Response, error) {
+	client := &Client{Cookie: "SID=fixture", HTTPClient: netclient.New("", 0, playlistTransport(func(r *http.Request) (*http.Response, error) {
 		if r.URL.Hostname() != "www.youtube.com" {
 			t.Fatal("unexpected host")
 		}
@@ -38,7 +40,7 @@ func TestPlaylistPaginationKeepsOrderAndSkipsUnavailable(t *testing.T) {
 			}
 		}
 		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header), Request: r}, nil
-	})}}
+	}))}
 	input := "https://www.youtube.com/playlist?list=PLfixture123456"
 	page, err := client.GetPlaylistPage(context.Background(), input, "")
 	if err != nil || page.Title != "课程列表" || len(page.Videos) != 1 || page.Videos[0].Title != "第一课" || page.Continuation != "page2" {

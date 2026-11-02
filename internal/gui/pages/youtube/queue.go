@@ -62,6 +62,7 @@ func (s *State) enqueueGrouped(video yt.Video, format int, audio bool, groupKey,
 		s.thumbnailEntry(video).Bitmap = s.cover
 	}
 	s.message = "已加入下载队列"
+
 	return true
 }
 

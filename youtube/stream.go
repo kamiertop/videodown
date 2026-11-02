@@ -5,22 +5,15 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/imroc/req/v3"
 	"github.com/kamiertop/videodown/youtube/internal/extractor"
 )
-
-var mediaTransport = func() *http.Transport {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.MaxIdleConnsPerHost = 8
-	transport.MaxConnsPerHost = 8
-	return transport
-}()
 
 const streamChunkSize int64 = 4 << 20
 
@@ -40,23 +33,16 @@ func (s *Service) downloadStream(ctx context.Context, client *extractor.Client, 
 		return err
 	}
 	defer file.Close()
-	transport := s.transport
-	if transport == nil {
-		transport = mediaTransport
-	}
-	// Long transfers have no overall deadline; the user's cancellation applies to every worker.
-	httpClient := &http.Client{Timeout: 0, Transport: transport}
+	// Keep the parse session's proxy for all media workers.
+	streamClient := client.HTTPClient.Clone().SetTimeout(0)
+	defer streamClient.GetClient().CloseIdleConnections()
+
 	if format.ContentLength > 0 {
-		if err := downloadRanges(ctx, httpClient, u, client.UserAgent(), file, format.ContentLength, progress); err != nil {
+		if err := downloadRanges(ctx, streamClient, u, client.UserAgent(), file, format.ContentLength, progress); err != nil {
 			return err
 		}
 	} else {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
-		if err != nil {
-			return err
-		}
-		req.Header.Set("User-Agent", client.UserAgent())
-		resp, err := httpClient.Do(req)
+		resp, err := streamClient.R().SetContext(ctx).SetHeader("User-Agent", client.UserAgent()).Get(u.String())
 		if err != nil {
 			return err
 		}
@@ -76,7 +62,7 @@ func (s *Service) downloadStream(ctx context.Context, client *extractor.Client, 
 	return file.Close()
 }
 
-func downloadRanges(parent context.Context, client *http.Client, base *url.URL, userAgent string, file *os.File, total int64, progress func(int64, int64)) error {
+func downloadRanges(parent context.Context, client *req.Client, base *url.URL, userAgent string, file *os.File, total int64, progress func(int64, int64)) error {
 	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
 	count := int((total + streamChunkSize - 1) / streamChunkSize)
@@ -140,7 +126,7 @@ func downloadRanges(parent context.Context, client *http.Client, base *url.URL, 
 	return nil
 }
 
-func downloadRange(ctx context.Context, client *http.Client, base *url.URL, userAgent string, file *os.File, start, end int64, progress func(int64)) error {
+func downloadRange(ctx context.Context, client *req.Client, base *url.URL, userAgent string, file *os.File, start, end int64, progress func(int64)) error {
 	const attempts = 3
 	var last error
 	for attempt := range attempts {
@@ -160,12 +146,7 @@ func downloadRange(ctx context.Context, client *http.Client, base *url.URL, user
 		q := u.Query()
 		q.Set("range", fmt.Sprintf("%d-%d", start, end))
 		u.RawQuery = q.Encode()
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
-		if err != nil {
-			return err
-		}
-		req.Header.Set("User-Agent", userAgent)
-		resp, err := client.Do(req)
+		resp, err := client.R().SetContext(ctx).SetHeader("User-Agent", userAgent).Get(u.String())
 		if err != nil {
 			last = err
 			continue

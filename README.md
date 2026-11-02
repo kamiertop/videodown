@@ -171,6 +171,8 @@ YouTube 左侧菜单提供下载、播放列表、下载历史和账号页；在
 也可在 `config.toml` 的 `[youtube]` 下设置 `cookie`。
 分离音视频会通过现有 FFmpeg 合并为 MKV；已有音频的视频格式直接保存。
 服务器可能根据账号和网络限制部分格式；Cookie 不保证消除播放器或媒体请求的限制。
+
+账号页的“代理服务器”支持 `http://127.0.0.1:7890`、`https://proxy.example:443` 和 `socks5://127.0.0.1:1080`，需要认证时可使用 `http://用户名:密码@地址:端口`。地址默认填入 `http://127.0.0.1:7890`，代理开关默认关闭。开启后作用于 YouTube 解析、播放列表、封面和视频／音频下载；关闭后直接连接，不读取系统或环境代理。地址和开关分别保存在 `config.toml` 的 `[youtube].proxy` 和 `[youtube].proxy_enabled` 中。修改地址后会自动保存，开关切换立即生效。请在解析和下载任务空闲时修改代理。
 本功能不携带 yt-dlp 或 Python。移植代码、上游版本与许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 ## 数据和文件

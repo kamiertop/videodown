@@ -16,6 +16,11 @@ import (
 )
 
 func (s *State) Form(c *ui.Context, path string, scroll *ui.ScrollState) {
+	// An edit's debounce may finish after another task started. Keep that edit
+	// pending and commit it once network work is idle instead of losing it.
+	if s.proxySavePending && !s.proxyBusy && !s.busy && !s.playlistLoading && s.detailsInFlight == 0 && s.readyCount() == 0 && s.PendingDownloadCount() == 0 {
+		s.saveProxy()
+	}
 	if strings.HasSuffix(path, "/playlist") {
 		s.playlistPage(c, scroll)
 		return
@@ -43,10 +48,7 @@ func (s *State) Form(c *ui.Context, path string, scroll *ui.ScrollState) {
 				Border(style.BorderWidth, k.Border).
 				Background(k.Surface).
 				Children(func() {
-					field := input.TextInput(c.Key("link"),
-						&s.Link,
-						input.TextInputOptions{Label: "YouTube 视频链接", Placeholder: "粘贴 YouTube 视频或 Shorts 链接", Disabled: s.busy},
-					)
+					field := roundedInput(c.Key("link"), &s.Link, "YouTube 视频链接", "粘贴 YouTube 视频或 Shorts 链接", s.busy)
 					field.Element.Grow(1).MinWidth(0)
 					field.Input.OnSubmit(s.resolve)
 					components.Button(c.Key("parse"), "解析视频", input.ButtonOptions{Variant: input.Primary, Loading: s.busy, Disabled: s.busy || s.api == nil || strings.TrimSpace(s.Link) == ""}).OnClick(s.resolve)

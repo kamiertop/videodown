@@ -18,6 +18,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/imroc/req/v3"
+	"github.com/kamiertop/videodown/internal/netclient"
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/utils"
 	"github.com/kamiertop/videodown/youtube/internal/extractor"
@@ -61,11 +63,14 @@ type cachedVideo struct {
 }
 
 type Service struct {
-	parseMu   sync.Mutex
-	publishMu sync.Mutex
-	cache     map[string]cachedVideo
-	store     *storage.Store
-	transport http.RoundTripper
+	parseMu      sync.Mutex
+	publishMu    sync.Mutex
+	cache        map[string]cachedVideo
+	store        *storage.Store
+	transport    http.RoundTripper
+	networkMu    sync.Mutex
+	networkProxy string
+	network      *req.Client
 }
 
 func New(store *storage.Store) *Service { return &Service{store: store} }
@@ -119,7 +124,7 @@ func VideoID(input string) (string, error) {
 	return id, nil
 }
 func (s *Service) client() *extractor.Client {
-	return &extractor.Client{Cookie: s.Cookie(), HTTPClient: &http.Client{Timeout: 30 * time.Second, Transport: s.transport}}
+	return &extractor.Client{Cookie: s.Cookie(), HTTPClient: s.requestClient()}
 }
 func describe(v *extractor.Video) Video {
 	out := Video{ID: v.ID, Title: v.Title, Author: v.Author, Duration: v.Duration}
@@ -424,7 +429,7 @@ func (s *Service) fetchVideo(ctx context.Context, id string) (*extractor.Client,
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
 	}
-	key := fmt.Sprintf("%s:%x", id, sha256.Sum256([]byte(s.Cookie())))
+	key := fmt.Sprintf("%s:%x", id, sha256.Sum256([]byte(s.Cookie()+"\x00"+s.proxyKey())))
 	if hit, ok := s.cache[key]; ok && time.Since(hit.at) < 5*time.Minute {
 		return hit.client.Clone(), hit.video, nil
 	}
@@ -497,4 +502,50 @@ func formatSummary(f extractor.Format) string {
 		summary += fmt.Sprintf(" · %d帧", f.FPS)
 	}
 	return summary
+}
+
+func (s *Service) proxySettings() (string, bool) {
+	config := s.store.Config().YouTube
+	value, _ := netclient.NormalizeProxy(config.Proxy)
+	if value == "" {
+		value = netclient.DefaultProxy
+	}
+	return value, config.ProxyEnabled
+}
+func (s *Service) Proxy() string      { value, _ := s.proxySettings(); return value }
+func (s *Service) ProxyEnabled() bool { _, enabled := s.proxySettings(); return enabled }
+func (s *Service) proxyKey() string {
+	value, enabled := s.proxySettings()
+	return fmt.Sprintf("%t:%s", enabled, value)
+}
+func (s *Service) SetProxy(raw string, enabled bool) error {
+	proxy, err := netclient.NormalizeProxy(raw)
+	if err != nil {
+		return err
+	}
+	if proxy == "" {
+		proxy = netclient.DefaultProxy
+	}
+	if err = s.store.UpdateConfig(func(c *storage.Config) error { c.YouTube.Proxy = proxy; c.YouTube.ProxyEnabled = enabled; return nil }); err != nil {
+		return err
+	}
+	s.parseMu.Lock()
+	s.cache = nil
+	s.parseMu.Unlock()
+	return nil
+}
+
+func (s *Service) requestClient() *req.Client {
+	proxy, enabled := s.proxySettings()
+	key := fmt.Sprintf("%t:%s", enabled, proxy)
+	s.networkMu.Lock()
+	defer s.networkMu.Unlock()
+	if s.network == nil || s.networkProxy != key {
+		if s.network != nil {
+			s.network.GetClient().CloseIdleConnections()
+		}
+		s.network = netclient.NewWithProxy(proxy, enabled, 30*time.Second, s.transport)
+		s.networkProxy = key
+	}
+	return s.network
 }

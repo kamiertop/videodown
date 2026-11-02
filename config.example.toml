@@ -35,3 +35,6 @@ cookie = ""
 
 [youtube]
 cookie = ""
+# Enable to route YouTube requests through this proxy; disabled means direct.
+proxy_enabled = false
+proxy = "http://127.0.0.1:7890"

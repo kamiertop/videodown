@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/egoist/mygo/ui"
+	"github.com/imroc/req/v3"
+
 	"github.com/kamiertop/videodown/internal/gui/imagecache"
 )
 
@@ -34,7 +36,7 @@ func (s *State) finishCover(generation uint64, bitmap *ui.Bitmap, err error) {
 }
 
 func loadCover(parent context.Context, urls []string) (*ui.Bitmap, error) {
-	return loadCoverWith(parent, urls, imagecache.Load)
+	return loadCoverWith(parent, urls, imagecache.LoadThumbnail)
 }
 
 func loadCoverWith(parent context.Context, urls []string, load func(context.Context, string, string) (*ui.Bitmap, error)) (*ui.Bitmap, error) {
@@ -58,7 +60,7 @@ func loadCoverWith(parent context.Context, urls []string, load func(context.Cont
 			results <- result{bitmap, err}
 		}()
 	}
-	var last error = errors.New("没有封面地址")
+	var last = errors.New("没有封面地址")
 	for range count {
 		select {
 		case result := <-results:
@@ -71,4 +73,10 @@ func loadCoverWith(parent context.Context, urls []string, load func(context.Cont
 		}
 	}
 	return nil, last
+}
+
+func loadCoverUsingClient(ctx context.Context, urls []string, client *req.Client) (*ui.Bitmap, error) {
+	return loadCoverWith(ctx, urls, func(ctx context.Context, url, referer string) (*ui.Bitmap, error) {
+		return imagecache.LoadThumbnailWithClient(ctx, client, url, referer)
+	})
 }

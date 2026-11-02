@@ -9,12 +9,13 @@ import (
 	"net/http"
 	"time"
 
-	"golang.org/x/image/draw"
-
 	"github.com/egoist/mygo/ui"
+	"github.com/imroc/req/v3"
+	"github.com/kamiertop/videodown/internal/netclient"
+	"golang.org/x/image/draw"
 )
 
-var imageClient = &http.Client{Timeout: 12 * time.Second}
+var imageClient = netclient.New("", 12*time.Second, nil)
 
 // Cache is owned by the UI thread. Workers only return decoded bitmaps.
 type Cache map[string]*Entry
@@ -55,7 +56,7 @@ func (c Cache) Add(url string) *Entry {
 }
 
 func Load(ctx context.Context, url, referer string) (*ui.Bitmap, error) {
-	return load(ctx, url, referer, false)
+	return load(ctx, imageClient, url, referer, false)
 }
 
 // ThumbnailMaxSide bounds retained RGBA pixels to 1 MiB per card image.
@@ -63,19 +64,14 @@ const ThumbnailMaxSide = 512
 
 // LoadThumbnail keeps card caches independent of the source image resolution.
 func LoadThumbnail(ctx context.Context, url, referer string) (*ui.Bitmap, error) {
-	return load(ctx, url, referer, true)
+	return load(ctx, imageClient, url, referer, true)
 }
 
-func load(ctx context.Context, url, referer string, thumbnail bool) (*ui.Bitmap, error) {
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
+func load(ctx context.Context, client *req.Client, url, referer string, thumbnail bool) (*ui.Bitmap, error) {
+	if ctx == nil {
+		ctx = context.Background()
 	}
-	if ctx != nil {
-		req = req.WithContext(ctx)
-	}
-	req.Header.Set("Referer", referer)
-	resp, err := imageClient.Do(req)
+	resp, err := client.R().SetContext(ctx).SetHeader("Referer", referer).Get(url)
 	if err != nil {
 		return nil, err
 	}
@@ -121,4 +117,9 @@ func resizeThumbnail(img image.Image) image.Image {
 func NearViewport(bounds ui.Rect, width, height float32) bool {
 	const margin float32 = 512
 	return bounds.W > 0 && bounds.H > 0 && bounds.X < width && bounds.X+bounds.W > 0 && bounds.Y < height+margin && bounds.Y+bounds.H > -margin
+}
+
+// LoadThumbnailWithClient lets platform pages use their configured proxy.
+func LoadThumbnailWithClient(ctx context.Context, client *req.Client, url, referer string) (*ui.Bitmap, error) {
+	return load(ctx, client, url, referer, true)
 }
