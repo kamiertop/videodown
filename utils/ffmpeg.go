@@ -1,32 +1,37 @@
 package utils
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-
-	"github.com/dgraph-io/badger/v4"
+	"strings"
+	"time"
 )
 
 type FFmpeg struct {
 	path string
 }
 
-func NewFFmpeg() *FFmpeg {
-	return &FFmpeg{}
-}
+// NewFFmpeg uses the configured executable, or discovers one when custom is empty.
+func NewFFmpeg(custom string) *FFmpeg { return &FFmpeg{path: custom} }
 
 func (f *FFmpeg) ensurePath() error {
-	if f.path != "" {
-		return nil
+	path, _, err := CheckFFmpeg(f.path)
+	if err == nil {
+		f.path = path
 	}
-	return f.searchFFmpeg()
+	return err
 }
 
 func (f *FFmpeg) Merge(videoPath, audioPath, outputPath string) error {
+	return f.MergeContext(context.Background(), videoPath, audioPath, outputPath)
+}
+
+func (f *FFmpeg) MergeContext(ctx context.Context, videoPath, audioPath, outputPath string) error {
 	if err := f.ensurePath(); err != nil {
 		return err
 	}
@@ -34,7 +39,8 @@ func (f *FFmpeg) Merge(videoPath, audioPath, outputPath string) error {
 		return errors.New("video/audio/output path is empty")
 	}
 
-	cmd := exec.Command(
+	cmd := exec.CommandContext(
+		ctx,
 		f.path,
 		"-y",
 		"-loglevel", "error",
@@ -75,94 +81,30 @@ func (f *FFmpeg) Remux(inputPath, outputPath string) error {
 	return nil
 }
 
-// searchFFmpeg 在多个位置搜索 ffmpeg
-func (f *FFmpeg) searchFFmpeg() error {
-	// 1. 尝试系统 PATH (最常用)
-	if path, err := exec.LookPath("ffmpeg"); err == nil {
-		f.path = path
-		return nil
+func CheckFFmpeg(custom string) (path, version string, err error) {
+	name := "ffmpeg"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
 	}
-
-	// 2. 尝试应用同目录
-	if exePath, err := os.Executable(); err == nil {
-		exeDir := filepath.Dir(exePath)
-		candidates := []string{
-			filepath.Join(exeDir, "ffmpeg"),
-			filepath.Join(exeDir, "bin", "ffmpeg"),
-		}
-
-		if runtime.GOOS == "windows" {
-			for i, c := range candidates {
-				candidates[i] = c + ".exe"
-			}
-		}
-
-		for _, candidate := range candidates {
-			if _, err := os.Stat(candidate); err == nil {
-				f.path = candidate
-				return nil
-			}
-		}
-	}
-
-	return errors.New("ffmpeg not found")
-}
-
-// HasFFmpeg 检查系统中是否可用 ffmpeg
-func (s *Settings) HasFFmpeg() bool {
-	ffmpeg := NewFFmpeg()
-
-	return ffmpeg.ensurePath() == nil
-}
-
-func (s *Settings) FFmpegPath() (string, error) {
-	ffmpeg := NewFFmpeg()
-	// 优先使用设置中保存的路径
-	if path, err := s.store.Get(ffmpegPathKey); err == nil && path != "" {
-		ffmpeg.path = path
-		return path, nil
-	}
-	path, err := s.store.Get(ffmpegPathKey)
-	if err != nil {
-		if errors.Is(err, badger.ErrKeyNotFound) {
-			s.logger.Error("ffmpeg path not set in settings, will try to search")
-		}
-	}
-	// 如果key存在，也要判断是否有效，避免用户设置了错误路径后无法使用
-	_, err = exec.Command(path, "-version").CombinedOutput()
-	if err != nil {
-		s.logger.Errorf("ffmpeg path from settings is invalid: %v, will try to search", err)
+	var candidates []string
+	if custom != "" {
+		candidates = append(candidates, custom)
 	} else {
-		return path, nil
+		if executable, e := os.Executable(); e == nil {
+			dir := filepath.Dir(executable)
+			candidates = append(candidates, filepath.Join(dir, name), filepath.Join(dir, "bin", name))
+		}
+		if found, e := exec.LookPath(name); e == nil {
+			candidates = append(candidates, found)
+		}
 	}
-
-	// 设置中没有或路径无效时，尝试搜索
-	if err := ffmpeg.ensurePath(); err != nil {
-		return "", err
+	for _, candidate := range candidates {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		output, e := exec.CommandContext(ctx, candidate, "-version").CombinedOutput()
+		cancel()
+		if e == nil {
+			return candidate, strings.SplitN(string(output), "\n", 2)[0], nil
+		}
 	}
-
-	return ffmpeg.path, nil
-}
-
-const ffmpegPathKey = "ffmpeg_path"
-
-func (s *Settings) SetFFmpegPath(path string) error {
-	if path == "" {
-		return errors.New("ffmpeg path cannot be empty")
-	}
-	if _, err := os.Stat(path); err != nil {
-		return fmt.Errorf("invalid ffmpeg path: %w", err)
-	}
-
-	// 直接验证是否可执行
-	cmd := exec.Command(path, "-version")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("ffmpeg is not executable: %w: %s", err, string(out))
-	}
-
-	// 如果验证通过，保存路径
-	ffmpeg := NewFFmpeg()
-	ffmpeg.path = path
-
-	return s.store.Set(ffmpegPathKey, path)
+	return "", "", fmt.Errorf("未检测到可用的 FFmpeg，请安装或手动指定路径")
 }

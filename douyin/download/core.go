@@ -17,21 +17,21 @@ import (
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/logger"
 	"github.com/kamiertop/videodown/utils"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type Service struct {
-	client   *req.Client
-	logger   *logger.Logger
-	store    *storage.Store
-	events   *application.EventManager
-	mu       sync.Mutex
-	progress map[string]float64
+	client *req.Client
+	logger *logger.Logger
+	store  *storage.Store
+
+	mu               sync.Mutex
+	progress         map[string]float64
+	progressListener func(Progress)
 	// active 记录正在执行（含休眠间隔）的任务数，供关闭程序前判断是否有任务未完成。
 	active        atomic.Int64
 	publicHeaders func() (map[string]string, error)
 	// 下载历史的内存缓存：按下载时间倒序，写入/删除/清空时失效，
-	// 历史页翻页只切内存，不必每次全量扫描 badger。
+	// 历史页翻页只切内存，不必每次查询 SQLite。
 	historyMu    sync.RWMutex
 	historyItems []HistoryItem
 	historyValid bool
@@ -42,11 +42,19 @@ func (d *Service) ActiveCount() int {
 	return int(d.active.Load())
 }
 
-func New(logger *logger.Logger, store *storage.Store, events *application.EventManager, publicHeaders func() (map[string]string, error)) *Service {
+func (d *Service) DownloadConcurrency() int { return d.store.Config().Download.Concurrency }
+
+func (d *Service) SetProgressListener(fn func(Progress)) {
+	d.mu.Lock()
+	d.progressListener = fn
+	d.mu.Unlock()
+}
+
+func New(logger *logger.Logger, store *storage.Store, publicHeaders func() (map[string]string, error)) *Service {
 	return &Service{
-		logger:        logger,
-		store:         store,
-		events:        events,
+		logger: logger,
+		store:  store,
+
 		mu:            sync.Mutex{},
 		publicHeaders: publicHeaders,
 		progress:      make(map[string]float64),
@@ -63,7 +71,7 @@ func New(logger *logger.Logger, store *storage.Store, events *application.EventM
 	}
 }
 
-// DownloadVideos 批量下载抖音任务；单个任务失败不会中断整批，结果逐条返回给前端。
+// DownloadVideos 批量下载抖音任务；单个任务失败不会中断整批，逐条返回任务结果。
 func (d *Service) DownloadVideos(tasks []Task) (BatchResult, error) {
 	tasks = uniqueDownloadTasks(tasks)
 	result := BatchResult{Results: make([]Result, 0, len(tasks))}
@@ -71,10 +79,7 @@ func (d *Service) DownloadVideos(tasks []Task) (BatchResult, error) {
 		return result, errors.New("下载列表为空")
 	}
 
-	workerCount, err := d.store.ConcurrencyNum()
-	if err != nil {
-		return result, err
-	}
+	workerCount := max(1, min(d.store.Config().Download.Concurrency, len(tasks)))
 
 	jobs := make(chan Task, len(tasks))
 	results := make(chan Result, len(tasks))
@@ -132,12 +137,12 @@ func (d *Service) Download(videoURL string) error {
 	return nil
 }
 
-func (d *Service) emitProgress(p progress) {
+func (d *Service) emitProgress(p Progress) {
 	if p.AwemeID != "" {
 		p.Percent = utils.ClampPercent(p.Percent)
 		d.mu.Lock()
 		prev, ok := d.progress[p.AwemeID]
-		// 并发下载时避免旧事件把同一任务的进度条回退；错误事件仍允许透传给前端。
+		// 并发下载时避免旧事件把同一任务的进度条回退；错误事件仍允许透传给界面。
 		if ok && p.Percent < prev && p.Phase != "error" {
 			d.mu.Unlock()
 			return
@@ -145,12 +150,15 @@ func (d *Service) emitProgress(p progress) {
 		d.progress[p.AwemeID] = p.Percent
 		d.mu.Unlock()
 	}
-	if d.events != nil {
-		d.events.Emit("douyin-download-progress", p)
+	d.mu.Lock()
+	listener := d.progressListener
+	d.mu.Unlock()
+	if listener != nil {
+		listener(p)
 	}
 }
 
-// downloadURLToFile 手动流式读取响应体，这样才能持续把字节进度推给前端。
+// downloadURLToFile 手动流式读取响应体，这样才能持续把字节进度推给界面。
 func (d *Service) downloadURLToFile(rawURL, targetPath string, task Task, phase string, start, weight float64) error {
 	headers, err := d.publicHeaders()
 	if err != nil {
@@ -183,7 +191,7 @@ func (d *Service) downloadURLToFile(rawURL, targetPath string, task Task, phase 
 	var downloaded int64
 	buf := make([]byte, 1024*1024)
 	lastEmit := time.Time{}
-	d.emitProgress(progress{
+	d.emitProgress(Progress{
 		AwemeID: task.AwemeID,
 		Title:   task.Title,
 		Phase:   phase,
@@ -200,7 +208,7 @@ func (d *Service) downloadURLToFile(rawURL, targetPath string, task Task, phase 
 			downloaded += int64(n)
 			now := time.Now()
 			if now.Sub(lastEmit) >= 200*time.Millisecond || (total > 0 && downloaded >= total) {
-				d.emitProgress(progress{
+				d.emitProgress(Progress{
 					AwemeID:    task.AwemeID,
 					Title:      task.Title,
 					Phase:      phase,
@@ -219,7 +227,7 @@ func (d *Service) downloadURLToFile(rawURL, targetPath string, task Task, phase 
 		}
 	}
 
-	d.emitProgress(progress{
+	d.emitProgress(Progress{
 		AwemeID:    task.AwemeID,
 		Title:      task.Title,
 		Phase:      phase,
@@ -231,7 +239,7 @@ func (d *Service) downloadURLToFile(rawURL, targetPath string, task Task, phase 
 	return nil
 }
 
-// downloadTask 同时处理普通视频和图片合集；当前版本不在后端重新解析 bit_rate。
+// downloadTask 同时处理普通视频和图片合集；当前版本不在下载服务重新解析 bit_rate。
 // 第二个返回值表示任务因已下载而被跳过，跳过的任务没有发起网络请求。
 func (d *Service) downloadTask(task Task) (string, bool, error) {
 	task.AwemeID = strings.TrimSpace(task.AwemeID)
@@ -244,18 +252,15 @@ func (d *Service) downloadTask(task Task) (string, bool, error) {
 	}
 
 	// 与 B 站一致：增量下载开启时跳过已下载的作品；关闭后即使缓存命中也重新下载（设置读取失败按开启兜底）。
-	if d.store.SkipDownloaded() {
-		// 下载前先检查是否已下载，避免重复下载同一作品；批量会话在前端已过滤，这里是手动路径和并发窗口的兜底。
+	if d.store.Config().Download.SkipDownloaded {
+		// 下载前先检查是否已下载，避免重复下载同一作品；批量会话在界面已过滤，这里是手动路径和并发窗口的兜底。
 		if path, ok := d.isDownloaded(task.AwemeID); ok {
-			d.emitProgress(progress{AwemeID: task.AwemeID, Title: task.Title, Phase: "done", Percent: 100})
+			d.emitProgress(Progress{AwemeID: task.AwemeID, Title: task.Title, Phase: "done", Percent: 100})
 			return path, true, nil
 		}
 	}
 
-	storagePath, err := d.store.StoragePath()
-	if err != nil {
-		return "", false, err
-	}
+	storagePath := d.store.DownloadDirectory()
 	targetDir, err := d.resolveDownloadDir(storagePath, task)
 	if err != nil {
 		return "", false, err
@@ -267,7 +272,7 @@ func (d *Service) downloadTask(task Task) (string, bool, error) {
 	d.mu.Lock()
 	delete(d.progress, task.AwemeID)
 	d.mu.Unlock()
-	p := progress{
+	p := Progress{
 		AwemeID: task.AwemeID,
 		Title:   task.Title,
 	}
@@ -324,10 +329,7 @@ func (d *Service) downloadTask(task Task) (string, bool, error) {
 	if strings.TrimSpace(task.VideoURL) == "" {
 		return "", false, errors.New("视频下载地址为空")
 	}
-	template, err := d.store.FilenameTemplate()
-	if err != nil {
-		return "", false, err
-	}
+	template := d.store.Config().Download.FilenameTemplate
 	now := time.Now()
 	values := map[string]string{"title": task.Title,
 		"id": task.AwemeID, "author": task.AuthorName,
@@ -355,8 +357,8 @@ func (d *Service) downloadTask(task Task) (string, bool, error) {
 
 func (d *Service) sleepAfterTask(task Task) {
 	// 和 B 站下载保持一致：每个 worker 完成一条任务后按用户设置随机休眠，降低连续请求频率。
-	sleepTime, err := d.store.SleepTime()
-	if err != nil || sleepTime <= 0 {
+	sleepTime := d.store.Config().Download.SleepSeconds
+	if sleepTime <= 0 {
 		return
 	}
 	sleepTime = rand.Int64N(sleepTime)
@@ -364,7 +366,7 @@ func (d *Service) sleepAfterTask(task Task) {
 		return
 	}
 	for remaining := sleepTime; remaining > 0; remaining-- {
-		d.emitProgress(progress{
+		d.emitProgress(Progress{
 			AwemeID:        task.AwemeID,
 			Title:          task.Title,
 			Phase:          "sleep",
@@ -374,5 +376,5 @@ func (d *Service) sleepAfterTask(task Task) {
 		})
 		time.Sleep(time.Second)
 	}
-	d.emitProgress(progress{AwemeID: task.AwemeID, Title: task.Title, Phase: "done", Percent: 100})
+	d.emitProgress(Progress{AwemeID: task.AwemeID, Title: task.Title, Phase: "done", Percent: 100})
 }
