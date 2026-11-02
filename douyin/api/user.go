@@ -7,8 +7,6 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/imroc/req/v3"
-
 	"github.com/kamiertop/videodown/douyin/model"
 	"github.com/kamiertop/videodown/douyin/websign"
 )
@@ -166,60 +164,33 @@ func (d *Douyin) UserSeries(secUserID string, cursor, count int) (model.UserSeri
 	return resp, nil
 }
 
-// ParseSecUserID 从用户空间URL或分享链接中提取sec_user_id
-func (d *Douyin) ParseSecUserID(URLOrSecUserID string) (string, error) {
-	const secUserIDPrefix = "MS4wLjAB"
-	URLOrSecUserID = strings.TrimSpace(URLOrSecUserID)
-	if strings.Contains(URLOrSecUserID, "v.douyin.com") {
-		parts := strings.Split(URLOrSecUserID, "https://v.douyin.com/")
-		if len(parts) < 2 {
-			return "", errors.New("无效的抖音用户URL")
+// ParseSecUserID accepts a sec_uid, a profile URL or shared profile text.
+func (d *Douyin) ParseSecUserID(text string) (string, error) {
+	text = strings.TrimSpace(text)
+	valid := func(s string) bool {
+		if !strings.HasPrefix(s, "MS4wLjAB") {
+			return false
 		}
-		shortURL := "https://v.douyin.com/" + strings.TrimSpace(parts[1])
-		// 必须clone，以免影响全局client的重定向策略
-		resp, err := d.client.
-			Clone().
-			SetRedirectPolicy(req.NoRedirectPolicy()).
-			R().
-			Get(shortURL)
-		if err != nil {
-			return "", fmt.Errorf("请求短链接失败: %w", err)
-		}
-		redirectURL := resp.Header.Get("Location")
-		if redirectURL == "" {
-			return "", errors.New("未能获取短链接重定向地址")
-		}
-
-		parsed, err := url.Parse(redirectURL)
-		if err != nil {
-			return "", fmt.Errorf("解析重定向URL失败: %w", err)
-		}
-		// 从路径 /share/user/{sec_uid} 中提取
-		if pathParts := strings.Split(parsed.Path, "/share/user/"); len(pathParts) == 2 {
-			secUID, _, _ := strings.Cut(pathParts[1], "?")
-			if strings.Contains(secUID, secUserIDPrefix) {
-				return secUID, nil
+		for _, r := range s {
+			if !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || r == '-' || r == '_') {
+				return false
 			}
 		}
-		// 从查询参数 sec_uid 中提取
-		if secUID := parsed.Query().Get("sec_uid"); secUID != "" && strings.Contains(secUID, secUserIDPrefix) {
-			return secUID, nil
+		return true
+	}
+	if valid(text) {
+		return text, nil
+	}
+	return d.resolveShare(text, func(u *url.URL) string {
+		if id := u.Query().Get("sec_uid"); valid(id) {
+			return id
 		}
-
-		return "", errors.New("未能从短链接重定向地址中提取用户ID")
-	}
-
-	if !strings.Contains(URLOrSecUserID, secUserIDPrefix) {
-		return "", errors.New("无效的抖音用户ID或URL")
-	}
-
-	if strings.Contains(URLOrSecUserID, "www.douyin.com/user/") {
-		parts := strings.Split(URLOrSecUserID, "www.douyin.com/user/")
-		if len(parts) < 2 {
-			return "", errors.New("无效的抖音用户URL")
+		parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+		for i := 0; i+1 < len(parts); i++ {
+			if parts[i] == "user" && valid(parts[i+1]) {
+				return parts[i+1]
+			}
 		}
-		return strings.Split(parts[1], "?")[0], nil
-	}
-
-	return URLOrSecUserID, nil
+		return ""
+	})
 }

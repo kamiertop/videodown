@@ -1,6 +1,6 @@
 package utils
 
-// WeightedPercent 把单个阶段的字节进度映射到整条任务进度，便于前端展示统一进度条
+// WeightedPercent 把单个阶段的字节进度映射到整条任务进度，用于展示统一进度条
 func WeightedPercent(start, weight float64, downloaded, total int64) float64 {
 	if total <= 0 {
 		return start

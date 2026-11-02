@@ -9,11 +9,6 @@ import (
 
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/logger"
-	"github.com/wailsapp/wails/v3/pkg/application"
-)
-
-const (
-	douyinCookieKey = "douyin_cookie"
 )
 
 type Douyin struct {
@@ -32,10 +27,13 @@ type Douyin struct {
 	userID    string
 }
 
-func New(log *logger.Logger, store *storage.Store, events *application.EventManager) *Douyin {
-	var client = req.C().EnableAutoDecompress().
+func New(log *logger.Logger, store *storage.Store) *Douyin {
+	var client = req.C().
+		EnableAutoDecompress().
+		SetTimeout(20*time.Second).
 		SetCommonRetryCount(2).
 		SetCommonRetryBackoffInterval(300*time.Millisecond, 2*time.Second)
+
 	if logger.IsDevMode() {
 		client.SetLogger(log).EnableDebugLog()
 	}
@@ -88,27 +86,6 @@ func (d *Douyin) cookieQuery() (cookieParams, error) {
 			}
 		}
 	}
-
-	//if d.userID == "" {
-	//	rawUserId, ok := cookieToMap["PhoneResumeUidCacheV1"]
-	//	if !ok {
-	//		d.logger.Warning("not found user id in cookie, key: PhoneResumeUidCacheV1")
-	//	} else {
-	//		unescape, err := url.QueryUnescape(rawUserId)
-	//		if err != nil {
-	//			d.logger.Errorf("解析 FOLLOW_LIVE_POINT_INFO 失败: %v", err)
-	//		} else {
-	//			// 这个字段是个json字符串, 解析后取第一个key就是userID了
-	//			var userId map[string]any
-	//			err = sonic.Unmarshal([]byte(unescape), &userId)
-	//			if err == nil {
-	//				for value := range userId {
-	//					d.userID = value
-	//				}
-	//			}
-	//		}
-	//	}
-	//}
 
 	return cookieParams{
 		verifyFp: cookieToMap["s_v_web_id"],

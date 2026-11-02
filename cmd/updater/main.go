@@ -15,6 +15,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/kamiertop/videodown/internal/apppaths"
 )
 
 var packagePath = flag.String("package", "", "Path to downloaded update package.")
@@ -22,18 +24,29 @@ var targetPath = flag.String("target", "", "Path of the application to update.")
 
 func main() {
 	flag.Parse()
-	target := *targetPath
-	if target == "" {
-		var err error
-		target, err = os.Executable()
-		if err != nil {
-			fatal(err)
-		}
+	baseDir, err := apppaths.Directory()
+	if err != nil {
+		fatal(err)
 	}
-	archivePath := *packagePath
-	var err error
-	if archivePath == "" {
+	if *targetPath == "" {
+		fatal(errors.New("target is required"))
+	}
+	target, err := apppaths.Inside(baseDir, *targetPath)
+	if err != nil {
+		fatal(err)
+	}
+	if filepath.Dir(target) != baseDir {
+		fatal(errors.New("target must be beside updater"))
+	}
+	if *packagePath == "" {
 		fatal(errors.New("package is required"))
+	}
+	archivePath, err := apppaths.Inside(baseDir, *packagePath)
+	if err != nil {
+		fatal(err)
+	}
+	if err = os.Chdir(baseDir); err != nil {
+		fatal(err)
 	}
 	// The downloaded package is no longer needed after extraction.
 	defer func() {
@@ -56,6 +69,7 @@ func main() {
 		fatal(err)
 	}
 	cmd := exec.Command(target)
+	cmd.Dir = baseDir
 	cmd.Stdout, cmd.Stderr, cmd.Stdin = os.Stdout, os.Stderr, os.Stdin
 	if err := cmd.Start(); err != nil {
 		fatal(fmt.Errorf("restart application: %w", err))
@@ -172,6 +186,9 @@ func extractTarGz(path, dir string) (outPath string, err error) {
 }
 
 func replace(target, source string) error {
+	if _, err := apppaths.Inside(filepath.Dir(target), target+".old"); err != nil {
+		return err
+	}
 	backup := target + ".old"
 	if err := os.Remove(backup); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("remove old backup: %w", err)

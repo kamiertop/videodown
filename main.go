@@ -1,91 +1,77 @@
 package main
 
 import (
-	"embed"
-	"log/slog"
+	"errors"
+	"flag"
+	"fmt"
+	"log"
+	"os"
 
-	bilibiliapi "github.com/kamiertop/videodown/bilibili/api"
-	"github.com/kamiertop/videodown/bilibili/download"
-	douyinapi "github.com/kamiertop/videodown/douyin/api"
-	douyinDown "github.com/kamiertop/videodown/douyin/download"
-	"github.com/kamiertop/videodown/internal/app"
+	"github.com/egoist/mygo"
+
+	biliapi "github.com/kamiertop/videodown/bilibili/api"
+	bilidownload "github.com/kamiertop/videodown/bilibili/download"
+	dyapi "github.com/kamiertop/videodown/douyin/api"
+	dydownload "github.com/kamiertop/videodown/douyin/download"
+	"github.com/kamiertop/videodown/internal/apppaths"
+	"github.com/kamiertop/videodown/internal/gui"
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/internal/updater"
-	mylogger "github.com/kamiertop/videodown/logger"
-	"github.com/kamiertop/videodown/utils"
-
-	"github.com/wailsapp/wails/v3/pkg/application"
-	"github.com/wailsapp/wails/v3/pkg/events"
+	"github.com/kamiertop/videodown/logger"
+	yt "github.com/kamiertop/videodown/youtube"
 )
 
-//go:embed all:frontend/dist
-var assets embed.FS
-
-//go:embed build/appicon.png
-var icon []byte
-
-const appName = "videodown"
-
 func main() {
-	log := mylogger.New()
+	flag.Parse()
+	if err := Run(); err != nil {
+		log.Print(err)
+		os.Exit(1)
+	}
+}
 
-	store, err := storage.OpenDefault()
+func Run() (err error) {
+	dataDir, err := apppaths.Directory()
 	if err != nil {
-		log.Fatalf("Failed to initialize storage: %v", err)
+		return err
 	}
 
-	settings, err := utils.NewSettings(log, store)
+	store, err := openAppData(dataDir)
 	if err != nil {
-		log.Fatalf("Failed to initialize settings: %v", err)
+		return fmt.Errorf("打开应用配置 %s: %w", dataDir, err)
+	}
+	defer func() { err = errors.Join(err, store.Close()) }()
+	vdlog := logger.New()
+	service := biliapi.New(vdlog, store)
+	downloader := bilidownload.New(vdlog, store, service.CookieFunc())
+	dyService := dyapi.New(vdlog, store)
+	dyDownloader := dydownload.New(vdlog, store, dyService.PublicHeaders())
+	shell := gui.NewShellWithOptions(gui.Options{
+		YouTube:          yt.New(store),
+		UpdateChecker:    updater.New(vdlog, store),
+		Preferences:      store,
+		Settings:         store,
+		Bilibili:         service,
+		BilibiliDownload: downloader,
+		Douyin:           dyService,
+		DouyinDownload:   dyDownloader,
+		ActiveDownloads:  func() int { return downloader.ActiveCount() + dyDownloader.ActiveCount() },
+	})
+	defer shell.Wait()
+	mygo.App.WhenReady(shell.OpenWindow)
+
+	return mygo.App.Run()
+}
+
+// openAppData creates first-run data files without replacing existing preferences.
+func openAppData(directory string) (*storage.Store, error) {
+	store, err := storage.Open(directory)
+	if err != nil {
+		return nil, err
+	}
+	if err = store.InitDefaults("./download"); err != nil {
+		_ = store.Close()
+		return nil, err
 	}
 
-	controller := app.New(store)
-
-	wailsApp := application.New(application.Options{
-		Name:     appName,
-		Logger:   log.Slog(slog.LevelError),
-		LogLevel: slog.LevelError,
-		Assets: application.AssetOptions{
-			Handler: application.AssetFileServerFS(assets),
-		},
-	})
-	window := wailsApp.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:     appName,
-		Width:     1200,
-		Height:    880,
-		MinWidth:  760,
-		MinHeight: 600,
-		MaxWidth:  2560,
-		MaxHeight: 1440,
-	})
-	controller.Configure(wailsApp, window)
-
-	bilibili := bilibiliapi.New(log, store, wailsApp.Event)
-	douyin := douyinapi.New(log, store, wailsApp.Event)
-	updateService := updater.New(log, store, wailsApp.Event)
-	biliDownService := download.NewService(log, store, wailsApp.Event, bilibili.CookieFunc())
-	douyinDownService := douyinDown.New(log, store, wailsApp.Event, douyin.PublicHeaders())
-	controller.SetActiveTaskProbe(func() int {
-		return biliDownService.ActiveCount() + douyinDownService.ActiveCount()
-	})
-
-	wailsApp.RegisterService(application.NewService(bilibili))
-	wailsApp.RegisterService(application.NewService(douyin))
-	wailsApp.RegisterService(application.NewService(settings))
-	wailsApp.RegisterService(application.NewService(controller))
-	wailsApp.RegisterService(application.NewService(updateService))
-	wailsApp.RegisterService(application.NewService(biliDownService))
-	wailsApp.RegisterService(application.NewService(douyinDownService))
-
-	app.SetupSystemTray(wailsApp, window, icon, controller)
-
-	window.RegisterHook(events.Common.WindowClosing, func(event *application.WindowEvent) {
-		if app.BeforeClose(controller) {
-			event.Cancel()
-		}
-	})
-
-	if err = wailsApp.Run(); err != nil {
-		log.Fatalf("Application exited with error: %v", err)
-	}
+	return store, nil
 }

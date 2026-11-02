@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"regexp"
 	"strings"
 
 	"github.com/imroc/req/v3"
@@ -12,42 +13,76 @@ import (
 	"github.com/kamiertop/videodown/douyin/websign"
 )
 
-// ParseVideo 解析抖音视频链接，返回awemeID，为保证整体工作流，精选链接只返回awemeID，然后前端再次根据awemeID请求视频详情接口获取视频详情
-func (d *Douyin) ParseVideo(link string) (string, error) {
-	if strings.Contains(link, "douyin.com/jingxuan") && strings.Contains(link, "modal_id=") {
-		return d.parseJingXuanAwemeID(link)
+// ParseVideo accepts IDs, normal video/note URLs and shared short links.
+func (d *Douyin) ParseVideo(text string) (string, error) {
+	text = strings.TrimSpace(text)
+	if numericID(text) {
+		return text, nil
 	}
-	link = strings.TrimSpace(link)
-	split := strings.SplitSeq(link, " ")
-	for item := range split {
-		if strings.Contains(item, "https") {
-			link = item
-			break
+	return d.resolveShare(text, func(u *url.URL) string {
+		if id := u.Query().Get("modal_id"); numericID(id) {
+			return id
+		}
+		parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+		for i := 0; i+1 < len(parts); i++ {
+			if (parts[i] == "video" || parts[i] == "note" || parts[i] == "slides") && numericID(parts[i+1]) {
+				return parts[i+1]
+			}
+		}
+		return ""
+	})
+}
+
+func numericID(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return false
 		}
 	}
-	if link == "" {
-		return "", errors.New("链接不能为空")
-	}
-	resp, err := d.client.
-		Clone().
-		SetRedirectPolicy(req.NoRedirectPolicy()).
-		R().
-		Get(link)
-	if err != nil {
-		return "", fmt.Errorf("请求链接失败: %w", err)
-	}
-	redirectURL := resp.Header.Get("Location")
-	if redirectURL == "" {
-		return "", errors.New("未能获取重定向地址")
-	}
-	parts := strings.Split(redirectURL, "share/video/")
-	if len(parts) < 2 {
-		return "", errors.New("未能从重定向地址中提取视频ID")
-	}
-	videoID, _, _ := strings.Cut(parts[1], "?")
-
-	return strings.TrimSuffix(videoID, "/"), nil
+	return true
 }
+
+// resolveShare follows only Douyin redirects, without changing the shared client.
+func (d *Douyin) resolveShare(text string, extract func(*url.URL) string) (string, error) {
+	raw := shareURL.FindString(text)
+	if raw == "" {
+		return "", errors.New("请输入有效的抖音链接或作品 ID")
+	}
+	raw = strings.TrimRight(raw, "，。！!；;、）)]}>")
+	current, err := url.Parse(raw)
+	if err != nil {
+		return "", errors.New("无效的抖音链接")
+	}
+	client := d.client.Clone().SetRedirectPolicy(req.NoRedirectPolicy())
+	for range 6 {
+		host := strings.ToLower(current.Hostname())
+		if (current.Scheme != "https" && current.Scheme != "http") || (host != "douyin.com" && !strings.HasSuffix(host, ".douyin.com")) || current.User != nil {
+			return "", errors.New("请使用抖音链接")
+		}
+		if id := extract(current); id != "" {
+			return id, nil
+		}
+		resp, err := client.R().Get(current.String())
+		if err != nil {
+			return "", fmt.Errorf("请求分享链接失败: %w", err)
+		}
+		location := resp.Header.Get("Location")
+		if resp.StatusCode < 300 || resp.StatusCode >= 400 || location == "" {
+			return "", errors.New("分享链接没有返回有效的跳转地址")
+		}
+		next, err := url.Parse(location)
+		if err != nil {
+			return "", errors.New("分享链接跳转地址无效")
+		}
+		current = current.ResolveReference(next)
+	}
+	return "", errors.New("分享链接跳转次数过多")
+}
+
+var shareURL = regexp.MustCompile(`https?://[^\s<>"'，。！；（）]+`)
 
 // VideoDetail 获取视频详情
 func (d *Douyin) VideoDetail(awemeID string) (model.AwemeItem, error) {

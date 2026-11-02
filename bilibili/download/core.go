@@ -15,23 +15,22 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/imroc/req/v3"
 	"github.com/kamiertop/videodown/bilibili/util"
 	"github.com/kamiertop/videodown/internal/constant"
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/logger"
 	"github.com/kamiertop/videodown/utils"
-
-	"github.com/imroc/req/v3"
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
 type Service struct {
-	store    *storage.Store
-	logger   *logger.Logger
-	events   *application.EventManager
-	client   *req.Client
-	mu       sync.Mutex
-	progress map[string]float64
+	store  *storage.Store
+	logger *logger.Logger
+
+	client           *req.Client
+	mu               sync.Mutex
+	progress         map[string]float64
+	progressListener func(Progress)
 	// active 记录正在执行（含休眠间隔）的任务数，供关闭程序前判断是否有任务未完成。
 	active    atomic.Int64
 	getCookie func() (string, error)
@@ -42,11 +41,25 @@ func (s *Service) ActiveCount() int {
 	return int(s.active.Load())
 }
 
-func NewService(logger *logger.Logger, store *storage.Store, events *application.EventManager, getCookie func() (string, error)) *Service {
+// DownloadConcurrency is shared with the native scheduler.
+func (s *Service) DownloadConcurrency() int { return s.store.Config().Download.Concurrency }
+
+// SkipDownloaded reports the current incremental download preference.
+func (s *Service) SkipDownloaded() bool { return s.store.Config().Download.SkipDownloaded }
+
+// SetProgressListener delivers progress on the download worker goroutine.
+// UI callers must dispatch the update to their window thread.
+func (s *Service) SetProgressListener(listener func(Progress)) {
+	s.mu.Lock()
+	s.progressListener = listener
+	s.mu.Unlock()
+}
+
+func New(logger *logger.Logger, store *storage.Store, getCookie func() (string, error)) *Service {
 	return &Service{
-		store:     store,
-		logger:    logger,
-		events:    events,
+		store:  store,
+		logger: logger,
+
 		progress:  make(map[string]float64),
 		mu:        sync.Mutex{},
 		getCookie: getCookie,
@@ -72,8 +85,8 @@ func (s *Service) resetDownloadProgress(bvid string, cid int64) {
 	s.mu.Unlock()
 }
 
-// emitProgress 通过 Wails 事件把下载进度推给前端，前端按 bvid 更新对应卡片。
-func (s *Service) emitProgress(p progress) {
+// emitProgress publishes download state through the registered listener.
+func (s *Service) emitProgress(p Progress) {
 	key := progressKey(p.Bvid, p.Cid)
 	if key != "" {
 		p.Percent = utils.ClampPercent(p.Percent)
@@ -85,7 +98,7 @@ func (s *Service) emitProgress(p progress) {
 			p.Percent = 100
 			s.progress[key] = 100
 		case "error":
-			// 失败状态需要传给前端，但不能把进度条从已下载位置拉回 0。
+			// 失败状态需要传给界面，但不能把进度条从已下载位置拉回 0。
 			if ok && p.Percent < prev {
 				p.Percent = prev
 			}
@@ -99,15 +112,11 @@ func (s *Service) emitProgress(p progress) {
 		}
 		s.mu.Unlock()
 	}
-	if s.events != nil {
-		s.events.Emit("bilibili-download-progress", p)
-	}
-}
-
-// emitDownloadCompleted 下载+休眠全部完成后推送给前端，前端收到后立即从列表移除该视频卡片。
-func (s *Service) emitDownloadCompleted(item Result) {
-	if s.events != nil {
-		s.events.Emit("bilibili-download-completed", item)
+	s.mu.Lock()
+	listener := s.progressListener
+	s.mu.Unlock()
+	if listener != nil {
+		listener(p)
 	}
 }
 
@@ -126,7 +135,7 @@ func (s *Service) downloadToFile(rawURL, targetPath, bvid, title string, cid int
 		return err
 	}
 	defer func() {
-		err = resp.Body.Close()
+		err = errors.Join(err, resp.Body.Close())
 	}()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -138,15 +147,15 @@ func (s *Service) downloadToFile(rawURL, targetPath, bvid, title string, cid int
 		return err
 	}
 	defer func() {
-		err = f.Close()
+		err = errors.Join(err, f.Close())
 	}()
 
 	total := resp.ContentLength
 	var downloaded int64
 	buf := make([]byte, 1024*1024)
 	lastEmit := time.Time{}
-	// 下载开始时先发一次事件，确保前端能及时更新状态；后续按时间间隔或下载完成时发事件
-	s.emitProgress(progress{
+	// 下载开始时先发一次事件，确保界面能及时更新状态；后续按时间间隔或下载完成时发事件
+	s.emitProgress(Progress{
 		Bvid:    bvid,
 		Cid:     cid,
 		Title:   title,
@@ -165,7 +174,7 @@ func (s *Service) downloadToFile(rawURL, targetPath, bvid, title string, cid int
 
 			now := time.Now()
 			if now.Sub(lastEmit) >= 200*time.Millisecond || (total > 0 && downloaded >= total) {
-				s.emitProgress(progress{
+				s.emitProgress(Progress{
 					Bvid:       bvid,
 					Cid:        cid,
 					Title:      title,
@@ -185,7 +194,7 @@ func (s *Service) downloadToFile(rawURL, targetPath, bvid, title string, cid int
 		}
 	}
 
-	s.emitProgress(progress{
+	s.emitProgress(Progress{
 		Bvid:       bvid,
 		Cid:        cid,
 		Title:      title,
@@ -199,10 +208,7 @@ func (s *Service) downloadToFile(rawURL, targetPath, bvid, title string, cid int
 
 // buildDownloadFileName 按设置中的命名模板生成不含扩展名的下载文件名；模板结果为空时回退到清理后的标题。
 func (s *Service) buildDownloadFileName(task Task) (string, error) {
-	template, err := s.store.FilenameTemplate()
-	if err != nil {
-		return "", err
-	}
+	template := s.store.Config().Download.FilenameTemplate
 	now := time.Now()
 	values := map[string]string{
 		"title": task.Title, "id": task.Bvid, "author": task.UpperName,
@@ -224,10 +230,10 @@ func (s *Service) buildDownloadFileName(task Task) (string, error) {
 func (s *Service) downloadDashTask(task Task) (string, bool, error) {
 	s.resetDownloadProgress(task.Bvid, task.Cid)
 	// 增量下载开启时才跳过已下载的视频；关闭后即使缓存命中也重新下载（设置读取失败按开启兜底）。
-	if s.store.SkipDownloaded() {
+	if s.store.Config().Download.SkipDownloaded {
 		// 下载前先检查是否已下载，避免重复下载同一 CID 的视频
 		if path, ok := s.isDownloaded(task.Cid); ok {
-			s.emitProgress(progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
+			s.emitProgress(Progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
 			return path, true, nil
 		}
 	}
@@ -241,10 +247,7 @@ func (s *Service) downloadDashTask(task Task) (string, bool, error) {
 		return "", false, err
 	}
 
-	storagePath, err := s.store.StoragePath()
-	if err != nil {
-		return "", false, err
-	}
+	storagePath := s.store.DownloadDirectory()
 
 	targetDir, err := s.resolveTargetDir(storagePath, task)
 	if err != nil {
@@ -278,13 +281,13 @@ func (s *Service) downloadDashTask(task Task) (string, bool, error) {
 	if task.AudioURL == "" {
 		videoWeight = 90.0
 	}
-	p := progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title}
+	p := Progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title}
 	if err = s.downloadToFile(task.VideoURL, videoTmp, task.Bvid, task.Title, task.Cid, "video", cookies, 0, videoWeight); err != nil {
 		s.emitProgress(p.withPhase("error"))
 		return "", false, err
 	}
 
-	ff := utils.NewFFmpeg()
+	ff := utils.NewFFmpeg(s.store.Config().Download.FFmpegPath)
 	if task.AudioURL == "" {
 		s.emitProgress(p.withPhase("merge").withPercent(95))
 		if err = ff.Remux(videoTmp, outPath); err != nil {
@@ -312,27 +315,11 @@ func (s *Service) downloadDashTask(task Task) (string, bool, error) {
 	return outPath, false, nil
 }
 
-// DownloadVideoByDash 下载单个视频，保留旧入口以兼容前端或其他调用方。
-func (s *Service) DownloadVideoByDash(sourceName, bvid, title, videoURL, audioURL string) (string, error) {
-	s.active.Add(1)
-	defer s.active.Add(-1)
-
-	path, _, err := s.downloadDashTask(Task{
-		SourceName: sourceName,
-		UpperName:  "",
-		Bvid:       bvid,
-		Title:      title,
-		VideoURL:   videoURL,
-		AudioURL:   audioURL,
-	})
-	return path, err
-}
-
 // sleepAfterTask 按设置项在同一个 worker 中休眠，避免连续请求过快；并发 worker 互不阻塞。
 // 根据设置的时间上下浮动
 func (s *Service) sleepAfterTask(task Task) {
-	sleepTime, err := s.store.SleepTime()
-	if err != nil || sleepTime <= 0 {
+	sleepTime := s.store.Config().Download.SleepSeconds
+	if sleepTime <= 0 {
 		return
 	}
 
@@ -343,7 +330,7 @@ func (s *Service) sleepAfterTask(task Task) {
 	s.logger.Infof("download success, sleep %d second", sleepTime)
 
 	for remaining := sleepTime; remaining > 0; remaining-- {
-		s.emitProgress(progress{
+		s.emitProgress(Progress{
 			Bvid:           task.Bvid,
 			Cid:            task.Cid,
 			Title:          task.Title,
@@ -354,7 +341,7 @@ func (s *Service) sleepAfterTask(task Task) {
 		})
 		time.Sleep(time.Second)
 	}
-	s.emitProgress(progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
+	s.emitProgress(Progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
 }
 
 // dashDownloadDedupKey 生成下载去重键；同一 BV 单 P 只保留一个任务，多 P 按 cid 区分，避免进度事件互相覆盖
@@ -388,7 +375,7 @@ func uniqueDashDownloadTasks(tasks []Task) []Task {
 	return unique
 }
 
-// DownloadVideosByDash 批量下载 DASH 任务；后端负责并发、失败隔离和每个任务后的休眠控制。
+// DownloadVideosByDash 批量下载 DASH 任务；下载服务负责并发、失败隔离和每个任务后的休眠控制。
 func (s *Service) DownloadVideosByDash(tasks []Task) (BatchResult, error) {
 	tasks = uniqueDashDownloadTasks(tasks)
 	result := BatchResult{
@@ -398,10 +385,7 @@ func (s *Service) DownloadVideosByDash(tasks []Task) (BatchResult, error) {
 		return result, errors.New("下载列表为空")
 	}
 
-	workerCount, err := s.store.ConcurrencyNum()
-	if err != nil {
-		return result, err
-	}
+	workerCount := min(s.store.Config().Download.Concurrency, len(tasks))
 
 	jobs := make(chan Task, len(tasks))
 	results := make(chan Result, len(tasks))
@@ -418,15 +402,14 @@ func (s *Service) DownloadVideosByDash(tasks []Task) (BatchResult, error) {
 					s.logger.Errorf("download failed for BV %s CID %d: %v", task.Bvid, task.Cid, err)
 					item.Error = err.Error()
 				}
-				// 下载完成后把下载结果发送到 results 通道，供主协程统计成功失败数量和返回给前端
+				// 下载完成后把下载结果发送到 results 通道，供主协程统计成功失败数量和返回给界面
 				results <- item
 				if err == nil {
 					if !skipped {
 						// 已下载而跳过的任务没有发起网络请求，无需休眠限速；下载成功才休眠，失败立即开始下一个任务
 						s.sleepAfterTask(task)
 					}
-					// 休眠完成后逐条推送完成事件，前端收到后立即从列表移除该视频
-					s.emitDownloadCompleted(item)
+					// 休眠完成后逐条推送完成事件，界面收到后立即从列表移除该视频
 				}
 				// 休眠结束后任务才算完成，避免休眠间隔内关闭程序被判定为无任务进行
 				s.active.Add(-1)
@@ -455,15 +438,14 @@ func (s *Service) DownloadVideosByDash(tasks []Task) (BatchResult, error) {
 
 // DownloadCover 下载视频封面到当前下载目录，返回保存后的文件路径。
 func (s *Service) DownloadCover(cover string, task Task) (string, error) {
+	s.active.Add(1)
+	defer s.active.Add(-1)
 	cover = normalizeHTTPURL(cover)
 	if !strings.HasPrefix(cover, "http://") && !strings.HasPrefix(cover, "https://") {
 		return "", errors.New("封面地址无效")
 	}
 
-	storagePath, err := s.store.StoragePath()
-	if err != nil {
-		return "", err
-	}
+	storagePath := s.store.DownloadDirectory()
 	targetDir, err := s.resolveTargetDir(storagePath, task)
 	if err != nil {
 		return "", err
@@ -515,10 +497,7 @@ func (s *Service) DownloadAudio(task Task) (string, error) {
 		return "", err
 	}
 
-	storagePath, err := s.store.StoragePath()
-	if err != nil {
-		return "", err
-	}
+	storagePath := s.store.DownloadDirectory()
 
 	targetDir, err := s.resolveTargetDir(storagePath, task)
 	if err != nil {
@@ -549,7 +528,7 @@ func (s *Service) DownloadAudio(task Task) (string, error) {
 	// 正式开始下载前才重置进度缓存，避免参数校验失败时把其他任务正在推进的进度清掉。
 	s.resetDownloadProgress(task.Bvid, task.Cid)
 	audioTmp := filepath.Join(tmpDir, "audio.m4s")
-	p := progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title}
+	p := Progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title}
 	if err = s.downloadToFile(task.AudioURL, audioTmp, task.Bvid, task.Title, task.Cid, "audio", cookies, 0, 90); err != nil {
 		s.emitProgress(p.withPhase("error"))
 		return "", err
@@ -557,7 +536,7 @@ func (s *Service) DownloadAudio(task Task) (string, error) {
 
 	// m4s 本质是 fMP4 封装的 AAC，直接流复制封装成 m4a，不重新编码。
 	s.emitProgress(p.withPhase("merge").withPercent(95))
-	if err = utils.NewFFmpeg().Remux(audioTmp, outPath); err != nil {
+	if err = utils.NewFFmpeg(s.store.Config().Download.FFmpegPath).Remux(audioTmp, outPath); err != nil {
 		s.emitProgress(p.withPhase("error"))
 		return "", err
 	}

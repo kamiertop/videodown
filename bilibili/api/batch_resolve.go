@@ -42,31 +42,6 @@ func (b *BiliBili) releaseSem() {
 	<-playUrlSem
 }
 
-// emitPlayUrlResolved 通过 Wails 事件把单条解析结果推送给前端，
-// 前端按 bvid+cid 更新对应卡片的解析状态，无需等待整批解析完成。
-func (b *BiliBili) emitPlayUrlResolved(r PlayUrlResult) {
-	if b.events != nil {
-		b.events.Emit("bilibili-playurl-resolved", r)
-	}
-}
-
-// BatchResolvePlayUrl 批量解析播放地址。单条失败只写入该条结果，不中断整批解析。
-// 每条结果解析完成后会通过 bilibili-playurl-resolved 事件推送给前端，实现渐进式 UI 更新。
-func (b *BiliBili) BatchResolvePlayUrl(reqs []PlayUrlRequest) []PlayUrlResult {
-	results := make([]PlayUrlResult, len(reqs))
-	var wg sync.WaitGroup
-	for i, req := range reqs {
-		wg.Go(func() {
-			results[i] = b.ResolvePlayUrl(req, len(reqs))
-			// 每条解析完成后立即推送事件，前端逐条更新卡片状态
-			b.emitPlayUrlResolved(results[i])
-		})
-	}
-	wg.Wait()
-
-	return results
-}
-
 // ResolvePlayUrl 解析单个视频的播放地址，内部由模块级信号量控制并发。
 // totalCount 为本次批量解析的总视频数，当数量不超过并发上限时跳过休眠以提升体验。
 func (b *BiliBili) ResolvePlayUrl(req PlayUrlRequest, totalCount int) PlayUrlResult {

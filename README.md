@@ -2,8 +2,9 @@
 
 > ⚠️下载哔哩哔哩视频请安装FFmpeg
 
-VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.dev) 和 [SolidJS](https://www.solidjs.com/)
-开发的桌面视频下载工具（初期使用Tauri+Rust，但是tmd占用磁盘太多了😅，一看40多个G），主要支持哔哩哔哩和抖音。
+VideoDown 是一个使用 [Go](https://go.dev)、[MyGo](https://github.com/egoist/mygo) 和
+[MujicaUI](https://github.com/ELY-Open-Source/MujicaUI) 开发的原生桌面视频下载工具，支持哔哩哔哩和抖音。
+界面与业务逻辑均使用 Go 编写，构建不需要 CGO、Node.js 或浏览器运行时。
 
 > 本项目仍可能受到平台接口变化影响。如果接口返回结构、鉴权参数或风控策略变化，部分功能可能需要同步调整。
 
@@ -51,7 +52,7 @@ VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.d
 
 - [x] Windows
 - [x] Linux
-- [ ] MacOS (没有设备，无法测试，但是依赖 WebView，理论是可以的)
+- [ ] macOS（原生构建，实际桌面行为仍需在设备上验证）
 
 ### 哔哩哔哩
 
@@ -83,74 +84,62 @@ VideoDown 是一个基于 [Wails](https://wails.io/zh-Hans/)、[Go](https://go.d
 
 ## 技术栈
 
-- 桌面框架：Wails v3
-- 后端：Go、BadgerDB、req/v3
-- 前端：SolidJS、TanStack Router、Tailwind CSS、DaisyUI
+- 原生界面与窗口：MyGo、MujicaUI
+- 业务逻辑：Go、req/v3
+- 配置与 Cookie：结构化 TOML
+- 下载历史：SQLite、sqlx、[glebarez/go-sqlite](https://github.com/glebarez/go-sqlite) 纯 Go 驱动（无需 CGO）
 
 ## 开发
 
-### 环境要求
+需要 Go 1.27.3 或更新版本。B 站视频通常需要合并视频流和音频流，请安装 FFmpeg，并在设置中选择路径或确保其在 PATH 中。
 
-- Go 1.27+
-- Node.js 和 npm
-- Wails CLI
-- ffmpeg
-- Fedora44下载libwebkit41, 开发时使用：`wails3 dev -tags webkit2_41`
+启动应用：
 
-哔哩哔哩下载通常需要合并视频流和音频流，因此必须安装 `ffmpeg` 并确保命令行可以直接访问：
-
-```bash
-ffmpeg -version
+```sh
+just run
+# 或构建便携目录后启动
+CGO_ENABLED=0 go run ./cmd/package
+./dist/videodown/videodown
 ```
 
-如果系统无法识别 `ffmpeg`，请先安装并配置环境变量。
+运行测试和原生 UI 检查：
 
-### 运行
-
-安装前端依赖：
-
-```bash
-cd frontend
-npm install
+```sh
+CGO_ENABLED=0 go test ./...
+CGO_ENABLED=0 go tool mygo vet .
 ```
 
-返回项目根目录后启动 Wails 开发模式：
+构建应用：
 
-```bash
-wails3 dev
+```sh
+CGO_ENABLED=0 go build -o build/bin/videodown .
+# Windows
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-H=windowsgui" -o build/bin/videodown.exe .
 ```
 
-前端单独构建：
-
-```bash
-cd frontend
-npm run build
-```
-
-生成 Wails 前端绑定：
-
-```bash
-# 生成 interface 风格的 TypeScript 绑定
-wails3 generate bindings -ts -i
-```
-
-运行后端测试：
-
-### 构建
-
-在项目根目录执行：
-
-```bash
-wails3 build
-```
-
-构建产物会输出到 Wails 默认的 build 目录中。不同平台的打包依赖请参考 Wails 官方文档。
+使用 `just package` 或 `go run ./cmd/package` 构建便携文件夹 `dist/videodown`，其中包含主程序和独立更新器，图标通过 `go:embed` 在编译时嵌入；Windows 打包会同时将图标写入 EXE 资源，供资源管理器显示。可通过 `-os`、`-arch`、`-version` 和 `-out` 指定目标与输出位置。`just run` 启动开发版本，`just check` 执行检查。界面代码位于 `internal/gui`，启动与服务初始化位于 `main.go`。
+发布工作流使用原生 Go 构建并生成便携归档。启动时遵循设置中的自动更新开关，在后台检查新版本；发现更新后展示版本和发布说明，可打开对应发布页。检查失败不会阻塞应用。
 
 ## 使用说明
 
+便携文件夹首次运行后的结构：
+
+```text
+videodown/
+  videodown                 # Windows 为 videodown.exe
+  videodown-updater         # Windows 带 .exe 后缀
+  config.toml               # 首次启动自动创建，含账号凭证，请勿公开
+  history.sqlite            # 首次启动自动创建
+  download/                 # 下载时创建
+  videodown.log             # 生产模式日志
+  videodown-updater.log     # 更新器日志
+```
+
+应用自身文件以主程序实际存放目录为根：配置、历史、日志、更新器、更新包和更新解压文件均位于该目录，默认下载到该目录下的 `download/`；视频下载目录允许用户修改。临时文件和组件缓存使用系统默认位置。启动不依赖当前工作目录。开发请使用 `just run` 构建并启动便携目录；直接 `go run .` 的数据会位于 Go 的临时二进制目录中。目录不可写时直接报错，不回退到用户目录。
+
 ### 基础设置
 
-1. 打开“设置”页面，选择下载目录。
+1. 打开“设置”页面，按需修改下载目录。
 2. 根据需要设置下载后休眠时间、并发数量和保存时是否自动分组。
 3. 确认 `ffmpeg` 已安装，尤其是下载 B 站 DASH 视频时。
 
@@ -169,12 +158,27 @@ wails3 build
 4. 如果视频是图片合集，下载时会保存为一个目录，图片按序号落盘。
 5. 如果接口返回多个视频清晰度，可以在下载卡片中选择对应选项。
 
+### YouTube 下载
+
+支持粘贴公开视频或 Shorts 链接加入待下载区；选择画质或音质后手动开始，已启动任务按公共下载并发数执行，
+可在下载期间继续解析视频，支持暂停后续任务、取消、失败重试与清理已结束任务。
+在下载页点击卡片右侧“音频”切换为仅音频，可直接保存原始音轨（M4A / WebM），不进行转码；音频与视频分别记录下载历史。
+播放列表页支持粘贴包含 `list=` 的链接、点击卡片高亮选择、全选、移除及加载更多，再批量加入待下载区；
+“全选”针对当前已加载的视频，支持移除已选或一键清空解析列表；这些操作不影响下载页中的任务。加入队列不会自动下载；清晰度及视频／仅音频设置在下载页选择，支持逐条下载或整组开始。列表来源会标记任务状态。
+队列按播放列表主题分组，默认折叠，可展开选择格式、单条移除或整组移除；移除会取消未完成任务，保留已下载文件。
+列表与队列封面按可见区域加载并共享缓存。队列保留在本次运行中，重启后可从历史查看已完成文件。
+YouTube 左侧菜单提供下载、播放列表、下载历史和账号页；在账号页保存浏览器单行 Cookie 请求头，留空保存可清除；
+也可在 `config.toml` 的 `[youtube]` 下设置 `cookie`。
+分离音视频会通过现有 FFmpeg 合并为 MKV；已有音频的视频格式直接保存。
+服务器可能根据账号和网络限制部分格式；Cookie 不保证消除播放器或媒体请求的限制。
+本功能不携带 yt-dlp 或 Python。移植代码、上游版本与许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
 ## 数据和文件
 
 > 本项目绝对不会私自收集、上传用户信息
 
-- 本地配置、Cookie、下载历史等数据存储在本地的 BadgerDB 中。
-- 下载文件默认保存到设置页指定的目录。
+- 配置和 Cookie 存储在可执行文件同目录的 `config.toml` 中，下载历史存储在同目录的 `history.sqlite` 中。首次启动自动创建缺失的配置和数据库，已有配置会保留。配置结构参考 [config.example.toml](config.example.toml)。
+- 默认下载目录为程序所在文件夹下的 `download/`（配置值为 `./download`）；相对路径以配置文件所在目录为基准，整体移动文件夹后仍然有效。允许在设置页修改为其他位置，包括程序目录之外的文件夹。
 - 启用自动分组后，后端会按来源类型创建目录，例如收藏合集、用户合集、收藏视频或用户作品。
 
 ## 注意事项

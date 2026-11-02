@@ -19,7 +19,7 @@ func newTestService(t *testing.T) *Service {
 		t.Fatalf("open memory store: %v", err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
-	return New(logger.New(), store, nil, func() (map[string]string, error) { return nil, nil })
+	return New(logger.New(), store, func() (map[string]string, error) { return nil, nil })
 }
 
 // 图文作品按目录判重、视频按文件判重、封面是独立记录：增量下载不会重复下载已存在的内容。

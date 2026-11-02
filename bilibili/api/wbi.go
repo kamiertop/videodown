@@ -104,6 +104,8 @@ type WbiImg struct {
 
 // getWbiKeys 从 nav 接口获取 img_key 和 sub_key
 func (b *BiliBili) getWbiKeys() (*wbiKeys, error) {
+	b.wbiMu.Lock()
+	defer b.wbiMu.Unlock()
 	if b.wbiKey != nil {
 		if time.Since(b.wbiKey.LastTime) < 12*time.Hour {
 			return b.wbiKey, nil

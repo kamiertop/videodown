@@ -40,7 +40,7 @@ func (d *Douyin) getWebId() (string, error) {
 		Do().
 		Into(&resp)
 	if err != nil {
-		d.logger.Error(fmt.Sprintf("request web_id api error: %v", err))
+		d.logger.Errorf("request web_id api error: %v", err)
 		return "", errors.New("获取web_id失败")
 	}
 	if resp.WebId == "" {

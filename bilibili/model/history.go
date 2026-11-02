@@ -14,7 +14,7 @@ type DownloadHistoryItem struct {
 	SourceName   string `json:"sourceName"`
 	Path         string `json:"path"`
 	DownloadKind string `json:"downloadKind"`
-	// Wails 绑定生成不支持直接暴露 time.Time，保存为 RFC3339 字符串给前端解析。
+	// Downloaded is stored in RFC3339 format.
 	Downloaded string `json:"downloaded"`
 }
 

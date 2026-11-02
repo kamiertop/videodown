@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dgraph-io/badger/v4"
+	"github.com/kamiertop/videodown/internal/storage"
 )
 
 // getMsToken 保存至 Douyin 中，每次登录都重新请求，然后每10分钟刷新一次
@@ -77,22 +77,21 @@ func (d *Douyin) getMsToken() (string, error) {
 
 func (d *Douyin) SetCookie(cookie string) error {
 	cookie = strings.TrimSpace(cookie)
-	if err := d.store.Set(douyinCookieKey, cookie); err != nil {
+	if err := d.store.UpdateConfig(func(c *storage.Config) error { c.Douyin.Cookie = cookie; return nil }); err != nil {
 		d.logger.Errorf("set cookie error: %s", err.Error())
 		return errors.New("设置Cookie失败")
 	}
 
+	d.secUserID, d.userID = "", ""
+	d.msToken.value, d.webId.value = "", ""
 	return nil
 }
 
 // GetCookie 获取Cookie
 func (d *Douyin) GetCookie() (string, error) {
-	cookie, err := d.store.Get(douyinCookieKey)
-	if err != nil {
-		if errors.Is(err, badger.ErrKeyNotFound) {
-			return "", errors.New("Cookie未设置，请先设置Cookie")
-		}
-		return "", errors.New("获取Cookie失败")
+	cookie := d.store.Config().Douyin.Cookie
+	if cookie == "" {
+		return "", errors.New("Cookie未设置，请先设置Cookie")
 	}
 
 	return cookie, nil

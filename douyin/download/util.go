@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kamiertop/videodown/internal/constant"
 	"github.com/kamiertop/videodown/utils"
 )
 
@@ -115,17 +114,12 @@ func douyinAssetExt(asset Asset) string {
 }
 
 func (d *Service) resolveDownloadDir(storagePath string, task Task) (string, error) {
-	allowGroup, err := d.store.SavePreference()
-	if err != nil {
-		return "", err
-	}
+	cfg := d.store.Config().Download
+	allowGroup := cfg.Grouping
 	if !allowGroup {
 		return storagePath, nil
 	}
-	rule, err := d.store.Get(constant.GroupingRuleKey)
-	if err != nil {
-		return "", err
-	}
+	rule := cfg.GroupingRule
 	sourceName := utils.FileName(task.SourceName)
 	author := utils.FileName(task.AuthorName)
 

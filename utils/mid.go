@@ -22,7 +22,8 @@ func ParseMid(spaceURLOrMid string) (string, error) {
 			return "", err
 		}
 		s := strings.Split(parseUrl.Path, "/")
-		if len(s) >= 1 {
+		spaceURLOrMid = ""
+		if len(s) > 1 {
 			spaceURLOrMid = s[1]
 		}
 

@@ -15,15 +15,14 @@ import (
 
 // DownloadCover 从多个抖音封面候选中选择最高质量的一张并保存到作者目录。
 func (d *Service) DownloadCover(covers []model.Cover, task Task) (string, error) {
+	d.active.Add(1)
+	defer d.active.Add(-1)
 	coverURL := bestDouyinCoverURL(covers)
 	if coverURL == "" {
 		return "", errors.New("封面地址无效")
 	}
 
-	storagePath, err := d.store.StoragePath()
-	if err != nil {
-		return "", err
-	}
+	storagePath := d.store.DownloadDirectory()
 	targetDir, err := d.resolveDownloadDir(storagePath, task)
 	if err != nil {
 		return "", err
@@ -48,7 +47,7 @@ func (d *Service) DownloadCover(covers []model.Cover, task Task) (string, error)
 		return "", fmt.Errorf("封面下载失败: %s", resp.Status)
 	}
 
-	// 封面任务由前端直接传入，标题没有经过 downloadTask 的清洗，需就地处理。
+	// 封面任务由界面直接传入，标题没有经过 downloadTask 的清洗，需就地处理。
 	fileName := utils.FileName(cleanDouyinTitle(task.Title))
 	if fileName == "" {
 		fileName = "cover"
