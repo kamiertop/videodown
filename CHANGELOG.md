@@ -1,5 +1,20 @@
 # CHANGELOG
 
+## v1.0.0-alpha
+
+### Refactor
+
+- 使用[mygo](https://github.com/egoist/mygo)重构[wails](https://github.com/wailsapp/wails)，大幅提升性能
+
+### Feature
+
+- 增加YouTube下载、播放列表解析等简单功能（注意配置代理或使用TUN模式）
+
+### Breaking Changes
+
+- 使用toml配置文件代替[badger](https://github.com/dgraph-io/badger)存储配置
+- 使用SQLite代替[badger](https://github.com/dgraph-io/badger)存储下载历史记录
+
 ## v0.22.0
 
 ### Feature
