@@ -6,10 +6,6 @@ check:
     CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -o /tmp/videodown-check.exe .
     CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o /tmp/videodown-check-darwin .
 
-# Build one portable folder containing the app, updater and icon.
-package version="dev":
-    CGO_ENABLED=0 go run ./cmd/package -version {{quote(version)}}
-
+# Development runs only the app; keep its data in the project directory.
 run:
-    CGO_ENABLED=0 go run ./cmd/package
-    ./dist/videodown/videodown
+    CGO_ENABLED=0 go run . -data .

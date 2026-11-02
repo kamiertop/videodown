@@ -53,19 +53,33 @@ jobs:
 
       - name: Build native app and updater
         shell: bash
+        env:
+          TARGET_OS: ${{ matrix.target }}
         run: |
           mkdir -p build/bin
-          version="${{ github.ref_name }}"
-          target="${{ matrix.target }}"
-          if [ "$target" = darwin ]; then
+          version=dev
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            version="$GITHUB_REF_NAME"
+          fi
+          ldflags="-s -w -X github.com/kamiertop/videodown/internal/updater.Version=$version -X github.com/kamiertop/videodown/logger.Mode=prod"
+          if [ "$TARGET_OS" = darwin ]; then
             for arch in amd64 arm64; do
-              go run ./cmd/package -os darwin -arch "$arch" -version "$version" -out "build/$arch"
+              mkdir -p "build/$arch"
+              GOOS=darwin GOARCH="$arch" go build -trimpath -buildvcs=false -ldflags "$ldflags" -o "build/$arch/videodown" .
+              GOOS=darwin GOARCH="$arch" go build -trimpath -buildvcs=false -o "build/$arch/videodown-updater" ./cmd/updater
             done
             lipo -create build/amd64/videodown build/arm64/videodown -output build/bin/videodown
             lipo -create build/amd64/videodown-updater build/arm64/videodown-updater -output build/bin/videodown-updater
+          elif [ "$TARGET_OS" = windows ]; then
+            go run github.com/tc-hib/go-winres@v0.3.3 simply --icon internal/gui/assets/appicon.png --arch amd64 --out zz_appicon --manifest none
+            trap 'rm -f zz_appicon_windows_amd64.syso' EXIT
+            GOOS=windows GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags "$ldflags -H=windowsgui" -o build/bin/videodown.exe .
+            GOOS=windows GOARCH=amd64 go build -trimpath -buildvcs=false -o build/bin/videodown-updater.exe ./cmd/updater
           else
-            go run ./cmd/package -os "$target" -arch amd64 -version "$version" -out build/bin
+            GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -ldflags "$ldflags" -o build/bin/videodown .
+            GOOS=linux GOARCH=amd64 go build -trimpath -buildvcs=false -o build/bin/videodown-updater ./cmd/updater
           fi
+          cp internal/gui/assets/appicon.png build/bin/appicon.png
 
       - name: Package Unix artifact
         if: runner.os != 'Windows'
@@ -73,7 +87,7 @@ jobs:
         run: |
           package_dir="dist/package/videodown"
           mkdir -p "$package_dir"
-          cp build/bin/videodown build/bin/videodown-updater "$package_dir/"
+          cp build/bin/videodown build/bin/videodown-updater build/bin/appicon.png "$package_dir/"
           chmod +x "$package_dir/videodown" "$package_dir/videodown-updater"
           tar -czf "dist/${{ matrix.archive }}" -C dist/package videodown
 
@@ -83,7 +97,7 @@ jobs:
         run: |
           $PackageDir = "dist/package/videodown"
           New-Item -ItemType Directory -Force -Path "$PackageDir" | Out-Null
-          Copy-Item build/bin/videodown.exe, build/bin/videodown-updater.exe -Destination "$PackageDir/"
+          Copy-Item build/bin/videodown.exe, build/bin/videodown-updater.exe, build/bin/appicon.png -Destination "$PackageDir/"
           Compress-Archive -Path "$PackageDir" -DestinationPath "dist/${{ matrix.archive }}" -Force
 
       - name: Upload workflow artifact
