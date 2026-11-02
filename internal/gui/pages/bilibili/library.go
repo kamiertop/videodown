@@ -206,7 +206,7 @@ func (s *State) downloadHistoryCard(c *ui.Context, item model.DownloadHistoryIte
 						})
 					})
 				})
-				meta := []string{}
+				var meta []string
 				if item.UpperName != "" {
 					meta = append(meta, item.UpperName)
 				}
@@ -226,5 +226,6 @@ func historyDownloadedAt(raw string) string {
 		}
 		return raw
 	}
+
 	return parsed.Local().Format(time.DateTime)
 }
