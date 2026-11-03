@@ -1,0 +1,13 @@
+[Desktop Entry]
+# 手动安装：把 Exec 和 Icon 里的 /path/to 改成你解压 videodown 的目录，
+# 然后将本文件复制到 ~/.local/share/applications/ 即可。
+# 图标默认用矢量 appicon.svg，环境渲染有问题时可换成 appicon.png。
+Type=Application
+Name=VideoDown
+Comment=哔哩哔哩、抖音、YouTube 视频下载工具
+Exec=/path/to/videodown/videodown
+Icon=/path/to/videodown/appicon.svg
+Terminal=false
+Categories=Network;AudioVideo;
+StartupWMClass=videodown
+SingleMainWindow=true

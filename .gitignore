@@ -16,7 +16,7 @@ dist
 
 .codex
 
-/build/
+/build/bin/
 
 .cursor
 .vscode
