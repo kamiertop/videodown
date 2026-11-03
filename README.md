@@ -3,7 +3,7 @@
 > ⚠️下载哔哩哔哩视频请安装FFmpeg
 
 VideoDown 是一个使用 [Go](https://go.dev)、[MyGo](https://github.com/egoist/mygo) 和
-[MujicaUI](https://github.com/ELY-Open-Source/MujicaUI) 开发的原生桌面视频下载工具，支持哔哩哔哩和抖音。
+[MujicaUI](https://github.com/ELY-Open-Source/MujicaUI) 开发的原生桌面视频下载工具，支持哔哩哔哩、抖音、YouTube。
 界面与业务逻辑均使用 Go 编写，构建不需要 CGO、Node.js 或浏览器运行时。
 
 > 本项目仍可能受到平台接口变化影响。如果接口返回结构、鉴权参数或风控策略变化，部分功能可能需要同步调整。
@@ -22,19 +22,19 @@ VideoDown 是一个使用 [Go](https://go.dev)、[MyGo](https://github.com/egois
 
 | 命名模板                                     | 设置                                     |
 |----------------------------------------------|------------------------------------------|
-| ![命名模板](./docs/setting_tmpl.png)         | ![设置](./docs/setting_general.png)      |
+| ![命名模板](./docs/setting_tmpl.png)         | ![ffmpeg](./docs/setting_ffmpeg.png)     |
 | 哔哩哔哩设置                                 | 下载设置                                 |
 | ![哔哩哔哩设置](./docs/setting_bilibili.png) | ![下载设置](./docs/setting_download.png) |
 
 ### 哔哩哔哩
 
-| UP 主页面                               | 下载页                                                 |
-|-----------------------------------------|--------------------------------------------------------|
-| ![UP 主页面](./docs/up.png)             | ![B 站下载页](./docs/bilibili_download.png)            |
-| 收藏夹                                  | 收藏夹合集                                             |
-| ![B 站收藏夹](./docs/bilibili_star.png) | ![B 站收藏夹合集](./docs/bilibili_star_collection.png) |
-| 关注动态                                | 播放历史                                               |
-| ![关注动态](./docs/bilibili_dyn.png)    | ![播放历史](./docs/bilibili_play_history.png)          |
+| UP 主页面                               | UP主视频                                          |
+|-----------------------------------------|---------------------------------------------------|
+| ![UP 主页面](./docs/bilibili_up.png)    | ![B 站UP主视频列表](./docs/bilibili_up_video.png) |
+| 收藏夹                                  | 下载页                                            |
+| ![B 站收藏夹](./docs/bilibili_star.png) | ![B 站下载页](./docs/bilibili_download.png)       |
+| 关注动态                                | 播放历史                                          |
+| ![关注动态](./docs/bilibili_dyn.png)    | ![播放历史](./docs/bilibili_play_history.png)     |
 
 ### 抖音
 
@@ -52,7 +52,7 @@ VideoDown 是一个使用 [Go](https://go.dev)、[MyGo](https://github.com/egois
 
 - [x] Windows
 - [x] Linux
-- [ ] macOS（原生构建，实际桌面行为仍需在设备上验证）
+- [ ] macOS（原生构建，实际桌面行为仍需在设备上验证，但手边没有 Mac 设备）
 
 ### 哔哩哔哩
 
@@ -116,9 +116,12 @@ CGO_ENABLED=0 go build -o build/bin/videodown .
 CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-H=windowsgui" -o build/bin/videodown.exe .
 ```
 
-本地开发使用 `just run`，只运行主程序，不执行发布打包；`just check` 执行检查。界面代码位于 `internal/gui`，启动与服务初始化位于 `main.go`。
-发布构建由 GitHub Actions 直接编译主程序和独立更新器，附带 `appicon.png` 并生成归档；Windows EXE 图标资源仅在 CI 中通过固定版本的 go-winres 生成。窗口和托盘图标仍通过 `go:embed` 嵌入程序。
-发布工作流使用原生 Go 构建并生成便携归档。启动时遵循设置中的自动更新开关，在后台检查新版本；发现更新后展示版本和发布说明，可打开对应发布页。检查失败不会阻塞应用。
+本地开发使用 `just run`，只运行主程序，不执行发布打包；`just`（默认）执行测试与 vet，`just check` 额外交叉编译各发布平台。界面代码位于
+`internal/gui`，启动与服务初始化位于 `main.go`。
+发布构建由 GitHub Actions 直接编译主程序和独立更新器，附带 `build/` 目录中的 `appicon.png` 与 `appicon.svg`（Linux 包另含
+`videodown.desktop`）并生成归档；Windows EXE 图标资源仅在 CI 中通过固定版本的 go-winres 生成。窗口和托盘图标仍通过
+`go:embed` 嵌入程序。
+发布工作流使用原生 Go 构建并生成便携归档。启动时遵循设置中的自动更新开关，在后台检查新版本；发现更新后展示版本和发布说明，可下载安装并自动重启到新版本。检查失败不会阻塞应用。
 
 ## 使用说明
 
@@ -129,6 +132,8 @@ videodown/
   videodown                 # Windows 为 videodown.exe
   videodown-updater         # Windows 带 .exe 后缀
   appicon.png              # 应用图标
+  appicon.svg              # 矢量图标（仅 Linux 包）
+  videodown.desktop         # GNOME/KDE 启动器文件（仅 Linux 包，手动安装）
   config.toml               # 首次启动自动创建，含账号凭证，请勿公开
   history.sqlite            # 首次启动自动创建
   download/                 # 下载时创建
@@ -136,7 +141,9 @@ videodown/
   videodown-updater.log     # 更新器日志
 ```
 
-应用自身文件以主程序实际存放目录为根：配置、历史、日志、更新器、更新包和更新解压文件均位于该目录，默认下载到该目录下的 `download/`；视频下载目录允许用户修改。临时文件和组件缓存使用系统默认位置。启动不依赖当前工作目录。开发使用 `just run` 或 `go run . -data .`，通过 `-data .` 将数据保存在项目目录；无需构建便携目录。目录不可写时直接报错，不回退到用户目录。
+应用自身文件以主程序实际存放目录为根：配置、历史、日志、更新器、更新包和更新解压文件均位于该目录，默认下载到该目录下的
+`download/`；视频下载目录允许用户修改。临时文件和组件缓存使用系统默认位置。启动不依赖当前工作目录。开发使用 `just run` 或
+`go run . -data .`，通过 `-data .` 将数据保存在项目目录；无需构建便携目录。目录不可写时直接报错，不回退到用户目录。
 
 ### 基础设置
 
@@ -173,15 +180,20 @@ YouTube 左侧菜单提供下载、播放列表、下载历史和账号页；在
 分离音视频会通过现有 FFmpeg 合并为 MKV；已有音频的视频格式直接保存。
 服务器可能根据账号和网络限制部分格式；Cookie 不保证消除播放器或媒体请求的限制。
 
-账号页的“代理服务器”支持 `http://127.0.0.1:7890`、`https://proxy.example:443` 和 `socks5://127.0.0.1:1080`，需要认证时可使用 `http://用户名:密码@地址:端口`。地址默认填入 `http://127.0.0.1:7890`，代理开关默认关闭。开启后作用于 YouTube 解析、播放列表、封面和视频／音频下载；关闭后直接连接，不读取系统或环境代理。地址和开关分别保存在 `config.toml` 的 `[youtube].proxy` 和 `[youtube].proxy_enabled` 中。修改地址后会自动保存，开关切换立即生效。请在解析和下载任务空闲时修改代理。
+账号页的“代理服务器”支持 `http://127.0.0.1:7890`、`https://proxy.example:443` 和 `socks5://127.0.0.1:1080`，需要认证时可使用
+`http://用户名:密码@地址:端口`。地址默认填入 `http://127.0.0.1:7890`，代理开关默认关闭。开启后作用于 YouTube
+解析、播放列表、封面和视频／音频下载；关闭后直接连接，不读取系统或环境代理。地址和开关分别保存在 `config.toml` 的
+`[youtube].proxy` 和 `[youtube].proxy_enabled` 中。修改地址后会自动保存，开关切换立即生效。请在解析和下载任务空闲时修改代理。
 本功能不携带 yt-dlp 或 Python。移植代码、上游版本与许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 ## 数据和文件
 
 > 本项目绝对不会私自收集、上传用户信息
 
-- 配置和 Cookie 存储在可执行文件同目录的 `config.toml` 中，下载历史存储在同目录的 `history.sqlite` 中。首次启动自动创建缺失的配置和数据库，已有配置会保留。配置结构参考 [config.example.toml](config.example.toml)。
-- 默认下载目录为程序所在文件夹下的 `download/`（配置值为 `./download`）；相对路径以配置文件所在目录为基准，整体移动文件夹后仍然有效。允许在设置页修改为其他位置，包括程序目录之外的文件夹。
+- 配置和 Cookie 存储在可执行文件同目录的 `config.toml` 中，下载历史存储在同目录的 `history.sqlite`
+  中。首次启动自动创建缺失的配置和数据库，已有配置会保留。配置结构参考 [config.example.toml](config.example.toml)。
+- 默认下载目录为程序所在文件夹下的 `download/`（配置值为 `./download`
+  ）；相对路径以配置文件所在目录为基准，整体移动文件夹后仍然有效。允许在设置页修改为其他位置，包括程序目录之外的文件夹。
 - 启用自动分组后，后端会按来源类型创建目录，例如收藏合集、用户合集、收藏视频或用户作品。
 
 ## 注意事项
@@ -204,9 +216,9 @@ YouTube 左侧菜单提供下载、播放列表、下载历史和账号页；在
 
 ## License
 
-许可证暂未最终确定。
+本项目采用 [GPL-3.0](LICENSE) 许可证。
 
-如果你计划复制、修改、分发或二次开发本项目，请先确认仓库中的最终许可证文件和第三方依赖许可证。当前阶段不建议在未确认许可证的情况下进行商业使用或再分发。
+你可以自由使用、修改和分发本项目，但衍生作品必须以相同许可证开源，并保留原项目的版权与许可声明。第三方依赖的许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 ## 致谢🤗
 
