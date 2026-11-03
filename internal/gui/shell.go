@@ -4,21 +4,22 @@ package gui
 
 import (
 	"context"
+	"time"
 
 	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
+	biliapi "github.com/kamiertop/videodown/bilibili/api"
 	bilidownload "github.com/kamiertop/videodown/bilibili/download"
+	dyapi "github.com/kamiertop/videodown/douyin/api"
 	dydownload "github.com/kamiertop/videodown/douyin/download"
 	"github.com/kamiertop/videodown/internal/gui/assets"
 	"github.com/kamiertop/videodown/internal/gui/closing"
 	"github.com/kamiertop/videodown/internal/gui/pages"
-	"github.com/kamiertop/videodown/internal/gui/pages/bilibili"
-	"github.com/kamiertop/videodown/internal/gui/pages/douyin"
-	youtubepage "github.com/kamiertop/videodown/internal/gui/pages/youtube"
 	"github.com/kamiertop/videodown/internal/gui/preferences"
 	"github.com/kamiertop/videodown/internal/gui/style"
 	"github.com/kamiertop/videodown/internal/updater"
+	"github.com/kamiertop/videodown/youtube"
 )
 
 // appName names the app across its window and title bar.
@@ -54,30 +55,45 @@ type Shell struct {
 	ffmpegPath                string
 	ffmpegVersion             string
 	ffmpegError               string
-	updateChecker             UpdateChecker
+	updateChecker             *updater.Updater
 	updateStarted, updateOpen bool
 	updateResult              updater.Result
 	updateNotes               ui.ScrollState
 	runUpdateJob              func(func() error, func(error))
+	updateInstalling          bool
+	updateDownloaded          bool
+	updateDone, updateTotal   int64
+	updateProgressAt          time.Time
+	updateError               string
+	cancelUpdate              context.CancelFunc
 }
 
 // Options supplies shared persistent preferences and the download queue probe.
 // A nil probe reports zero active tasks.
 type Options struct {
-	YouTube          youtubepage.API
-	Bilibili         bilibili.API
-	BilibiliDownload bilibili.DownloadBackend
-	Douyin           douyin.API
-	DouyinDownload   douyin.DownloadBackend
+	YouTube          *youtube.Service
+	Bilibili         *biliapi.BiliBili
+	BilibiliDownload *bilidownload.Service
+	Douyin           *dyapi.Douyin
+	DouyinDownload   *dydownload.Service
 	Preferences      closing.Preferences
 	Settings         preferences.Store
 	ActiveDownloads  func() int
-	UpdateChecker    UpdateChecker
+	UpdateChecker    *updater.Updater
 }
 
-func NewShell() *Shell { return NewShellWithOptions(Options{}) }
+func NewShell() *Shell {
+	return NewShellWithOptions(Options{})
+}
+
 func NewShellWithOptions(opts Options) *Shell {
-	s := &Shell{router: ui.NewRouter("/"), scrolls: make(map[string]*ui.ScrollState), pages: pages.NewState(), closing: closing.New(opts.Preferences), activeDownloads: opts.ActiveDownloads}
+	s := &Shell{
+		router:          ui.NewRouter("/"),
+		scrolls:         make(map[string]*ui.ScrollState),
+		pages:           pages.NewState(),
+		closing:         closing.New(opts.Preferences),
+		activeDownloads: opts.ActiveDownloads,
+	}
 	data := preferences.Load(opts.Settings)
 	s.pages.Settings.Config = data
 	s.savedSettings = data
@@ -89,20 +105,31 @@ func NewShellWithOptions(opts Options) *Shell {
 	}
 	s.jobs.ctx, s.jobs.cancel = context.WithCancel(context.Background())
 	s.jobs.images = make(chan struct{}, 4)
-	s.pages.YouTube.Configure(opts.YouTube, s.pageRuntime(), func(fn func()) {
-		win := s.win
-		if win != nil && !win.IsDestroyed() && s.jobs.ctx.Err() == nil {
-			win.Update(fn)
-		}
-	})
+	s.pages.YouTube.Configure(opts.YouTube, s.pageRuntime())
 	s.updateChecker = opts.UpdateChecker
+	if opts.UpdateChecker != nil {
+		opts.UpdateChecker.OnProgress = func(done, total int64) {
+			win := s.win
+			if win == nil || win.IsDestroyed() || s.jobs.ctx.Err() != nil {
+				return
+			}
+			// Downloads report every 32 KiB; marshal to the UI thread at most
+			// every 100 ms, always letting the final chunk through.
+			now := time.Now()
+			if done < total && now.Sub(s.updateProgressAt) < 100*time.Millisecond {
+				return
+			}
+			s.updateProgressAt = now
+			win.Update(func() { s.updateDone, s.updateTotal = done, total })
+		}
+		// The updater helper has taken over; leave without the closing prompts.
+		opts.UpdateChecker.Quit = func() { mygo.App.Quit() }
+	}
 	s.runUpdateJob = s.pageRuntime().Background
 	s.pages.Bilibili.Configure(opts.Bilibili, s.pageRuntime())
 	s.pages.Bilibili.ConfigureDownloads(opts.BilibiliDownload)
-	if source, ok := opts.BilibiliDownload.(interface {
-		SetProgressListener(func(bilidownload.Progress))
-	}); ok {
-		source.SetProgressListener(func(progress bilidownload.Progress) {
+	if opts.BilibiliDownload != nil {
+		opts.BilibiliDownload.SetProgressListener(func(progress bilidownload.Progress) {
 			win := s.win
 			if win == nil || win.IsDestroyed() || s.jobs.ctx.Err() != nil {
 				return
@@ -111,14 +138,13 @@ func NewShellWithOptions(opts Options) *Shell {
 		})
 	}
 	s.pages.Douyin.Configure(opts.Douyin, opts.DouyinDownload, s.pageRuntime())
-	if source, ok := opts.DouyinDownload.(interface {
-		SetProgressListener(func(dydownload.Progress))
-	}); ok {
-		source.SetProgressListener(func(p dydownload.Progress) {
+	if opts.DouyinDownload != nil {
+		opts.DouyinDownload.SetProgressListener(func(p dydownload.Progress) {
 			win := s.win
-			if win != nil && !win.IsDestroyed() && s.jobs.ctx.Err() == nil {
-				win.Update(func() { s.pages.Douyin.UpdateDownloadProgress(p) })
+			if win == nil || win.IsDestroyed() || s.jobs.ctx.Err() != nil {
+				return
 			}
+			win.Update(func() { s.pages.Douyin.UpdateDownloadProgress(p) })
 		})
 	}
 
@@ -168,13 +194,14 @@ func (s *Shell) view(c *ui.Context) {
 	registerShortcut(c)
 	// The transparent window shows the desktop around the rounded frame,
 	// which squares off when the window maximizes.
-	radius := float32(windowRadius)
+	radius := windowRadius
 	if s.win != nil && s.win.IsMaximized() {
 		radius = 0
 	}
 	k := core.Tokens(c)
 	c.Root().Background(k.Background).Radius(radius).Clip().Border(style.BorderWidth, k.Border.Alpha(0.5))
-	ui.Column(c).Fill().
+	ui.Column(c).
+		Fill().
 		Children(func() {
 			s.titleBar(c)
 			s.content(c)

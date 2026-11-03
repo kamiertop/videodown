@@ -5,46 +5,8 @@ import (
 
 	biliapi "github.com/kamiertop/videodown/bilibili/api"
 	bilidownload "github.com/kamiertop/videodown/bilibili/download"
-	"github.com/kamiertop/videodown/bilibili/model"
 	"github.com/kamiertop/videodown/internal/gui/guiruntime"
 )
-
-// API is implemented directly by *api.BiliBili. Views retain its Go models.
-type API interface {
-	DownloadHistoryPage(int, int, string) (biliapi.HistoryPage, error)
-	ClearDownloadHistory() error
-	DeleteDownloadHistory(int64, string) error
-	IsLoggedIn() bool
-	RefreshCookie() (model.CookieRefreshData, error)
-	MyInfo() (model.MyInfoProfile, error)
-	QRCode() (model.QRCodeData, error)
-	PollQRCode(string) (model.PollQRCodeData, error)
-	LogOut() (model.LogOut, error)
-	FollowList(int, int) (model.FollowData, error)
-	Info(string) (model.UserInfoData, error)
-	VideoList(uint, int, int) (model.VideoListData, error)
-	SeasonsSeriesList(string, int, int) (model.SeasonsSeriesData, error)
-	SeasonsArchivesList(string, int, int, int) (model.SeasonsArchivesData, error)
-	SeriesList(string, int, int, int) (model.SeriesArchivesData, error)
-	FavoritesList() (model.FavoritesData, error)
-	Favorites(int, int, int) (model.FavoriteData, error)
-	Collection(int, int) (model.CollectionData, error)
-	CollectionItem(string, int, int) (model.CollectionItemData, error)
-	DynamicVideosPage(string) (model.DynamicArchivePage, error)
-	PlayHistory(int, int) (model.PlayHistoryData, error)
-	ResolvePlayUrl(biliapi.PlayUrlRequest, int) biliapi.PlayUrlResult
-	VideoDetailConcise(int) (model.VideoDetailConciseData, error)
-	VideoDetailConciseBvid(string) (model.VideoDetailConciseData, error)
-}
-
-type DownloadBackend interface {
-	DownloadVideosByDash([]bilidownload.Task) (bilidownload.BatchResult, error)
-}
-
-type DownloadExtras interface {
-	DownloadCover(string, bilidownload.Task) (string, error)
-	DownloadAudio(bilidownload.Task) (string, error)
-}
 
 type resource[T any] struct {
 	Data            T
@@ -54,7 +16,20 @@ type resource[T any] struct {
 }
 
 func load[T any](s *State, r *resource[T], work func() (T, error), after func(T)) {
-	if s.api == nil || s.runtime.Run == nil || s.stopped {
+	loadWith(s, r, s.runtime.Run, work, after)
+}
+
+// loadBackground is load, but each request runs on its own goroutine: used
+// for play-URL resolves, whose pace the api package's limiter already keeps.
+func loadBackground[T any](s *State, r *resource[T], work func() (T, error), after func(T)) {
+	loadWith(s, r, s.runtime.Background, work, after)
+}
+
+// loadWith schedules work through the given runner with shared stale guards:
+// seq drops late responses to the same resource, epoch drops everything from
+// before the last Stop, and stopped drops post-shutdown writes.
+func loadWith[T any](s *State, r *resource[T], schedule func(work func() error, done func(error)), work func() (T, error), after func(T)) {
+	if s.api == nil || schedule == nil || s.stopped {
 		return
 	}
 	r.seq++
@@ -62,7 +37,7 @@ func load[T any](s *State, r *resource[T], work func() (T, error), after func(T)
 	r.Loading = true
 	r.Error = ""
 	var data T
-	s.runtime.Run(func() error { var err error; data, err = work(); return err }, func(err error) {
+	schedule(func() error { var err error; data, err = work(); return err }, func(err error) {
 		if s.stopped || s.epoch != epoch || r.seq != seq {
 			return
 		}
@@ -79,8 +54,11 @@ func load[T any](s *State, r *resource[T], work func() (T, error), after func(T)
 	})
 }
 
-func (s *State) Configure(api API, runtime guiruntime.Runtime) { s.api = api; s.runtime = runtime }
-func (s *State) ConfigureDownloads(backend DownloadBackend)    { s.downloadBackend = backend }
+func (s *State) Configure(api *biliapi.BiliBili, runtime guiruntime.Runtime) {
+	s.api = api
+	s.runtime = runtime
+}
+func (s *State) ConfigureDownloads(backend *bilidownload.Service) { s.downloadBackend = backend }
 func (s *State) Start() {
 	if s.api == nil || s.started {
 		return

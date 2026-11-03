@@ -7,40 +7,13 @@ import (
 	"sync"
 
 	"github.com/egoist/mygo/ui"
+
+	dyapi "github.com/kamiertop/videodown/douyin/api"
 	dyDownload "github.com/kamiertop/videodown/douyin/download"
 	"github.com/kamiertop/videodown/douyin/model"
 	"github.com/kamiertop/videodown/internal/gui/guiruntime"
 	"github.com/kamiertop/videodown/internal/gui/imagecache"
 )
-
-type API interface {
-	GetCookie() (string, error)
-	SetCookie(string) error
-	Profile() (model.MyInfoResponse, error)
-	ParseVideo(string) (string, error)
-	VideoDetail(string) (model.AwemeItem, error)
-	FollowList(int) (model.FollowResponse, error)
-	SearchFollow(string) ([]model.SearchFollowResponse, error)
-	ParseSecUserID(string) (string, error)
-	User(string) (model.UserResponse, error)
-	UserVideoList(string, int, int) (model.UserVideoListResponse, error)
-	UserSeries(string, int, int) (model.UserSeriesResponse, error)
-	CollectList(int) (model.CollectListResponse, error)
-	FavoriteVideo(uint, uint) (model.FavoriteVideoResponse, error)
-	FavoritesVideoList(string, int, int) (model.FavoriteVideoResponse, error)
-	Collection(int, int) (model.CollectionResponse, error)
-	CollectionList(string, string, int, int) (model.CollectionListResponse, error)
-	Dynamic(int) (model.DynamicResponse, error)
-	History(int, int, int, int) (model.HistoryResponse, error)
-}
-type DownloadBackend interface {
-	DownloadVideos([]dyDownload.Task) (dyDownload.BatchResult, error)
-	DownloadCover([]model.Cover, dyDownload.Task) (string, error)
-	DownloadHistoryPage(int, int, string) (dyDownload.HistoryPage, error)
-	DeleteDownloadHistory(string) error
-	ClearDownloadHistory() error
-	DownloadConcurrency() int
-}
 
 type resource[T any] struct {
 	Data            T
@@ -63,8 +36,8 @@ type source struct {
 }
 
 type State struct {
-	api                                    API
-	backend                                DownloadBackend
+	api                                    *dyapi.Douyin
+	backend                                *dyDownload.Service
 	runtime                                guiruntime.Runtime
 	apiMu                                  sync.Mutex
 	ctx                                    context.Context
@@ -117,7 +90,7 @@ type State struct {
 func NewState() *State {
 	return &State{selected: map[string]bool{}, scrolls: map[string]*ui.ScrollState{}, images: imagecache.Cache{}, libraryTab: "favorite"}
 }
-func (s *State) Configure(api API, backend DownloadBackend, runtime guiruntime.Runtime) {
+func (s *State) Configure(api *dyapi.Douyin, backend *dyDownload.Service, runtime guiruntime.Runtime) {
 	s.api, s.backend, s.runtime = api, backend, runtime
 }
 func (s *State) Link() *string { return &s.link }

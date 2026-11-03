@@ -151,7 +151,7 @@ func (s *State) stagedMediaCard(c *ui.Context, bvid, title, cover, author, lengt
 						actions.FillWidth().Justify(ui.End)
 					}
 					actions.Children(func() {
-						if _, ok := s.downloadBackend.(DownloadExtras); ok {
+						if s.downloadBackend != nil {
 							downloadCardButton(c.Key("cover"), "封面", input.ButtonOptions{Label: "保存封面", Variant: input.Ghost, Disabled: !ready || task.Cover == "" || s.queueDownloading || s.batchesRunning() || extrasBusy}).OnClick(func() { s.startQueueExtra(bvid, "cover") })
 							downloadCardButton(c.Key("audio-only"), "音频", input.ButtonOptions{Label: "下载音频", Variant: input.Ghost, Disabled: !ready || task.AudioURL == "" || s.queueDownloading || s.batchesRunning() || extrasBusy}).OnClick(func() { s.startQueueExtra(bvid, "audio") })
 						}

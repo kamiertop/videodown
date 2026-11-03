@@ -19,6 +19,7 @@ type queuedVideo struct {
 	Progress      dyDownload.Progress
 	ResolvedAt    time.Time
 }
+
 type downloadGroup struct {
 	ID, Order, Version             uint64
 	Title, Status, Error           string

@@ -23,33 +23,59 @@ type PlayUrlResult struct {
 	PlayURL    *model.VideoURLData           `json:"play_url,omitempty"`
 }
 
-// playUrlSem 是模块级的并发控制通道，由 ensureSem 懒初始化
-var playUrlSem chan struct{}
-var playUrlSemOnce sync.Once
-
-func (b *BiliBili) ensureSem() {
-	playUrlSemOnce.Do(func() {
-		playUrlSem = make(chan struct{}, b.getParsePlayURLNumSafe())
-	})
+// resolveLimiter 限制同时解析播放地址的请求数。相比固定容量的 channel
+// 信号量，它可以在请求进行中调整容量，让设置改动立即生效。
+type resolveLimiter struct {
+	mu       sync.Mutex
+	cond     *sync.Cond
+	inFlight int
+	limit    int
 }
 
-func (b *BiliBili) acquireSem() {
-	b.ensureSem()
-	playUrlSem <- struct{}{}
+func newResolveLimiter(limit int) *resolveLimiter {
+	l := &resolveLimiter{limit: max(1, limit)}
+	l.cond = sync.NewCond(&l.mu)
+	return l
 }
 
-func (b *BiliBili) releaseSem() {
-	<-playUrlSem
+// enter 获取一个槽位；waited 表示本次曾在其他请求之后排队。
+func (l *resolveLimiter) enter() (waited bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for l.inFlight >= l.limit {
+		waited = true
+		l.cond.Wait()
+	}
+	l.inFlight++
+	return waited
 }
 
-// ResolvePlayUrl 解析单个视频的播放地址，内部由模块级信号量控制并发。
-// totalCount 为本次批量解析的总视频数，当数量不超过并发上限时跳过休眠以提升体验。
-func (b *BiliBili) ResolvePlayUrl(req PlayUrlRequest, totalCount int) PlayUrlResult {
-	b.acquireSem()
-	defer b.releaseSem()
-	// 仅当批量视频数超过并发上限时才休眠，拉开不同请求的时间间隔，防止风控连坐。
-	// 少量视频（≤ 并发数）全部在同一窗口内发出，睡不睡效果相同，直接跳过。
-	if totalCount > b.getParsePlayURLNumSafe() {
+func (l *resolveLimiter) leave() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.inFlight--
+	l.cond.Signal()
+}
+
+// resize 应用新的并发上限；正在排队的请求立即按新上限唤醒。
+func (l *resolveLimiter) resize(limit int) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if limit <= 0 || limit == l.limit {
+		return
+	}
+	l.limit = limit
+	l.cond.Broadcast()
+}
+
+// ResolvePlayUrl 解析单个视频的播放地址，内部由限流器控制并发：
+// 前若干个请求（并发上限以内）立即发出，排过队的请求在获得槽位后
+// 随机休眠再发起，拉开批量请求的时间间隔，防止风控连坐。
+func (b *BiliBili) ResolvePlayUrl(req PlayUrlRequest) PlayUrlResult {
+	b.resolve.resize(b.getParsePlayURLNumSafe())
+	waited := b.resolve.enter()
+	defer b.resolve.leave()
+	if waited {
 		if maxSleep := b.getParsePlayURLSleepSafe(); maxSleep > 0 {
 			d := rand.Float64() * float64(maxSleep)
 			b.logger.Infof("Sleeping for %.1fs before resolving %s", d, req.Bvid)
@@ -89,5 +115,4 @@ func (b *BiliBili) ResolvePlayUrl(req PlayUrlRequest, totalCount int) PlayUrlRes
 	r.PlayURL = &play
 
 	return r
-
 }

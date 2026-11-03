@@ -222,11 +222,8 @@ func (s *State) runBatchItem(b *batchSession, item *batchItem) {
 	task, api, backend, epoch := item.Task, s.api, s.downloadBackend, s.epoch
 	skipped := false
 	s.runtime.Background(func() error {
-		if incremental, ok := backend.(interface {
-			SkipDownloaded() bool
-			DownloadedVideoKeys([]bilidownload.DownloadKey) ([]int, error)
-		}); ok && incremental.SkipDownloaded() {
-			keys, err := incremental.DownloadedVideoKeys([]bilidownload.DownloadKey{{Bvid: task.Bvid, Cid: task.Cid}})
+		if backend != nil && backend.SkipDownloaded() {
+			keys, err := backend.DownloadedVideoKeys([]bilidownload.DownloadKey{{Bvid: task.Bvid, Cid: task.Cid}})
 			if err != nil {
 				return err
 			}
@@ -235,7 +232,7 @@ func (s *State) runBatchItem(b *batchSession, item *batchItem) {
 				return nil
 			}
 		}
-		resolved := api.ResolvePlayUrl(biliapi.PlayUrlRequest{Bvid: task.Bvid, Cid: task.Cid}, 1)
+		resolved := api.ResolvePlayUrl(biliapi.PlayUrlRequest{Bvid: task.Bvid, Cid: task.Cid})
 		if resolved.Error != "" {
 			return errors.New(resolved.Error)
 		}
@@ -336,8 +333,8 @@ func (s *State) dismissBatch(b *batchSession) {
 }
 
 func (s *State) downloadConcurrency() int {
-	if settings, ok := s.downloadBackend.(interface{ DownloadConcurrency() int }); ok {
-		return max(1, min(10, settings.DownloadConcurrency()))
+	if s.downloadBackend == nil {
+		return 1
 	}
-	return 1
+	return max(1, min(10, s.downloadBackend.DownloadConcurrency()))
 }

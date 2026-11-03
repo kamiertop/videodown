@@ -11,19 +11,6 @@ import (
 	yt "github.com/kamiertop/videodown/youtube"
 )
 
-type API interface {
-	Proxy() string
-	SetProxy(string, bool) error
-	ProxyEnabled() bool
-	Cookie() string
-	SetCookie(string) error
-	Resolve(context.Context, string) (yt.Video, error)
-	Playlist(context.Context, string, string) (yt.Playlist, error)
-	Download(context.Context, yt.Video, int, func(yt.Progress)) (string, error)
-	History() ([]yt.History, error)
-	DownloadConcurrency() int
-}
-
 type State struct {
 	proxy                 string
 	proxyEnabled          bool
@@ -64,7 +51,7 @@ type State struct {
 	history               []yt.History
 	historySearch         string
 	cover                 *ui.Bitmap
-	api                   API
+	api                   *yt.Service
 	runtime               guiruntime.Runtime
 	dispatch              func(func())
 	ctx                   context.Context
@@ -76,11 +63,11 @@ type State struct {
 }
 
 func NewState() *State { return &State{} }
-func (s *State) Configure(api API, runtime guiruntime.Runtime, dispatch func(func())) {
+func (s *State) Configure(api *yt.Service, runtime guiruntime.Runtime) {
 	s.ctx, s.stop = context.WithCancel(context.Background())
 	s.api = api
 	s.runtime = runtime
-	s.dispatch = dispatch
+	s.dispatch = runtime.Dispatch
 	if api != nil {
 		s.proxy = api.Proxy()
 		s.proxyEnabled = api.ProxyEnabled()

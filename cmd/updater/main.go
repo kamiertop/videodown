@@ -24,29 +24,36 @@ var targetPath = flag.String("target", "", "Path of the application to update.")
 
 func main() {
 	flag.Parse()
-	baseDir, err := apppaths.Directory()
-	if err != nil {
+	if err := run(); err != nil {
 		fatal(err)
 	}
+}
+
+// run keeps cleanup defers alive: fatal exits with os.Exit, which skips them.
+func run() error {
+	baseDir, err := apppaths.Directory()
+	if err != nil {
+		return err
+	}
 	if *targetPath == "" {
-		fatal(errors.New("target is required"))
+		return errors.New("target is required")
 	}
 	target, err := apppaths.Inside(baseDir, *targetPath)
 	if err != nil {
-		fatal(err)
+		return err
 	}
 	if filepath.Dir(target) != baseDir {
-		fatal(errors.New("target must be beside updater"))
+		return errors.New("target must be beside updater")
 	}
 	if *packagePath == "" {
-		fatal(errors.New("package is required"))
+		return errors.New("package is required")
 	}
 	archivePath, err := apppaths.Inside(baseDir, *packagePath)
 	if err != nil {
-		fatal(err)
+		return err
 	}
 	if err = os.Chdir(baseDir); err != nil {
-		fatal(err)
+		return err
 	}
 	// The downloaded package is no longer needed after extraction.
 	defer func() {
@@ -58,22 +65,23 @@ func main() {
 	time.Sleep(2 * time.Second)
 	filePath, err := extract(archivePath, filepath.Dir(target))
 	if err != nil {
-		fatal(err)
+		return err
 	}
 	defer func() {
 		if cleanupErr := os.RemoveAll(filepath.Dir(filePath)); cleanupErr != nil {
 			_, _ = fmt.Fprintln(os.Stderr, "updater: remove extract directory:", cleanupErr)
 		}
 	}()
-	if err := replace(target, filePath); err != nil {
-		fatal(err)
+	if err = replace(target, filePath); err != nil {
+		return err
 	}
 	cmd := exec.Command(target)
 	cmd.Dir = baseDir
 	cmd.Stdout, cmd.Stderr, cmd.Stdin = os.Stdout, os.Stderr, os.Stdin
-	if err := cmd.Start(); err != nil {
-		fatal(fmt.Errorf("restart application: %w", err))
+	if err = cmd.Start(); err != nil {
+		return fmt.Errorf("restart application: %w", err)
 	}
+	return nil
 }
 
 func fatal(err error) { _, _ = fmt.Fprintln(os.Stderr, "updater:", err); os.Exit(1) }

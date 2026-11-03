@@ -7,6 +7,7 @@ import (
 	"github.com/ELY-Open-Source/MujicaUI/icons"
 	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/egoist/mygo/ui"
+
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
 
@@ -15,19 +16,21 @@ func (s *State) profile(c *ui.Context) {
 		empty(c, "正在读取账号信息", "loader-circle")
 		return
 	}
-	ui.Column(c).FillWidth().Grow(1).AlignItems(ui.Center).Justify(ui.Center).Padding(16, 0).Children(func() {
-		maximum := style.ProfileLoginMaxWidth
-		if s.loggedIn {
-			maximum = style.ProfileCardMaxWidth
-		}
-		ui.Column(c).FillWidth().MaxWidth(maximum).Children(func() {
+	ui.Column(c).FillWidth().Grow(1).AlignItems(ui.Center).Justify(ui.Center).Padding(16, 0).
+		Children(func() {
+			maximum := style.ProfileLoginMaxWidth
 			if s.loggedIn {
-				s.loggedInProfile(c)
-			} else {
-				s.loginProfile(c)
+				maximum = style.ProfileCardMaxWidth
 			}
+			ui.Column(c).FillWidth().MaxWidth(maximum).
+				Children(func() {
+					if s.loggedIn {
+						s.loggedInProfile(c)
+					} else {
+						s.loginProfile(c)
+					}
+				})
 		})
-	})
 }
 
 func (s *State) loggedInProfile(c *ui.Context) {
