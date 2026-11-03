@@ -20,7 +20,7 @@ func progressView(c *ui.Context, p dyDownload.Progress) {
 	if label == "" {
 		label = "下载中"
 	}
-	feedback.Progress(c, max(0, min(100, p.Percent))/100, feedback.ProgressOptions{Label: label, ShowValue: true})
+	feedback.Progress(c, max(0, min(100, p.Percent))/100, feedback.ProgressOptions{Label: label, ShowValue: true, Indeterminate: p.Phase == "merge" || p.Percent < 0})
 }
 func (s *State) saveCover(item *queuedVideo) {
 	if s.backend == nil || s.runtime.Background == nil || item.CoverBusy {

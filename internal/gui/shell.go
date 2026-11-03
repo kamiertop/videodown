@@ -47,7 +47,7 @@ type Shell struct {
 	pendingSettings           preferences.Changes
 	savedSettings             preferences.Data
 	settingsBusy              bool
-	settingsToast             *settingsNotification
+	pendingToasts             []pendingToast
 	browsingSettings          bool
 	pendingBrowse             *bool
 	ffmpegChecking            bool
@@ -189,6 +189,7 @@ func (s *Shell) OpenWindow() {
 // view builds the interface from the state, on the main thread, whenever the
 // window needs a frame.
 func (s *Shell) view(c *ui.Context) {
+	s.pushToasts(c)
 	core.Use(c, s.themeSettings())
 	style.Apply(c)
 	registerShortcut(c)
@@ -208,7 +209,7 @@ func (s *Shell) view(c *ui.Context) {
 		})
 	s.updateDialog(c)
 	s.closeDialogs(c)
-	s.settingsNotification(c)
+	// The engine draws the window's toasts itself, above everything else.
 }
 
 // scroll returns the content scroll state of one page, keeping its offset.

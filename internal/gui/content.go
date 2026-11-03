@@ -83,8 +83,10 @@ func (s *Shell) content(c *ui.Context) {
 		}
 		if r.Match("/douyin/{section...}") {
 			s.pages.Douyin.Layout(c, s.router.Path(), s.router.Push, func() {
+				// Folder IDs are selections within the library. Fading the
+				// entire form also fades its toolbar and sidebar on every click.
 				transition := s.router.Transition
-				s.router.Transition = ui.TransitionFade
+				s.router.Transition = ui.TransitionNone
 				defer func() { s.router.Transition = transition }()
 				r.View(c, func(part *ui.Route) {
 					path := "/douyin"

@@ -265,7 +265,7 @@ func TestSettingsSaveDoesNotMoveFormAndToastExpires(t *testing.T) {
 		t.Fatal("success toast did not expire")
 	}
 	checkBounds()
-	s.notifySettings("保存失败：测试错误", true)
+	s.notify("保存失败：测试错误", true)
 	test.Frame()
 	test.Advance(7 * time.Second)
 	if test.HasText("保存失败：测试错误") {
@@ -328,5 +328,33 @@ func TestFFmpegInstallGuideLinkAndCopy(t *testing.T) {
 	defer file.Close()
 	if err := png.Encode(file, test.Image()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestShellToastNotifications(t *testing.T) {
+	s := NewShell()
+	s.notify("测试成功消息", false)
+	test := ui.NewTester(s.view, 1200, 1000)
+	test.Frame()
+	test.Advance(200 * time.Millisecond)
+	if !test.HasText("测试成功消息") {
+		t.Fatal("success toast did not show")
+	}
+	test.Advance(5 * time.Second)
+	test.Frame()
+	if test.HasText("测试成功消息") {
+		t.Fatal("success toast did not expire")
+	}
+
+	s.notify("测试失败消息", true)
+	test.Frame()
+	test.Advance(200 * time.Millisecond)
+	if !test.HasText("测试失败消息") {
+		t.Fatal("error toast did not show")
+	}
+	test.Advance(7 * time.Second)
+	test.Frame()
+	if test.HasText("测试失败消息") {
+		t.Fatal("error toast did not expire")
 	}
 }

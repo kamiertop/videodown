@@ -68,6 +68,7 @@ func (s *Shell) pageRuntime() guiruntime.Runtime {
 	return guiruntime.Runtime{
 		OpenFile:     utils.OpenLocalFile,
 		OpenLocation: utils.OpenDownloadLocation,
+		Notify:       func(message string, failed bool) { s.notify(message, failed) },
 		Run: func(work func() error, done func(error)) {
 			win := s.win
 			if win == nil || win.IsDestroyed() || s.jobs.ctx.Err() != nil {

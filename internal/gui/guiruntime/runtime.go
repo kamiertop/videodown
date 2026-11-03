@@ -13,4 +13,7 @@ type Runtime struct {
 	After        func(time.Duration, func()) func()
 	OpenFile     func(string) error
 	OpenLocation func(string) error
+	// Notify shows a transient toast in the window corner; failed marks it
+	// as an error, which stays until the user closes it.
+	Notify func(message string, failed bool)
 }

@@ -458,7 +458,9 @@ func (s *State) startQueueExtra(key, kind string) {
 		if kind == "audio" {
 			label = "音频"
 		}
-		s.notice = fmt.Sprintf("%s已保存：%s", label, path)
+		if s.runtime.Notify != nil {
+			s.runtime.Notify(fmt.Sprintf("%s已保存：%s", label, path), false)
+		}
 	})
 }
 

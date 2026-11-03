@@ -94,7 +94,7 @@ func (s *State) batchDownloadCard(c *ui.Context, b *batchSession) {
 					}
 					pending++
 					ui.Row(c.Key(index)).Label(fmt.Sprintf("批量视频：%d:%s", b.ID, item.Task.Bvid)).FillWidth().Padding(style.SpaceSmall).Gap(style.SpaceSmall).Radius(style.RadiusControl).Background(k.Background).AlignItems(ui.Start).Children(func() {
-						s.image(c, item.Task.Cover, style.BatchCoverWidth, style.BatchCoverHeight, false)
+						s.image(c, item.Task.Cover, style.BatchItemCoverWidth, style.BatchItemCoverHeight, false)
 						ui.Column(c.Key("info")).Grow(1).MinWidth(0).Gap(4).Children(func() {
 							ui.Text(c, item.Task.Title).FillWidth().MaxLines(2).FontWeight(style.WeightSemibold)
 							if item.Error != "" {
@@ -117,6 +117,14 @@ func (s *State) batchDownloadCard(c *ui.Context, b *batchSession) {
 	})
 }
 
+// phaseLabel names a download phase for progress displays.
+func phaseLabel(phase string) string {
+	if label := map[string]string{"video": "下载视频", "audio": "下载音频", "merge": "合并文件", "done": "已完成", "error": "下载失败"}[phase]; label != "" {
+		return label
+	}
+	return "下载中"
+}
+
 func downloadProgress(c *ui.Context, p bilidownload.Progress) {
 	if p.Phase == "sleep" {
 		label := fmt.Sprintf("休眠中 · %d 秒", max(0, p.SleepRemaining))
@@ -128,10 +136,6 @@ func downloadProgress(c *ui.Context, p bilidownload.Progress) {
 		feedback.Progress(c.Key("sleep-progress"), max(0, min(1, fraction)), feedback.ProgressOptions{})
 		return
 	}
-	label := map[string]string{"video": "下载视频", "audio": "下载音频", "merge": "合并文件", "done": "已完成", "error": "下载失败"}[p.Phase]
-	if label == "" {
-		label = "下载中"
-	}
 	percent := max(0, min(100, p.Percent))
-	feedback.Progress(c, percent/100, feedback.ProgressOptions{Label: label, ShowValue: true})
+	feedback.Progress(c, percent/100, feedback.ProgressOptions{Label: phaseLabel(p.Phase), ShowValue: true, Indeterminate: p.Phase == "merge" || p.Percent < 0})
 }
