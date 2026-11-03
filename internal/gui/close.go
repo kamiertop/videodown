@@ -74,9 +74,9 @@ func (s *Shell) saveClosePreference(value bool, after func()) {
 	s.runJob(func() error { return s.closing.WritePreference(value) }, func(err error) {
 		s.closing.Saved(value, err)
 		if err != nil {
-			s.notifySettings(s.closing.Error, true)
+			s.notify("保存失败："+s.closing.Error, true)
 		} else if after == nil {
-			s.notifySettings("保存成功", false)
+			s.notify("保存成功", false)
 		}
 		if err == nil && after != nil {
 			after()

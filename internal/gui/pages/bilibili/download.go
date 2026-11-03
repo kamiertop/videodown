@@ -47,7 +47,7 @@ func (s *State) download(c *ui.Context) {
 			ready++
 		}
 	}
-	if len(s.stagedKeys) > 0 || len(s.batches) == 0 {
+	if len(s.stagedKeys) > 0 {
 		panel(c.Key("queue-toolbar"), "下载操作栏", func() {
 			ui.Column(c).FillWidth().Padding(style.SpaceSmall, style.SpaceMedium).Gap(style.SpaceSmall).Children(func() {
 				ui.Row(c).FillWidth().Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
@@ -129,21 +129,47 @@ func (s *State) stagedMediaCard(c *ui.Context, bvid, title, cover, author, lengt
 				details.FillWidth()
 			}
 			details.Children(func() {
-				ui.Text(c, title).FillWidth().FontWeight(style.WeightSemibold).MaxLines(2)
-				var metadata []string
-				if author != "" {
-					metadata = append(metadata, author)
+				progress, downloading := s.progressForKey(bvid)
+				header := ui.Row(c.Key("header")).FillWidth().Gap(style.SpaceMedium).AlignItems(ui.Start)
+				if width < style.DownloadInlineBreakpoint {
+					header.Column()
 				}
-				if length != "" && length != "0:00" {
-					metadata = append(metadata, length)
-				}
-				if len(metadata) > 0 {
-					ui.Text(c, strings.Join(metadata, " · ")).FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted).MaxLines(1)
-				}
+				header.Children(func() {
+					info := ui.Column(c.Key("info")).MinWidth(0).Gap(style.DownloadCardGap)
+					if width >= style.DownloadInlineBreakpoint {
+						info.Grow(1)
+					} else {
+						info.FillWidth()
+					}
+					info.Children(func() {
+						ui.Text(c, title).FillWidth().FontWeight(style.WeightSemibold).MaxLines(2).Tooltip(title)
+						var metadata []string
+						if author != "" {
+							metadata = append(metadata, author)
+						}
+						if length != "" && length != "0:00" {
+							metadata = append(metadata, length)
+						}
+						if len(metadata) > 0 {
+							ui.Text(c, strings.Join(metadata, " · ")).FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted).MaxLines(1)
+						}
+					})
+					// Reserve a compact status area above the actions on wide cards.
+					// Narrow cards put progress on its own line to keep titles readable.
+					if downloading {
+						status := ui.Column(c.Key("progress")).Label("视频下载进度").MinWidth(0)
+						if width >= style.DownloadInlineBreakpoint {
+							status.Width(200).Shrink(0)
+						} else {
+							status.FillWidth()
+						}
+						status.Children(func() { downloadProgress(c, progress) })
+					}
+				})
 				task, ready := s.queuedTask(bvid)
 				busy := s.queueExtraBusy[bvid] != ""
 				extrasBusy := busy || s.queueRequested[bvid]
-				ui.Row(c.Key("actions")).Label("视频下载选项").FillWidth().Wrap().Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
+				ui.Row(c.Key("actions")).Label("视频下载选项").FillWidth().Wrap().Gap(style.SpaceSmall).AlignItems(ui.Center).Padding(4, 0, 0, 0).Children(func() {
 					s.queueStreamControls(c.Key("streams"), bvid)
 					ui.Box(c).Grow(1)
 					actions := ui.Row(c.Key("buttons")).Gap(4).AlignItems(ui.Center)
@@ -159,7 +185,6 @@ func (s *State) stagedMediaCard(c *ui.Context, bvid, title, cover, author, lengt
 						downloadCardButton(c.Key("single-download"), downloadRequestLabel(s.queueRequested[bvid]), input.ButtonOptions{Label: "下载视频", Variant: input.Primary, Icon: icons.Must("download"), Disabled: !ready || s.queueRequested[bvid] || s.runtime.Background == nil || s.downloadBackend == nil}).OnClick(func() { s.startSingleQueuedDownload(bvid) })
 					})
 				})
-				s.queueProgressBar(c.Key("progress"), bvid)
 			})
 		})
 	})
@@ -225,14 +250,6 @@ func (s *State) parsedGroupPanel(c *ui.Context) {
 	}}}, data.AccordionOptions{}).Element.Label("解析到的" + group.Kind).FillWidth().MinWidth(0).Radius(style.RadiusPanel).Clip()
 }
 
-func (s *State) queueProgressBar(c *ui.Context, key string) {
-	p, ok := s.progressForKey(key)
-	if !ok {
-		return
-	}
-	downloadProgress(c, p)
-}
-
 func (s *State) queueStreamControls(c *ui.Context, bvid string) {
 	entry := s.queueResolves[bvid]
 	if entry == nil || entry.data.Loading {
@@ -285,6 +302,7 @@ func (s *State) removeStaged(key string) {
 	s.stagedManual = slices.DeleteFunc(s.stagedManual, func(v manualVideo) bool { return v.Key == key })
 	delete(s.queueProgress, key)
 	delete(s.queueExtraBusy, key)
+	s.notice = ""
 }
 func (s *State) clearStaged() {
 	s.pendingManualDownloads = nil

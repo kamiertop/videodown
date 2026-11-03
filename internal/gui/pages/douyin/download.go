@@ -42,6 +42,29 @@ func first(urls []string) string {
 	return ""
 }
 
+// Prefer the short edge: portrait video height is not its quality tier.
+func downloadQualityLabel(track model.BitRateItem) string {
+	resolution := min(track.PlayAddr.Width, track.PlayAddr.Height)
+	label := ""
+	if resolution > 0 {
+		label = fmt.Sprintf("%dP", resolution)
+	} else {
+		for _, part := range strings.Split(track.GearName, "_") {
+			switch part {
+			case "540", "720", "1080", "1440", "2160":
+				label = part + "P"
+			}
+		}
+	}
+	if label == "" {
+		label = "原画"
+	}
+	if track.BitRate > 0 {
+		label += fmt.Sprintf(" · %.1f Mbps", float64(track.BitRate)/1e6)
+	}
+	return label
+}
+
 func title(v model.AwemeItem) string {
 	for _, s := range []string{v.ItemTitle, v.Caption, v.Desc, v.AwemeId} {
 		if strings.TrimSpace(s) != "" {

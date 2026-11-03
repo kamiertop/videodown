@@ -363,8 +363,53 @@ func (s *State) maybeMore() {
 	})
 }
 
+// Switching between known entries in the same sidebar only changes the
+// video source. Keep the list, its pagination request, and its scroll position.
+func (s *State) enterKnownFolder(path string) bool {
+	previous := strings.Split(strings.Trim(s.activePath, "/"), "/")
+	next := strings.Split(strings.Trim(path, "/"), "/")
+	if len(previous) < 3 || len(next) < 3 ||
+		previous[0] != "douyin" || next[0] != "douyin" ||
+		previous[1] != "favorite" || next[1] != "favorite" ||
+		previous[2] != next[2] || (next[2] != "folder" && next[2] != "collection") {
+		return false
+	}
+	if len(next) > 4 || !s.folders.Loaded {
+		return false
+	}
+	var target source
+	if len(next) == 4 {
+		key, err := url.PathUnescape(next[3])
+		if err != nil {
+			return false
+		}
+		found := false
+		for _, f := range s.folders.Data {
+			if f.Key == key {
+				target = s.folderSource(next[2], f)
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	s.activePath = path
+	s.pendingFolder = ""
+	// Any scheduled auto-page callback belongs to the previous path.
+	s.folderAutoPending = false
+	if s.source.Key != target.Key {
+		s.useSource(target)
+	}
+	return true
+}
+
 func (s *State) enter(path string) {
 	if path == s.activePath {
+		return
+	}
+	if s.api != nil && s.loggedIn() && s.enterKnownFolder(path) {
 		return
 	}
 	s.activePath = path

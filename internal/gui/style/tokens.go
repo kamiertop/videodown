@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	// 抖音下载页：同一行中的画质选择和进度区域。
-	DouyinDownloadProgressWidth float32 = 180 // 抖音下载卡片中进度条或休眠状态区域的宽度。
-	DouyinDownloadQualityWidth  float32 = 240 // 抖音下载画质选择框宽度，给较长的画质名称预留空间。
+	// 抖音下载页：画质选择与操作按钮之间的进度区域。
+	DouyinDownloadProgressWidth float32 = 200 // 抖音下载卡片中进度条或休眠状态区域的宽度。
+	DouyinDownloadQualityWidth  float32 = 160 // 抖音下载画质选择框宽度。
 
 	// 抖音竖屏视频卡片。
 	DouyinMediaAspectRatio   float32 = 3.0 / 5.0       // 抖音封面宽高比，3:5 竖屏；与横屏视频卡片分开调整。
@@ -58,8 +58,12 @@ const (
 	SpaceXLarge    float32 = 24 // 较大留白，适合登录提示、账号面板等。
 
 	// 下载页：封面、控件、卡片留白与响应式断点。
-	BatchCoverWidth           float32 = 96   // 紧凑下载卡片封面宽度。
-	BatchCoverHeight          float32 = 54   // 紧凑下载卡片封面高度，与宽度组成 16:9。
+	BatchCoverWidth  float32 = 96 // 紧凑下载卡片封面宽度。
+	BatchCoverHeight float32 = 54 // 紧凑下载卡片封面高度，与宽度组成 16:9。
+	// 批量下载条目封面：放大到与右侧两行标题加进度行等高（约 76 DIP 略矮），
+	// 封面填满左列，进度条只占右列，不再撑高卡片。
+	BatchItemCoverWidth       float32 = 128  // 批量下载条目卡片封面宽度。
+	BatchItemCoverHeight      float32 = 72   // 批量下载条目卡片封面高度，与宽度组成 16:9。
 	DownloadStreamWidth       float32 = 112  // 通用视频画质选择框宽度，抖音使用独立常量。
 	DownloadAudioWidth        float32 = 136  // 音质选择框宽度。
 	DownloadControlHeight     float32 = 30   // 下载卡片内按钮和选择框的紧凑高度。

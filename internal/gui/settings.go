@@ -3,12 +3,10 @@ package gui
 import (
 	"time"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	"github.com/kamiertop/videodown/internal/gui/pages/settings"
 	"github.com/kamiertop/videodown/internal/gui/preferences"
-	"github.com/kamiertop/videodown/internal/gui/style"
 	"github.com/kamiertop/videodown/utils"
 )
 
@@ -27,7 +25,7 @@ func (s *Shell) saveSettings(values preferences.Changes) {
 		return
 	}
 	if s.settingsStore == nil {
-		s.notifySettings("配置存储尚未初始化", true)
+		s.notify("配置存储尚未初始化", true)
 		return
 	}
 	values = (preferences.Changes{}).Merge(values)
@@ -38,10 +36,10 @@ func (s *Shell) saveSettings(values preferences.Changes) {
 		if err != nil {
 			_ = s.pages.Settings.Config.Apply(values.Restore(before, s.pendingSettings))
 			s.pages.Settings.ApplyTheme()
-			s.notifySettings("保存失败："+err.Error(), true)
+			s.notify("保存失败："+err.Error(), true)
 		} else {
 			_ = s.savedSettings.Apply(values)
-			s.notifySettings("保存成功", false)
+			s.notify("保存成功", false)
 		}
 		s.flushPendingSettings()
 	})
@@ -86,7 +84,7 @@ func (s *Shell) browseSetting(directory bool) {
 		s.browsingSettings = false
 		defer s.flushPendingSettings()
 		if err != nil {
-			s.notifySettings("保存失败："+err.Error(), true)
+			s.notify("保存失败："+err.Error(), true)
 			return
 		}
 		if chosen == "" {
@@ -95,7 +93,7 @@ func (s *Shell) browseSetting(directory bool) {
 		values := changes(chosen)
 		_ = s.pages.Settings.Config.Apply(values)
 		_ = s.savedSettings.Apply(values)
-		s.notifySettings("保存成功", false)
+		s.notify("保存成功", false)
 		if !directory {
 			s.ffmpegPath, s.ffmpegVersion, s.ffmpegError, s.ffmpegChecked = path, version, "", true
 		}
@@ -119,49 +117,35 @@ func (s *Shell) checkFFmpeg() {
 	})
 }
 
+// pendingToast is a notification waiting for the next frame, which shows it.
+type pendingToast struct {
+	message string
+	failed  bool
+}
+
 // Notifications live outside the form so saves never move its controls.
-func (s *Shell) notifySettings(message string, failed bool) {
-	duration := 3 * time.Second
-	if failed {
-		duration = 6 * time.Second
-	}
-	s.settingsToast = &settingsNotification{message: message, failed: failed, duration: duration}
-}
-
-type settingsNotification struct {
-	message  string
-	failed   bool
-	duration time.Duration
-	expires  time.Time
-}
-
-func (s *Shell) settingsNotification(c *ui.Context) {
-	toast := s.settingsToast
-	if toast == nil {
+func (s *Shell) notify(message string, failed bool) {
+	if message == "" {
 		return
 	}
-	if toast.expires.IsZero() {
-		toast.expires = c.Now().Add(toast.duration)
+	s.pendingToasts = append(s.pendingToasts, pendingToast{message: message, failed: failed})
+}
+
+// pushToasts queues notifications raised outside the frame; the window's
+// engine draws its toasts itself, above every layer of the view.
+func (s *Shell) pushToasts(c *ui.Context) {
+	for _, m := range s.pendingToasts {
+		toast := ui.Toast{Title: m.message}
+		if m.failed {
+			toast.Type = "error"
+			toast.Timeout = 4 * time.Second
+		} else {
+			toast.Type = "success"
+			toast.Timeout = 3 * time.Second
+		}
+		c.AddToast(toast)
 	}
-	remaining := toast.expires.Sub(c.Now())
-	if remaining <= 0 {
-		s.settingsToast = nil
-		return
-	}
-	c.After(remaining)
-	k := core.Tokens(c)
-	color := k.Success
-	if toast.failed {
-		color = k.Danger
-	}
-	width, _ := c.Size()
-	ui.Overlay(c, func() {
-		ui.Column(c.Key("settings-notification")).Absolute().Right(24).Bottom(24).
-			Width(min(360, width-48)).Padding(16).Radius(style.RadiusMenu).Background(k.Surface).
-			Border(style.BorderWidth, color).PassThrough().Role(ui.RoleStatus).Label(toast.message).Children(func() {
-			ui.Text(c, toast.message).FillWidth().TextColor(color)
-		})
-	})
+	s.pendingToasts = nil
 }
 
 func (s *Shell) flushPendingSettings() {

@@ -398,43 +398,80 @@ func groupStatus(g *downloadGroup) string {
 }
 func (s *State) downloadCard(c *ui.Context, item *queuedVideo, batch bool) {
 	queued := item.Status == "active" || item.Status == "queued"
+	width, _ := c.Size()
+	wide := width >= style.DownloadCompactBreakpoint
+	inline := width >= style.DownloadInlineBreakpoint
 	panel(c, "抖音下载作品："+title(item.Data), func() {
-		ui.Row(c).FillWidth().Padding(style.DownloadCardPadding).Gap(style.SpaceMedium).AlignItems(ui.Center).Children(func() {
-			s.image(c, cover(item.Data), style.BatchCoverWidth, style.BatchCoverHeight, false)
-			ui.Column(c).Grow(1).MinWidth(0).Gap(style.DownloadCardGap).Children(func() {
-				ui.Row(c).FillWidth().Wrap().Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
-					ui.Text(c, title(item.Data)).Grow(1).MinWidth(style.AuthorCardMinWidth).MaxLines(2).FontWeight(style.WeightSemibold)
+		row := ui.Row(c).FillWidth().Padding(style.DownloadCardPadding).Gap(style.SpaceMedium).AlignItems(ui.Start)
+		if !wide {
+			row.Column()
+		}
+		row.Children(func() {
+			s.image(c, cover(item.Data), style.DownloadCoverWidth, style.DownloadCoverHeight, false)
+			details := ui.Column(c.Key("details")).MinWidth(0).Gap(style.SpaceSmall)
+			if wide {
+				details.Grow(1)
+			} else {
+				details.FillWidth()
+			}
+			details.Children(func() {
+				ui.Column(c.Key("info")).FillWidth().MinWidth(0).Gap(style.DownloadCardGap).Children(func() {
+					ui.Text(c, title(item.Data)).FillWidth().MaxLines(1).FontWeight(style.WeightSemibold).Tooltip(title(item.Data))
+					if item.Data.Author.Nickname != "" {
+						caption(c, item.Data.Author.Nickname)
+					}
+				})
+				ui.Row(c.Key("actions")).Label("抖音下载选项").FillWidth().Wrap().Gap(style.SpaceSmall).AlignItems(ui.Center).Padding(4, 0, 0, 0).Children(func() {
 					options := []input.SelectOption[int]{{Value: -1, Label: "默认画质"}}
 					for i, track := range item.Data.Video.BitRate {
 						if first(track.PlayAddr.UrlList) != "" {
-							label := track.GearName
-							if label == "" {
-								label = fmt.Sprintf("%dP · %d kbps", track.PlayAddr.Height, track.BitRate/1000)
-							}
+							label := downloadQualityLabel(track)
 							options = append(options, input.SelectOption[int]{Value: i, Label: label})
 						}
 					}
 					if len(item.Data.Images) == 0 {
-						input.Select(c.Key("quality"), &item.Track, options, input.SelectOptions{Label: "抖音下载画质", Disabled: queued || batch}).Element.Width(style.DouyinDownloadQualityWidth).Height(style.DownloadControlHeight).MinHeight(style.DownloadControlHeight).MinWidth(0).Radius(style.RadiusControl)
+						ui.Row(c.Key("quality-field")).Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
+							caption(c, "画质")
+							input.Select(c.Key("quality"), &item.Track, options, input.SelectOptions{Label: "抖音下载画质", Disabled: queued || batch}).Element.Width(style.DouyinDownloadQualityWidth).Height(style.DownloadControlHeight).MinHeight(style.DownloadControlHeight).MinWidth(0).Radius(style.RadiusControl).Padding(0, style.SpaceSmall).FontSize(style.Font(c, style.FontButton))
+						})
 					} else {
 						caption(c, fmt.Sprintf("图集 · %d 张", len(item.Data.Images)))
 					}
+
+					if inline {
+						ui.Box(c).Grow(1)
+					}
 					if item.Progress.Phase != "" {
-						ui.Column(c.Key("progress")).Label("抖音下载进度").Width(style.DouyinDownloadProgressWidth).MinWidth(0).Children(func() { progressView(c, item.Progress) })
-					}
-					if !batch {
-						label := "下载"
-						if item.Status == "queued" {
-							label = "已排队"
-						} else if item.Status == "active" {
-							label = "下载中"
+						status := ui.Column(c.Key("progress")).Label("抖音下载进度").MinWidth(0)
+						if inline {
+							status.Width(style.DouyinDownloadProgressWidth).Shrink(0)
+						} else {
+							status.FillWidth()
 						}
-						button(c.Key("download"), label, input.ButtonOptions{Variant: input.Primary, Disabled: queued || item.CoverBusy || s.backend == nil}).Height(style.DownloadControlHeight).MinHeight(style.DownloadControlHeight).OnClick(func() { s.request([]*queuedVideo{item}) })
-						button(c.Key("cover"), "封面", input.ButtonOptions{Variant: input.Ghost, Disabled: s.backend == nil || queued || item.CoverBusy, Loading: item.CoverBusy}).Height(style.DownloadControlHeight).MinHeight(style.DownloadControlHeight).OnClick(func() { s.saveCover(item) })
-						button(c.Key("remove"), "移除", input.ButtonOptions{Variant: input.Ghost, Disabled: queued || item.CoverBusy}).Height(style.DownloadControlHeight).MinHeight(style.DownloadControlHeight).OnClick(func() { s.staged = slices.DeleteFunc(s.staged, func(v *queuedVideo) bool { return v == item }) })
+						status.Children(func() { progressView(c, item.Progress) })
 					}
+					if inline {
+						ui.Box(c).Grow(1)
+					}
+
+					buttons := ui.Row(c.Key("buttons")).Gap(4).AlignItems(ui.Center)
+					if !inline {
+						buttons.FillWidth().Justify(ui.End)
+					}
+					buttons.Children(func() {
+						if !batch {
+							label := "下载"
+							if item.Status == "queued" {
+								label = "已排队"
+							} else if item.Status == "active" {
+								label = "下载中"
+							}
+							button(c.Key("cover"), "封面", input.ButtonOptions{Variant: input.Ghost, Disabled: s.backend == nil || queued || item.CoverBusy, Loading: item.CoverBusy}).Height(style.DownloadControlHeight).MinHeight(style.DownloadControlHeight).Padding(0, style.SpaceSmall).OnClick(func() { s.saveCover(item) })
+							button(c.Key("remove"), "移除", input.ButtonOptions{Variant: input.Ghost, Disabled: queued || item.CoverBusy}).Height(style.DownloadControlHeight).MinHeight(style.DownloadControlHeight).Padding(0, style.SpaceSmall).OnClick(func() { s.staged = slices.DeleteFunc(s.staged, func(v *queuedVideo) bool { return v == item }) })
+							button(c.Key("download"), label, input.ButtonOptions{Variant: input.Primary, Disabled: queued || item.CoverBusy || s.backend == nil}).Height(style.DownloadControlHeight).MinHeight(style.DownloadControlHeight).Padding(0, style.SpaceSmall).OnClick(func() { s.request([]*queuedVideo{item}) })
+						}
+					})
 				})
-				caption(c, item.Data.Author.Nickname)
 				s.errorRow(c, item.Error, nil)
 			})
 		})

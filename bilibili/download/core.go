@@ -122,75 +122,107 @@ func (s *Service) emitProgress(p Progress) {
 
 // downloadToFile 使用无总时长限制的 HTTP client 流式读取响应体；长视频下载不能复用接口请求的整体超时。
 func (s *Service) downloadToFile(rawURL, targetPath, bvid, title string, cid int64, phase, cookies string, start, weight float64) (err error) {
-	var resp *req.Response
-	resp, err = s.client.
-		R().
-		DisableAutoReadResponse().
-		SetHeader(constant.UserAgent, util.UserAgent()).
-		SetHeader(constant.Referer, fmt.Sprintf("https://www.bilibili.com/video/%s", strings.TrimSpace(bvid))).
-		SetHeader(constant.Origin, util.BiliBiliURL).
-		SetHeader(constant.Cookie, cookies).
-		Get(rawURL)
-	if err != nil {
-		return err
-	}
+	var f *os.File
 	defer func() {
-		err = errors.Join(err, resp.Body.Close())
+		if f != nil {
+			err = errors.Join(err, f.Close())
+		}
 	}()
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return fmt.Errorf("下载失败: %s", resp.Status)
-	}
-
-	f, err := os.Create(targetPath)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		err = errors.Join(err, f.Close())
-	}()
-
-	total := resp.ContentLength
 	var downloaded int64
 	buf := make([]byte, 1024*1024)
-	lastEmit := time.Time{}
-	// 下载开始时先发一次事件，确保界面能及时更新状态；后续按时间间隔或下载完成时发事件
-	s.emitProgress(Progress{
-		Bvid:    bvid,
-		Cid:     cid,
-		Title:   title,
-		Phase:   phase,
-		Total:   total,
-		Percent: start,
-	})
-
-	for {
-		n, readErr := resp.Body.Read(buf)
-		if n > 0 {
-			if _, err = f.Write(buf[:n]); err != nil {
-				return err
+	// 流式读取中连接可能被对端重置（unexpected EOF），重试不会覆盖这个阶段：
+	// 记住断点用 Range 续传，最多重连三次，仍失败才交给上层。
+	const maxResume = 3
+	total := int64(-1)
+	finished := false
+	for attempt := 0; !finished; attempt++ {
+		request := s.client.
+			R().
+			DisableAutoReadResponse().
+			SetHeader(constant.UserAgent, util.UserAgent()).
+			SetHeader(constant.Referer, fmt.Sprintf("https://www.bilibili.com/video/%s", strings.TrimSpace(bvid))).
+			SetHeader(constant.Origin, util.BiliBiliURL).
+			SetHeader(constant.Cookie, cookies)
+		if downloaded > 0 {
+			request = request.SetHeader("Range", fmt.Sprintf("bytes=%d-", downloaded))
+		}
+		resp, reqErr := request.Get(rawURL)
+		if reqErr != nil {
+			return reqErr
+		}
+		if resp.StatusCode == http.StatusOK && downloaded > 0 {
+			// 服务器忽略 Range 返回完整内容：从头开始。
+			if _, err = f.Seek(0, io.SeekStart); err != nil {
+				return errors.Join(err, resp.Body.Close())
 			}
-			downloaded += int64(n)
-
-			now := time.Now()
-			if now.Sub(lastEmit) >= 200*time.Millisecond || (total > 0 && downloaded >= total) {
-				s.emitProgress(Progress{
-					Bvid:       bvid,
-					Cid:        cid,
-					Title:      title,
-					Phase:      phase,
-					Downloaded: downloaded,
-					Total:      total,
-					Percent:    utils.WeightedPercent(start, weight, downloaded, total),
-				})
-				lastEmit = now
+			if err = f.Truncate(0); err != nil {
+				return errors.Join(err, resp.Body.Close())
+			}
+			downloaded = 0
+			total = -1
+		} else if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return errors.Join(fmt.Errorf("下载失败: %s", resp.Status), resp.Body.Close())
+		} else if total < 0 && resp.ContentLength >= 0 {
+			if resp.StatusCode == http.StatusPartialContent {
+				total = downloaded + resp.ContentLength
+			} else {
+				total = resp.ContentLength
 			}
 		}
-		if readErr != nil {
+		if f == nil {
+			if f, err = os.Create(targetPath); err != nil {
+				return errors.Join(err, resp.Body.Close())
+			}
+		}
+
+		lastEmit := time.Time{}
+		// 下载开始时先发一次事件，确保界面能及时更新状态；后续按时间间隔或下载完成时发事件
+		if attempt == 0 {
+			s.emitProgress(Progress{
+				Bvid:    bvid,
+				Cid:     cid,
+				Title:   title,
+				Phase:   phase,
+				Total:   total,
+				Percent: start,
+			})
+		}
+		for {
+			n, readErr := resp.Body.Read(buf)
+			if n > 0 {
+				if _, err = f.Write(buf[:n]); err != nil {
+					return errors.Join(err, resp.Body.Close())
+				}
+				downloaded += int64(n)
+
+				now := time.Now()
+				if now.Sub(lastEmit) >= 200*time.Millisecond || (total > 0 && downloaded >= total) {
+					s.emitProgress(Progress{
+						Bvid:       bvid,
+						Cid:        cid,
+						Title:      title,
+						Phase:      phase,
+						Downloaded: downloaded,
+						Total:      total,
+						Percent:    utils.WeightedPercent(start, weight, downloaded, total),
+					})
+					lastEmit = now
+				}
+			}
+			if readErr == nil {
+				continue
+			}
+			_ = resp.Body.Close()
 			if errors.Is(readErr, io.EOF) {
+				finished = true
 				break
 			}
-			return readErr
+			if attempt >= maxResume {
+				return readErr
+			}
+			s.logger.Warningf("下载 %s 在 %d 字节处中断（%v），断点续传", bvid, downloaded, readErr)
+			break // 用 Range 从断点重新连接
 		}
 	}
 

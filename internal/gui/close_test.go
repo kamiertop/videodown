@@ -91,7 +91,7 @@ func TestCloseBehaviorSwitchShowsSaveFeedback(t *testing.T) {
 		if !test.HasText("保存成功") {
 			t.Fatal("close behavior switch did not show save feedback")
 		}
-		test.Advance(4 * time.Second)
+		test.Advance(5 * time.Second)
 		if test.HasText("保存成功") {
 			t.Fatal("close behavior save feedback did not expire")
 		}
@@ -113,11 +113,15 @@ func TestCloseBehaviorSwitchReportsSaveFailure(t *testing.T) {
 	if !s.closing.CloseToTray || s.closing.Configured || s.closing.Error == "" {
 		t.Fatal("failed save did not preserve close behavior and report the error")
 	}
-	if s.settingsToast == nil || !s.settingsToast.failed {
+	// The settings page also shows the bare error inline; the toast is the
+	// only place with the prefixed message.
+	test.Advance(200 * time.Millisecond)
+	if !test.HasText("保存失败：") {
 		t.Fatal("failed save did not show an error notification")
 	}
 	test.Advance(7 * time.Second)
-	if s.settingsToast != nil {
+	test.Frame()
+	if test.HasText("保存失败：") {
 		t.Fatal("error notification did not expire")
 	}
 }
