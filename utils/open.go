@@ -5,7 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	stdRuntime "runtime"
+	"runtime"
 	"strings"
 )
 
@@ -31,7 +31,7 @@ func OpenDownloadLocation(path string) error {
 	}
 
 	var cmd *exec.Cmd
-	switch stdRuntime.GOOS {
+	switch runtime.GOOS {
 	case "windows":
 		cmd = exec.Command("explorer", target)
 	case "darwin":
@@ -43,6 +43,7 @@ func OpenDownloadLocation(path string) error {
 	return cmd.Start()
 }
 
+// OpenLocalFile 使用系统默认程序打开本地文件
 func OpenLocalFile(path string) error {
 	target := strings.TrimSpace(path)
 	if target == "" {
@@ -56,7 +57,7 @@ func OpenLocalFile(path string) error {
 	}
 
 	var cmd *exec.Cmd
-	switch stdRuntime.GOOS {
+	switch runtime.GOOS {
 	case "windows":
 		cmd = exec.Command("cmd", "/c", "start", "", target)
 	case "darwin":

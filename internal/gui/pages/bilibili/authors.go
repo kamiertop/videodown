@@ -21,13 +21,25 @@ func (s *State) authors(c *ui.Context, navigate func(string)) {
 		return
 	}
 	panel(c, "UP 主工具栏", func() {
-		ui.Row(c).FillWidth().Padding(style.SpaceMedium).Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, fmt.Sprintf("我的关注 · %d", s.follows.Data.Total)).FontWeight(style.WeightSemibold).Shrink(0)
-			button(c.Key("refresh"), "刷新关注", input.ButtonOptions{Variant: input.Outline, Loading: s.follows.Loading, Disabled: s.api == nil}).OnClick(func() { s.loadFollows(max(1, s.followPage)) })
-			ui.Spacer(c).Grow(1)
-			textInput(c.Key("author"), &s.author, "UP 主 UID 或空间链接", "输入 UP 主 mid / 空间链接", func() { s.findAuthor(s.author, navigate) }).Width(260)
-			button(c.Key("parse-author"), "解析", input.ButtonOptions{Loading: s.authorInfo.Loading, Disabled: s.api == nil}).OnClick(func() { s.findAuthor(s.author, navigate) })
-		})
+		ui.Row(c).FillWidth().Padding(style.SpaceMedium).Gap(style.SpaceSmall).AlignItems(ui.Center).
+			Children(func() {
+				ui.Text(c, fmt.Sprintf("我的关注 · %d", s.follows.Data.Total)).
+					FontWeight(style.WeightSemibold).
+					Shrink(0)
+				button(c.Key("refresh"),
+					"刷新关注",
+					input.ButtonOptions{Variant: input.Outline, Loading: s.follows.Loading, Disabled: s.api == nil},
+				).OnClick(func() { s.loadFollows(max(1, s.followPage)) })
+				ui.Spacer(c).Grow(1)
+				textInput(c.Key("author"),
+					&s.author,
+					"UP 主 UID 或空间链接",
+					"输入 UP 主 mid / 空间链接",
+					func() { s.findAuthor(s.author, navigate) },
+				).Width(260)
+
+				button(c.Key("parse-author"), "解析", input.ButtonOptions{Loading: s.authorInfo.Loading, Disabled: s.api == nil}).OnClick(func() { s.findAuthor(s.author, navigate) })
+			})
 	})
 	s.errorRow(c, s.authorInfo.Error, func() { s.findAuthor(s.author, navigate) })
 	panel(c, "关注列表", func() {
@@ -182,7 +194,11 @@ func (s *State) authorListsView(c *ui.Context) {
 				ui.Column(c).Width(style.AuthorListWidth).Padding(style.SpaceSmall).Gap(6).Children(func() {
 					ui.Row(c).FillWidth().AlignItems(ui.Center).Children(func() {
 						ui.Text(c, "列表").Grow(1).FontWeight(style.WeightSemibold)
-						button(c.Key("refresh-lists"), "", input.ButtonOptions{Variant: input.Ghost, Icon: icons.Must("refresh-cw"), Label: "刷新合集与系列"}).Size(30, 30).Padding(0).OnClick(func() { s.loadAuthorLists(1, false) })
+						button(c.Key("refresh-lists"), "",
+							input.ButtonOptions{Variant: input.Ghost, Icon: icons.Must("refresh-cw"), Label: "刷新合集与系列"},
+						).Size(30, 30).
+							Padding(0).
+							OnClick(func() { s.loadAuthorLists(1, false) })
 					})
 					s.errorRow(c, s.authorLists.Error, func() {
 						if s.authorLists.Loaded {
@@ -216,9 +232,11 @@ func (s *State) authorListsView(c *ui.Context) {
 						key := fmt.Sprintf("author-lists/%d", s.authorInfo.Data.Mid)
 						scrollKey := fmt.Sprintf("author-videos/%d", s.authorInfo.Data.Mid)
 						if s.autoPageFallback(key, scrollKey) && s.authorLists.Error == "" && !s.authorLists.Loading {
-							button(c.Key("more-lists"), "继续加载", input.ButtonOptions{Variant: input.Outline}).FillWidth().OnClick(func() {
-								s.continueAutoPage(key, func() { s.loadAuthorLists(s.listPage+1, true) })
-							})
+							button(c.Key("more-lists"), "继续加载", input.ButtonOptions{Variant: input.Outline}).
+								FillWidth().
+								OnClick(func() {
+									s.continueAutoPage(key, func() { s.loadAuthorLists(s.listPage+1, true) })
+								})
 						}
 					}
 				})
@@ -257,10 +275,17 @@ func authorListItem(c *ui.Context, name, kind string, count int, selected bool, 
 		if kind == "系列" {
 			iconName = "list"
 		}
-		ui.Box(c).Size(style.AuthorListIconSize, style.AuthorListIconSize).Shrink(0).
-			Radius(style.RadiusControl).Border(style.BorderWidth, border).Background(iconBackground).Center().Children(func() {
-			ui.Icon(c, icons.Must(iconName)).Size(17, 17).TextColor(iconColor)
-		})
+		ui.Box(c).
+			Size(style.AuthorListIconSize, style.AuthorListIconSize).
+			Shrink(0).
+			Radius(style.RadiusControl).
+			Border(style.BorderWidth, border).
+			Background(iconBackground).
+			Center().
+			Children(func() {
+				ui.Icon(c, icons.Must(iconName)).Size(17, 17).TextColor(iconColor)
+			})
+
 		ui.Column(c).Grow(1).MinWidth(0).Gap(1).Children(func() {
 			title := ui.Text(c, name).FillWidth().SingleLine().FontWeight(style.WeightSemibold)
 			if selected {

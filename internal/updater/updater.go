@@ -262,7 +262,14 @@ func (u *Updater) DownloadUpdate(ctx context.Context, downloadURL string) (strin
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	packagePath := f.Name()
+	completed := false
+	defer func() {
+		_ = f.Close()
+		if !completed {
+			_ = os.Remove(packagePath)
+		}
+	}()
 	total := resp.ContentLength
 	var downloaded int64
 	buf := make([]byte, 32*1024)
@@ -284,7 +291,8 @@ func (u *Updater) DownloadUpdate(ctx context.Context, downloadURL string) (strin
 			return "", readErr
 		}
 	}
-	return f.Name(), nil
+	completed = true
+	return packagePath, nil
 }
 
 func (u *Updater) parseVersionByRedirect(ctx context.Context) (string, error) {

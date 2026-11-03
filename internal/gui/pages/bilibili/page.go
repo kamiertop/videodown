@@ -25,8 +25,8 @@ type State struct {
 	ctx      context.Context
 	cancel   context.CancelFunc
 
-	api             API
-	downloadBackend DownloadBackend
+	api             *biliapi.BiliBili
+	downloadBackend *bilidownload.Service
 	runtime         guiruntime.Runtime
 
 	started, stopped, loggedIn, checking, loggingOut bool

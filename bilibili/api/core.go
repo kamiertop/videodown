@@ -13,9 +13,10 @@ import (
 const bilibiliCSRFKey = "bili_jct"
 
 type BiliBili struct {
-	logger *logger.Logger
-	client *req.Client
-	store  *storage.Store
+	logger  *logger.Logger
+	client  *req.Client
+	store   *storage.Store
+	resolve *resolveLimiter
 
 	wbiKey *wbiKeys // lazy init
 	wbiMu  sync.Mutex
@@ -31,9 +32,10 @@ func New(log *logger.Logger, store *storage.Store) *BiliBili {
 		client.SetLogger(log)
 	}
 	return &BiliBili{
-		logger: log.WithName("BiliBili"),
-		client: client,
-		store:  store,
+		logger:  log.WithName("BiliBili"),
+		client:  client,
+		store:   store,
+		resolve: newResolveLimiter(store.Config().Bilibili.ParseConcurrency),
 	}
 }
 

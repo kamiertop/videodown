@@ -127,13 +127,13 @@ func (s *State) resolveQueueItem(key string) {
 	if entry.data.Loading || entry.data.Loaded || entry.data.Error != "" {
 		return
 	}
-	api, count := s.api, len(s.stagedKeys)
+	api := s.api
 	bvid, cid := key, int64(0)
 	if item, ok := s.manualItem(key); ok {
 		bvid, cid = item.Bvid, item.Cid
 	}
-	load(s, &entry.data, func() (biliapi.PlayUrlResult, error) {
-		result := api.ResolvePlayUrl(biliapi.PlayUrlRequest{Bvid: bvid, Cid: cid}, count)
+	loadBackground(s, &entry.data, func() (biliapi.PlayUrlResult, error) {
+		result := api.ResolvePlayUrl(biliapi.PlayUrlRequest{Bvid: bvid, Cid: cid})
 		if result.Error != "" {
 			return result, errors.New(result.Error)
 		}
@@ -426,8 +426,7 @@ func (s *State) stopQueuedDownloads() {
 }
 
 func (s *State) startQueueExtra(key, kind string) {
-	backend, ok := s.downloadBackend.(DownloadExtras)
-	if !ok || s.runtime.Background == nil || s.queueDownloading || s.batchesRunning() || s.queueExtraBusy[key] != "" || s.queueRequested[key] {
+	if s.downloadBackend == nil || s.runtime.Background == nil || s.queueDownloading || s.batchesRunning() || s.queueExtraBusy[key] != "" || s.queueRequested[key] {
 		return
 	}
 	task, ready := s.queuedTask(key)
@@ -440,9 +439,9 @@ func (s *State) startQueueExtra(key, kind string) {
 	var path string
 	s.runtime.Background(func() (err error) {
 		if kind == "cover" {
-			path, err = backend.DownloadCover(task.Cover, task)
+			path, err = s.downloadBackend.DownloadCover(task.Cover, task)
 		} else {
-			path, err = backend.DownloadAudio(task)
+			path, err = s.downloadBackend.DownloadAudio(task)
 		}
 		return err
 	}, func(err error) {
@@ -513,7 +512,7 @@ func (s *State) runQueuedTask(work *manualWork, item queuedDownload) {
 	s.runtime.Background(func() error {
 		if task.VideoURL == "" || !time.Now().Before(item.validUntil) {
 			resolveFailed = true
-			resolved := api.ResolvePlayUrl(biliapi.PlayUrlRequest{Bvid: task.Bvid, Cid: task.Cid}, 1)
+			resolved := api.ResolvePlayUrl(biliapi.PlayUrlRequest{Bvid: task.Bvid, Cid: task.Cid})
 			if resolved.Error != "" {
 				return errors.New(resolved.Error)
 			}

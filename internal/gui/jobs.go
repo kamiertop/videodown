@@ -100,6 +100,12 @@ func (s *Shell) pageRuntime() guiruntime.Runtime {
 				s.jobs.execute(backgroundJob{win, work, done})
 			}()
 		},
+		Dispatch: func(fn func()) {
+			win := s.win
+			if win != nil && !win.IsDestroyed() && s.jobs.ctx.Err() == nil {
+				win.Update(fn)
+			}
+		},
 		After: func(delay time.Duration, fn func()) func() {
 			win := s.win
 			ctx := s.jobs.ctx
