@@ -1,6 +1,6 @@
 # VideoDown
 
-> ⚠️下载哔哩哔哩视频请安装FFmpeg
+> ⚠️下载哔哩哔哩和YouTube视频请安装FFmpeg
 
 VideoDown 是一个使用 [Go](https://go.dev)、[MyGo](https://github.com/egoist/mygo) 和
 [MujicaUI](https://github.com/ELY-Open-Source/MujicaUI) 开发的原生桌面视频下载工具，支持哔哩哔哩、抖音、YouTube。

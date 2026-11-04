@@ -11,11 +11,13 @@ import (
 )
 
 const (
-	// 抖音下载页：画质选择与操作按钮之间的进度区域。
+	// 抖音下载页：画质选择与操作按钮之间的进度区域
+
 	DouyinDownloadProgressWidth float32 = 200 // 抖音下载卡片中进度条或休眠状态区域的宽度。
 	DouyinDownloadQualityWidth  float32 = 160 // 抖音下载画质选择框宽度。
 
-	// 抖音竖屏视频卡片。
+	// 抖音竖屏视频卡片
+
 	DouyinMediaAspectRatio   float32 = 3.0 / 5.0       // 抖音封面宽高比，3:5 竖屏；与横屏视频卡片分开调整。
 	DouyinMediaTextGap       float32 = 3               // 抖音标题与作者信息区域之间的间距。
 	DouyinMediaMetaGap       float32 = 2               // 抖音用户名与发布时间之间的间距。
@@ -24,12 +26,13 @@ const (
 	DouyinMediaBadgeSize     float32 = 24              // 抖音图文、Live Photo 标识的外框边长。
 	DouyinMediaBadgeIconSize float32 = 16              // 媒体类型标识内部 SVG 图标的边长。
 
-	// 全局字号：修改后需通过 Font/Body 应用系统文字缩放。
+	// 全局字号：修改后需通过 Font/Body 应用系统文字缩放
+
 	FontBody    float32 = 14 // 正文与常用页面文本。
 	FontButton  float32 = 13 // 按钮文字。
 	FontMeta    float32 = 12 // 作者、日期等辅助信息。
 	FontCompact float32 = 10 // 侧栏等紧凑区域的小字。
-	FontSection float32 = 16 // 卡片或页面分区标题。
+
 	FontHeading float32 = 18 // 较醒目的标题。
 	FontTitle   float32 = 20 // 账号昵称等主要标题。
 	FontHero    float32 = 24 // 首页、关于页等突出展示的文字。
@@ -57,11 +60,8 @@ const (
 	SpaceLarge     float32 = 16 // 大间距。
 	SpaceXLarge    float32 = 24 // 较大留白，适合登录提示、账号面板等。
 
-	// 下载页：封面、控件、卡片留白与响应式断点。
-	BatchCoverWidth  float32 = 96 // 紧凑下载卡片封面宽度。
-	BatchCoverHeight float32 = 54 // 紧凑下载卡片封面高度，与宽度组成 16:9。
-	// 批量下载条目封面：放大到与右侧两行标题加进度行等高（约 76 DIP 略矮），
-	// 封面填满左列，进度条只占右列，不再撑高卡片。
+	// 封面填满左列，进度条只占右列，不再撑高卡片
+
 	BatchItemCoverWidth       float32 = 128  // 批量下载条目卡片封面宽度。
 	BatchItemCoverHeight      float32 = 72   // 批量下载条目卡片封面高度，与宽度组成 16:9。
 	DownloadStreamWidth       float32 = 112  // 通用视频画质选择框宽度，抖音使用独立常量。

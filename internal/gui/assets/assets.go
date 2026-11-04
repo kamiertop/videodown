@@ -3,10 +3,12 @@ package assets
 
 import (
 	_ "embed"
+
 	"github.com/egoist/mygo/ui"
 )
 
 const AppName = "videodown"
+
 const RepositoryURL = "https://github.com/kamiertop/videodown"
 
 //go:embed appicon.png

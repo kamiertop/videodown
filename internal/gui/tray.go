@@ -23,8 +23,9 @@ func (s *Shell) setupTray() {
 		{Label: "退出", Click: func(*mygo.MenuItem, *mygo.Window) { mygo.App.Quit() }},
 	})
 	tray, err := mygo.NewTray(mygo.TrayOptions{
-		ID: "videodown-main", Icon: assets.AppIconPNG,
-		ToolTip: "videodown - 视频下载工具", Menu: menu,
+		ID:   appName,
+		Icon: assets.AppIconPNG,
+		Menu: menu,
 	})
 	if err != nil {
 		s.trayError = "系统托盘不可用，请选择退出程序或取消关闭。"
@@ -32,7 +33,6 @@ func (s *Shell) setupTray() {
 		return
 	}
 	s.tray = tray
-	tray.OnRightClick(tray.PopUpMenu)
 }
 
 func (s *Shell) showWindow() {

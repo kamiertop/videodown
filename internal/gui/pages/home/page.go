@@ -6,7 +6,7 @@ import (
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
 
-// Home shows centered platform links, no copy
+// Render  shows centered platform links, no copy
 // or cards. Buttons keep the icon-only entries accessible to the keyboard.
 func Render(c *ui.Context, navigate func(string)) {
 	width, _ := c.Size()
@@ -15,17 +15,26 @@ func Render(c *ui.Context, navigate func(string)) {
 	if available := max(float32(32), (width-2*24-6*32-32)/3); available < size {
 		size = available
 	}
-	ui.Column(c.Key("home")).Label("平台入口").Fill().Center().Children(func() {
-		ui.Row(c).Gap(24).AlignItems(ui.Center).Children(func() {
-			for _, item := range []struct{ id, label, path string }{
-				{"bilibili", "进入BiliBili", "/bilibili/profile"},
-				{"douyin", "进入抖音", "/douyin/profile"},
-				{"youtube", "进入YouTube", "/youtube/download"},
-			} {
-				ui.ButtonBase(c.Key(item.id)).Label(item.label).Padding(24, 32).Radius(style.RadiusPanel).
-					Children(func() { ui.Image(c, assets.Platform(item.id)).Size(size, size) }).
-					OnClick(func() { navigate(item.path) })
-			}
+	ui.Column(c.Key("home")).
+		Label("平台入口").
+		Fill().
+		Center().
+		Children(func() {
+			ui.Row(c).Gap(24).AlignItems(ui.Center).Children(func() {
+				for _, item := range []struct{ id, label, path string }{
+					{"bilibili", "进入BiliBili", "/bilibili/profile"},
+					{"douyin", "进入抖音", "/douyin/profile"},
+					{"youtube", "进入YouTube", "/youtube/download"},
+				} {
+					ui.ButtonBase(c.Key(item.id)).
+						Label(item.label).
+						Padding(24, 32).
+						Radius(style.RadiusPanel).
+						Children(func() {
+							ui.Image(c, assets.Platform(item.id)).Size(size, size)
+						}).
+						OnClick(func() { navigate(item.path) })
+				}
+			})
 		})
-	})
 }

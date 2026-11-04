@@ -10,6 +10,7 @@ import (
 	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/ELY-Open-Source/MujicaUI/layout"
 	"github.com/egoist/mygo/ui"
+
 	"github.com/kamiertop/videodown/bilibili/model"
 	"github.com/kamiertop/videodown/internal/gui/navigation"
 	"github.com/kamiertop/videodown/internal/gui/style"
