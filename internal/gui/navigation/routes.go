@@ -96,19 +96,9 @@ func (p Page) CurrentSection(path string) string {
 // All returns a copy of the declared top-level routes.
 func All() []Page { return append([]Page(nil), catalog...) }
 
-// Platforms returns the supported content providers in display order.
-func Platforms() []Page {
-	var result []Page
-	for _, p := range catalog {
-		if p.ID == "bilibili" || p.ID == "douyin" || p.ID == "youtube" {
-			result = append(result, p)
-		}
-	}
-	return result
-}
-
 // BilibiliAuthorPath gives author details a real history entry.
 func BilibiliAuthorPath(mid uint64) string { return "/bilibili/up/" + strconv.FormatUint(mid, 10) }
+
 func BilibiliAuthorID(path string) (uint64, bool) {
 	const prefix = "/bilibili/up/"
 	if !strings.HasPrefix(path, prefix) {

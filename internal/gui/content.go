@@ -2,6 +2,7 @@ package gui
 
 import (
 	"github.com/egoist/mygo/ui"
+
 	"github.com/kamiertop/videodown/internal/gui/navigation"
 	"github.com/kamiertop/videodown/internal/gui/pages/home"
 )

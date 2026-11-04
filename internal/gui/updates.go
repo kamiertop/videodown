@@ -11,10 +11,11 @@ import (
 	"github.com/ELY-Open-Source/MujicaUI/layout"
 	"github.com/ELY-Open-Source/MujicaUI/overlay"
 	"github.com/egoist/mygo/ui"
+	"golang.org/x/mod/semver"
+
 	"github.com/kamiertop/videodown/internal/gui/components"
 	"github.com/kamiertop/videodown/internal/gui/style"
 	"github.com/kamiertop/videodown/internal/updater"
-	"golang.org/x/mod/semver"
 )
 
 func (s *Shell) startUpdateCheck() {
