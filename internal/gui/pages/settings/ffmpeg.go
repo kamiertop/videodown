@@ -43,7 +43,7 @@ func (s *State) ffmpegSettings(c *ui.Context, w Services) {
 	settingCard(c, "自定义路径", "folder", func() {
 		components.Muted(c, "自动检测不到时，可手动指定 FFmpeg 完整路径；也可将 ffmpeg 放到应用同目录或 bin/ 子目录。")
 		ui.Row(c).FillWidth().Gap(8).Children(func() {
-			input.TextInput(c.Key("ffmpeg"), &s.Config.FFmpeg, input.TextInputOptions{Label: "FFmpeg 路径", Placeholder: "例如 /usr/bin/ffmpeg 或 C:\\ffmpeg\\bin\\ffmpeg.exe", ReadOnly: true}).Element.Grow(1).MinWidth(0)
+			components.PathInput(c, "ffmpeg", &s.Config.FFmpeg, "FFmpeg 路径", "例如 /usr/bin/ffmpeg 或 C:\\ffmpeg\\bin\\ffmpeg.exe").Grow(1).MinWidth(0)
 			components.Button(c.Key("browse"), "浏览", input.ButtonOptions{Disabled: w.BrowsingSettings || !w.SettingsAvailable}).OnClick(func() {
 				if w.BrowseFFmpeg != nil {
 					w.BrowseFFmpeg()
