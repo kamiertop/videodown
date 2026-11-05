@@ -11,7 +11,7 @@ import (
 func (s *State) generalSettings(c *ui.Context, w Services) {
 	settingCard(c, "下载路径", "folder", func() {
 		ui.Row(c).FillWidth().Gap(8).Children(func() {
-			input.TextInput(c.Key("directory"), &s.Config.Directory, input.TextInputOptions{Label: "下载目录", Placeholder: "选择下载路径", ReadOnly: true}).Element.Grow(1).MinWidth(0)
+			components.PathInput(c, "directory", &s.Config.Directory, "下载目录", "选择下载路径").Grow(1).MinWidth(0)
 			components.Button(c.Key("browse"), "选择目录", input.ButtonOptions{Disabled: !w.SettingsAvailable || w.BrowsingSettings}).OnClick(func() {
 				if w.BrowseDirectory != nil {
 					w.BrowseDirectory()
