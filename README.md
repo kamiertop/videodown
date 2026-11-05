@@ -1,5 +1,7 @@
 # VideoDown
 
+[![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/apps/videodown)
+
 > ⚠️下载哔哩哔哩和YouTube视频请安装FFmpeg
 
 VideoDown 是一个使用 [Go](https://go.dev)、[MyGo](https://github.com/egoist/mygo) 和
