@@ -1,0 +1,41 @@
+name: 其他问题
+description: 提出使用、安装、文档等方面的问题
+body:
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      multiple: true
+      options:
+        - Windows
+        - Linux
+        - macOS
+        - 与操作系统无关
+        - 其他
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 涉及平台
+      multiple: true
+      options:
+        - 哔哩哔哩
+        - 抖音
+        - YouTube
+        - 通用功能或文档
+        - 其他
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: VideoDown 版本
+      description: 如果问题与安装或某个版本的行为有关，请填写版本号。
+  - type: textarea
+    id: details
+    attributes:
+      label: 问题描述
+      description: 请说明你想了解什么。可以附上已经尝试过的操作或相关文档链接。
+    validations:
+      required: true

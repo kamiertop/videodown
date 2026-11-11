@@ -1,0 +1,65 @@
+name: Bug 反馈
+description: 反馈崩溃、下载失败、设置异常等问题
+title: "[Bug] "
+body:
+  - type: input
+    id: version
+    attributes:
+      label: VideoDown 版本
+      description: 如果是自行构建，请填写 Git 提交哈希。
+      placeholder: "例如 v1.2.3"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      options:
+        - Windows
+        - Linux
+        - macOS
+        - 其他
+    validations:
+      required: true
+  - type: input
+    id: os-version
+    attributes:
+      label: 系统版本
+      placeholder: "例如 Windows 11 24H2、Fedora 44（GNOME / Wayland）"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 涉及平台
+      multiple: true
+      options:
+        - 哔哩哔哩
+        - 抖音
+        - YouTube
+        - 通用功能（启动、设置、更新等）
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: 问题现象
+      description: 请描述实际发生了什么，以及你期望发生什么。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: 复现步骤
+      description: 请写出从打开软件到出现问题的操作。如果问题偶发，请说明出现频率。
+      placeholder: |
+        1. 打开……
+        2. 点击……
+        3. 出现……
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: 报错、截图或测试链接
+      description: 下载问题可附上能公开访问的复现链接。涉及音视频合并时，可附上 FFmpeg 版本。请移除 Cookie、令牌、代理密码等敏感信息。
