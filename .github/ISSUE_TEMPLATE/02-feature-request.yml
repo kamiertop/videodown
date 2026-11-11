@@ -1,0 +1,44 @@
+name: 功能建议
+description: 提议新增功能或改进现有功能
+title: "[功能] "
+body:
+  - type: dropdown
+    id: os
+    attributes:
+      label: 涉及的操作系统
+      multiple: true
+      options:
+        - Windows
+        - Linux
+        - macOS
+        - 与操作系统无关
+        - 其他
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 涉及平台
+      multiple: true
+      options:
+        - 哔哩哔哩
+        - 抖音
+        - YouTube
+        - 通用功能
+        - 希望新增平台
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: 使用场景
+      description: 你想完成什么操作？目前遇到了什么不便？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望的功能
+      description: 请描述你希望软件如何工作。建议新增平台时，请写明平台名称和希望支持的操作。
+    validations:
+      required: true
