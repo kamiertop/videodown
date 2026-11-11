@@ -1,5 +1,15 @@
 # CHANGELOG
 
+## v1.0.0-alpha.4
+
+### Fixed
+
+- YouTube下载时无法替换Cookie：#22
+
+### Enhancement
+
+- 使用新的语法改进旧的代码
+
 ## v1.0.0-alpha.3
 
 ### Enhancement
