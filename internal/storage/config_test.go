@@ -85,7 +85,7 @@ func TestTypedConfigUpdatesAreAtomicAndIndependent(t *testing.T) {
 		t.Fatal("aborted update committed")
 	}
 	var wg sync.WaitGroup
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		wg.Add(2)
 		go func() {
 			defer wg.Done()

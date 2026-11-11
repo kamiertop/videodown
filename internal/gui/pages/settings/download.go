@@ -20,7 +20,7 @@ func (s *State) downloadSettings(c *ui.Context, w Services) {
 		}
 		slider := input.Slider(c.Key("concurrency"), &s.Config.Concurrency, input.SliderOptions{Label: "并发下载数量", Min: 1, Max: 10, Step: 1, Marks: marks})
 		if slider.Changed() {
-			saveSetting(w, preferences.Changes{Concurrency: preferences.Value(int(s.Config.Concurrency))})
+			saveSetting(w, preferences.Changes{Concurrency: new(int(s.Config.Concurrency))})
 		}
 	})
 	settingCard(c, "下载后休眠", "moon", func() {
@@ -31,20 +31,20 @@ func (s *State) downloadSettings(c *ui.Context, w Services) {
 				result := input.Slider(c.Key("sleep"), &sliderValue, input.SliderOptions{Label: "下载后休眠滑块", Min: 0, Max: 600, Step: 5})
 				if result.Changed() {
 					s.Config.Sleep = sliderValue
-					saveSetting(w, preferences.Changes{Sleep: preferences.Value(int64(s.Config.Sleep))})
+					saveSetting(w, preferences.Changes{Sleep: new(int64(s.Config.Sleep))})
 				}
 			})
 			ui.Column(c).Width(132).Shrink(0).Children(func() {
 				field := input.NumberInput(c.Key("seconds"), &s.Config.Sleep, input.NumberInputOptions{Label: "下载后休眠秒数", Min: 0, Max: 3600, Step: 1})
 				if field.Changed() {
-					saveSetting(w, preferences.Changes{Sleep: preferences.Value(int64(s.Config.Sleep))})
+					saveSetting(w, preferences.Changes{Sleep: new(int64(s.Config.Sleep))})
 				}
 			})
 			ui.Text(c, "秒").Shrink(0)
 		})
-		presets(c, &s.Config.Sleep, []int{0, 10, 30, 60, 120, 300}, w, "Sleep", func(v float64) preferences.Changes { return preferences.Changes{Sleep: preferences.Value(int64(v))} })
+		presets(c, &s.Config.Sleep, []int{0, 10, 30, 60, 120, 300}, w, "Sleep", func(v float64) preferences.Changes { return preferences.Changes{Sleep: new(int64(v))} })
 	})
-	toggleCard(c, "增量下载（跳过已下载）", "download", "一键下载全部时自动跳过已下载内容", "B 站 / 抖音跳过历史中已存在且文件仍在的视频；文件删除后会重新下载。关闭后恢复全量下载。", &s.Config.SkipDownloaded, w, func(v bool) preferences.Changes { return preferences.Changes{SkipDownloaded: preferences.Value(v)} })
+	toggleCard(c, "增量下载（跳过已下载）", "download", "一键下载全部时自动跳过已下载内容", "B 站 / 抖音跳过历史中已存在且文件仍在的视频；文件删除后会重新下载。关闭后恢复全量下载。", &s.Config.SkipDownloaded, w, func(v bool) preferences.Changes { return preferences.Changes{SkipDownloaded: new(v)} })
 }
 func presets(c *ui.Context, value *float64, values []int, w Services, key string, changes func(float64) preferences.Changes) {
 	columns := len(values)

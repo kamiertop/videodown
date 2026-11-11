@@ -28,7 +28,7 @@ var catalog = []Page{
 	{ID: "douyin", Label: "抖音", Hint: "作品解析与下载"},
 	{ID: "youtube", Label: "YouTube", Hint: "视频解析与下载"},
 	{ID: "settings", Label: "设置", Hint: "下载目录与偏好"},
-	{ID: "home", Label: "首页", Hint: "从喜欢的平台开始，整理与下载你的视频。"},
+	{ID: "home", Label: "首页", Hint: "从喜欢的平台开始，整理与下载你的视频"},
 }
 
 // ByPath resolves only declared routes, including each page's subroutes.
@@ -51,6 +51,7 @@ func ByPath(path string) (Page, bool) {
 			}
 		}
 	}
+
 	return Page{}, false
 }
 

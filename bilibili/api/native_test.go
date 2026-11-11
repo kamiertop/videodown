@@ -2,14 +2,15 @@ package api
 
 import (
 	"fmt"
-	"github.com/kamiertop/videodown/internal/storage"
-	"github.com/kamiertop/videodown/logger"
 	"io"
 	"net/http"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
+
+	"github.com/kamiertop/videodown/internal/storage"
+	"github.com/kamiertop/videodown/logger"
 )
 
 type testTransport func(*http.Request) (*http.Response, error)
@@ -113,7 +114,7 @@ func TestConcurrentWBISigningUsesOneKeyFetch(t *testing.T) {
 		return response(r, `{"code":0,"data":{"wbi_img":{"img_url":"https://i.example/abcdefghijklmnopqrstuvwxyz012345.png","sub_url":"https://i.example/012345abcdefghijklmnopqrstuvwxyz.png"}}}`), nil
 	})
 	var wg sync.WaitGroup
-	for i := 0; i < 12; i++ {
+	for range 12 {
 		wg.Go(func() {
 			if _, err := b.encWbiParams(map[string]string{"mid": "42"}); err != nil {
 				t.Error(err)

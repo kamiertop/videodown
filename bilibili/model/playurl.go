@@ -133,8 +133,8 @@ type Flac struct {
 
 // Dolby 杜比音效信息
 type Dolby struct {
-	Type  int         `json:"type"`  // 杜比类型：1=杜比全景声, 2=杜比视界
-	Audio interface{} `json:"audio"` // 杜比音频流列表（通常为数组或 null）
+	Type  int `json:"type"`  // 杜比类型：1=杜比全景声, 2=杜比视界
+	Audio any `json:"audio"` // 杜比音频流列表（通常为数组或 null）
 }
 
 // AudioItem DASH 音频流项

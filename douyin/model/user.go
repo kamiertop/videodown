@@ -56,9 +56,9 @@ type Music struct {
 	Title                          string          `json:"title"`
 	Author                         string          `json:"author"`
 	Album                          string          `json:"album"`
-	CoverHd                        Cover           `json:"cover_hd,omitempty"`
-	CoverLarge                     Cover           `json:"cover_large,omitempty"`
-	CoverMedium                    Cover           `json:"cover_medium,omitempty"`
+	CoverHd                        Cover           `json:"cover_hd"`
+	CoverLarge                     Cover           `json:"cover_large"`
+	CoverMedium                    Cover           `json:"cover_medium"`
 	CoverThumb                     Cover           `json:"cover_thumb"`
 	PlayUrl                        PlayUrl         `json:"play_url"`
 	SchemaUrl                      string          `json:"schema_url"`
@@ -104,9 +104,9 @@ type Music struct {
 	DspStatus                      int             `json:"dsp_status"`
 	MusicCollectCount              int             `json:"music_collect_count"`
 	MusicCoverAtmosphereColorValue string          `json:"music_cover_atmosphere_color_value"`
-	Song                           Song            `json:"song,omitempty"`
-	MusicImageBeats                MusicImageBeats `json:"music_image_beats,omitempty"`
-	MatchedPgcSound                MatchedPgcSound `json:"matched_pgc_sound,omitempty"`
+	Song                           Song            `json:"song"`
+	MusicImageBeats                MusicImageBeats `json:"music_image_beats"`
+	MatchedPgcSound                MatchedPgcSound `json:"matched_pgc_sound"`
 }
 
 type MusicImageBeats struct {
@@ -117,7 +117,7 @@ type Song struct {
 	Id     int64  `json:"id"`
 	IdStr  string `json:"id_str"`
 	Title  string `json:"title,omitempty"`
-	Chorus Chorus `json:"chorus,omitempty"`
+	Chorus Chorus `json:"chorus"`
 }
 
 type Chorus struct {

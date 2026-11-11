@@ -5,6 +5,7 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
+
 	"github.com/kamiertop/videodown/internal/gui/pages/settings"
 	"github.com/kamiertop/videodown/internal/gui/preferences"
 	"github.com/kamiertop/videodown/utils"
@@ -59,11 +60,11 @@ func (s *Shell) browseSetting(directory bool) {
 	win := s.win
 	title := "选择下载目录"
 	changes := func(value string) preferences.Changes {
-		return preferences.Changes{Directory: preferences.Value(value)}
+		return preferences.Changes{Directory: new(value)}
 	}
 	if !directory {
 		title = "选择 FFmpeg 可执行文件"
-		changes = func(value string) preferences.Changes { return preferences.Changes{FFmpeg: preferences.Value(value)} }
+		changes = func(value string) preferences.Changes { return preferences.Changes{FFmpeg: new(value)} }
 	}
 	var chosen, path, version string
 	s.runJob(func() error {

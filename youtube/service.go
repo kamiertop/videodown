@@ -79,7 +79,10 @@ func (s *Service) DownloadConcurrency() int {
 }
 func (s *Service) Cookie() string { return s.store.Config().YouTube.Cookie }
 func (s *Service) SetCookie(value string) error {
-	value = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(value), "Cookie:"))
+	value = strings.TrimSpace(value)
+	if strings.HasPrefix(strings.ToLower(value), "cookie:") {
+		value = strings.TrimSpace(value[len("cookie:"):])
+	}
 	if strings.ContainsAny(value, "\r\n") {
 		return errors.New("请粘贴单行 Cookie 请求头")
 	}
@@ -157,7 +160,7 @@ func describe(v *extractor.Video) Video {
 func formatLabel(f extractor.Format) string {
 	media, params, _ := mime.ParseMediaType(f.MimeType)
 	codec := params["codecs"]
-	for _, entry := range strings.Split(codec, ",") {
+	for entry := range strings.SplitSeq(codec, ",") {
 		entry = strings.TrimSpace(entry)
 		switch {
 		case strings.HasPrefix(entry, "avc1"), strings.HasPrefix(entry, "avc3"):
@@ -429,7 +432,8 @@ func (s *Service) fetchVideo(ctx context.Context, id string) (*extractor.Client,
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
 	}
-	key := fmt.Sprintf("%s:%x", id, sha256.Sum256([]byte(s.Cookie()+"\x00"+s.proxyKey())))
+	client := s.client()
+	key := fmt.Sprintf("%s:%x", id, sha256.Sum256([]byte(client.Cookie+"\x00"+s.proxyKey())))
 	if hit, ok := s.cache[key]; ok && time.Since(hit.at) < 5*time.Minute {
 		return hit.client.Clone(), hit.video, nil
 	}
@@ -451,7 +455,6 @@ func (s *Service) fetchVideo(ctx context.Context, id string) (*extractor.Client,
 		return client, video, nil
 	}
 
-	client := s.client()
 	video, err := client.GetVideoContext(ctx, id)
 	if err == nil && usableFormats(video) {
 		return remember(client, video)

@@ -234,7 +234,7 @@ func (c *Client) videoDataByInnertube(ctx context.Context, id string) ([]byte, e
 func randString(alphabet string, sz int) string {
 	var buf strings.Builder
 	buf.Grow(sz)
-	for i := 0; i < sz; i++ {
+	for range sz {
 		buf.WriteByte(alphabet[rand.Intn(len(alphabet))])
 	}
 	return buf.String()
@@ -408,7 +408,7 @@ func (c *Client) httpGetBodyBytes(ctx context.Context, url string) ([]byte, erro
 }
 
 // httpPost does a HTTP POST request with a body, checks the response to be a 200 OK and returns it
-func (c *Client) httpPost(ctx context.Context, url string, body interface{}) (*http.Response, error) {
+func (c *Client) httpPost(ctx context.Context, url string, body any) (*http.Response, error) {
 	data, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
@@ -530,7 +530,7 @@ func (c *Client) parseSessionConfig(page string) {
 }
 
 // httpPostBodyBytes reads the whole HTTP body and returns it
-func (c *Client) httpPostBodyBytes(ctx context.Context, url string, body interface{}) ([]byte, error) {
+func (c *Client) httpPostBodyBytes(ctx context.Context, url string, body any) ([]byte, error) {
 	resp, err := c.httpPost(ctx, url, body)
 	if err != nil {
 		return nil, err

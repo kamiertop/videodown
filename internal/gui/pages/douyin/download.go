@@ -49,7 +49,7 @@ func downloadQualityLabel(track model.BitRateItem) string {
 	if resolution > 0 {
 		label = fmt.Sprintf("%dP", resolution)
 	} else {
-		for _, part := range strings.Split(track.GearName, "_") {
+		for part := range strings.SplitSeq(track.GearName, "_") {
 			switch part {
 			case "540", "720", "1080", "1440", "2160":
 				label = part + "P"
