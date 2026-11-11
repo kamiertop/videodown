@@ -92,21 +92,30 @@ func (s *State) settingsPage(c *ui.Context, id string, w Services) {
 		s.aboutSettings(c)
 	}
 }
+
 func settingCard(c *ui.Context, title, icon string, body func()) {
 	k := core.Tokens(c)
-	ui.Column(c).FillWidth().Padding(24).Gap(16).Radius(style.RadiusPanel).Background(k.Surface).Border(style.BorderWidth, k.Border.Alpha(.6)).Children(func() {
-		if title != "" {
-			ui.Row(c).FillWidth().Gap(10).AlignItems(ui.Center).Children(func() {
-				svg, ok := icons.Get(icon)
-				if !ok {
-					svg = icons.Must("settings")
-				}
-				ui.Icon(c, svg).Size(20, 20).TextColor(k.AccentText)
-				ui.Text(c, title).FontSize(style.Font(c, style.FontHeading)).FontWeight(style.WeightSemibold)
-			})
-		}
-		body()
-	})
+	ui.Column(c).
+		FillWidth().
+		Padding(24).
+		Gap(16).
+		Radius(style.RadiusPanel).
+		Background(k.Surface).
+		Border(style.BorderWidth, k.Border.Alpha(.6)).
+		Children(func() {
+			if title != "" {
+				ui.Row(c).FillWidth().Gap(10).AlignItems(ui.Center).
+					Children(func() {
+						svg, ok := icons.Get(icon)
+						if !ok {
+							svg = icons.Must("settings")
+						}
+						ui.Icon(c, svg).Size(20, 20).TextColor(k.AccentText)
+						ui.Text(c, title).FontSize(style.Font(c, style.FontHeading)).FontWeight(style.WeightSemibold)
+					})
+			}
+			body()
+		})
 }
 func saveSetting(w Services, changes preferences.Changes) {
 	if w.SaveSetting != nil {

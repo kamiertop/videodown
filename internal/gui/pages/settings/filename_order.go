@@ -1,16 +1,17 @@
 package settings
 
 import (
-	"github.com/kamiertop/videodown/internal/gui/style"
 	"math"
 	"slices"
 	"strings"
+
+	"github.com/kamiertop/videodown/internal/gui/components"
+	"github.com/kamiertop/videodown/internal/gui/style"
 
 	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/ELY-Open-Source/MujicaUI/theme"
 	"github.com/egoist/mygo/ui"
-	"github.com/kamiertop/videodown/internal/gui/components"
 )
 
 // Occurrences keep repeated fields independently draggable in edited templates.
@@ -98,7 +99,7 @@ func filenameInsertion(pointer ui.Point, bounds []ui.Rect) (int, ui.Rect) {
 	index := 0
 	marker := ui.Rect{X: pointer.X, Y: pointer.Y, W: 2, H: 36}
 	for i, r := range bounds {
-		for side := 0; side < 2; side++ {
+		for side := range 2 {
 			x := r.X - 4
 			if side == 1 {
 				x = r.X + r.W + 4

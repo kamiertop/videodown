@@ -25,7 +25,7 @@ func TestDouyinFolderRoutesDoNotFadeWholeForm(t *testing.T) {
 			for _, path := range []string{root + "/one", root + "/two", root} {
 				s.router.Push(path)
 				test.Frame()
-				for frame := 0; frame < 20; frame++ {
+				for frame := range 20 {
 					test.Advance(16 * time.Millisecond)
 					got, ok := test.Find("登录提示")
 					if !ok || got != bounds {

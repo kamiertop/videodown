@@ -16,8 +16,17 @@ import (
 )
 
 var filenameTokens = regexp.MustCompile(`\{(?:title|source|author|folder|collection|publish_date|date|time|id|author_id)\}`)
+
 var filenameFields = []struct{ token, label string }{
-	{"{title}", "视频标题"}, {"{author}", "作者名称"}, {"{folder}", "收藏夹名称"}, {"{collection}", "合集名称"}, {"{id}", "视频 ID"}, {"{author_id}", "作者 ID"}, {"{publish_date}", "发布时间"}, {"{date}", "下载日期"}, {"{time}", "下载时间"},
+	{"{title}", "视频标题"},
+	{"{author}", "作者名称"},
+	{"{folder}", "收藏夹名称"},
+	{"{collection}", "合集名称"},
+	{"{id}", "视频 ID"},
+	{"{author_id}", "作者 ID"},
+	{"{publish_date}", "发布时间"},
+	{"{date}", "下载日期"},
+	{"{time}", "下载时间"},
 }
 
 func (s *State) filenameSettings(c *ui.Context, w Services) {
@@ -32,7 +41,13 @@ func (s *State) filenameSettings(c *ui.Context, w Services) {
 					variant = input.Secondary
 					marker = "✓ "
 				}
-				components.Button(c.Key(field.token), marker+field.label+"  "+field.token, input.ButtonOptions{Variant: variant, Disabled: w.SettingsBusy}).Radius(style.RadiusMenu).Label(field.token).MinWidth(0).Clip().Justify(ui.Start).OnClick(func() { s.toggleFilenameField(field.token) })
+				components.Button(c.Key(field.token), marker+field.label+"  "+field.token, input.ButtonOptions{Variant: variant, Disabled: w.SettingsBusy}).
+					Radius(style.RadiusMenu).
+					Label(field.token).
+					MinWidth(0).
+					Clip().
+					Justify(ui.Start).
+					OnClick(func() { s.toggleFilenameField(field.token) })
 			}
 		})
 		ui.Text(c, "当前顺序（拖动调整）").FontWeight(style.WeightSemibold)
@@ -58,27 +73,40 @@ func (s *State) filenameSettings(c *ui.Context, w Services) {
 			field.Element.Grow(1).MinWidth(0)
 			field.Input.OnSubmit(func() { s.saveFilename(w) })
 		})
-		ui.Column(c).FillWidth().Padding(16).Gap(16).Radius(style.RadiusPanel).Border(style.BorderWidth, core.Tokens(c).Border).Children(func() {
-			insetToggle(c, "目录分组规则", "选择下载文件的目录组织方式", &s.Config.Grouping, w.SettingsBusy, func() {})
-			ui.Row(c).FillWidth().Wrap().Gap(8).Children(func() {
-				for _, rule := range []struct{ id, label string }{{"none", "不分组"}, {"author", "按作者"}, {"author_source", "作者+来源"}, {"source", "来源"}, {"date", "下载日期"}} {
-					variant := input.Outline
-					if s.Config.GroupingRule == rule.id {
-						variant = input.Secondary
+		ui.Column(c).
+			FillWidth().
+			Padding(16).
+			Gap(16).
+			Radius(style.RadiusPanel).
+			Border(style.BorderWidth, core.Tokens(c).Border).
+			Children(func() {
+				insetToggle(c, "目录分组规则", "选择下载文件的目录组织方式", &s.Config.Grouping, w.SettingsBusy, func() {})
+				ui.Row(c).FillWidth().Wrap().Gap(8).Children(func() {
+					for _, rule := range []struct{ id, label string }{{"none", "不分组"}, {"author", "按作者"}, {"author_source", "作者+来源"}, {"source", "来源"}, {"date", "下载日期"}} {
+						variant := input.Outline
+						if s.Config.GroupingRule == rule.id {
+							variant = input.Secondary
+						}
+						components.Button(c.Key(rule.id), rule.label, input.ButtonOptions{Variant: variant, Disabled: !s.Config.Grouping || w.SettingsBusy}).
+							Radius(style.RadiusMenu).
+							OnClick(func() { s.Config.GroupingRule = rule.id })
 					}
-					components.Button(c.Key(rule.id), rule.label, input.ButtonOptions{Variant: variant, Disabled: !s.Config.Grouping || w.SettingsBusy}).Radius(style.RadiusMenu).OnClick(func() { s.Config.GroupingRule = rule.id })
-				}
+				})
+				previewBox(c, "示例路径", s.groupedPreview())
 			})
-			previewBox(c, "示例路径", s.groupedPreview())
-		})
-		components.Button(c.Key("save-template"), "保存模板", input.ButtonOptions{Loading: w.SettingsBusy}).Radius(style.RadiusMenu).FillWidth().OnClick(func() { s.saveFilename(w) })
+		components.Button(c.Key("save-template"), "保存模板", input.ButtonOptions{Loading: w.SettingsBusy}).
+			Radius(style.RadiusMenu).
+			FillWidth().
+			OnClick(func() { s.saveFilename(w) })
 	})
 }
+
 func (s *State) saveFilename(w Services) {
 	if w.SaveSetting != nil {
-		w.SaveSetting(preferences.Changes{Filename: preferences.Value(s.Config.Filename), Grouping: preferences.Value(s.Config.Grouping), GroupingRule: preferences.Value(s.Config.GroupingRule)})
+		w.SaveSetting(preferences.Changes{Filename: new(s.Config.Filename), Grouping: new(s.Config.Grouping), GroupingRule: new(s.Config.GroupingRule)})
 	}
 }
+
 func (s *State) toggleFilenameField(token string) {
 	parts := filenameTokens.FindAllString(s.Config.Filename, -1)
 	if index := slices.Index(parts, token); index >= 0 {
@@ -92,9 +120,11 @@ func (s *State) toggleFilenameField(token string) {
 func previewBox(c *ui.Context, label, value string) {
 	ui.Column(c).FillWidth().Padding(16).Gap(8).Radius(style.RadiusPanel).Background(core.Tokens(c).Background).Border(style.BorderWidth, core.Tokens(c).Border).Children(func() { components.Muted(c, label); ui.Text(c, value).FillWidth().TextColor(core.Tokens(c).AccentText) })
 }
+
 func filenamePreview(template string) string {
 	return utils.ApplyFilenameTemplate(template, map[string]string{"title": "示例视频", "author": "作者", "id": "BV1xx", "folder": "收藏夹", "collection": "合集", "author_id": "123456", "publish_date": "2026-10-09", "date": "2026-10-25", "time": "14-35-22"}) + ".mp4"
 }
+
 func (s *State) groupedPreview() string {
 	group := ""
 	if s.Config.Grouping {
@@ -109,5 +139,6 @@ func (s *State) groupedPreview() string {
 			group = "下载日期"
 		}
 	}
+
 	return filepath.Join(s.Config.Directory, group, filenamePreview(s.Config.Filename))
 }

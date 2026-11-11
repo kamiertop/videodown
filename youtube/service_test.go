@@ -31,6 +31,31 @@ func TestVideoID(t *testing.T) {
 		}
 	}
 }
+func TestSetCookieNormalization(t *testing.T) {
+	store, err := storage.OpenMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	service := New(store)
+	for _, input := range []string{
+		"Cookie: SID=x",
+		"cookie: SID=x",
+		"  Cookie: SID=x  ",
+		"SID=x",
+	} {
+		if err := service.SetCookie(input); err != nil {
+			t.Fatalf("%q: %v", input, err)
+		}
+		if service.Cookie() != "SID=x" {
+			t.Fatalf("%q normalized to %q", input, service.Cookie())
+		}
+	}
+	if err := service.SetCookie("cookie: SID=x\nBad: header"); err == nil {
+		t.Fatal("newline accepted")
+	}
+}
+
 func TestDownloadCookieHistoryAndFailureCleanup(t *testing.T) {
 	store, err := storage.Open(t.TempDir())
 	if err != nil {
@@ -211,10 +236,12 @@ func TestParseCacheExpiresAndCookieChangesInvalidate(t *testing.T) {
 	defer store.Close()
 	service := New(store)
 	requests := 0
+	var requestCookie string
 	service.transport = transportFunc(func(r *http.Request) (*http.Response, error) {
 		data := "{}"
 		if strings.Contains(r.URL.Path, "/youtubei/") {
 			requests++
+			requestCookie = r.Header.Get("Cookie")
 			data = `{"playabilityStatus":{"status":"OK"},"videoDetails":{"title":"fixture"},"streamingData":{"formats":[{"itag":18,"url":"https://fixture.googlevideo.com/video","mimeType":"video/mp4","height":360}]}}`
 		}
 		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(data)), Header: make(http.Header), Request: r}, nil
@@ -245,6 +272,9 @@ func TestParseCacheExpiresAndCookieChangesInvalidate(t *testing.T) {
 	}
 	if requests != 3 {
 		t.Fatal("cookie change reused old cache")
+	}
+	if !strings.Contains(requestCookie, "SID=new-fixture") {
+		t.Fatal("first parse after saving did not send the new cookie")
 	}
 	previousClient := service.requestClient()
 	if err := service.SetProxy(" http://127.0.0.1:7890/ ", true); err != nil {

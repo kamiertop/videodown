@@ -16,7 +16,7 @@ func TestSavedSettingsSurviveRestart(t *testing.T) {
 	if err := store.InitDefaults("/downloads"); err != nil {
 		t.Fatal(err)
 	}
-	values := Changes{Theme: Value("cupcake"), Concurrency: Value(4), Sleep: Value(int64(120)), ParseConcurrency: Value(2), ParseSleep: Value(10), SkipDownloaded: Value(false), AutoUpdate: Value(false), Filename: Value(" {author}_{title} "), GroupingRule: Value("date"), Grouping: Value(true)}
+	values := Changes{Theme: new("cupcake"), Concurrency: new(4), Sleep: new(int64(120)), ParseConcurrency: new(2), ParseSleep: new(10), SkipDownloaded: new(false), AutoUpdate: new(false), Filename: new(" {author}_{title} "), GroupingRule: new("date"), Grouping: new(true)}
 	if err := Save(store, values); err != nil {
 		t.Fatal(err)
 	}
@@ -46,10 +46,10 @@ func TestInvalidSettingsAreAtomic(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, values := range []Changes{
-		{Theme: Value("dark"), Concurrency: Value(0)},
-		{Filename: Value(""), GroupingRule: Value("author")},
-		{Filename: Value("literal without variables")},
-		{ParseConcurrency: Value(6)}, {Sleep: Value(int64(3601))},
+		{Theme: new("dark"), Concurrency: new(0)},
+		{Filename: new(""), GroupingRule: new("author")},
+		{Filename: new("literal without variables")},
+		{ParseConcurrency: new(6)}, {Sleep: new(int64(3601))},
 	} {
 		if err := Save(store, values); err == nil {
 			t.Fatalf("invalid values accepted: %v", values)
@@ -74,8 +74,8 @@ func TestPartialChangesPreserveCredentialsAndMergeLatestValue(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	first := Changes{Sleep: Value(int64(10))}
-	merged := first.Merge(Changes{Sleep: Value(int64(30)), AutoUpdate: Value(false)})
+	first := Changes{Sleep: new(int64(10))}
+	merged := first.Merge(Changes{Sleep: new(int64(30)), AutoUpdate: new(false)})
 	if err := Save(store, merged); err != nil {
 		t.Fatal(err)
 	}
@@ -94,8 +94,8 @@ func TestRestoreDoesNotDiscardPendingOrUnsavedEdits(t *testing.T) {
 	current.Filename = ""
 	current.Sleep = 30
 	current.Theme = "dark"
-	failed := Changes{Sleep: Value(int64(10)), Theme: Value("dark")}
-	restore := failed.Restore(before, Changes{Sleep: Value(int64(30))})
+	failed := Changes{Sleep: new(int64(10)), Theme: new("dark")}
+	restore := failed.Restore(before, Changes{Sleep: new(int64(30))})
 	if err := current.Apply(restore); err != nil {
 		t.Fatal(err)
 	}

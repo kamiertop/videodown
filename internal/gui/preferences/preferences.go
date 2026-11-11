@@ -12,13 +12,17 @@ type Store interface {
 	Config() storage.Config
 	UpdateConfig(func(*storage.Config) error) error
 }
+
 type Data struct {
 	Directory, Theme, Filename, GroupingRule, FFmpeg string
 	AutoUpdate, SkipDownloaded, Grouping             bool
 	Concurrency, Sleep, ParseConcurrency, ParseSleep float64
 }
 
-func Defaults() Data { return FromConfig(storage.DefaultConfig("")) }
+func Defaults() Data {
+	return FromConfig(storage.DefaultConfig(""))
+}
+
 func FromConfig(c storage.Config) Data {
 	return Data{Directory: c.Download.Directory, Theme: c.App.Theme, Filename: c.Download.FilenameTemplate, GroupingRule: c.Download.GroupingRule, FFmpeg: c.Download.FFmpegPath,
 		AutoUpdate: c.App.AutoUpdate, SkipDownloaded: c.Download.SkipDownloaded, Grouping: c.Download.Grouping, Concurrency: float64(c.Download.Concurrency), Sleep: float64(c.Download.SleepSeconds), ParseConcurrency: float64(c.Bilibili.ParseConcurrency), ParseSleep: float64(c.Bilibili.ParseSleepSeconds)}
@@ -40,44 +44,44 @@ type Changes struct {
 	ParseSleep       *int
 }
 
-func Value[T any](v T) *T { return &v }
 func (p Changes) Merge(next Changes) Changes {
 	if next.Directory != nil {
-		p.Directory = Value(*next.Directory)
+		p.Directory = new(*next.Directory)
 	}
 	if next.Theme != nil {
-		p.Theme = Value(*next.Theme)
+		p.Theme = new(*next.Theme)
 	}
 	if next.Filename != nil {
-		p.Filename = Value(*next.Filename)
+		p.Filename = new(*next.Filename)
 	}
 	if next.GroupingRule != nil {
-		p.GroupingRule = Value(*next.GroupingRule)
+		p.GroupingRule = new(*next.GroupingRule)
 	}
 	if next.FFmpeg != nil {
-		p.FFmpeg = Value(*next.FFmpeg)
+		p.FFmpeg = new(*next.FFmpeg)
 	}
 	if next.AutoUpdate != nil {
-		p.AutoUpdate = Value(*next.AutoUpdate)
+		p.AutoUpdate = new(*next.AutoUpdate)
 	}
 	if next.SkipDownloaded != nil {
-		p.SkipDownloaded = Value(*next.SkipDownloaded)
+		p.SkipDownloaded = new(*next.SkipDownloaded)
 	}
 	if next.Grouping != nil {
-		p.Grouping = Value(*next.Grouping)
+		p.Grouping = new(*next.Grouping)
 	}
 	if next.Concurrency != nil {
-		p.Concurrency = Value(*next.Concurrency)
+		p.Concurrency = new(*next.Concurrency)
 	}
 	if next.Sleep != nil {
-		p.Sleep = Value(*next.Sleep)
+		p.Sleep = new(*next.Sleep)
 	}
 	if next.ParseConcurrency != nil {
-		p.ParseConcurrency = Value(*next.ParseConcurrency)
+		p.ParseConcurrency = new(*next.ParseConcurrency)
 	}
 	if next.ParseSleep != nil {
-		p.ParseSleep = Value(*next.ParseSleep)
+		p.ParseSleep = new(*next.ParseSleep)
 	}
+
 	return p
 }
 func (p Changes) Empty() bool {
@@ -136,6 +140,7 @@ func Save(store Store, p Changes) error {
 	}
 	return store.UpdateConfig(func(c *storage.Config) error { p.apply(c); return nil })
 }
+
 func (d *Data) Apply(p Changes) error {
 	check := storage.DefaultConfig("")
 	p.apply(&check)
@@ -164,31 +169,32 @@ func (d *Data) Apply(p Changes) error {
 func (p Changes) Restore(before Data, pending Changes) Changes {
 	r := Changes{}
 	if p.Directory != nil && pending.Directory == nil {
-		r.Directory = Value(before.Directory)
+		r.Directory = new(before.Directory)
 	}
 	if p.Theme != nil && pending.Theme == nil {
-		r.Theme = Value(before.Theme)
+		r.Theme = new(before.Theme)
 	}
 	if p.FFmpeg != nil && pending.FFmpeg == nil {
-		r.FFmpeg = Value(before.FFmpeg)
+		r.FFmpeg = new(before.FFmpeg)
 	}
 	if p.AutoUpdate != nil && pending.AutoUpdate == nil {
-		r.AutoUpdate = Value(before.AutoUpdate)
+		r.AutoUpdate = new(before.AutoUpdate)
 	}
 	if p.SkipDownloaded != nil && pending.SkipDownloaded == nil {
-		r.SkipDownloaded = Value(before.SkipDownloaded)
+		r.SkipDownloaded = new(before.SkipDownloaded)
 	}
 	if p.Concurrency != nil && pending.Concurrency == nil {
-		r.Concurrency = Value(int(before.Concurrency))
+		r.Concurrency = new(int(before.Concurrency))
 	}
 	if p.Sleep != nil && pending.Sleep == nil {
-		r.Sleep = Value(int64(before.Sleep))
+		r.Sleep = new(int64(before.Sleep))
 	}
 	if p.ParseConcurrency != nil && pending.ParseConcurrency == nil {
-		r.ParseConcurrency = Value(int(before.ParseConcurrency))
+		r.ParseConcurrency = new(int(before.ParseConcurrency))
 	}
 	if p.ParseSleep != nil && pending.ParseSleep == nil {
-		r.ParseSleep = Value(int(before.ParseSleep))
+		r.ParseSleep = new(int(before.ParseSleep))
 	}
+
 	return r
 }

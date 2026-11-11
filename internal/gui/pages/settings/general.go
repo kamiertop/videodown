@@ -11,8 +11,13 @@ import (
 func (s *State) generalSettings(c *ui.Context, w Services) {
 	settingCard(c, "下载路径", "folder", func() {
 		ui.Row(c).FillWidth().Gap(8).Children(func() {
-			components.PathInput(c, "directory", &s.Config.Directory, "下载目录", "选择下载路径").Grow(1).MinWidth(0)
-			components.Button(c.Key("browse"), "选择目录", input.ButtonOptions{Disabled: !w.SettingsAvailable || w.BrowsingSettings}).OnClick(func() {
+			components.PathInput(c, "directory", &s.Config.Directory, "下载目录", "选择下载路径").
+				Grow(1).
+				MinWidth(0)
+
+			components.Button(c.Key("browse"), "选择目录",
+				input.ButtonOptions{Disabled: !w.SettingsAvailable || w.BrowsingSettings},
+			).OnClick(func() {
 				if w.BrowseDirectory != nil {
 					w.BrowseDirectory()
 				}
@@ -37,12 +42,12 @@ func (s *State) generalSettings(c *ui.Context, w Services) {
 			choice.Element.Radius(style.RadiusMenu)
 			if choice.Changed() {
 				s.ApplyTheme()
-				saveSetting(w, preferences.Changes{Theme: preferences.Value(s.Config.Theme)})
+				saveSetting(w, preferences.Changes{Theme: new(s.Config.Theme)})
 			}
 		})
 		components.Muted(c, "当前主题："+s.Config.Theme)
 	})
-	toggleCard(c, "自动更新", "refresh-cw", "启动时检查新版本", "在后台检查 GitHub 是否有可用更新", &s.Config.AutoUpdate, w, func(v bool) preferences.Changes { return preferences.Changes{AutoUpdate: preferences.Value(v)} })
+	toggleCard(c, "自动更新", "refresh-cw", "启动时检查新版本", "在后台检查 GitHub 是否有可用更新", &s.Config.AutoUpdate, w, func(v bool) preferences.Changes { return preferences.Changes{AutoUpdate: new(v)} })
 	settingCard(c, "窗口关闭行为", "settings", func() {
 		value := w.CloseToTray
 		insetToggle(c, "关闭时缩小到任务栏托盘", "关闭时隐藏窗口到系统托盘，下载不受影响", &value, w.SavingClose || !w.TrayAvailable || w.SaveClosePreference == nil, func() { w.SaveClosePreference(value) })

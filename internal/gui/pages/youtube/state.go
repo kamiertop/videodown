@@ -6,6 +6,7 @@ import (
 
 	"github.com/egoist/mygo/ui"
 	"github.com/imroc/req/v3"
+
 	"github.com/kamiertop/videodown/internal/gui/guiruntime"
 	"github.com/kamiertop/videodown/internal/netclient"
 	yt "github.com/kamiertop/videodown/youtube"
@@ -63,6 +64,7 @@ type State struct {
 }
 
 func NewState() *State { return &State{} }
+
 func (s *State) Configure(api *yt.Service, runtime guiruntime.Runtime) {
 	s.ctx, s.stop = context.WithCancel(context.Background())
 	s.api = api
@@ -76,6 +78,7 @@ func (s *State) Configure(api *yt.Service, runtime guiruntime.Runtime) {
 		s.cookieSaved = s.cookie != ""
 	}
 }
+
 func (s *State) Start() {
 	if s.started || s.stopped || s.api == nil || s.runtime.Background == nil {
 		return
@@ -90,6 +93,7 @@ func (s *State) Start() {
 	})
 }
 func (s *State) PendingDownloadCount() int { return len(s.active) + s.waitingCount() }
+
 func (s *State) waitingCount() int {
 	count := 0
 	for _, item := range s.queue {
@@ -99,6 +103,7 @@ func (s *State) waitingCount() int {
 	}
 	return count
 }
+
 func (s *State) Stop() {
 	s.stopped = true
 	s.proxySaveSeq++
@@ -122,6 +127,7 @@ func (s *State) Stop() {
 		cancel()
 	}
 }
+
 func (s *State) resolve() {
 	if s.busy || s.proxyBusy || s.api == nil || s.runtime.Background == nil {
 		return
@@ -160,8 +166,9 @@ func (s *State) resolve() {
 		s.loadCover()
 	})
 }
+
 func (s *State) saveCookie() {
-	if s.busy || s.proxyBusy || s.readyCount() > 0 || s.PendingDownloadCount() > 0 || s.api == nil || s.runtime.Background == nil {
+	if s.busy || s.proxyBusy || s.api == nil || s.runtime.Background == nil {
 		return
 	}
 	s.busy = true
@@ -192,6 +199,7 @@ func (s *State) saveCookie() {
 		s.authMessage = "Cookie 已保存"
 	})
 }
+
 func (s *State) stagePreview() {
 	if s.busy || s.video.ID == "" {
 		return

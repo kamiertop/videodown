@@ -270,7 +270,7 @@ func playlistLockup(v map[string]any) (PlaylistEntry, bool) {
 			text, _ = playlistPath(badge, "text", "content").(string)
 		}
 		var seconds int
-		for _, part := range strings.Split(text, ":") {
+		for part := range strings.SplitSeq(text, ":") {
 			n, err := strconv.Atoi(part)
 			if err != nil {
 				return

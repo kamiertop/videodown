@@ -151,9 +151,9 @@ func TestQueuedSettingsKeepLatestValue(t *testing.T) {
 	s := NewShellWithOptions(Options{Settings: store, Preferences: store})
 	var jobs []func()
 	s.runJob = func(work func() error, done func(error)) { jobs = append(jobs, func() { done(work()) }) }
-	s.saveSettings(preferences.Changes{Sleep: preferences.Value(int64(10))})
-	s.saveSettings(preferences.Changes{Sleep: preferences.Value(int64(30))})
-	s.saveSettings(preferences.Changes{Sleep: preferences.Value(int64(120))})
+	s.saveSettings(preferences.Changes{Sleep: new(int64(10))})
+	s.saveSettings(preferences.Changes{Sleep: new(int64(30))})
+	s.saveSettings(preferences.Changes{Sleep: new(int64(120))})
 	if len(jobs) != 1 {
 		t.Fatal("concurrent config writers were started")
 	}
@@ -193,7 +193,7 @@ func TestSettingsCategoryRailStaysFixed(t *testing.T) {
 	for _, path := range []string{"/settings/bilibili", "/settings", "/settings/download"} {
 		s.router.Push(path)
 		test.Frame()
-		for frame := 0; frame < 20; frame++ {
+		for range 20 {
 			test.Advance(16 * time.Millisecond)
 			got, ok := test.Find("设置分类")
 			if !ok || got != rail {
@@ -226,7 +226,7 @@ func TestSettingsSaveDoesNotMoveFormAndToastExpires(t *testing.T) {
 			t.Fatalf("saving moved directory button: want %+v, got %+v", before, got)
 		}
 	}
-	for save := 0; save < 2; save++ {
+	for save := range 2 {
 		if err := test.Click("启动时检查新版本开关"); err != nil {
 			t.Fatal(err)
 		}
@@ -287,7 +287,7 @@ func TestSettingsSectionsFadeWithoutSliding(t *testing.T) {
 		s.router.Push(path)
 		test.Frame()
 		// Each form is centered within the right pane; its width may differ by section.
-		for frame := 0; frame < 12; frame++ {
+		for range 12 {
 			test.Advance(16 * time.Millisecond)
 			form, ok := test.Find("设置表单")
 			if !ok || form.X+form.W/2 != before.X+before.W/2 {
