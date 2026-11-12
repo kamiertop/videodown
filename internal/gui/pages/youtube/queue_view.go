@@ -20,14 +20,68 @@ func panel(c *ui.Context, label string, children func()) {
 	ui.Column(c).Label(label).FillWidth().MinWidth(0).Radius(style.RadiusPanel).Border(style.BorderWidth, k.Border).Background(k.Surface).Children(children)
 }
 
-func (s *State) queueView(c *ui.Context) {
-	if len(s.queue) == 0 {
-		return
+type downloadSection uint8
+
+const (
+	previewSection downloadSection = iota
+	toolbarSection
+)
+
+func (s *State) downloadResults(c *ui.Context) {
+	rows := make([]any, 0, 2+len(s.queueGroups)+len(s.queue))
+	if s.video.ID != "" {
+		rows = append(rows, previewSection)
+		if s.revealPreview {
+			s.downloadList.ScrollTo(0, ui.Start)
+			s.revealPreview = false
+		}
 	}
+	itemsByGroup := make(map[*queueGroup][]*queueItem, len(s.queueGroups))
+	if len(s.queue) != 0 {
+		rows = append(rows, toolbarSection)
+		for _, item := range s.queue {
+			itemsByGroup[item.Group] = append(itemsByGroup[item.Group], item)
+		}
+		for _, group := range s.queueGroups {
+			items := itemsByGroup[group]
+			if len(items) == 0 {
+				continue
+			}
+			rows = append(rows, group)
+			if group.Expanded {
+				for _, item := range items {
+					rows = append(rows, item)
+				}
+			}
+		}
+	}
+	s.downloadList.Key = func(i int) any { return rows[i] }
+	ui.List(c, &s.downloadList, len(rows)).Label("YouTube 下载任务区域").
+		Grow(1).MinWidth(0).MinHeight(0).Gap(style.SpaceSmall).
+		Padding(0, style.ScrollbarGutter, 0, 0).Rows(func(row ui.ListRow) {
+		switch item := rows[row.Index].(type) {
+		case downloadSection:
+			if item == previewSection {
+				s.downloadCard(row.Context)
+			} else {
+				s.queueToolbar(row.Context)
+			}
+		case *queueGroup:
+			s.queueGroupHeader(row.Context, item, itemsByGroup[item])
+		case *queueItem:
+			panel(row.Context, fmt.Sprintf("YouTube 队列卡片：%d", item.ID), func() {
+				s.queueItemRow(row.Context, item)
+			})
+		}
+	})
+}
+
+func (s *State) queueToolbar(c *ui.Context) {
+	ready := s.readyCount()
 	panel(c.Key("queue-toolbar"), "YouTube 队列工具栏", func() {
 		ui.Row(c).FillWidth().MinWidth(0).Padding(style.SpaceSmall).Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, fmt.Sprintf("待下载 %d · 下载中 %d · 等待 %d", s.readyCount(), len(s.active), s.waitingCount())).Grow(1).MinWidth(0).FontWeight(style.WeightSemibold)
-			components.Button(c.Key("start-all"), "下载全部", input.ButtonOptions{Variant: input.Primary, Disabled: s.readyCount() == 0}).OnClick(s.startAll)
+			ui.Text(c, fmt.Sprintf("待下载 %d · 下载中 %d · 等待 %d", ready, len(s.active), s.waitingCount())).Grow(1).MinWidth(0).FontWeight(style.WeightSemibold)
+			components.Button(c.Key("start-all"), "下载全部", input.ButtonOptions{Variant: input.Primary, Disabled: ready == 0}).OnClick(s.startAll)
 			label := "暂停队列"
 			if s.queuePaused {
 				label = "继续队列"
@@ -41,45 +95,37 @@ func (s *State) queueView(c *ui.Context) {
 			})
 		})
 	})
-	for _, group := range s.queueGroups {
-		items := s.groupItems(group)
-		if len(items) == 0 {
-			continue
-		}
-		panel(c.Key(group.Key), "YouTube 队列分组："+group.Key, func() {
-			ui.Row(c).Label("队列分组标题：" + group.Key).FillWidth().MinWidth(0).Padding(style.SpaceMedium).Gap(style.SpaceMedium).AlignItems(ui.Center).Children(func() {
-				ui.Column(c).Grow(1).MinWidth(0).Gap(style.SpaceSmall).Children(func() {
-					ui.Text(c, group.Title).FillWidth().MaxLines(2).FontWeight(style.WeightSemibold).Tooltip(group.Title)
-					summary := groupSummary(items)
-					ui.Text(c, summary).FillWidth().MaxLines(1).FontSize(style.Font(c, style.FontMeta)).TextColor(core.Tokens(c).TextMuted).Tooltip(summary)
-				})
-				label, icon := "展开", "chevron-down"
-				if group.Expanded {
-					label, icon = "收起", "chevron-up"
-				}
-				ready := false
-				for _, item := range items {
-					if item.Status == "ready" {
-						ready = true
-						break
-					}
-				}
-				components.Button(c.Key("start-group"), "下载全部", input.ButtonOptions{Variant: input.Primary, Disabled: !ready, Label: "下载分组：" + group.Key}).MinWidth(0).Padding(4, 8).Shrink(0).OnClick(func() { s.startGroup(group) })
-				components.Button(c.Key("toggle"), label, input.ButtonOptions{Variant: input.Outline, Icon: icons.Must(icon), Label: "展开或收起分组：" + group.Key}).MinWidth(0).Padding(4, 8).Shrink(0).OnClick(func() { group.Expanded = !group.Expanded })
-				components.Button(c.Key("remove"), "移除", input.ButtonOptions{Variant: input.Ghost, Label: "移除分组：" + group.Key}).MinWidth(0).Padding(4, 8).Shrink(0).Tooltip("取消本组未完成任务，保留已下载文件").OnClick(func() { s.removeGroup(group) })
+}
+
+func (s *State) queueGroupHeader(c *ui.Context, group *queueGroup, items []*queueItem) {
+	panel(c, "YouTube 队列分组："+group.Key, func() {
+		ui.Row(c).Label("队列分组标题：" + group.Key).FillWidth().MinWidth(0).Padding(style.SpaceMedium).Gap(style.SpaceMedium).AlignItems(ui.Center).Children(func() {
+			ui.Column(c).Grow(1).MinWidth(0).Gap(style.SpaceSmall).Children(func() {
+				ui.Text(c, group.Title).FillWidth().MaxLines(2).FontWeight(style.WeightSemibold).Tooltip(group.Title)
+				summary := groupSummary(items)
+				ui.Text(c, summary).FillWidth().MaxLines(1).FontSize(style.Font(c, style.FontMeta)).TextColor(core.Tokens(c).TextMuted).Tooltip(summary)
 			})
+			label, icon := "展开", "chevron-down"
 			if group.Expanded {
-				for _, item := range items {
-					s.queueItemRow(c.Key(item.ID), item)
+				label, icon = "收起", "chevron-up"
+			}
+			ready := false
+			for _, item := range items {
+				if item.Status == "ready" {
+					ready = true
+					break
 				}
 			}
+			components.Button(c.Key("start-group"), "下载全部", input.ButtonOptions{Variant: input.Primary, Disabled: !ready, Label: "下载分组：" + group.Key}).MinWidth(0).Padding(4, 8).Shrink(0).OnClick(func() { s.startGroup(group) })
+			components.Button(c.Key("toggle"), label, input.ButtonOptions{Variant: input.Outline, Icon: icons.Must(icon), Label: "展开或收起分组：" + group.Key}).MinWidth(0).Padding(4, 8).Shrink(0).OnClick(func() { group.Expanded = !group.Expanded })
+			components.Button(c.Key("remove"), "移除", input.ButtonOptions{Variant: input.Ghost, Label: "移除分组：" + group.Key}).MinWidth(0).Padding(4, 8).Shrink(0).Tooltip("取消本组未完成任务，保留已下载文件").OnClick(func() { s.removeGroup(group) })
 		})
-	}
+	})
 }
 
 func (s *State) queueItemRow(c *ui.Context, item *queueItem) {
 	k := core.Tokens(c)
-	row := ui.Row(c).Label(fmt.Sprintf("YouTube 队列任务：%d", item.ID)).FillWidth().MinWidth(0).Padding(style.DownloadCardPadding).Gap(style.SpaceMedium).AlignItems(ui.Start).BorderWidth(1, 0, 0, 0).BorderColor(k.Border)
+	row := ui.Row(c).Label(fmt.Sprintf("YouTube 队列任务：%d", item.ID)).FillWidth().MinWidth(0).Padding(style.DownloadCardPadding).Gap(style.SpaceMedium).AlignItems(ui.Start)
 	if row.Bounds().W == 0 {
 		c.After(time.Millisecond)
 	}

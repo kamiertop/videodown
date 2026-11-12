@@ -26,6 +26,8 @@ type State struct {
 	audioOnly             bool
 	queue                 []*queueItem
 	queueGroups           []*queueGroup
+	downloadList          ui.ListState
+	revealPreview         bool
 	playlistTasks         map[string]*queueItem
 	thumbnails            map[string]*thumbnail
 	thumbnailUse          uint64
@@ -37,6 +39,7 @@ type State struct {
 	playlistLink          string
 	playlist              yt.Playlist
 	playlistRows          []*playlistRow
+	playlistList          ui.ListState
 	playlistRemoved       map[string]bool
 	playlistLoading       bool
 	playlistError         string
@@ -162,6 +165,7 @@ func (s *State) resolve() {
 			return
 		}
 		s.video = video
+		s.revealPreview = true
 		s.selectDefaultFormat()
 		s.loadCover()
 	})

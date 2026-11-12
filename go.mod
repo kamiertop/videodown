@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	github.com/ELY-Open-Source/MujicaUI v0.0.0-20261110124549-877e99239894
 	github.com/dop251/goja v0.0.0-20261110204830-f493a2b600d6
-	github.com/egoist/mygo v0.8.3
+	github.com/egoist/mygo v0.9.0
 	github.com/glebarez/go-sqlite v1.23.0
 	github.com/imroc/req/v3 v3.61.0
 	github.com/jmoiron/sqlx v1.4.0
@@ -18,7 +18,9 @@ require (
 )
 
 require (
+	github.com/ProtonMail/go-crypto v1.4.1 // indirect
 	github.com/andybalholm/brotli v1.2.7 // indirect
+	github.com/cloudflare/circl v1.6.2 // indirect
 	github.com/dlclark/regexp2/v2 v2.13.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.11.3 // indirect
@@ -36,11 +38,12 @@ require (
 	github.com/quic-go/quic-go v0.64.1 // indirect
 	github.com/refraction-networking/utls v1.8.2 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
+	github.com/ulikunitz/xz v0.5.15 // indirect
+	go.digitalxero.dev/rpm v0.3.4 // indirect
 	golang.org/x/crypto v0.58.0 // indirect
 	golang.org/x/net v0.62.0 // indirect
 	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/text v0.44.0 // indirect
-	golang.org/x/tools v0.52.0 // indirect
 	modernc.org/libc v1.74.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect

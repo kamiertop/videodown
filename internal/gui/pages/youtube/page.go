@@ -8,7 +8,6 @@ import (
 	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/ELY-Open-Source/MujicaUI/icons"
 	"github.com/ELY-Open-Source/MujicaUI/input"
-	"github.com/ELY-Open-Source/MujicaUI/layout"
 	"github.com/egoist/mygo/ui"
 	"github.com/kamiertop/videodown/internal/gui/components"
 	"github.com/kamiertop/videodown/internal/gui/style"
@@ -22,7 +21,7 @@ func (s *State) Form(c *ui.Context, path string, scroll *ui.ScrollState) {
 		s.saveProxy()
 	}
 	if strings.HasSuffix(path, "/playlist") {
-		s.playlistPage(c, scroll)
+		s.playlistPage(c)
 		return
 	}
 	if strings.HasSuffix(path, "/profile") {
@@ -56,19 +55,7 @@ func (s *State) Form(c *ui.Context, path string, scroll *ui.ScrollState) {
 			if s.message != "" {
 				components.Muted(c, s.message)
 			}
-			layout.ScrollArea(c.Key("results"), scroll, layout.ScrollAreaOptions{}, func() {
-				ui.Column(c).
-					FillWidth().
-					MinWidth(0).
-					Padding(0, style.ScrollbarGutter, 0, 0).
-					Gap(style.SpaceMedium).
-					Children(func() {
-						if s.video.ID != "" {
-							s.downloadCard(c)
-						}
-						s.queueView(c)
-					})
-			}).Grow(1).MinWidth(0).MinHeight(0)
+			s.downloadResults(c.Key("results"))
 		})
 }
 

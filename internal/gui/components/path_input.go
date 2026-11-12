@@ -16,7 +16,7 @@ func PathInput(c *ui.Context, key string, value *string, label, placeholder stri
 	k := core.Tokens(c)
 	d := core.Density(c)
 	frame := ui.Row(c.Key(key)).MinHeight(d.ControlHeight()).Padding(0, d.Unit()*3).
-		Gap(d.Unit() * 2).Radius(style.RadiusControl).Cursor(ui.CursorText).
+		Gap(d.Unit()*2).Radius(style.RadiusControl).Cursor(ui.CursorText).
 		Background(k.Background).Border(theme.BorderWidth, k.Border)
 	var in ui.Element
 	frame.Children(func() {
