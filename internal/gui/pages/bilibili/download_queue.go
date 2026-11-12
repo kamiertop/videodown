@@ -286,9 +286,13 @@ func queueAudioURL(play *model.VideoURLData, id int) string {
 	return url
 }
 
+func (entry *queueResolve) resolved() bool {
+	return entry != nil && entry.data.Loaded && entry.data.Data.PlayURL != nil && entry.data.Data.Detail != nil
+}
+
 func (s *State) queuedTask(key string) (bilidownload.Task, bool) {
 	entry := s.queueResolves[key]
-	if entry == nil || !entry.data.Loaded || entry.data.Data.PlayURL == nil || entry.data.Data.Detail == nil {
+	if !entry.resolved() {
 		return bilidownload.Task{}, false
 	}
 	result := entry.data.Data

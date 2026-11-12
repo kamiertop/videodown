@@ -343,53 +343,87 @@ func (s *State) downloadPage(c *ui.Context) {
 			})
 		})
 	}
-	layout.ScrollArea(c.Key("queue"), s.scroll("queue"), layout.ScrollAreaOptions{}, func() {
-		ui.Column(c).FillWidth().Padding(0, style.ScrollbarGutter, style.SpaceMedium, 0).Gap(style.SpaceMedium).Children(func() {
-			for _, g := range s.groups {
-				if g.Title == "" {
-					continue
+	s.downloadQueue(c.Key("queue"))
+}
+
+type downloadRow struct {
+	group     *downloadGroup
+	item      *queuedVideo
+	showError bool
+}
+
+func (s *State) downloadQueue(c *ui.Context) {
+	var rows []downloadRow
+	for _, group := range s.groups {
+		if group.Title == "" {
+			continue
+		}
+		rows = append(rows, downloadRow{group: group})
+		if !group.Open {
+			continue
+		}
+		if group.Error != "" {
+			rows = append(rows, downloadRow{group: group, showError: true})
+		}
+		for _, item := range group.Items {
+			if item.Status != "done" {
+				rows = append(rows, downloadRow{group: group, item: item})
+			}
+		}
+	}
+	for _, item := range s.staged {
+		rows = append(rows, downloadRow{item: item})
+	}
+
+	s.downloadList.Key = func(i int) any { return rows[i] }
+	list := ui.List(c, &s.downloadList, len(rows)).Label("抖音下载任务区域").
+		Grow(1).MinWidth(0).MinHeight(0).Gap(style.SpaceSmall).
+		Padding(0, style.ScrollbarGutter, style.SpaceMedium, 0)
+	if len(rows) == 0 {
+		list.Children(func() { empty(c, "下载列表为空") })
+	}
+	list.Rows(func(row ui.ListRow) {
+		entry := rows[row.Index]
+		switch {
+		case entry.item != nil:
+			s.downloadCard(row.Context, entry.item, entry.group != nil)
+		case entry.showError:
+			panel(row.Context, "抖音批量错误", func() { s.errorRow(row.Context, entry.group.Error, nil) })
+		default:
+			s.downloadGroupHeader(row.Context, entry.group)
+		}
+	})
+}
+
+func (s *State) downloadGroupHeader(c *ui.Context, g *downloadGroup) {
+	panel(c, "抖音批量："+g.Title, func() {
+		ui.Row(c).FillWidth().Padding(style.SpaceSmall).Gap(style.SpaceSmall).Children(func() {
+			angle := float32(0)
+			label := "展开抖音批量："
+			if g.Open {
+				angle = 90
+				label = "收起抖音批量："
+			}
+			ui.ButtonBase(c.Key("open")).Row().Label(label + g.Title).Grow(1).MinWidth(0).
+				Gap(style.SpaceSmall).AlignItems(ui.Center).FocusRing(true).Children(func() {
+				ui.Icon(c, icons.Must("chevron-right")).Size(16, 16).Rotate(angle)
+				ui.Text(c, g.Title).Grow(1).MinWidth(0).MaxLines(1).FontWeight(style.WeightSemibold)
+			}).OnClick(func() { g.Open = !g.Open })
+			if g.Status == "active" || g.Status == "queued" {
+				button(c, "停止", input.ButtonOptions{Variant: input.Outline, Disabled: g.Stop}).OnClick(func() { s.stopGroup(g) })
+			} else {
+				if g.Failed > 0 || g.Status == "stopped" {
+					button(c, "继续 / 重试", input.ButtonOptions{Variant: input.Primary}).OnClick(func() { s.resume(g) })
 				}
-				panel(c.Key(g.ID), "抖音批量："+g.Title, func() {
-					var parts ui.CollapsibleParts
-					ui.Row(c).FillWidth().Padding(style.SpaceSmall).Gap(style.SpaceSmall).Children(func() {
-						parts = ui.CollapsibleBase(c.Key("open"), &g.Open)
-						parts.Trigger.Label("展开抖音批量：" + g.Title).Grow(1).MinWidth(0).Gap(style.SpaceSmall).Children(func() {
-							ui.Icon(c, icons.Must("chevron-right")).Size(16, 16).Rotate(90 * parts.Progress())
-							ui.Text(c, g.Title).Grow(1).MinWidth(0).MaxLines(1).FontWeight(style.WeightSemibold)
-						})
-						if g.Status == "active" || g.Status == "queued" {
-							button(c, "停止", input.ButtonOptions{Variant: input.Outline, Disabled: g.Stop}).OnClick(func() { s.stopGroup(g) })
-						} else {
-							if g.Failed > 0 || g.Status == "stopped" {
-								button(c, "继续 / 重试", input.ButtonOptions{Variant: input.Primary}).OnClick(func() { s.resume(g) })
-							}
-							button(c, "关闭", input.ButtonOptions{Variant: input.Ghost}).OnClick(func() { s.dismiss(g) })
-						}
-					})
-					ui.Row(c).FillWidth().Padding(0, style.SpaceSmall, style.SpaceSmall).Children(func() {
-						caption(c, fmt.Sprintf("%s · 运行 %d · 完成 %d · 失败 %d", groupStatus(g), g.InFlight, g.Done, g.Failed))
-					})
-					parts.Panel(func() {
-						ui.Column(c).FillWidth().Padding(style.SpaceSmall).Gap(style.SpaceSmall).Children(func() {
-							s.errorRow(c, g.Error, nil)
-							for _, v := range g.Items {
-								if v.Status != "done" {
-									s.downloadCard(c.Key(v.Data.AwemeId), v, true)
-								}
-							}
-						})
-					})
-				})
-			}
-			for _, item := range s.staged {
-				s.downloadCard(c.Key(item.Data.AwemeId), item, false)
-			}
-			if len(s.staged) == 0 && len(s.groups) == 0 {
-				empty(c, "下载列表为空")
+				button(c, "关闭", input.ButtonOptions{Variant: input.Ghost}).OnClick(func() { s.dismiss(g) })
 			}
 		})
-	}).Grow(1).MinHeight(0)
+		ui.Row(c).FillWidth().Padding(0, style.SpaceSmall, style.SpaceSmall).Children(func() {
+			caption(c, fmt.Sprintf("%s · 运行 %d · 完成 %d · 失败 %d", groupStatus(g), g.InFlight, g.Done, g.Failed))
+		})
+	})
 }
+
 func groupStatus(g *downloadGroup) string {
 	if g.Stop && g.Status == "active" {
 		return "停止中"

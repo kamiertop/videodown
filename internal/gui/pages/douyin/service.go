@@ -77,6 +77,7 @@ type State struct {
 	autoPending                            bool
 	autoAt                                 float32
 	autoFill                               int
+	downloadList                           ui.ListState
 	staged                                 []*queuedVideo
 	groups                                 []*downloadGroup
 	nextGroup                              uint64

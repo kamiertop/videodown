@@ -9,7 +9,6 @@ import (
 	"github.com/ELY-Open-Source/MujicaUI/data"
 	"github.com/ELY-Open-Source/MujicaUI/icons"
 	"github.com/ELY-Open-Source/MujicaUI/input"
-	"github.com/ELY-Open-Source/MujicaUI/layout"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/kamiertop/videodown/bilibili/download"
@@ -41,12 +40,7 @@ func (s *State) download(c *ui.Context) {
 	if s.notice != "" {
 		ui.Text(c, s.notice).FontSize(style.Font(c, style.FontMeta)).TextColor(core.Tokens(c).TextMuted).MaxLines(1)
 	}
-	ready := 0
-	for _, key := range s.stagedOrder() {
-		if _, ok := s.queuedTask(key); ok {
-			ready++
-		}
-	}
+	rows, ready := s.downloadRows()
 	if len(s.stagedKeys) > 0 {
 		panel(c.Key("queue-toolbar"), "下载操作栏", func() {
 			ui.Column(c).FillWidth().Padding(style.SpaceSmall, style.SpaceMedium).Gap(style.SpaceSmall).Children(func() {
@@ -67,46 +61,80 @@ func (s *State) download(c *ui.Context) {
 			})
 		})
 	}
-	layout.ScrollArea(c.Key("download-scroll"), s.scroll("download-items"), layout.ScrollAreaOptions{}, func() {
-		ui.Column(c).FillWidth().Padding(0, style.ScrollbarGutter, style.SpaceMedium, 0).Gap(style.SpaceMedium).Children(func() {
-			if s.manualGroup != nil {
-				s.parsedGroupPanel(c.Key("parsed-group"))
-			}
-			if len(s.stagedKeys) == 0 && s.manualGroup == nil && len(s.batches) == 0 {
-				empty(c, "下载列表为空", "download")
-			}
-			for _, batch := range s.batches {
-				s.batchDownloadCard(c.Key(batch.ID), batch)
-			}
-			ui.Column(c.Key("queue-items")).FillWidth().Gap(style.SpaceMedium).Children(func() {
-				for _, v := range s.stagedUploads {
-					s.stagedMediaCard(c.Key(v.Bvid), v.Bvid, v.Title, v.Pic, v.Author, v.Length)
-				}
-				for _, v := range s.stagedFavorites {
-					key := favoriteBvid(v.Bvid, v.BvID)
-					s.stagedMediaCard(c.Key(key), key, v.Title, v.Cover, v.Upper.Name, duration(v.Duration))
-				}
-				for _, v := range s.stagedCollections {
-					s.stagedMediaCard(c.Key(v.Bvid), v.Bvid, v.Title, v.Cover, v.Upper.Name, duration(v.Duration))
-				}
-				for _, v := range s.stagedSeasons {
-					s.stagedMediaCard(c.Key(v.Bvid), v.Bvid, v.Title, v.Pic, "", duration(v.Duration))
-				}
-				for _, v := range s.stagedSeries {
-					s.stagedMediaCard(c.Key(v.Bvid), v.Bvid, v.Title, v.Pic, "", duration(v.Duration))
-				}
-				for _, v := range s.stagedDynamics {
-					s.stagedMediaCard(c.Key(v.Bvid), v.Bvid, v.Title, v.Cover, v.AuthorName, v.DurationText)
-				}
-				for _, v := range s.stagedPlayHistory {
-					s.stagedMediaCard(c.Key(v.History.Bvid), v.History.Bvid, playHistoryTitle(v), v.Cover, v.AuthorName, playHistoryDuration(v))
-				}
-				for _, v := range s.stagedManual {
-					s.stagedMediaCard(c.Key(v.Key), v.Key, v.Title, v.Cover, v.Author, duration(v.Duration))
-				}
-			})
-		})
-	}).Label("下载任务区域").Grow(1).MinWidth(0).MinHeight(0)
+	if group := s.manualGroup; group != s.shownManualGroup {
+		s.shownManualGroup = group
+		if group != nil {
+			s.downloadList.ScrollTo(0, ui.Start)
+		}
+	}
+	s.downloadList.Key = func(i int) any { return rows[i].key }
+	s.downloadList.Label = func(i int) string { return rows[i].title }
+	list := ui.List(c.Key("download-items"), &s.downloadList, len(rows)).
+		Label("下载任务区域").Grow(1).MinWidth(0).MinHeight(0).
+		Gap(style.SpaceMedium).Padding(0, style.ScrollbarGutter, style.SpaceMedium, 0)
+	if len(rows) == 0 {
+		list.Children(func() { empty(c, "下载列表为空", "download") })
+	}
+	list.Rows(func(row ui.ListRow) {
+		item := rows[row.Index]
+		switch key := item.key.(type) {
+		case *parsedVideoGroup:
+			s.parsedGroupPanel(row.Context, key)
+		case uint64:
+			s.batchDownloadCard(row.Context, item.batch)
+		case string:
+			s.stagedMediaCard(row.Context, key, item.title, item.cover, item.author, item.length)
+		}
+	})
+}
+
+type downloadRow struct {
+	// Parsed groups, batches and staged videos have distinct key types.
+	key                          any
+	title, cover, author, length string
+	batch                        *batchSession
+}
+
+func (s *State) downloadRows() ([]downloadRow, int) {
+	rows := make([]downloadRow, 0, 1+len(s.batches)+len(s.stagedKeys))
+	if group := s.manualGroup; group != nil {
+		rows = append(rows, downloadRow{key: group, title: group.Title})
+	}
+	for _, batch := range s.batches {
+		rows = append(rows, downloadRow{key: batch.ID, title: batch.Source.Title, batch: batch})
+	}
+	ready := 0
+	add := func(key, title, cover, author, length string) {
+		rows = append(rows, downloadRow{key: key, title: title, cover: cover, author: author, length: length})
+		if entry := s.queueResolves[key]; entry.resolved() && queueVideoURL(entry.data.Data.PlayURL, entry.videoID) != "" {
+			ready++
+		}
+	}
+	for _, v := range s.stagedUploads {
+		add(v.Bvid, v.Title, v.Pic, v.Author, v.Length)
+	}
+	for _, v := range s.stagedFavorites {
+		add(favoriteBvid(v.Bvid, v.BvID), v.Title, v.Cover, v.Upper.Name, duration(v.Duration))
+	}
+	for _, v := range s.stagedCollections {
+		add(v.Bvid, v.Title, v.Cover, v.Upper.Name, duration(v.Duration))
+	}
+	for _, v := range s.stagedSeasons {
+		add(v.Bvid, v.Title, v.Pic, "", duration(v.Duration))
+	}
+	for _, v := range s.stagedSeries {
+		add(v.Bvid, v.Title, v.Pic, "", duration(v.Duration))
+	}
+	for _, v := range s.stagedDynamics {
+		add(v.Bvid, v.Title, v.Cover, v.AuthorName, v.DurationText)
+	}
+	for _, v := range s.stagedPlayHistory {
+		add(v.History.Bvid, playHistoryTitle(v), v.Cover, v.AuthorName, playHistoryDuration(v))
+	}
+	for _, v := range s.stagedManual {
+		add(v.Key, v.Title, v.Cover, v.Author, duration(v.Duration))
+	}
+	return rows, ready
 }
 
 func (s *State) stagedMediaCard(c *ui.Context, bvid, title, cover, author, length string) {
@@ -195,8 +223,7 @@ func downloadCardButton(c *ui.Context, label string, opts input.ButtonOptions) u
 	return button(c, label, opts).MinHeight(style.DownloadControlHeight).Height(style.DownloadControlHeight).Padding(0, style.SpaceSmall)
 }
 
-func (s *State) parsedGroupPanel(c *ui.Context) {
-	group := s.manualGroup
+func (s *State) parsedGroupPanel(c *ui.Context, group *parsedVideoGroup) {
 	count := 0
 	for _, item := range group.Items {
 		if group.Selected[item.Key] {

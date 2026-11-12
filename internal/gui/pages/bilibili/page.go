@@ -113,6 +113,8 @@ type State struct {
 	pendingManualDownloads []manualDownloadRequest
 	activeManualDownloads  *manualWork
 	queueRequested         map[string]bool
+	downloadList           ui.ListState
+	shownManualGroup       *parsedVideoGroup
 
 	history                                                 resource[biliapi.HistoryPage]
 	historyMore                                             resource[biliapi.HistoryPage]

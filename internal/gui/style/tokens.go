@@ -37,14 +37,16 @@ const (
 	FontTitle   float32 = 20 // 账号昵称等主要标题。
 	FontHero    float32 = 24 // 首页、关于页等突出展示的文字。
 
-	// 全局字重与行高。
+	// 全局字重与行高
+
 	WeightNormal           = 400 // 常规字重。
 	WeightSemibold         = 600 // 半粗字重，用于按钮、标题等。
 	WeightBold             = 700 // 粗体字重。
 	LineHeight     float32 = 1.5 // 全局默认行高倍数，相对于当前字号计算。
 
-	// 圆角：常规控件保持矩形轮廓，仅轻微圆角。
-	RadiusWindow  float32 = 12 // 窗口外框圆角；窗口最大化时由窗口代码设为 0。
+	// 圆角：常规控件保持矩形轮廓，仅轻微圆角
+
+	RadiusWindow  float32 = 16 // 窗口外框圆角；窗口最大化时由窗口代码设为 0。
 	RadiusPanel   float32 = 12 // 面板、卡片等容器的圆角。
 	RadiusControl float32 = 6  // 普通按钮、输入框、选择框的统一圆角。
 	RadiusMenu    float32 = 6  // 菜单项及相关操作按钮的圆角。
@@ -52,7 +54,8 @@ const (
 	RadiusChrome  float32 = 2  // 标题栏控件、时长标签等小元素的圆角。
 	RadiusChoice  float32 = 6  // 设置页选项卡片的圆角。
 
-	// 边框与通用间距。
+	// 边框与通用间距
+
 	BorderWidth    float32 = 1  // 常规边框宽度。
 	BorderEmphasis float32 = 2  // 选中或强调描边的宽度。
 	SpaceSmall     float32 = 8  // 小间距，适合相关控件及卡片内边距。
@@ -73,7 +76,8 @@ const (
 	DownloadCoverHeight       float32 = 90   // 普通下载卡片及历史记录使用的封面高度。
 	DownloadInlineBreakpoint  float32 = 1000 // 下载页将控件放在同一行的窗口宽度阈值。
 	DownloadCompactBreakpoint float32 = 700  // 下载页进一步收紧布局的窗口宽度阈值。
-	// 应用外框、导航、输入框与滚动区域。
+	// 应用外框、导航、输入框与滚动区域
+
 	PagePadding           float32 = 12  // 页面内容与外边界之间的留白。
 	ScrollbarWidth        float32 = 4   // 全局滚动条宽度。
 	ScrollbarGutter       float32 = 12  // 滚动内容侧边预留空间，避免滚动条覆盖卡片。
@@ -83,14 +87,15 @@ const (
 	SettingsNavWidth      float32 = 176 // 设置页左侧分类导航宽度。
 	CompactBreakpoint     float32 = 768 // 通用紧凑布局切换阈值，设置导航等使用。
 	InputHeight           float32 = 36  // 常规单行输入框高度。
-	// 账号页：头像、信息卡片和二维码。
-	AvatarSize           float32 = 64  // 通用头像尺寸。
+	// 账号页：头像、信息卡片和二维码
+
 	ProfileAvatarSize    float32 = 80  // 已登录账号信息卡片中的头像尺寸。
 	ProfileLoginMaxWidth float32 = 360 // 登录卡片及未登录提示卡片的最大宽度。
 	ProfileCardMaxWidth  float32 = 640 // 账号信息卡片的最大宽度。
 	ProfileFactHeight    float32 = 112 // 账号签名、会员状态等信息块的最小高度。
 	QRCodeSize           float32 = 240 // 登录二维码的展示尺寸。
-	// 关注用户卡片与作者详情页。
+	// 关注用户卡片与作者详情页
+
 	AuthorCardMinWidth               float32 = 160  // 关注用户网格中卡片的最小参考宽度。
 	AuthorAvatarSize                 float32 = 48   // 关注列表中作者头像的尺寸。
 	AuthorCardPadding                float32 = 12   // 作者卡片内边距。
@@ -107,12 +112,14 @@ const (
 	AuthorControlsDownloadBreakpoint float32 = 1040 // 作者及收藏工具栏切换紧凑布局的窗口宽度阈值。
 	AuthorListViewportOffsetWide     float32 = 168  // 宽屏时估算作者列表可用高度需扣除的顶部区域高度。
 	AuthorListViewportOffsetCompact  float32 = 212  // 紧凑布局下需扣除的顶部区域高度，包含额外换行空间。
-	// 收藏夹、合集等资源列表。
+	// 收藏夹、合集等资源列表
+
 	LibraryListWidth      float32 = 224 // 收藏夹、订阅合集等来源列表的侧栏宽度。
 	LibraryListItemHeight float32 = 48  // 收藏来源列表单项高度。
 	LibraryListIconSize   float32 = 30  // 收藏来源列表图标尺寸。
 	LibraryHeaderHeight   float32 = 52  // 收藏来源列表与内容工具栏的对齐高度。
-	// 动态列表与自动分页。
+	// 动态列表与自动分页
+
 	DynamicColumnsHeight     float32 = 36  // 动态列表表头高度。
 	DynamicRowHeight         float32 = 86  // 动态列表每条视频记录的高度。
 	DynamicThumbWidth        float32 = 112 // 动态列表视频缩略图宽度。
@@ -123,7 +130,8 @@ const (
 	DynamicActionWidth       float32 = 64  // 动态列表操作列宽度。
 	DynamicAutoLoadThreshold float32 = 120 // 距滚动底部小于此值时触发下一页加载，其他列表也会复用。
 	DynamicAutoFillLimit             = 6   // 内容不足一屏时，连续自动补充的最大页数。
-	// 横屏视频卡片及封面信息层，部分文字和标签样式也供抖音复用。
+	// 横屏视频卡片及封面信息层，部分文字和标签样式也供抖音复用
+
 	MediaAspectRatio          float32 = 16.0 / 9 // 通用横屏视频封面宽高比，16:9；抖音使用独立比例。
 	MediaTitleHeight          float32 = 42       // 通用视频卡片标题区域最小高度。
 	MediaAuthorUnderlineWidth float32 = 2        // 作者链接悬浮下划线的粗细。

@@ -9,8 +9,8 @@ import (
 
 	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/ELY-Open-Source/MujicaUI/input"
-	"github.com/ELY-Open-Source/MujicaUI/layout"
 	"github.com/egoist/mygo/ui"
+
 	"github.com/kamiertop/videodown/internal/gui/components"
 	"github.com/kamiertop/videodown/internal/gui/style"
 	yt "github.com/kamiertop/videodown/youtube"
@@ -58,6 +58,9 @@ func (s *State) loadPlaylist(more bool) {
 			return
 		}
 		s.playlist = result
+		if !more {
+			s.playlistList.ScrollTo(0, ui.Start)
+		}
 		seen := map[string]bool{}
 		for _, row := range s.playlistRows {
 			seen[row.Video.ID] = true
@@ -123,7 +126,7 @@ func (s *State) enqueuePlaylist() {
 	s.playlistError = fmt.Sprintf("已加入 %d 个视频，请到下载页选择画质后开始下载", added)
 }
 
-func (s *State) playlistPage(c *ui.Context, scroll *ui.ScrollState) {
+func (s *State) playlistPage(c *ui.Context) {
 	ui.Column(c).Label("YouTube 播放列表页面").Fill().MinWidth(0).MinHeight(0).Padding(style.PagePadding).Gap(style.SpaceMedium).Children(func() {
 		panel(c.Key("playlist-input"), "YouTube 播放列表输入栏", func() {
 			ui.Row(c).FillWidth().MinWidth(0).Padding(style.SpaceSmall).Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
@@ -172,19 +175,36 @@ func (s *State) playlistPage(c *ui.Context, scroll *ui.ScrollState) {
 		if s.playlistError != "" {
 			components.Muted(c, s.playlistError)
 		}
-		layout.ScrollArea(c.Key("playlist-scroll"), scroll, layout.ScrollAreaOptions{}, func() {
-			ui.Column(c).FillWidth().MinWidth(0).Padding(0, style.ScrollbarGutter, 0, 0).Gap(style.SpaceSmall).Children(func() {
-				if len(s.playlistRows) == 0 && !s.playlistLoading && s.playlist.Title != "" {
-					components.Muted(c, "暂无可下载的视频，私密或已删除的视频会跳过")
-				}
-				for _, row := range s.playlistRows {
-					s.playlistCard(c.Key(row.Video.ID), row)
-				}
-				if len(s.playlistRows) > 0 && s.playlist.Continuation != "" {
-					components.Button(c.Key("more"), "加载更多", input.ButtonOptions{Variant: input.Outline, Loading: s.playlistLoading, Disabled: s.playlistLoading}).OnClick(func() { s.loadPlaylist(true) })
-				}
-			})
-		}).Grow(1).MinWidth(0).MinHeight(0)
+		s.playlistResults(c.Key("playlist-scroll"))
+	})
+}
+
+func (s *State) playlistResults(c *ui.Context) {
+	// The pagination button is a row so it stays at the end of the scroll area.
+	type moreRow struct{}
+	rows := s.playlistRows
+	count := len(rows)
+	if count > 0 && s.playlist.Continuation != "" {
+		count++
+	}
+	s.playlistList.Key = func(i int) any {
+		if i == len(rows) {
+			return moreRow{}
+		}
+		return rows[i].Video.ID
+	}
+	list := ui.List(c, &s.playlistList, count).Label("YouTube 播放列表结果").
+		Grow(1).MinWidth(0).MinHeight(0).Gap(style.SpaceSmall).
+		Padding(0, style.ScrollbarGutter, 0, 0)
+	if count == 0 && !s.playlistLoading && s.playlist.Title != "" {
+		list.Children(func() { components.Muted(c, "暂无可下载的视频，私密或已删除的视频会跳过") })
+	}
+	list.Rows(func(row ui.ListRow) {
+		if row.Index == len(rows) {
+			components.Button(row.Context.Key("more"), "加载更多", input.ButtonOptions{Variant: input.Outline, Loading: s.playlistLoading, Disabled: s.playlistLoading}).OnClick(func() { s.loadPlaylist(true) })
+			return
+		}
+		s.playlistCard(row.Context, rows[row.Index])
 	})
 }
 
