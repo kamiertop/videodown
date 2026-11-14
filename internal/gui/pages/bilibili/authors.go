@@ -21,13 +21,17 @@ func (s *State) authors(c *ui.Context, navigate func(string)) {
 		return
 	}
 	panel(c, "UP 主工具栏", func() {
-		ui.Row(c).FillWidth().Padding(style.SpaceMedium).Gap(style.SpaceSmall).AlignItems(ui.Center).
+		ui.Row(c).
+			FillWidth().
+			Padding(style.SpaceMedium).
+			Gap(style.SpaceSmall).
+			AlignItems(ui.Center).
 			Children(func() {
 				ui.Text(c, fmt.Sprintf("我的关注 · %d", s.follows.Data.Total)).
 					FontWeight(style.WeightSemibold).
 					Shrink(0)
 				button(c.Key("refresh"),
-					"刷新关注",
+					"刷新",
 					input.ButtonOptions{Variant: input.Outline, Loading: s.follows.Loading, Disabled: s.api == nil},
 				).OnClick(func() { s.loadFollows(max(1, s.followPage)) })
 				ui.Spacer(c).Grow(1)
@@ -38,7 +42,9 @@ func (s *State) authors(c *ui.Context, navigate func(string)) {
 					func() { s.findAuthor(s.author, navigate) },
 				).Width(450)
 
-				button(c.Key("parse-author"), "解析", input.ButtonOptions{Loading: s.authorInfo.Loading, Disabled: s.api == nil}).OnClick(func() { s.findAuthor(s.author, navigate) })
+				button(c.Key("parse-author"), "解析",
+					input.ButtonOptions{Loading: s.authorInfo.Loading, Disabled: s.api == nil},
+				).OnClick(func() { s.findAuthor(s.author, navigate) })
 			})
 	})
 	s.errorRow(c, s.authorInfo.Error, func() { s.findAuthor(s.author, navigate) })
@@ -52,11 +58,15 @@ func (s *State) authors(c *ui.Context, navigate func(string)) {
 				empty(c, "暂无关注列表", "user")
 				return
 			}
-			ui.Grid(c).Columns(authorColumns(c)).FillWidth().Gap(style.SpaceMedium).Children(func() {
-				for _, author := range s.follows.Data.List {
-					s.authorCard(c.Key(author.Mid), author, navigate)
-				}
-			})
+			ui.Grid(c).
+				Columns(authorColumns(c)).
+				FillWidth().
+				Gap(style.SpaceMedium).
+				Children(func() {
+					for _, author := range s.follows.Data.List {
+						s.authorCard(c.Key(author.Mid), author, navigate)
+					}
+				})
 			ui.Row(c).
 				FillWidth().
 				Gap(style.SpaceSmall).
@@ -82,6 +92,7 @@ func authorColumns(c *ui.Context) int {
 	width, _ := c.Size()
 	available := width - style.PlatformNavWidth - 2*style.PagePadding - 2*style.SpaceMedium
 	columns := int((available + style.SpaceMedium) / (style.AuthorCardMinWidth + style.SpaceMedium))
+
 	return max(1, min(style.AuthorGridMaxColumns, columns))
 }
 

@@ -4,6 +4,7 @@ import (
 	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/ELY-Open-Source/MujicaUI/theme"
 	"github.com/egoist/mygo/ui"
+
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
 
@@ -15,13 +16,23 @@ import (
 func PathInput(c *ui.Context, key string, value *string, label, placeholder string) ui.Element {
 	k := core.Tokens(c)
 	d := core.Density(c)
-	frame := ui.Row(c.Key(key)).MinHeight(d.ControlHeight()).Padding(0, d.Unit()*3).
-		Gap(d.Unit()*2).Radius(style.RadiusControl).Cursor(ui.CursorText).
-		Background(k.Background).Border(theme.BorderWidth, k.Border)
+	frame := ui.Row(c.Key(key)).
+		MinHeight(d.ControlHeight()).
+		Padding(0, d.Unit()*3).
+		Gap(d.Unit()*2).
+		Radius(style.RadiusControl).
+		Cursor(ui.CursorText).
+		Background(k.Background).
+		Border(theme.BorderWidth, k.Border)
 	var in ui.Element
 	frame.Children(func() {
-		in = ui.TextInputBase(c, value).Grow(1).MinWidth(d.Unit() * 10).
-			Placeholder(placeholder).Label(label).ReadOnly(true).FocusRing(false)
+		in = ui.TextInputBase(c, value).
+			Grow(1).
+			MinWidth(d.Unit() * 10).
+			Placeholder(placeholder).
+			Label(label).
+			ReadOnly(true).
+			FocusRing(false)
 	})
 	if frame.Clicked() {
 		in.Focus()
@@ -31,5 +42,6 @@ func PathInput(c *ui.Context, key string, value *string, label, placeholder stri
 			p.FocusRing(r, [4]float32{style.RadiusControl, style.RadiusControl, style.RadiusControl, style.RadiusControl})
 		}
 	})
+
 	return frame
 }

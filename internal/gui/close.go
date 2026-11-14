@@ -2,14 +2,15 @@ package gui
 
 import (
 	"fmt"
+
+	"github.com/kamiertop/videodown/internal/gui/closing"
+	"github.com/kamiertop/videodown/internal/gui/components"
 	"github.com/kamiertop/videodown/internal/gui/style"
 
 	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/ELY-Open-Source/MujicaUI/overlay"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
-	"github.com/kamiertop/videodown/internal/gui/closing"
-	"github.com/kamiertop/videodown/internal/gui/components"
 )
 
 func (s *Shell) activeCount() int {
@@ -17,6 +18,7 @@ func (s *Shell) activeCount() int {
 	if s.activeDownloads != nil {
 		count = max(count, s.activeDownloads())
 	}
+
 	return count
 }
 

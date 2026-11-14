@@ -74,7 +74,7 @@ func (s *Shell) installUpdate() {
 			return
 		}
 		s.updateDownloaded = true
-		if err := checker.InstallUpdate(path); err != nil {
+		if err = checker.InstallUpdate(path); err != nil {
 			// The package will not be used; do not leave it on disk.
 			_ = os.Remove(path)
 			s.updateInstalling = false

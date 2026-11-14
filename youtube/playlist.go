@@ -2,6 +2,7 @@ package youtube
 
 import (
 	"context"
+
 	"github.com/kamiertop/videodown/youtube/internal/extractor"
 )
 
@@ -21,5 +22,6 @@ func (s *Service) Playlist(ctx context.Context, input, continuation string) (Pla
 	for _, entry := range page.Videos {
 		result.Videos = append(result.Videos, Video{ID: entry.ID, Title: entry.Title, Author: entry.Author, Duration: entry.Duration, Cover: "https://i.ytimg.com/vi/" + entry.ID + "/hqdefault.jpg"})
 	}
+
 	return result, nil
 }

@@ -548,4 +548,7 @@ func (c *Client) AccountState() (bool, bool) {
 }
 
 // Clone isolates mutable session and player caches between download jobs.
-func (c *Client) Clone() *Client { copy := *c; return &copy }
+func (c *Client) Clone() *Client {
+	cc := *c
+	return &cc
+}

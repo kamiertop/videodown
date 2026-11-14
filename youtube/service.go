@@ -16,13 +16,20 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/imroc/req/v3"
+
 	"github.com/kamiertop/videodown/internal/netclient"
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/utils"
 	"github.com/kamiertop/videodown/youtube/internal/extractor"
+)
+
+var (
+	errAuthenticatedPlayback = errors.New("YouTube 已确认账号登录，但当前解析器未通过播放器校验")
+	videoIDPattern           = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
 )
 
 type Format struct {
@@ -39,12 +46,14 @@ type Video struct {
 	Formats                  []Format
 	AudioFormats             []Format
 }
+
 type Progress struct {
 	Phase             string
 	Downloaded, Total int64
 	Percent           float64
 	Speed             float64
 }
+
 type History struct {
 	ID         string `json:"id"`
 	Title      string `json:"title"`
@@ -54,8 +63,6 @@ type History struct {
 	Kind       string `json:"kind,omitempty"`
 }
 
-var errAuthenticatedPlayback = errors.New("YouTube 已确认账号登录，但当前解析器未通过播放器校验")
-
 type cachedVideo struct {
 	client *extractor.Client
 	video  *extractor.Video
@@ -64,20 +71,29 @@ type cachedVideo struct {
 
 type Service struct {
 	parseMu      sync.Mutex
-	publishMu    sync.Mutex
 	cache        map[string]cachedVideo
 	store        *storage.Store
 	transport    http.RoundTripper
 	networkMu    sync.Mutex
 	networkProxy string
 	network      *req.Client
+	// active 记录正在执行的任务数，供关闭程序前判断是否有任务未完成。
+	active atomic.Int64
 }
 
 func New(store *storage.Store) *Service { return &Service{store: store} }
+
+// ActiveCount 返回正在执行的任务数；0 表示当前没有任务在进行。
+func (s *Service) ActiveCount() int {
+	return int(s.active.Load())
+}
+
 func (s *Service) DownloadConcurrency() int {
 	return max(1, min(10, s.store.Config().Download.Concurrency))
 }
+
 func (s *Service) Cookie() string { return s.store.Config().YouTube.Cookie }
+
 func (s *Service) SetCookie(value string) error {
 	value = strings.TrimSpace(value)
 	if strings.HasPrefix(strings.ToLower(value), "cookie:") {
@@ -92,10 +108,9 @@ func (s *Service) SetCookie(value string) error {
 		s.cache = nil
 		s.parseMu.Unlock()
 	}
+
 	return err
 }
-
-var videoIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
 
 func VideoID(input string) (string, error) {
 	input = strings.TrimSpace(input)
@@ -126,9 +141,11 @@ func VideoID(input string) (string, error) {
 	}
 	return id, nil
 }
+
 func (s *Service) client() *extractor.Client {
 	return &extractor.Client{Cookie: s.Cookie(), HTTPClient: s.requestClient()}
 }
+
 func describe(v *extractor.Video) Video {
 	out := Video{ID: v.ID, Title: v.Title, Author: v.Author, Duration: v.Duration}
 	if len(v.Thumbnails) > 0 {
@@ -212,8 +229,10 @@ func (s *Service) Resolve(ctx context.Context, input string) (Video, error) {
 	if len(v.Formats) == 0 && len(v.AudioFormats) == 0 {
 		return Video{}, errors.New("未找到可下载的视频格式，可能需要登录或播放器规则已变化")
 	}
+
 	return v, nil
 }
+
 func (s *Service) History() ([]History, error) {
 	rows, err := s.store.HistoryRows("youtube")
 	if err != nil {
@@ -229,6 +248,9 @@ func (s *Service) History() ([]History, error) {
 	return result, nil
 }
 func (s *Service) Download(ctx context.Context, video Video, formatID int, notify func(Progress)) (string, error) {
+	// 与 B 站/抖音一致：任务执行期间计数，供关闭程序前判断是否有任务未完成。
+	s.active.Add(1)
+	defer s.active.Add(-1)
 	var progressMu sync.Mutex
 	var phase string
 	var sampleAt time.Time
@@ -324,7 +346,7 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 		if audio == nil {
 			return "", errors.New("未找到配套音频")
 		}
-		if _, _, err := utils.CheckFFmpeg(cfg.Download.FFmpegPath); err != nil {
+		if _, _, err = utils.CheckFFmpeg(cfg.Download.FFmpegPath); err != nil {
 			return "", err
 		}
 	}
@@ -338,13 +360,21 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 		case "author_source":
 			dir = filepath.Join(dir, utils.FileName(raw.Author), "YouTube")
 		case "date":
-			dir = filepath.Join(dir, time.Now().Format("2006-01-02"))
+			dir = filepath.Join(dir, time.Now().Format(time.DateOnly))
 		}
 	}
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err = os.MkdirAll(dir, 0755); err != nil {
 		return "", err
 	}
-	name := utils.ApplyFilenameTemplate(cfg.Download.FilenameTemplate, map[string]string{"title": raw.Title, "author": raw.Author, "id": raw.ID, "author_id": raw.ChannelID, "source": "YouTube", "date": time.Now().Format("2006-01-02"), "time": time.Now().Format("15-04-05"), "publish_date": publishDate(raw.PublishDate)})
+	name := utils.ApplyFilenameTemplate(cfg.Download.FilenameTemplate,
+		map[string]string{"title": raw.Title,
+			"author":       raw.Author,
+			"id":           raw.ID,
+			"author_id":    raw.ChannelID,
+			"source":       "YouTube",
+			"date":         time.Now().Format(time.DateOnly),
+			"time":         time.Now().Format(time.TimeOnly),
+			"publish_date": raw.PublishDate.Format(time.DateOnly)})
 	if name == "" || len(name) > 200 {
 		name = raw.ID
 	}
@@ -358,12 +388,25 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 	if audio != nil {
 		ext = ".mkv"
 	}
+	// 与 B 站/抖音一致：最终路径在下载前查重确定并直接写入——需要合并时两路流
+	// 先落临时目录、由 ffmpeg 直接输出到最终路径；无需合并时直接下载到最终路径。
+	// 下载中途失败时移除未写完的最终文件，不留半截内容占用该路径。
+	outPath := utils.UniqueFilePath(filepath.Join(dir, name+ext))
+	complete := false
+	defer func() {
+		if !complete {
+			_ = os.Remove(outPath)
+		}
+	}()
 	temp, err := os.MkdirTemp(dir, ".youtube-")
 	if err != nil {
 		return "", err
 	}
 	defer os.RemoveAll(temp)
-	videoPath := filepath.Join(temp, "video"+ext)
+	videoPath := outPath
+	if audio != nil {
+		videoPath = filepath.Join(temp, "video"+ext)
+	}
 	err = s.downloadStream(ctx, client, raw, selected, videoPath, func(done, total int64) {
 		p := float64(0)
 		if total > 0 {
@@ -378,7 +421,6 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 	if err != nil {
 		return "", err
 	}
-	ready := videoPath
 	if audio != nil {
 		audioPath := filepath.Join(temp, "audio")
 		if err = s.downloadStream(ctx, client, raw, audio, audioPath, func(done, total int64) {
@@ -391,21 +433,15 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 			return "", err
 		}
 		emit(Progress{Phase: "合并音视频", Percent: 98})
-		ready = filepath.Join(temp, "merged.mkv")
-		if err = utils.NewFFmpeg(cfg.Download.FFmpegPath).MergeContext(ctx, videoPath, audioPath, ready); err != nil {
+		if err = utils.NewFFmpeg(cfg.Download.FFmpegPath).MergeContext(ctx, videoPath, audioPath, outPath); err != nil {
 			return "", err
 		}
 	}
 	if err = ctx.Err(); err != nil {
 		return "", err
 	}
-	s.publishMu.Lock()
-	final := utils.UniqueFilePath(filepath.Join(dir, name+ext))
-	err = os.Rename(ready, final)
-	s.publishMu.Unlock()
-	if err != nil {
-		return "", err
-	}
+	complete = true
+	final := outPath
 	kind := "video"
 	if audioOnly {
 		kind = "audio"
@@ -416,12 +452,6 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 	}
 	emit(Progress{Phase: "已完成", Percent: 100})
 	return final, nil
-}
-func publishDate(date time.Time) string {
-	if date.IsZero() {
-		return ""
-	}
-	return date.Format("2006-01-02")
 }
 
 // fetchVideo retries a public request without account cookies when the account
@@ -477,6 +507,7 @@ func (s *Service) fetchVideo(ctx context.Context, id string) (*extractor.Client,
 	}
 	return nil, nil, errors.New("播放器未提供可下载的直链格式，当前精简解析器尚不支持该响应")
 }
+
 func (s *Service) parseError(err error) error {
 	if errors.Is(err, errAuthenticatedPlayback) {
 		return fmt.Errorf("%w。Cookie 有效，无需重复填写；当前精简解析器尚未支持该播放器响应", err)
@@ -515,12 +546,22 @@ func (s *Service) proxySettings() (string, bool) {
 	}
 	return value, config.ProxyEnabled
 }
-func (s *Service) Proxy() string      { value, _ := s.proxySettings(); return value }
-func (s *Service) ProxyEnabled() bool { _, enabled := s.proxySettings(); return enabled }
+
+func (s *Service) Proxy() string {
+	value, _ := s.proxySettings()
+	return value
+}
+
+func (s *Service) ProxyEnabled() bool {
+	_, enabled := s.proxySettings()
+	return enabled
+}
+
 func (s *Service) proxyKey() string {
 	value, enabled := s.proxySettings()
 	return fmt.Sprintf("%t:%s", enabled, value)
 }
+
 func (s *Service) SetProxy(raw string, enabled bool) error {
 	proxy, err := netclient.NormalizeProxy(raw)
 	if err != nil {

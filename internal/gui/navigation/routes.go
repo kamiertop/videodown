@@ -73,8 +73,9 @@ func (p Page) Sections() []Section {
 		return []Section{{"download", "视频下载"}, {"playlist", "播放列表"}, {"history", "下载历史"}, {"profile", "账号"}}
 	case "settings":
 		return []Section{{"", "通用"}, {"bilibili", "哔哩哔哩"}, {"download", "下载"}, {"filename", "命名模板"}, {"ffmpeg", "FFmpeg"}, {"about", "关于"}}
+	default:
+		return nil
 	}
-	return nil
 }
 
 func (p Page) CurrentSection(path string) string {
@@ -124,5 +125,6 @@ func validDouyinDetail(path string) bool {
 		}
 		return len(parts) == 3 || parts[3] != ""
 	}
+
 	return false
 }

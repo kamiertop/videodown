@@ -4,6 +4,7 @@ import (
 	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/egoist/mygo/ui"
+
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
 
