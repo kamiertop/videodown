@@ -218,7 +218,9 @@ YouTube 左侧菜单提供下载、播放列表、下载历史和账号页；在
 
 ## License
 
-本项目采用 [GPL-3.0](LICENSE) 许可证。
+videodown 主要用于个人学习、研究和实验。本仓库当前版本的 videodown 自有代码采用 [PolyForm Strict License 1.0.0](LICENSE)，允许非商业使用。该许可证不授予商业用途、出售、重新打包分发或修改的权限。教育、公益等机构的使用依许可证原文所列条款。
+
+此前已按 GPLv3 发布的版本继续适用其发布时的许可证。第三方组件适用各自的许可证，见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 你可以自由使用、修改和分发本项目，但衍生作品必须以相同许可证开源，并保留原项目的版权与许可声明。第三方依赖的许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 

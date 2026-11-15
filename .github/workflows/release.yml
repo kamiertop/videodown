@@ -81,6 +81,16 @@ jobs:
           fi
           cp build/appicon.png build/bin/appicon.png
 
+      - name: Stage license files
+        shell: bash
+        run: |
+          package_dir="dist/package/videodown"
+          extractor="youtube/internal/extractor"
+          mkdir -p "$package_dir/$extractor/ejs"
+          cp LICENSE THIRD_PARTY_NOTICES.md "$package_dir/"
+          cp "$extractor/LICENSE" "$package_dir/$extractor/"
+          cp "$extractor/ejs/"{LICENSE,MERIYAH_LICENSE,ASTRING_LICENSE} "$package_dir/$extractor/ejs/"
+
       - name: Package Unix artifact
         if: runner.os != 'Windows'
         shell: bash
