@@ -4,22 +4,21 @@
 
 ### Refactor
 
-- 界面组件库从 [MujicaUI](https://github.com/ELY-Open-Source/MujicaUI) 迁移到 [Onevra](https://github.com/oneo-me/onevra)（`github.com/oneo-me/onevra/source`）：默认主题改用 Onevra 调色板，图标改用 Lucide 图标集，滚动、对话框、进度条、折叠面板等改为应用内封装 Onevra 组件
+- 界面组件库从 [MujicaUI](https://github.com/ELY-Open-Source/MujicaUI) 迁移到 [Onevra](https://github.com/oneo-me/onevra)（`github.com/oneo-me/onevra/source`）：默认主题改用 Onevra 调色板，图标改用 Lucide 图标集
+- 界面分层精简：删除迁移期的 input/layout/overlay/feedback/chat 适配包，统一并入 components 应用组件库
 - 设置项滑杆改用 Onevra Slider，不再支持刻度文字（当前值已在标题中展示）
 - FFmpeg 安装命令代码块不再做语法高亮，保留复制、折叠与自动换行
 
 ### Enhancement
 
 - 抖音各板块（动态、收藏、播放历史、收藏夹、用户作品）改为独立列表状态：切换与后退不再重新请求，滚动位置保留，与哔哩哔哩一致
+- 抖音收藏页的收藏夹、合集目录各自独立：页签来回切换不再重新请求，滚动位置保留
 - B 站“UP 主”页关注列表改为滚动到底部自动加载，移除整页替换的翻页按钮
 - B 站“UP 主”页工具栏固定在顶部，仅列表滚动
 - 下载卡片休眠指示移到进度条下方，不再引起布局跳动
-- YouTube 下载历史卡片与 B 站/抖音对齐：本地打开、打开目录、删除记录；打开失败弹出右下角 toast 提示
-- 抖音收藏页的收藏夹、合集目录各自独立：页签来回切换不再重新请求，滚动位置保留
-
-### Refactor
-
-- 界面分层精简：删除迁移期的 input/layout/overlay/feedback/chat 适配包，统一并入 components 应用组件库，页面只认一个 UI 入口
+- YouTube 下载历史卡片与 B 站/抖音对齐：本地打开、打开目录、删除记录
+- B 站/抖音下载历史打开文件或目录失败（文件被移动或删除）改为右下角 toast 提示，与 YouTube 一致
+- B 站页面 State 按域拆分成子结构（登录、UP 主、收藏、动态、播放历史、下载历史、暂存队列、批量会话等），新增 feed 通用翻页状态收敛动态与播放历史的重复逻辑
 
 ## v1.0.0-alpha.4
 
