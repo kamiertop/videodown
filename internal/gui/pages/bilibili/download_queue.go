@@ -14,6 +14,22 @@ import (
 	"github.com/kamiertop/videodown/bilibili/model"
 )
 
+// queueState 是暂存队列的下载调度：每个待下载项的播放地址解析缓存、
+// 进度与附加任务（封面/音频），以及 FIFO 排队中的手动下载请求。
+type queueState struct {
+	resolves            map[string]*queueResolve
+	progress            map[string]bilidownload.Progress
+	extraBusy           map[string]string
+	requested           map[string]bool
+	downloading         bool
+	stop                bool
+	total, done, failed int
+	error               string
+	pending             []manualDownloadRequest
+	active              *manualWork
+	nextOrder           uint64
+}
+
 type queueResolve struct {
 	data       resource[biliapi.PlayUrlResult]
 	videoID    int
@@ -33,7 +49,7 @@ func (s *State) UpdateDownloadProgress(progress bilidownload.Progress) {
 	if s.stopped {
 		return
 	}
-	for _, b := range s.batches {
+	for _, b := range s.batches.sessions {
 		if !b.Active {
 			continue
 		}
@@ -45,22 +61,22 @@ func (s *State) UpdateDownloadProgress(progress bilidownload.Progress) {
 		}
 	}
 	key := queueProgressKey(progress.Bvid, progress.Cid)
-	if !s.stagedKeys[key] && !s.stagedKeys[progress.Bvid] {
+	if !s.stage.keys[key] && !s.stage.keys[progress.Bvid] {
 		return
 	}
-	if s.queueProgress == nil {
-		s.queueProgress = make(map[string]bilidownload.Progress)
+	if s.queue.progress == nil {
+		s.queue.progress = make(map[string]bilidownload.Progress)
 	}
-	s.queueProgress[key] = progress
+	s.queue.progress[key] = progress
 }
 
 func (s *State) progressForKey(key string) (bilidownload.Progress, bool) {
 	if manual, ok := s.manualItem(key); ok {
-		progress, found := s.queueProgress[queueProgressKey(manual.Bvid, manual.Cid)]
+		progress, found := s.queue.progress[queueProgressKey(manual.Bvid, manual.Cid)]
 		return progress, found
 	}
-	if entry := s.queueResolves[key]; entry != nil && entry.data.Loaded {
-		progress, found := s.queueProgress[queueProgressKey(key, entry.data.Data.Cid)]
+	if entry := s.queue.resolves[key]; entry != nil && entry.data.Loaded {
+		progress, found := s.queue.progress[queueProgressKey(key, entry.data.Data.Cid)]
 		return progress, found
 	}
 	return bilidownload.Progress{}, false
@@ -68,43 +84,43 @@ func (s *State) progressForKey(key string) (bilidownload.Progress, bool) {
 
 // stagedOrder keeps queue order stable and excludes records already removed.
 func (s *State) stagedOrder() []string {
-	keys := make([]string, 0, len(s.stagedKeys))
-	seen := make(map[string]bool, len(s.stagedKeys))
+	keys := make([]string, 0, len(s.stage.keys))
+	seen := make(map[string]bool, len(s.stage.keys))
 	appendKey := func(key string) {
-		if s.stagedKeys[key] && !seen[key] {
+		if s.stage.keys[key] && !seen[key] {
 			seen[key] = true
 			keys = append(keys, key)
 		}
 	}
-	for _, v := range s.stagedUploads {
+	for _, v := range s.stage.uploads {
 		appendKey(v.Bvid)
 	}
-	for _, v := range s.stagedFavorites {
+	for _, v := range s.stage.favorites {
 		appendKey(favoriteBvid(v.Bvid, v.BvID))
 	}
-	for _, v := range s.stagedCollections {
+	for _, v := range s.stage.collections {
 		appendKey(v.Bvid)
 	}
-	for _, v := range s.stagedSeasons {
+	for _, v := range s.stage.seasons {
 		appendKey(v.Bvid)
 	}
-	for _, v := range s.stagedSeries {
+	for _, v := range s.stage.series {
 		appendKey(v.Bvid)
 	}
-	for _, v := range s.stagedDynamics {
+	for _, v := range s.stage.dynamics {
 		appendKey(v.Bvid)
 	}
-	for _, v := range s.stagedPlayHistory {
+	for _, v := range s.stage.playHistory {
 		appendKey(v.History.Bvid)
 	}
-	for _, v := range s.stagedManual {
+	for _, v := range s.stage.manual {
 		appendKey(v.Key)
 	}
 	return keys
 }
 
 func (s *State) ensureQueueResolves() {
-	if s.api == nil || !s.loggedIn {
+	if s.api == nil || !s.auth.loggedIn {
 		return
 	}
 	for _, key := range s.stagedOrder() {
@@ -113,16 +129,16 @@ func (s *State) ensureQueueResolves() {
 }
 
 func (s *State) resolveQueueItem(key string) {
-	if s.api == nil || !s.stagedKeys[key] {
+	if s.api == nil || !s.stage.keys[key] {
 		return
 	}
-	if s.queueResolves == nil {
-		s.queueResolves = make(map[string]*queueResolve)
+	if s.queue.resolves == nil {
+		s.queue.resolves = make(map[string]*queueResolve)
 	}
-	entry := s.queueResolves[key]
+	entry := s.queue.resolves[key]
 	if entry == nil {
 		entry = &queueResolve{}
-		s.queueResolves[key] = entry
+		s.queue.resolves[key] = entry
 	}
 	if entry.data.Loading || entry.data.Loaded || entry.data.Error != "" {
 		return
@@ -146,7 +162,7 @@ func (s *State) resolveQueueItem(key string) {
 		}
 		return result, nil
 	}, func(result biliapi.PlayUrlResult) {
-		if !s.stagedKeys[key] {
+		if !s.stage.keys[key] {
 			return
 		}
 		entry.resolvedAt = time.Now()
@@ -156,7 +172,7 @@ func (s *State) resolveQueueItem(key string) {
 }
 
 func (s *State) retryQueueItem(key string) {
-	if entry := s.queueResolves[key]; entry != nil {
+	if entry := s.queue.resolves[key]; entry != nil {
 		entry.data.Error = ""
 		entry.data.Loaded = false
 	}
@@ -291,7 +307,7 @@ func (entry *queueResolve) resolved() bool {
 }
 
 func (s *State) queuedTask(key string) (bilidownload.Task, bool) {
-	entry := s.queueResolves[key]
+	entry := s.queue.resolves[key]
 	if !entry.resolved() {
 		return bilidownload.Task{}, false
 	}
@@ -302,7 +318,7 @@ func (s *State) queuedTask(key string) (bilidownload.Task, bool) {
 		bvid = item.Bvid
 	}
 	task := bilidownload.Task{
-		Bvid: bvid, Cid: result.Cid, Title: view.Title, Cover: view.Pic, SourceName: s.stagedSourceNames[key],
+		Bvid: bvid, Cid: result.Cid, Title: view.Title, Cover: view.Pic, SourceName: s.stage.sourceNames[key],
 		UpperName: view.Owner.Name, Duration: view.Duration, Pubtime: view.Pubdate,
 		Play: view.Stat.View, Danmaku: view.Stat.Danmaku,
 		VideoURL: queueVideoURL(result.PlayURL, entry.videoID),
@@ -337,21 +353,21 @@ func (s *State) queuedTask(key string) (bilidownload.Task, bool) {
 			task.Pubtime = item.Pubtime
 		}
 	}
-	for _, item := range s.stagedUploads {
+	for _, item := range s.stage.uploads {
 		if item.Bvid == key {
 			task.Title, task.Cover, task.UpperName = item.Title, item.Pic, item.Author
 			task.Play, task.Danmaku, task.Pubtime = item.Play, item.VideoReview, item.Created
 			break
 		}
 	}
-	for _, item := range s.stagedSeasons {
+	for _, item := range s.stage.seasons {
 		if item.Bvid == key {
 			task.Title, task.Cover, task.Duration = item.Title, item.Pic, item.Duration
 			task.Play, task.Danmaku, task.Pubtime = item.Stat.View, item.Stat.Danmaku, item.Pubdate
 			break
 		}
 	}
-	for _, item := range s.stagedSeries {
+	for _, item := range s.stage.series {
 		if item.Bvid == key {
 			task.Title, task.Cover, task.Duration = item.Title, item.Pic, item.Duration
 			task.Play, task.Danmaku, task.Pubtime = item.Stat.View, item.Stat.Danmaku, item.PubDate
@@ -384,61 +400,61 @@ func (s *State) startQueuedDownloadKeys(keys []string) {
 	}
 	tasks := make([]queuedDownload, 0, len(keys))
 	for _, key := range keys {
-		if s.queueRequested[key] {
+		if s.queue.requested[key] {
 			continue
 		}
 		task, ok := s.queuedTask(key)
 		if !ok {
-			s.queueDownloadError = "请等待视频解析完成后再下载"
+			s.queue.error = "请等待视频解析完成后再下载"
 			return
 		}
-		entry := s.queueResolves[key]
+		entry := s.queue.resolves[key]
 		// Reuse the preview streams while valid; refresh only after expiry.
 		tasks = append(tasks, queuedDownload{key: key, task: task, videoID: entry.videoID, audioID: entry.audioID, validUntil: streamValidity(entry.resolvedAt, task.VideoURL, task.AudioURL)})
 	}
 	if len(tasks) == 0 {
 		return
 	}
-	if s.queueRequested == nil {
-		s.queueRequested = make(map[string]bool)
+	if s.queue.requested == nil {
+		s.queue.requested = make(map[string]bool)
 	}
 	for _, task := range tasks {
-		s.queueRequested[task.key] = true
+		s.queue.requested[task.key] = true
 	}
-	s.nextDownloadOrder++
-	s.pendingManualDownloads = append(s.pendingManualDownloads, manualDownloadRequest{order: s.nextDownloadOrder, tasks: tasks})
-	s.queueDownloadError = ""
+	s.queue.nextOrder++
+	s.queue.pending = append(s.queue.pending, manualDownloadRequest{order: s.queue.nextOrder, tasks: tasks})
+	s.queue.error = ""
 	s.pumpDownloads()
 }
 
 func (s *State) cancelPendingManualKey(key string) {
-	for i := range s.pendingManualDownloads {
-		s.pendingManualDownloads[i].tasks = slices.DeleteFunc(s.pendingManualDownloads[i].tasks, func(item queuedDownload) bool { return item.key == key })
+	for i := range s.queue.pending {
+		s.queue.pending[i].tasks = slices.DeleteFunc(s.queue.pending[i].tasks, func(item queuedDownload) bool { return item.key == key })
 	}
-	s.pendingManualDownloads = slices.DeleteFunc(s.pendingManualDownloads, func(request manualDownloadRequest) bool { return len(request.tasks) == 0 })
-	delete(s.queueRequested, key)
+	s.queue.pending = slices.DeleteFunc(s.queue.pending, func(request manualDownloadRequest) bool { return len(request.tasks) == 0 })
+	delete(s.queue.requested, key)
 }
 
 func (s *State) stopQueuedDownloads() {
-	s.queueDownloadStop = true
-	for _, request := range s.pendingManualDownloads {
+	s.queue.stop = true
+	for _, request := range s.queue.pending {
 		for _, item := range request.tasks {
-			delete(s.queueRequested, item.key)
+			delete(s.queue.requested, item.key)
 		}
 	}
-	s.pendingManualDownloads = nil
+	s.queue.pending = nil
 }
 
 func (s *State) startQueueExtra(key, kind string) {
-	if s.downloadBackend == nil || s.runtime.Background == nil || s.queueDownloading || s.batchesRunning() || s.queueExtraBusy[key] != "" || s.queueRequested[key] {
+	if s.downloadBackend == nil || s.runtime.Background == nil || s.queue.downloading || s.batchesRunning() || s.queue.extraBusy[key] != "" || s.queue.requested[key] {
 		return
 	}
 	task, ready := s.queuedTask(key)
 	if !ready || kind == "audio" && task.AudioURL == "" || kind == "cover" && task.Cover == "" {
 		return
 	}
-	s.queueExtraBusy[key] = kind
-	s.queueDownloadError = ""
+	s.queue.extraBusy[key] = kind
+	s.queue.error = ""
 	epoch := s.epoch
 	var path string
 	s.runtime.Background(func() (err error) {
@@ -452,10 +468,10 @@ func (s *State) startQueueExtra(key, kind string) {
 		if s.stopped || s.epoch != epoch {
 			return
 		}
-		delete(s.queueExtraBusy, key)
+		delete(s.queue.extraBusy, key)
 		defer s.pumpDownloads()
 		if err != nil {
-			s.queueDownloadError = fmt.Sprintf("%s：%v", task.Title, err)
+			s.queue.error = fmt.Sprintf("%s：%v", task.Title, err)
 			return
 		}
 		label := "封面"
@@ -475,23 +491,23 @@ type manualWork struct {
 }
 
 func (s *State) advanceManualDownloads() {
-	work := s.activeManualDownloads
+	work := s.queue.active
 	if work == nil {
 		return
 	}
-	if !s.queueDownloadStop {
+	if !s.queue.stop {
 		// Consecutive manual requests can share slots, without overtaking an earlier batch.
 		barrier := ^uint64(0)
-		for _, b := range s.batches {
+		for _, b := range s.batches.sessions {
 			if b.Active && b.Status == "queued" && b.Order < barrier {
 				barrier = b.Order
 			}
 		}
-		for len(s.pendingManualDownloads) > 0 && s.pendingManualDownloads[0].order < barrier {
-			request := s.pendingManualDownloads[0]
-			s.pendingManualDownloads = s.pendingManualDownloads[1:]
+		for len(s.queue.pending) > 0 && s.queue.pending[0].order < barrier {
+			request := s.queue.pending[0]
+			s.queue.pending = s.queue.pending[1:]
 			work.tasks = append(work.tasks, request.tasks...)
-			s.queueDownloadTotal += len(request.tasks)
+			s.queue.total += len(request.tasks)
 		}
 		for work.inFlight < s.downloadConcurrency() && work.next < len(work.tasks) {
 			item := work.tasks[work.next]
@@ -500,19 +516,19 @@ func (s *State) advanceManualDownloads() {
 			s.runQueuedTask(work, item)
 		}
 	}
-	if work.inFlight == 0 && (s.queueDownloadStop || work.next == len(work.tasks)) {
+	if work.inFlight == 0 && (s.queue.stop || work.next == len(work.tasks)) {
 		for _, item := range work.tasks[work.next:] {
-			delete(s.queueRequested, item.key)
+			delete(s.queue.requested, item.key)
 		}
-		s.activeManualDownloads = nil
-		s.queueDownloading = false
+		s.queue.active = nil
+		s.queue.downloading = false
 		s.pumpDownloads()
 	}
 }
 
 func (s *State) runQueuedTask(work *manualWork, item queuedDownload) {
 	task := item.task
-	delete(s.queueProgress, queueProgressKey(task.Bvid, task.Cid))
+	delete(s.queue.progress, queueProgressKey(task.Bvid, task.Cid))
 	resolveFailed := false
 	api, backend := s.api, s.downloadBackend
 	s.runtime.Background(func() error {
@@ -549,12 +565,12 @@ func (s *State) runQueuedTask(work *manualWork, item queuedDownload) {
 			return
 		}
 		work.inFlight--
-		s.queueDownloadDone++
-		delete(s.queueRequested, item.key)
+		s.queue.done++
+		delete(s.queue.requested, item.key)
 		if err != nil {
-			s.queueDownloadFailed++
-			s.queueDownloadError = fmt.Sprintf("%s：%v", task.Title, err)
-			if entry := s.queueResolves[item.key]; entry != nil {
+			s.queue.failed++
+			s.queue.error = fmt.Sprintf("%s：%v", task.Title, err)
+			if entry := s.queue.resolves[item.key]; entry != nil {
 				entry.resolvedAt = time.Time{}
 				if resolveFailed {
 					entry.data.Loaded = false

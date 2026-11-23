@@ -9,41 +9,41 @@ import (
 func (s *State) maybeAutoAuthorVideos(mid uint64) {
 	key := fmt.Sprintf("author-videos/%d", mid)
 	active := func() bool {
-		return s.activePath == navigation.BilibiliAuthorPath(mid) && s.authorInfo.Data.Mid == mid
+		return s.activePath == navigation.BilibiliAuthorPath(mid) && s.author.info.Data.Mid == mid
 	}
 	switch {
-	case s.authorTab == "uploads":
+	case s.author.tab == "uploads":
 		s.maybeAutoPage(key, key, func() bool {
-			return active() && s.authorTab == "uploads" && s.uploads.Loaded && !s.uploads.Loading && s.uploads.Error == "" &&
-				len(s.uploads.Data.List.Vlist) < s.uploads.Data.Page.Count
-		}, func() { s.loadUploads(s.authorPage+1, true) })
-	case s.selectedSeason != 0:
-		id := s.selectedSeason
+			return active() && s.author.tab == "uploads" && s.author.uploads.Loaded && !s.author.uploads.Loading && s.author.uploads.Error == "" &&
+				len(s.author.uploads.Data.List.Vlist) < s.author.uploads.Data.Page.Count
+		}, func() { s.loadUploads(s.author.uploadsPage+1, true) })
+	case s.author.selectedSeason != 0:
+		id := s.author.selectedSeason
 		s.maybeAutoPage(key, key, func() bool {
-			return active() && s.authorTab == "lists" && s.selectedSeason == id && s.seasonVideos.Loaded && !s.seasonVideos.Loading && s.seasonVideos.Error == "" &&
-				len(s.seasonVideos.Data.Archives) < s.seasonVideos.Data.Page.Total
-		}, func() { s.loadSeason(id, s.seasonPage+1, true) })
-	case s.selectedSeries != 0:
-		id := s.selectedSeries
+			return active() && s.author.tab == "lists" && s.author.selectedSeason == id && s.author.seasonVideos.Loaded && !s.author.seasonVideos.Loading && s.author.seasonVideos.Error == "" &&
+				len(s.author.seasonVideos.Data.Archives) < s.author.seasonVideos.Data.Page.Total
+		}, func() { s.loadSeason(id, s.author.seasonPage+1, true) })
+	case s.author.selectedSeries != 0:
+		id := s.author.selectedSeries
 		s.maybeAutoPage(key, key, func() bool {
-			return active() && s.authorTab == "lists" && s.selectedSeries == id && s.seriesVideos.Loaded && !s.seriesVideos.Loading && s.seriesVideos.Error == "" &&
-				len(s.seriesVideos.Data.Archives) < s.seriesVideos.Data.Page.Total
-		}, func() { s.loadSeries(id, s.seriesPage+1, true) })
+			return active() && s.author.tab == "lists" && s.author.selectedSeries == id && s.author.seriesVideos.Loaded && !s.author.seriesVideos.Loading && s.author.seriesVideos.Error == "" &&
+				len(s.author.seriesVideos.Data.Archives) < s.author.seriesVideos.Data.Page.Total
+		}, func() { s.loadSeries(id, s.author.seriesPage+1, true) })
 	}
 }
 
 func (s *State) maybeAutoAuthorLists(mid uint64) {
-	if s.authorTab != "lists" {
+	if s.author.tab != "lists" {
 		return
 	}
 	key := fmt.Sprintf("author-lists/%d", mid)
 	scrollKey := fmt.Sprintf("author-videos/%d", mid)
 	s.maybeAutoPage(key, scrollKey, func() bool {
-		lists := s.authorLists.Data.ItemsLists
-		return s.activePath == navigation.BilibiliAuthorPath(mid) && s.authorInfo.Data.Mid == mid && s.authorTab == "lists" &&
-			s.authorLists.Loaded && !s.authorLists.Loading && s.authorLists.Error == "" &&
+		lists := s.author.lists.Data.ItemsLists
+		return s.activePath == navigation.BilibiliAuthorPath(mid) && s.author.info.Data.Mid == mid && s.author.tab == "lists" &&
+			s.author.lists.Loaded && !s.author.lists.Loading && s.author.lists.Error == "" &&
 			len(lists.SeasonsList)+len(lists.SeriesList) < lists.Page.Total
-	}, func() { s.loadAuthorLists(s.listPage+1, true) })
+	}, func() { s.loadAuthorLists(s.author.listPage+1, true) })
 }
 
 // maybeMoreAuthorFollows keeps appending the follow grid as the UP 主 page
@@ -52,7 +52,7 @@ func (s *State) maybeMoreAuthorFollows() {
 	const key = "author-follows"
 	s.maybeAutoPage(key, followsScrollKey, func() bool {
 		return s.activePath == "/bilibili/up" &&
-			s.follows.Loaded && !s.follows.Loading && s.follows.Error == "" &&
-			len(s.follows.Data.List) < s.follows.Data.Total
+			s.follows.list.Loaded && !s.follows.list.Loading && s.follows.list.Error == "" &&
+			len(s.follows.list.Data.List) < s.follows.list.Data.Total
 	}, func() { s.loadFollows(true) })
 }

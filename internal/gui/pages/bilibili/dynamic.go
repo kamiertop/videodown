@@ -14,49 +14,48 @@ import (
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
 
+// dynamicState 是关注动态板块：内嵌共用的翻页 feed，另带动态接口的
+// offset 游标与按 BV 号的勾选集。
+type dynamicState struct {
+	feed[model.DynamicArchivePage]
+	offset string
+	picked map[string]bool
+}
+
 // A refresh owns a new generation so a late pagination response cannot add
 // old videos back to the refreshed feed.
 func (s *State) loadDynamics(more bool) {
-	if !s.loggedIn || s.api == nil {
+	if !s.auth.loggedIn || s.api == nil {
 		return
 	}
 	if more {
-		if s.dynamicMore.Loading || s.dynamics.Loading || !s.dynamicHasMore || s.dynamicOffset == "" {
+		if s.dynamic.more.Loading || s.dynamic.items.Loading || !s.dynamic.hasMore || s.dynamic.offset == "" {
 			return
 		}
-		s.dynamicAutoAtY = s.scroll("dynamic-videos").Y
-		offset, generation := s.dynamicOffset, s.dynamicGeneration
-		load(s, &s.dynamicMore, func() (model.DynamicArchivePage, error) {
+		s.dynamic.autoAtY = s.scroll("dynamic-videos").Y
+		offset, generation := s.dynamic.offset, s.dynamic.generation
+		load(s, &s.dynamic.more, func() (model.DynamicArchivePage, error) {
 			return s.api.DynamicVideosPage(offset)
 		}, func(page model.DynamicArchivePage) {
-			if generation != s.dynamicGeneration {
+			if generation != s.dynamic.generation {
 				return
 			}
-			s.dynamics.Data.Items = appendUnique(s.dynamics.Data.Items, page.Items, func(item model.DynamicArchiveItem) string { return item.Bvid })
-			s.dynamicOffset = page.Offset
-			s.dynamicHasMore = page.HasMore && page.Offset != "" && page.Offset != offset
+			s.dynamic.items.Data.Items = appendUnique(s.dynamic.items.Data.Items, page.Items, func(item model.DynamicArchiveItem) string { return item.Bvid })
+			s.dynamic.offset = page.Offset
+			s.dynamic.hasMore = page.HasMore && page.Offset != "" && page.Offset != offset
 		})
 		return
 	}
-	s.dynamicGeneration++
-	s.dynamicMore.seq++
-	s.dynamicMore.Loading = false
-	s.dynamicMore.Error = ""
-	s.dynamics.Data = model.DynamicArchivePage{}
-	s.dynamics.Loaded = false
-	s.dynamicOffset = ""
-	s.dynamicHasMore = false
-	s.dynamicSelected = make(map[string]bool)
-	s.dynamicAutoPending = false
-	s.dynamicAutoAtY = 0
-	s.dynamicAutoFillPages = 0
-	s.scroll("dynamic-videos").Y = 0
-	s.scroll("dynamic-videos").MaxY = 0
-	load(s, &s.dynamics, func() (model.DynamicArchivePage, error) {
+	s.dynamic.feed.reset()
+	s.dynamic.offset = ""
+	s.dynamic.picked = make(map[string]bool)
+	scroll := s.scroll("dynamic-videos")
+	scroll.Y, scroll.MaxY = 0, 0
+	load(s, &s.dynamic.items, func() (model.DynamicArchivePage, error) {
 		return s.api.DynamicVideosPage("")
 	}, func(page model.DynamicArchivePage) {
-		s.dynamicOffset = page.Offset
-		s.dynamicHasMore = page.HasMore && page.Offset != ""
+		s.dynamic.offset = page.Offset
+		s.dynamic.hasMore = page.HasMore && page.Offset != ""
 	})
 }
 
@@ -69,8 +68,8 @@ func dynamicTime(item model.DynamicArchiveItem) string {
 
 func (s *State) dynamicSelectedCount() int {
 	count := 0
-	for _, item := range s.dynamics.Data.Items {
-		if s.dynamicSelected[item.Bvid] {
+	for _, item := range s.dynamic.items.Data.Items {
+		if s.dynamic.picked[item.Bvid] {
 			count++
 		}
 	}
@@ -81,57 +80,31 @@ func (s *State) stageSelectedDynamics(navigate func(string)) {
 	if s.dynamicSelectedCount() == 0 {
 		return
 	}
-	for _, item := range s.dynamics.Data.Items {
-		if s.dynamicSelected[item.Bvid] {
+	for _, item := range s.dynamic.items.Data.Items {
+		if s.dynamic.picked[item.Bvid] {
 			s.stageDynamic(item)
 		}
 	}
-	s.dynamicSelected = make(map[string]bool)
+	s.dynamic.picked = make(map[string]bool)
 	navigate("/bilibili/download")
 }
 
 // Schedule one page after a scroll approaches the end. A short first page
 // fills automatically too; the limit keeps empty feeds from polling forever.
 func (s *State) maybeAutoLoadDynamics() {
-	state := s.scroll("dynamic-videos")
-	if s.runtime.After == nil || s.dynamicAutoPending || s.dynamicMore.Loading || s.dynamicMore.Error != "" ||
-		!s.dynamicHasMore || s.dynamicOffset == "" || !s.dynamicShouldAutoLoad(state) {
-		return
-	}
-	s.dynamicAutoPending = true
-	epoch, generation, offset := s.epoch, s.dynamicGeneration, s.dynamicOffset
-	s.runtime.After(0, func() {
-		if s.stopped || s.epoch != epoch || s.dynamicGeneration != generation {
-			return
-		}
-		s.dynamicAutoPending = false
-		state := s.scroll("dynamic-videos")
-		if s.section != "dynamic" || s.dynamicOffset != offset || s.dynamicMore.Error != "" ||
-			!s.dynamicShouldAutoLoad(state) {
-			return
-		}
-		if state.MaxY <= 0 {
-			s.dynamicAutoFillPages++
-		} else {
-			s.dynamicAutoFillPages = 0
-		}
-		s.loadDynamics(true)
-	})
+	offset := s.dynamic.offset
+	maybeAutoLoadFeed(s, &s.dynamic.feed, "dynamic-videos", "dynamic",
+		func() bool { return offset != "" },
+		func() bool { return s.dynamic.offset == offset },
+		func() { s.loadDynamics(true) })
 }
 
-func (s *State) dynamicShouldAutoLoad(state *ui.ScrollState) bool {
-	if state.MaxY <= 0 {
-		return s.dynamicAutoFillPages < style.DynamicAutoFillLimit
-	}
-	return state.Y > s.dynamicAutoAtY+1 && state.Y+style.DynamicAutoLoadThreshold >= state.MaxY
-}
-
-func (s *State) dynamic(c *ui.Context, navigate func(string)) {
+func (s *State) dynamicPage(c *ui.Context, navigate func(string)) {
 	if s.requiresLogin(c, navigate) {
 		return
 	}
 	k := c.Theme()
-	items := s.dynamics.Data.Items
+	items := s.dynamic.items.Data.Items
 	selected := s.dynamicSelectedCount()
 	_, height := c.Size()
 	panel(c, "动态工具栏", func() {
@@ -140,44 +113,44 @@ func (s *State) dynamic(c *ui.Context, navigate func(string)) {
 			ui.Text(c, "关注动态").Shrink(0).SingleLine().FontWeight(style.WeightSemibold)
 			ui.Text(c, fmt.Sprintf("已加载 %d 个 · 已选 %d 个", len(items), selected)).Grow(1).MinWidth(0).SingleLine().
 				FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted)
-			button(c.Key("refresh"), "刷新", components.ButtonOptions{Variant: components.ButtonOutline, Icon: icons.Must("refresh-cw"), Loading: s.dynamics.Loading}).
+			button(c.Key("refresh"), "刷新", components.ButtonOptions{Variant: components.ButtonOutline, Icon: icons.Must("refresh-cw"), Loading: s.dynamic.items.Loading}).
 				Height(32).OnClick(func() { s.loadDynamics(false) })
 			if selected > 0 {
 				button(c.Key("clear-selection"), "清空选择", components.ButtonOptions{Variant: components.ButtonGhost}).
-					Height(32).OnClick(func() { s.dynamicSelected = make(map[string]bool) })
+					Height(32).OnClick(func() { s.dynamic.picked = make(map[string]bool) })
 			}
 			button(c.Key("selected-download"), fmt.Sprintf("下载已选 (%d)", selected), components.ButtonOptions{Variant: components.ButtonPrimary, Disabled: selected == 0}).
 				Height(32).OnClick(func() { s.stageSelectedDynamics(navigate) })
 		})
 	})
 	panel(c, "动态视频列表", func() {
-		if s.dynamics.Loading && !s.dynamics.Loaded {
+		if s.dynamic.items.Loading && !s.dynamic.items.Loaded {
 			empty(c, "正在加载关注动态", "loader-circle")
 			return
 		}
-		if s.dynamics.Error != "" {
+		if s.dynamic.items.Error != "" {
 			ui.Column(c).FillWidth().Padding(style.SpaceLarge).Children(func() {
-				s.errorRow(c, s.dynamics.Error, func() { s.loadDynamics(false) })
+				s.errorRow(c, s.dynamic.items.Error, func() { s.loadDynamics(false) })
 			})
 			return
 		}
 		if len(items) == 0 {
 			s.maybeAutoLoadDynamics()
-			if s.dynamicMore.Error != "" {
+			if s.dynamic.more.Error != "" {
 				empty(c, "加载关注视频动态失败", "circle-alert")
-			} else if s.dynamicHasMore || s.dynamicMore.Loading {
+			} else if s.dynamic.hasMore || s.dynamic.more.Loading {
 				empty(c, "正在查找关注视频动态", "loader-circle")
 			} else {
 				empty(c, "暂无关注视频动态", "play")
 			}
-			if s.dynamicMore.Error != "" {
+			if s.dynamic.more.Error != "" {
 				ui.Column(c).FillWidth().Padding(style.SpaceMedium).Children(func() {
-					s.errorRow(c, s.dynamicMore.Error, func() { s.loadDynamics(true) })
+					s.errorRow(c, s.dynamic.more.Error, func() { s.loadDynamics(true) })
 				})
-			} else if s.dynamicHasMore && (s.runtime.After == nil || s.dynamicAutoFillPages >= style.DynamicAutoFillLimit) {
+			} else if s.dynamic.hasMore && (s.runtime.After == nil || s.dynamic.autoFill >= style.DynamicAutoFillLimit) {
 				ui.Row(c).FillWidth().Justify(ui.Center).Padding(style.SpaceMedium).Children(func() {
 					button(c.Key("more"), "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).
-						OnClick(func() { s.dynamicAutoFillPages = 0; s.loadDynamics(true) })
+						OnClick(func() { s.dynamic.autoFill = 0; s.loadDynamics(true) })
 				})
 			}
 			return
@@ -192,21 +165,21 @@ func (s *State) dynamic(c *ui.Context, navigate func(string)) {
 				})
 			}).Grow(1).MinHeight(0)
 			s.maybeAutoLoadDynamics()
-			shortListFallback := s.dynamicHasMore && (s.runtime.After == nil ||
-				s.scroll("dynamic-videos").MaxY <= 0 && s.dynamicAutoFillPages >= style.DynamicAutoFillLimit)
-			if shortListFallback || s.dynamicMore.Loading || s.dynamicMore.Error != "" {
+			shortListFallback := s.dynamic.hasMore && (s.runtime.After == nil ||
+				s.scroll("dynamic-videos").MaxY <= 0 && s.dynamic.autoFill >= style.DynamicAutoFillLimit)
+			if shortListFallback || s.dynamic.more.Loading || s.dynamic.more.Error != "" {
 				ui.Column(c.Key("dynamic-more")).Label("动态加载状态").FillWidth().Padding(style.SpaceSmall, style.SpaceMedium).
 					Gap(style.SpaceSmall).BorderColor(k.Border).BorderWidth(style.BorderWidth, 0, 0, 0).
 					AlignItems(ui.Center).Children(func() {
-					if s.dynamicMore.Error != "" {
-						s.errorRow(c, s.dynamicMore.Error, func() { s.loadDynamics(true) })
+					if s.dynamic.more.Error != "" {
+						s.errorRow(c, s.dynamic.more.Error, func() { s.loadDynamics(true) })
 					}
-					if s.dynamicMore.Loading {
+					if s.dynamic.more.Loading {
 						caption(c, "正在加载更多")
-					} else if shortListFallback && s.dynamicMore.Error == "" {
+					} else if shortListFallback && s.dynamic.more.Error == "" {
 						button(c.Key("more"), "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).
 							Height(32).OnClick(func() {
-							s.dynamicAutoFillPages = 0
+							s.dynamic.autoFill = 0
 							s.loadDynamics(true)
 						})
 					}
@@ -237,7 +210,7 @@ func (s *State) dynamicRow(c *ui.Context, item model.DynamicArchiveItem, navigat
 		title = "未命名视频"
 	}
 	valid := strings.HasPrefix(item.Bvid, "BV")
-	selected := valid && s.dynamicSelected[item.Bvid]
+	selected := valid && s.dynamic.picked[item.Bvid]
 	label := "选择动态视频：" + title
 	if selected {
 		label = "取消选择动态视频：" + title
@@ -299,7 +272,7 @@ func (s *State) dynamicRow(c *ui.Context, item model.DynamicArchiveItem, navigat
 	}
 	row.OnClick(func() {
 		if valid {
-			s.dynamicSelected[item.Bvid] = !s.dynamicSelected[item.Bvid]
+			s.dynamic.picked[item.Bvid] = !s.dynamic.picked[item.Bvid]
 		}
 	})
 }

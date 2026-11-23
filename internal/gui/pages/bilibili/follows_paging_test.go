@@ -39,11 +39,11 @@ func followsTester(s *State) *ui.Tester {
 // continuing the load.
 func TestFollowsGridAutoLoadFooter(t *testing.T) {
 	s := NewState()
-	s.loggedIn = true
-	s.follows.Loaded = true
-	s.follows.Data = model.FollowData{Total: 50}
+	s.auth.loggedIn = true
+	s.follows.list.Loaded = true
+	s.follows.list.Data = model.FollowData{Total: 50}
 	for i := range 20 {
-		s.follows.Data.List = append(s.follows.Data.List, model.FollowDataList{Mid: int64(i + 1), Uname: fmt.Sprintf("UP%02d", i)})
+		s.follows.list.Data.List = append(s.follows.list.Data.List, model.FollowDataList{Mid: int64(i + 1), Uname: fmt.Sprintf("UP%02d", i)})
 	}
 	tester := followsTester(s)
 	tester.Frame()
@@ -66,9 +66,9 @@ func TestFollowsGridAutoLoadFooter(t *testing.T) {
 	}
 
 	// All items present: the footer settles and the fallback disappears.
-	s.follows.Data.List = s.follows.Data.List[:0]
+	s.follows.list.Data.List = s.follows.list.Data.List[:0]
 	for i := range 50 {
-		s.follows.Data.List = append(s.follows.Data.List, model.FollowDataList{Mid: int64(i + 1), Uname: fmt.Sprintf("UP%02d", i)})
+		s.follows.list.Data.List = append(s.follows.list.Data.List, model.FollowDataList{Mid: int64(i + 1), Uname: fmt.Sprintf("UP%02d", i)})
 	}
 	tester.Frame()
 	if !tester.HasText("已加载全部 50 位 UP 主") {
@@ -84,11 +84,11 @@ func TestFollowsGridAutoLoadFooter(t *testing.T) {
 // cards never moves it.
 func TestUpToolbarStaysFixedWhileListScrolls(t *testing.T) {
 	s := NewState()
-	s.loggedIn = true
-	s.follows.Loaded = true
-	s.follows.Data = model.FollowData{Total: 60}
+	s.auth.loggedIn = true
+	s.follows.list.Loaded = true
+	s.follows.list.Data = model.FollowData{Total: 60}
 	for i := range 60 {
-		s.follows.Data.List = append(s.follows.Data.List, model.FollowDataList{Mid: int64(i + 1), Uname: fmt.Sprintf("UP%02d", i)})
+		s.follows.list.Data.List = append(s.follows.list.Data.List, model.FollowDataList{Mid: int64(i + 1), Uname: fmt.Sprintf("UP%02d", i)})
 	}
 	test := ui.NewTester(func(c *ui.Context) {
 		style.UseTheme(c)

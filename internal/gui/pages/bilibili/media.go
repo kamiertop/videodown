@@ -102,7 +102,7 @@ func duration(seconds int) string {
 }
 
 func (s *State) stagingNotice(c *ui.Context) {
-	if s.notice != "" {
-		caption(c, s.notice)
+	if s.stage.notice != "" {
+		caption(c, s.stage.notice)
 	}
 }

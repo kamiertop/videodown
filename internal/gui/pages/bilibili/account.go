@@ -12,12 +12,25 @@ import (
 	"github.com/skip2/go-qrcode"
 )
 
+// authState 汇总登录与会话状态：扫码二维码、轮询、账号资料与登录错误。
+type authState struct {
+	loggedIn, checking, loggingOut bool
+	error                          string
+	account                        model.MyInfoProfile
+	pollSeq                        uint64
+	cancelPoll                     func()
+	qr                             resource[model.QRCodeData]
+	qrImage                        *ui.Bitmap
+	qrExpired                      bool
+	qrStatus                       string
+}
+
 func (s *State) checkAccount() {
-	if s.checking || s.api == nil {
+	if s.auth.checking || s.api == nil {
 		return
 	}
-	s.checking = true
-	s.authError = ""
+	s.auth.checking = true
+	s.auth.error = ""
 	epoch := s.epoch
 	var loggedIn bool
 	var profile model.MyInfoProfile
@@ -35,15 +48,15 @@ func (s *State) checkAccount() {
 		if s.stopped || epoch != s.epoch {
 			return
 		}
-		s.checking = false
-		s.loggedIn = loggedIn
+		s.auth.checking = false
+		s.auth.loggedIn = loggedIn
 		if err != nil {
-			s.authError = err.Error()
+			s.auth.error = err.Error()
 		} else {
-			s.account = profile
+			s.auth.account = profile
 		}
-		if refreshError != nil && s.authError == "" {
-			s.authError = "刷新登录凭证失败：" + refreshError.Error()
+		if refreshError != nil && s.auth.error == "" {
+			s.auth.error = "刷新登录凭证失败：" + refreshError.Error()
 		}
 		s.enter(s.section)
 		if !loggedIn && s.section == "profile" {
@@ -53,21 +66,21 @@ func (s *State) checkAccount() {
 }
 
 func (s *State) stopPoll() {
-	s.pollSeq++
-	if s.cancelPoll != nil {
-		s.cancelPoll()
-		s.cancelPoll = nil
+	s.auth.pollSeq++
+	if s.auth.cancelPoll != nil {
+		s.auth.cancelPoll()
+		s.auth.cancelPoll = nil
 	}
 }
 func (s *State) newQRCode() {
-	if s.api == nil || s.qr.Loading || s.checking || s.loggingOut || s.loggedIn {
+	if s.api == nil || s.auth.qr.Loading || s.auth.checking || s.auth.loggingOut || s.auth.loggedIn {
 		return
 	}
 	s.stopPoll()
-	s.qrImage = nil
-	s.qrExpired = false
-	s.qrStatus = "正在获取二维码"
-	load(s, &s.qr, func() (model.QRCodeData, error) {
+	s.auth.qrImage = nil
+	s.auth.qrExpired = false
+	s.auth.qrStatus = "正在获取二维码"
+	load(s, &s.auth.qr, func() (model.QRCodeData, error) {
 		data, err := s.api.QRCode()
 		if err == nil && (strings.TrimSpace(data.Url) == "" || strings.TrimSpace(data.QRCodeKey) == "") {
 			err = errors.New("二维码响应为空")
@@ -76,94 +89,94 @@ func (s *State) newQRCode() {
 	}, func(data model.QRCodeData) {
 		qr, err := qrcode.New(data.Url, qrcode.Medium)
 		if err != nil {
-			s.qr.Error = err.Error()
+			s.auth.qr.Error = err.Error()
 			return
 		}
-		s.qrImage = ui.NewBitmap(qr.Image(int(style.QRCodeSize))).Pixelated()
-		s.qrStatus = "请使用 B 站 App 扫码"
+		s.auth.qrImage = ui.NewBitmap(qr.Image(int(style.QRCodeSize))).Pixelated()
+		s.auth.qrStatus = "请使用 B 站 App 扫码"
 		if s.section == "profile" {
 			s.schedulePoll()
 		}
 	})
 }
 func (s *State) schedulePoll() {
-	if s.runtime.After == nil || s.stopped || s.section != "profile" || s.loggedIn || s.qrExpired {
+	if s.runtime.After == nil || s.stopped || s.section != "profile" || s.auth.loggedIn || s.auth.qrExpired {
 		return
 	}
 	s.stopPoll()
-	seq := s.pollSeq
-	s.cancelPoll = s.runtime.After(1200*time.Millisecond, func() {
-		s.cancelPoll = nil
-		if seq != s.pollSeq || s.stopped || s.section != "profile" {
+	seq := s.auth.pollSeq
+	s.auth.cancelPoll = s.runtime.After(1200*time.Millisecond, func() {
+		s.auth.cancelPoll = nil
+		if seq != s.auth.pollSeq || s.stopped || s.section != "profile" {
 			return
 		}
 		s.pollQRCode(seq)
 	})
 }
 func (s *State) pollQRCode(seq uint64) {
-	key, epoch := s.qr.Data.QRCodeKey, s.epoch
+	key, epoch := s.auth.qr.Data.QRCodeKey, s.epoch
 	if key == "" {
 		return
 	}
 	var data model.PollQRCodeData
 	s.runtime.Run(func() error { var err error; data, err = s.api.PollQRCode(key); return err }, func(err error) {
-		if s.stopped || epoch != s.epoch || seq != s.pollSeq {
+		if s.stopped || epoch != s.epoch || seq != s.auth.pollSeq {
 			return
 		}
 		if err != nil {
-			s.qr.Error = err.Error()
+			s.auth.qr.Error = err.Error()
 			return
 		}
 		switch data.Code {
 		case model.PollQRCodeStatusSuccess:
 			s.stopPoll()
-			s.loggedIn = true
-			s.qrImage = nil
-			s.qr = resource[model.QRCodeData]{}
+			s.auth.loggedIn = true
+			s.auth.qrImage = nil
+			s.auth.qr = resource[model.QRCodeData]{}
 			s.checkAccount()
 		case model.PollQRCodeStatusExpired:
-			s.qrExpired = true
-			s.qrStatus = "二维码已过期"
+			s.auth.qrExpired = true
+			s.auth.qrStatus = "二维码已过期"
 		case model.PollQRCodeStatusScannedUnconfirmed:
-			s.qrStatus = "已扫码，请在手机上确认"
+			s.auth.qrStatus = "已扫码，请在手机上确认"
 			s.schedulePoll()
 		case model.PollQRCodeStatusNotScanned:
-			s.qrStatus = "请使用 B 站 App 扫码"
+			s.auth.qrStatus = "请使用 B 站 App 扫码"
 			s.schedulePoll()
 		default:
-			s.qr.Error = "未知二维码状态，请重新获取"
+			s.auth.qr.Error = "未知二维码状态，请重新获取"
 		}
 	})
 }
 
 func (s *State) logout() {
-	if s.api == nil || s.loggingOut || s.checking {
+	if s.api == nil || s.auth.loggingOut || s.auth.checking {
 		return
 	}
 	s.stopPoll()
-	for _, b := range s.batches {
+	for _, b := range s.batches.sessions {
 		s.stopBatch(b)
 	}
-	s.loggingOut = true
-	s.authError = ""
+	s.auth.loggingOut = true
+	s.auth.error = ""
 	epoch := s.epoch
 	var remains bool
 	s.runtime.Run(func() error { _, err := s.api.LogOut(); remains = s.api.IsLoggedIn(); return err }, func(err error) {
 		if s.stopped || epoch != s.epoch {
 			return
 		}
-		s.loggingOut = false
+		s.auth.loggingOut = false
 		if !remains {
 			s.epoch++
-			s.loggedIn = false
-			s.account = model.MyInfoProfile{}
+			s.auth.loggedIn = false
+			s.auth.account = model.MyInfoProfile{}
 			s.clearPrivateData()
-			s.qr = resource[model.QRCodeData]{}
-			s.qrImage = nil
-			s.qrExpired = false
+			s.auth.qr = resource[model.QRCodeData]{}
+			s.auth.qrImage = nil
+			s.auth.qrExpired = false
 		}
 		if err != nil {
-			s.authError = err.Error()
+			s.auth.error = err.Error()
 		}
 		if !remains && s.section == "profile" {
 			s.newQRCode()

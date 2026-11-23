@@ -17,100 +17,47 @@ const pageSize = 20
 // 与页面级滚动区分开，让顶部工具栏固定不动。
 const followsScrollKey = "up-follows"
 
+// clearPrivateData 退出登录后整块丢弃各板块状态：子结构直接整体重建，
+// 页签（library.tab、author.tab）保留，导航同步时会校正。
 func (s *State) clearPrivateData() {
-	s.history.seq++
-	s.history.Loading = false
-	s.historyMore.seq++
-	s.historyMore.Loading = false
-	s.historySearchPending, s.historyMutating, s.historyClearOpen = false, false, false
-	s.follows = resource[model.FollowData]{}
-	// followPage 记录已连续加载的页数；退出登录后从第一页重新开始。
-	s.followPage = 0
-	s.authorInfo = resource[model.UserInfoData]{}
-	s.uploads = resource[model.VideoListData]{}
-	s.authorLists = resource[model.SeasonsSeriesData]{}
-	s.seasonVideos = resource[model.SeasonsArchivesData]{}
-	s.seriesVideos = resource[model.SeriesArchivesData]{}
-	s.favoritesData = resource[model.FavoritesData]{}
-	s.favoriteDetail = resource[model.FavoriteData]{}
-	s.collections = resource[model.CollectionData]{}
-	s.collectionDetail = resource[model.CollectionItemData]{}
-	s.dynamics = resource[model.DynamicArchivePage]{}
-	s.dynamicMore = resource[model.DynamicArchivePage]{}
-	s.dynamicOffset = ""
-	s.dynamicHasMore = false
-	s.dynamicGeneration++
-	s.dynamicSelected = make(map[string]bool)
-	s.dynamicAutoPending = false
-	s.dynamicAutoAtY = 0
-	s.dynamicAutoFillPages = 0
-	s.playHistory = resource[model.PlayHistoryData]{}
-	s.playHistoryMore = resource[model.PlayHistoryData]{}
-	s.playHistoryCursor = model.PlayHistoryCursor{}
-	s.playHistoryHasMore = false
-	s.playHistoryGeneration++
-	s.playHistorySelected = make(map[string]*bool)
-	s.playHistoryAutoPending = false
-	s.playHistoryAutoAtY = 0
-	s.playHistoryAutoFillPages = 0
+	s.history = historyState{}
+	s.follows = followsState{}
+	s.author = authorState{tab: s.author.tab}
+	s.library = libraryState{tab: s.library.tab}
+	s.dynamic = dynamicState{picked: make(map[string]bool)}
+	s.play = playState{picked: make(map[string]*bool)}
+	s.stage = stageState{keys: make(map[string]bool), sourceNames: make(map[string]string)}
+	s.queue = queueState{resolves: make(map[string]*queueResolve), progress: make(map[string]bilidownload.Progress), extraBusy: make(map[string]string), requested: make(map[string]bool)}
+	s.manual = manualState{}
+	s.batches = batchState{}
 	s.autoPages = make(map[string]*autoPageState)
-	s.favoriteID = 0
-	s.collectionID = 0
-	s.selectedSeason = 0
-	s.selectedSeries = 0
 	s.selected = make(map[string]*bool)
 	s.images = make(imagecache.Cache)
-	s.stagedFavorites = nil
-	s.stagedCollections = nil
-	s.stagedUploads = nil
-	s.stagedSeasons = nil
-	s.stagedSeries = nil
-	s.stagedDynamics = nil
-	s.stagedPlayHistory = nil
-	s.stagedManual = nil
-	s.manualGroup = nil
-	s.manualParse = resource[model.VideoDetailConciseData]{}
-	s.manualParseInput = ""
-	s.notice = ""
-	s.batches = nil
-	s.pendingManualDownloads = nil
-	s.activeManualDownloads = nil
-	s.queueRequested = make(map[string]bool)
-	s.stageError = ""
-	s.stagedKeys = make(map[string]bool)
-	s.stagedSourceNames = make(map[string]string)
-	s.queueResolves = make(map[string]*queueResolve)
-	s.queueProgress = make(map[string]bilidownload.Progress)
-	s.queueExtraBusy = make(map[string]string)
-	s.queueDownloading = false
-	s.queueDownloadStop = false
-	s.queueDownloadError = ""
-	s.queueDownloadTotal, s.queueDownloadDone, s.queueDownloadFailed = 0, 0, 0
 }
 func (s *State) loadFollows(more bool) {
-	if s.follows.Loading || !s.loggedIn {
+	if s.follows.list.Loading || !s.auth.loggedIn {
 		return
 	}
 	const key = "author-follows"
 	if !more {
-		s.followPage = 0
+		s.follows.page = 0
 		s.resetAutoPage(key, followsScrollKey)
 	}
-	if more && len(s.follows.Data.List) >= s.follows.Data.Total {
+	if more && len(s.follows.list.Data.List) >= s.follows.list.Data.Total {
 		return
 	}
 	page := 1
 	if more {
-		page = s.followPage + 1
+		page = s.follows.page + 1
 	}
-	old := s.follows.Data
-	load(s, &s.follows, func() (model.FollowData, error) {
+	old := s.follows.list.Data
+	load(s, &s.follows.list, func() (model.FollowData, error) {
 		d, err := s.api.FollowList(page, pageSize)
 		if err == nil && more {
 			d.List = mergeFollowPages(old.List, d.List)
 		}
 		return d, err
-	}, func(model.FollowData) { s.followPage = page })
+	}, func(model.FollowData) { s.follows.page = page })
 }
 
 // mergeFollowPages appends a fetched page to the loaded items. The list is
@@ -132,35 +79,35 @@ func mergeFollowPages(oldItems, page []model.FollowDataList) []model.FollowDataL
 }
 func (s *State) findAuthor(raw string, navigate func(string)) {
 	raw = strings.TrimSpace(raw)
-	if raw == "" || !s.loggedIn {
+	if raw == "" || !s.auth.loggedIn {
 		return
 	}
 	origin, routeSeq := s.activePath, s.routeSeq
-	s.authorTarget = raw
-	s.authorInfo.Loaded = false
+	s.author.target = raw
+	s.author.info.Loaded = false
 	// Retain the follow page, but discard the previous author's content. Bump
 	// each sequence before resetting so late pages cannot populate a new author.
-	s.uploads.seq++
-	s.uploads.Loading = false
-	s.uploads.Loaded = false
-	s.uploads.Data = model.VideoListData{}
-	s.authorLists.seq++
-	s.authorLists.Loading = false
-	s.authorLists.Loaded = false
-	s.authorLists.Data = model.SeasonsSeriesData{}
-	s.seasonVideos.seq++
-	s.seasonVideos.Loading = false
-	s.seasonVideos.Loaded = false
-	s.seriesVideos.seq++
-	s.seriesVideos.Loading = false
-	s.seriesVideos.Loaded = false
-	s.authorTab = "uploads"
-	s.selectedSeason = 0
-	s.selectedSeries = 0
-	s.authorPage = 0
-	s.listPage = 0
+	s.author.uploads.seq++
+	s.author.uploads.Loading = false
+	s.author.uploads.Loaded = false
+	s.author.uploads.Data = model.VideoListData{}
+	s.author.lists.seq++
+	s.author.lists.Loading = false
+	s.author.lists.Loaded = false
+	s.author.lists.Data = model.SeasonsSeriesData{}
+	s.author.seasonVideos.seq++
+	s.author.seasonVideos.Loading = false
+	s.author.seasonVideos.Loaded = false
+	s.author.seriesVideos.seq++
+	s.author.seriesVideos.Loading = false
+	s.author.seriesVideos.Loaded = false
+	s.author.tab = "uploads"
+	s.author.selectedSeason = 0
+	s.author.selectedSeries = 0
+	s.author.uploadsPage = 0
+	s.author.listPage = 0
 	s.selected = make(map[string]*bool)
-	load(s, &s.authorInfo, func() (model.UserInfoData, error) { return s.api.Info(raw) }, func(profile model.UserInfoData) {
+	load(s, &s.author.info, func() (model.UserInfoData, error) { return s.api.Info(raw) }, func(profile model.UserInfoData) {
 		s.loadUploads(1, false)
 		if navigate != nil && s.activePath == origin && s.routeSeq == routeSeq && profile.Mid > 0 {
 			navigate(navigation.BilibiliAuthorPath(profile.Mid))
@@ -168,59 +115,59 @@ func (s *State) findAuthor(raw string, navigate func(string)) {
 	})
 }
 func (s *State) loadUploads(page int, more bool) {
-	if s.uploads.Loading || s.authorInfo.Data.Mid == 0 {
+	if s.author.uploads.Loading || s.author.info.Data.Mid == 0 {
 		return
 	}
-	mid := s.authorInfo.Data.Mid
+	mid := s.author.info.Data.Mid
 	if !more {
 		key := fmt.Sprintf("author-videos/%d", mid)
 		s.resetAutoPage(key, key)
 	}
-	previous := s.uploads.Data.List.Vlist
-	load(s, &s.uploads, func() (model.VideoListData, error) { return s.api.VideoList(uint(mid), pageSize, page) }, func(data model.VideoListData) {
+	previous := s.author.uploads.Data.List.Vlist
+	load(s, &s.author.uploads, func() (model.VideoListData, error) { return s.api.VideoList(uint(mid), pageSize, page) }, func(data model.VideoListData) {
 		if more {
-			s.uploads.Data.List.Vlist = appendUnique(previous, data.List.Vlist, func(v model.VListItem) string { return v.Bvid })
+			s.author.uploads.Data.List.Vlist = appendUnique(previous, data.List.Vlist, func(v model.VListItem) string { return v.Bvid })
 		}
-		s.authorPage = page
+		s.author.uploadsPage = page
 	})
 }
 func (s *State) loadAuthorLists(page int, more bool) {
-	if s.authorLists.Loading || s.authorInfo.Data.Mid == 0 {
+	if s.author.lists.Loading || s.author.info.Data.Mid == 0 {
 		return
 	}
 	if !more {
-		s.resetAutoPage(fmt.Sprintf("author-lists/%d", s.authorInfo.Data.Mid), fmt.Sprintf("author-videos/%d", s.authorInfo.Data.Mid))
-		s.authorLists.Data = model.SeasonsSeriesData{}
-		s.authorLists.Loaded = false
-		s.listPage = 0
-		s.selectedSeason = 0
-		s.selectedSeries = 0
-		s.seasonVideos.seq++
-		s.seasonVideos.Loading = false
-		s.seasonVideos.Loaded = false
-		s.seasonVideos.Data = model.SeasonsArchivesData{}
-		s.seriesVideos.seq++
-		s.seriesVideos.Loading = false
-		s.seriesVideos.Loaded = false
-		s.seriesVideos.Data = model.SeriesArchivesData{}
+		s.resetAutoPage(fmt.Sprintf("author-lists/%d", s.author.info.Data.Mid), fmt.Sprintf("author-videos/%d", s.author.info.Data.Mid))
+		s.author.lists.Data = model.SeasonsSeriesData{}
+		s.author.lists.Loaded = false
+		s.author.listPage = 0
+		s.author.selectedSeason = 0
+		s.author.selectedSeries = 0
+		s.author.seasonVideos.seq++
+		s.author.seasonVideos.Loading = false
+		s.author.seasonVideos.Loaded = false
+		s.author.seasonVideos.Data = model.SeasonsArchivesData{}
+		s.author.seriesVideos.seq++
+		s.author.seriesVideos.Loading = false
+		s.author.seriesVideos.Loaded = false
+		s.author.seriesVideos.Data = model.SeriesArchivesData{}
 		s.selected = make(map[string]*bool)
 	}
-	mid := strconv.FormatUint(s.authorInfo.Data.Mid, 10)
-	previous := s.authorLists.Data.ItemsLists
-	load(s, &s.authorLists, func() (model.SeasonsSeriesData, error) { return s.api.SeasonsSeriesList(mid, pageSize, page) }, func(data model.SeasonsSeriesData) {
+	mid := strconv.FormatUint(s.author.info.Data.Mid, 10)
+	previous := s.author.lists.Data.ItemsLists
+	load(s, &s.author.lists, func() (model.SeasonsSeriesData, error) { return s.api.SeasonsSeriesList(mid, pageSize, page) }, func(data model.SeasonsSeriesData) {
 		if more {
-			s.authorLists.Data.ItemsLists.SeasonsList = append(previous.SeasonsList, data.ItemsLists.SeasonsList...)
-			s.authorLists.Data.ItemsLists.SeriesList = append(previous.SeriesList, data.ItemsLists.SeriesList...)
+			s.author.lists.Data.ItemsLists.SeasonsList = append(previous.SeasonsList, data.ItemsLists.SeasonsList...)
+			s.author.lists.Data.ItemsLists.SeriesList = append(previous.SeriesList, data.ItemsLists.SeriesList...)
 		}
-		s.listPage = page
-		if s.selectedSeason == 0 && s.selectedSeries == 0 && s.authorTab == "lists" {
-			for _, item := range s.authorLists.Data.ItemsLists.SeasonsList {
+		s.author.listPage = page
+		if s.author.selectedSeason == 0 && s.author.selectedSeries == 0 && s.author.tab == "lists" {
+			for _, item := range s.author.lists.Data.ItemsLists.SeasonsList {
 				if item.Meta.SeasonId > 0 {
 					s.loadSeason(item.Meta.SeasonId, 1, false)
 					return
 				}
 			}
-			for _, item := range s.authorLists.Data.ItemsLists.SeriesList {
+			for _, item := range s.author.lists.Data.ItemsLists.SeriesList {
 				if item.Meta.SeriesId > 0 {
 					s.loadSeries(item.Meta.SeriesId, 1, false)
 					return
@@ -230,72 +177,72 @@ func (s *State) loadAuthorLists(page int, more bool) {
 	})
 }
 func (s *State) loadSeason(id, page int, more bool) {
-	mid := strconv.FormatUint(s.authorInfo.Data.Mid, 10)
-	if id == s.selectedSeason && s.seasonVideos.Loading {
+	mid := strconv.FormatUint(s.author.info.Data.Mid, 10)
+	if id == s.author.selectedSeason && s.author.seasonVideos.Loading {
 		return
 	}
 	if !more {
-		key := fmt.Sprintf("author-videos/%d", s.authorInfo.Data.Mid)
+		key := fmt.Sprintf("author-videos/%d", s.author.info.Data.Mid)
 		s.resetAutoPage(key, key)
-		s.seasonVideos.Data = model.SeasonsArchivesData{}
-		s.seasonVideos.Loaded = false
-		s.selectedSeason = id
-		s.seasonPage = 0
-		s.selectedSeries = 0
+		s.author.seasonVideos.Data = model.SeasonsArchivesData{}
+		s.author.seasonVideos.Loaded = false
+		s.author.selectedSeason = id
+		s.author.seasonPage = 0
+		s.author.selectedSeries = 0
 		s.selected = make(map[string]*bool)
 	}
-	previous := s.seasonVideos.Data.Archives
-	load(s, &s.seasonVideos, func() (model.SeasonsArchivesData, error) { return s.api.SeasonsArchivesList(mid, pageSize, page, id) }, func(data model.SeasonsArchivesData) {
+	previous := s.author.seasonVideos.Data.Archives
+	load(s, &s.author.seasonVideos, func() (model.SeasonsArchivesData, error) { return s.api.SeasonsArchivesList(mid, pageSize, page, id) }, func(data model.SeasonsArchivesData) {
 		if more {
-			s.seasonVideos.Data.Archives = append(previous, data.Archives...)
+			s.author.seasonVideos.Data.Archives = append(previous, data.Archives...)
 		}
-		s.seasonPage = page
+		s.author.seasonPage = page
 	})
 }
 
 func (s *State) loadSeries(id, page int, more bool) {
-	mid := strconv.FormatUint(s.authorInfo.Data.Mid, 10)
-	if id == s.selectedSeries && s.seriesVideos.Loading {
+	mid := strconv.FormatUint(s.author.info.Data.Mid, 10)
+	if id == s.author.selectedSeries && s.author.seriesVideos.Loading {
 		return
 	}
 	if !more {
-		key := fmt.Sprintf("author-videos/%d", s.authorInfo.Data.Mid)
+		key := fmt.Sprintf("author-videos/%d", s.author.info.Data.Mid)
 		s.resetAutoPage(key, key)
-		s.seriesVideos.Data = model.SeriesArchivesData{}
-		s.seriesVideos.Loaded = false
-		s.selectedSeries = id
-		s.seriesPage = 0
-		s.selectedSeason = 0
+		s.author.seriesVideos.Data = model.SeriesArchivesData{}
+		s.author.seriesVideos.Loaded = false
+		s.author.selectedSeries = id
+		s.author.seriesPage = 0
+		s.author.selectedSeason = 0
 		s.selected = make(map[string]*bool)
 	}
-	previous := s.seriesVideos.Data.Archives
-	load(s, &s.seriesVideos, func() (model.SeriesArchivesData, error) { return s.api.SeriesList(mid, pageSize, page, id) }, func(data model.SeriesArchivesData) {
+	previous := s.author.seriesVideos.Data.Archives
+	load(s, &s.author.seriesVideos, func() (model.SeriesArchivesData, error) { return s.api.SeriesList(mid, pageSize, page, id) }, func(data model.SeriesArchivesData) {
 		if more {
-			s.seriesVideos.Data.Archives = append(previous, data.Archives...)
+			s.author.seriesVideos.Data.Archives = append(previous, data.Archives...)
 		}
-		s.seriesPage = page
+		s.author.seriesPage = page
 	})
 }
 func (s *State) ensureLibrary() {
-	if s.favoriteTab == "collection" {
-		if !s.collections.Loaded && !s.collections.Loading && s.collections.Error == "" {
+	if s.library.tab == "collection" {
+		if !s.library.collections.Loaded && !s.library.collections.Loading && s.library.collections.Error == "" {
 			s.loadCollections(1, false)
 		}
-	} else if !s.favoritesData.Loaded && !s.favoritesData.Loading && s.favoritesData.Error == "" {
+	} else if !s.library.folders.Loaded && !s.library.folders.Loading && s.library.folders.Error == "" {
 		s.loadFavorites()
 	}
 }
 func (s *State) loadFavorites() {
-	if !s.loggedIn || s.favoritesData.Loading {
+	if !s.auth.loggedIn || s.library.folders.Loading {
 		return
 	}
-	load(s, &s.favoritesData, s.api.FavoritesList, func(data model.FavoritesData) {
-		id := s.favoriteID
+	load(s, &s.library.folders, s.api.FavoritesList, func(data model.FavoritesData) {
+		id := s.library.folderID
 		if len(data.List) == 0 {
-			s.favoriteID = 0
-			s.favoriteDetail.seq++
-			s.favoriteDetail.Loading = false
-			s.favoriteDetail.Data = model.FavoriteData{}
+			s.library.folderID = 0
+			s.library.folderDetail.seq++
+			s.library.folderDetail.Loading = false
+			s.library.folderDetail.Data = model.FavoriteData{}
 			return
 		}
 		found := false
@@ -312,49 +259,49 @@ func (s *State) loadFavorites() {
 	})
 }
 func (s *State) loadFavorite(id int64, page int, more bool) {
-	if id == s.favoriteID && s.favoriteDetail.Loading && more {
+	if id == s.library.folderID && s.library.folderDetail.Loading && more {
 		return
 	}
 	if !more {
 		key := fmt.Sprintf("library/favorite/%d/0", id)
 		s.resetAutoPage(key, key)
-		s.favoriteID = id
-		s.favoritePage = 0
-		s.favoriteDetail.Data = model.FavoriteData{}
-		s.favoriteDetail.Loaded = false
+		s.library.folderID = id
+		s.library.folderPage = 0
+		s.library.folderDetail.Data = model.FavoriteData{}
+		s.library.folderDetail.Loaded = false
 		s.selected = make(map[string]*bool)
 	}
-	previous := s.favoriteDetail.Data.Medias
-	load(s, &s.favoriteDetail, func() (model.FavoriteData, error) { return s.api.Favorites(int(id), page, pageSize) }, func(data model.FavoriteData) {
+	previous := s.library.folderDetail.Data.Medias
+	load(s, &s.library.folderDetail, func() (model.FavoriteData, error) { return s.api.Favorites(int(id), page, pageSize) }, func(data model.FavoriteData) {
 		if more {
-			s.favoriteDetail.Data.Medias = appendUnique(previous, data.Medias, func(v model.FavoriteMedias) int { return v.ID })
+			s.library.folderDetail.Data.Medias = appendUnique(previous, data.Medias, func(v model.FavoriteMedias) int { return v.ID })
 		}
-		s.favoriteDetail.Data.HasMore = data.HasMore && len(data.Medias) > 0
-		s.favoritePage = page
+		s.library.folderDetail.Data.HasMore = data.HasMore && len(data.Medias) > 0
+		s.library.folderPage = page
 	})
 }
 func (s *State) loadCollections(page int, more bool) {
-	if !s.loggedIn || s.collections.Loading {
+	if !s.auth.loggedIn || s.library.collections.Loading {
 		return
 	}
-	previous := s.collections.Data.List
+	previous := s.library.collections.Data.List
 	if !more {
 		s.resetAutoPage("folders/collection", "folders/collection")
 	}
-	load(s, &s.collections, func() (model.CollectionData, error) { return s.api.Collection(page, pageSize) }, func(data model.CollectionData) {
+	load(s, &s.library.collections, func() (model.CollectionData, error) { return s.api.Collection(page, pageSize) }, func(data model.CollectionData) {
 		if more {
-			s.collections.Data.List = appendUnique(previous, data.List, func(v model.CollectionDataList) int { return v.ID })
+			s.library.collections.Data.List = appendUnique(previous, data.List, func(v model.CollectionDataList) int { return v.ID })
 		}
-		s.collectionPage = page
+		s.library.collectionPage = page
 		if more {
 			return
 		}
-		id := s.collectionID
+		id := s.library.collectionID
 		if len(data.List) == 0 {
-			s.collectionID = 0
-			s.collectionDetail.seq++
-			s.collectionDetail.Loading = false
-			s.collectionDetail.Data = model.CollectionItemData{}
+			s.library.collectionID = 0
+			s.library.collectionDetail.seq++
+			s.library.collectionDetail.Loading = false
+			s.library.collectionDetail.Data = model.CollectionItemData{}
 			return
 		}
 		found := false
@@ -371,49 +318,49 @@ func (s *State) loadCollections(page int, more bool) {
 	})
 }
 func (s *State) loadCollection(id, page int, more bool) {
-	if id == s.collectionID && s.collectionDetail.Loading && more {
+	if id == s.library.collectionID && s.library.collectionDetail.Loading && more {
 		return
 	}
 	if !more {
 		key := fmt.Sprintf("library/collection/0/%d", id)
 		s.resetAutoPage(key, key)
-		s.collectionID = id
-		s.collectionDetailPage = 0
-		s.collectionDetail.Data = model.CollectionItemData{}
-		s.collectionDetail.Loaded = false
+		s.library.collectionID = id
+		s.library.collectionDetailPage = 0
+		s.library.collectionDetail.Data = model.CollectionItemData{}
+		s.library.collectionDetail.Loaded = false
 		s.selected = make(map[string]*bool)
 	}
-	previous := s.collectionDetail.Data.Medias
-	load(s, &s.collectionDetail, func() (model.CollectionItemData, error) {
+	previous := s.library.collectionDetail.Data.Medias
+	load(s, &s.library.collectionDetail, func() (model.CollectionItemData, error) {
 		return s.api.CollectionItem(strconv.Itoa(id), page, pageSize)
 	}, func(data model.CollectionItemData) {
 		if more {
-			s.collectionDetail.Data.Medias = appendUnique(previous, data.Medias, func(v model.CollectionItemMedias) int64 { return v.ID })
+			s.library.collectionDetail.Data.Medias = appendUnique(previous, data.Medias, func(v model.CollectionItemMedias) int64 { return v.ID })
 		}
 		total := s.collectionTotal()
-		s.collectionHasMore = len(data.Medias) > 0 && (total == 0 && len(data.Medias) >= pageSize || len(s.collectionDetail.Data.Medias) < total)
-		s.collectionDetailPage = page
+		s.library.collectionHasMore = len(data.Medias) > 0 && (total == 0 && len(data.Medias) >= pageSize || len(s.library.collectionDetail.Data.Medias) < total)
+		s.library.collectionDetailPage = page
 	})
 }
 
 // ensureAuthor runs only for the active detail path, so outgoing transition
 // views cannot start a request for an author the user already left.
 func (s *State) ensureAuthor(mid uint64) {
-	if s.authorInfo.Loaded && s.authorInfo.Data.Mid == mid {
+	if s.author.info.Loaded && s.author.info.Data.Mid == mid {
 		return
 	}
 	target := strconv.FormatUint(mid, 10)
-	if s.authorTarget == target && (s.authorInfo.Loading || s.authorInfo.Error != "") {
+	if s.author.target == target && (s.author.info.Loading || s.author.info.Error != "") {
 		return
 	}
 	s.findAuthor(target, nil)
 }
 func (s *State) collectionTotal() int {
-	if s.collectionDetail.Data.Info.MediaCount > 0 {
-		return s.collectionDetail.Data.Info.MediaCount
+	if s.library.collectionDetail.Data.Info.MediaCount > 0 {
+		return s.library.collectionDetail.Data.Info.MediaCount
 	}
-	for _, item := range s.collections.Data.List {
-		if item.ID == s.collectionID {
+	for _, item := range s.library.collections.Data.List {
+		if item.ID == s.library.collectionID {
 			return item.MediaCount
 		}
 	}

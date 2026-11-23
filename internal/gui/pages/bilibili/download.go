@@ -20,48 +20,48 @@ func (s *State) download(c *ui.Context) {
 		ui.Row(c).FillWidth().Padding(style.SpaceMedium).Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
 			textInput(c.Key("link"), &s.link, "BiliBili视频链接", "输入视频链接，支持 BV 号、AV 号、视频 URL", s.parseDownloadInput).Grow(1)
 			parseLabel := "解析"
-			if s.manualParse.Loading {
+			if s.manual.parse.Loading {
 				parseLabel = "解析中"
 			}
-			button(c.Key("parse"), parseLabel, components.ButtonOptions{Variant: components.ButtonPrimary, Disabled: strings.TrimSpace(s.link) == "" || s.manualParse.Loading || s.api == nil}).OnClick(s.parseDownloadInput)
+			button(c.Key("parse"), parseLabel, components.ButtonOptions{Variant: components.ButtonPrimary, Disabled: strings.TrimSpace(s.link) == "" || s.manual.parse.Loading || s.api == nil}).OnClick(s.parseDownloadInput)
 			button(c.Key("clear"), "清空", components.ButtonOptions{Variant: components.ButtonOutline, Disabled: strings.TrimSpace(s.link) == ""}).OnClick(func() {
 				s.link = ""
-				s.manualParseInput = ""
-				s.manualParse.seq++
-				s.manualParse.Loading = false
-				s.manualParse.Loaded = false
-				s.manualParse.Error = ""
-				s.manualGroup = nil
+				s.manual.input = ""
+				s.manual.parse.seq++
+				s.manual.parse.Loading = false
+				s.manual.parse.Loaded = false
+				s.manual.parse.Error = ""
+				s.manual.group = nil
 			})
 		})
 	})
-	s.errorRow(c, s.manualParse.Error, nil)
-	if s.notice != "" {
-		ui.Text(c, s.notice).FontSize(style.Font(c, style.FontMeta)).TextColor(c.Theme().TextMuted).MaxLines(1)
+	s.errorRow(c, s.manual.parse.Error, nil)
+	if s.stage.notice != "" {
+		ui.Text(c, s.stage.notice).FontSize(style.Font(c, style.FontMeta)).TextColor(c.Theme().TextMuted).MaxLines(1)
 	}
 	rows, ready := s.downloadRows()
-	if len(s.stagedKeys) > 0 {
+	if len(s.stage.keys) > 0 {
 		panel(c.Key("queue-toolbar"), "下载操作栏", func() {
 			ui.Column(c).FillWidth().Padding(style.SpaceSmall, style.SpaceMedium).Gap(style.SpaceSmall).Children(func() {
 				ui.Row(c).FillWidth().Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
-					ui.Text(c, fmt.Sprintf("待下载 · %d", len(s.stagedKeys))).FontWeight(style.WeightSemibold)
-					ui.Text(c, fmt.Sprintf("已就绪 %d · 已排队 %d", ready, len(s.queueRequested))).Grow(1).FontSize(style.Font(c, style.FontMeta)).TextColor(c.Theme().TextMuted)
-					if s.queueDownloading {
-						button(c.Key("stop-queue"), "停止后续任务", components.ButtonOptions{Variant: components.ButtonOutline, Disabled: s.queueDownloadStop}).OnClick(s.stopQueuedDownloads)
+					ui.Text(c, fmt.Sprintf("待下载 · %d", len(s.stage.keys))).FontWeight(style.WeightSemibold)
+					ui.Text(c, fmt.Sprintf("已就绪 %d · 已排队 %d", ready, len(s.queue.requested))).Grow(1).FontSize(style.Font(c, style.FontMeta)).TextColor(c.Theme().TextMuted)
+					if s.queue.downloading {
+						button(c.Key("stop-queue"), "停止后续任务", components.ButtonOptions{Variant: components.ButtonOutline, Disabled: s.queue.stop}).OnClick(s.stopQueuedDownloads)
 					} else {
-						button(c.Key("download"), "开始下载", components.ButtonOptions{Variant: components.ButtonPrimary, Icon: icons.Must("download"), Disabled: len(s.stagedKeys) == 0 || ready != len(s.stagedKeys) || s.downloadBackend == nil || s.runtime.Background == nil || len(s.queueRequested) == len(s.stagedKeys)}).OnClick(s.startQueuedDownloads)
+						button(c.Key("download"), "开始下载", components.ButtonOptions{Variant: components.ButtonPrimary, Icon: icons.Must("download"), Disabled: len(s.stage.keys) == 0 || ready != len(s.stage.keys) || s.downloadBackend == nil || s.runtime.Background == nil || len(s.queue.requested) == len(s.stage.keys)}).OnClick(s.startQueuedDownloads)
 					}
-					button(c.Key("clear-queue"), "清空列表", components.ButtonOptions{Variant: components.ButtonGhost, Disabled: len(s.stagedKeys) == 0 || s.queueDownloading || len(s.queueExtraBusy) != 0}).OnClick(func() { s.clearStaged() })
+					button(c.Key("clear-queue"), "清空列表", components.ButtonOptions{Variant: components.ButtonGhost, Disabled: len(s.stage.keys) == 0 || s.queue.downloading || len(s.queue.extraBusy) != 0}).OnClick(func() { s.clearStaged() })
 				})
-				if s.queueDownloadTotal > 0 {
-					caption(c, fmt.Sprintf("已完成 %d/%d · 失败 %d", s.queueDownloadDone, s.queueDownloadTotal, s.queueDownloadFailed))
+				if s.queue.total > 0 {
+					caption(c, fmt.Sprintf("已完成 %d/%d · 失败 %d", s.queue.done, s.queue.total, s.queue.failed))
 				}
-				s.errorRow(c, s.queueDownloadError, nil)
+				s.errorRow(c, s.queue.error, nil)
 			})
 		})
 	}
-	if group := s.manualGroup; group != s.shownManualGroup {
-		s.shownManualGroup = group
+	if group := s.manual.group; group != s.manual.shown {
+		s.manual.shown = group
 		if group != nil {
 			s.downloadList.ScrollTo(0, ui.Start)
 		}
@@ -95,42 +95,42 @@ type downloadRow struct {
 }
 
 func (s *State) downloadRows() ([]downloadRow, int) {
-	rows := make([]downloadRow, 0, 1+len(s.batches)+len(s.stagedKeys))
-	if group := s.manualGroup; group != nil {
+	rows := make([]downloadRow, 0, 1+len(s.batches.sessions)+len(s.stage.keys))
+	if group := s.manual.group; group != nil {
 		rows = append(rows, downloadRow{key: group, title: group.Title})
 	}
-	for _, batch := range s.batches {
+	for _, batch := range s.batches.sessions {
 		rows = append(rows, downloadRow{key: batch.ID, title: batch.Source.Title, batch: batch})
 	}
 	ready := 0
 	add := func(key, title, cover, author, length string) {
 		rows = append(rows, downloadRow{key: key, title: title, cover: cover, author: author, length: length})
-		if entry := s.queueResolves[key]; entry.resolved() && queueVideoURL(entry.data.Data.PlayURL, entry.videoID) != "" {
+		if entry := s.queue.resolves[key]; entry.resolved() && queueVideoURL(entry.data.Data.PlayURL, entry.videoID) != "" {
 			ready++
 		}
 	}
-	for _, v := range s.stagedUploads {
+	for _, v := range s.stage.uploads {
 		add(v.Bvid, v.Title, v.Pic, v.Author, v.Length)
 	}
-	for _, v := range s.stagedFavorites {
+	for _, v := range s.stage.favorites {
 		add(favoriteBvid(v.Bvid, v.BvID), v.Title, v.Cover, v.Upper.Name, duration(v.Duration))
 	}
-	for _, v := range s.stagedCollections {
+	for _, v := range s.stage.collections {
 		add(v.Bvid, v.Title, v.Cover, v.Upper.Name, duration(v.Duration))
 	}
-	for _, v := range s.stagedSeasons {
+	for _, v := range s.stage.seasons {
 		add(v.Bvid, v.Title, v.Pic, "", duration(v.Duration))
 	}
-	for _, v := range s.stagedSeries {
+	for _, v := range s.stage.series {
 		add(v.Bvid, v.Title, v.Pic, "", duration(v.Duration))
 	}
-	for _, v := range s.stagedDynamics {
+	for _, v := range s.stage.dynamics {
 		add(v.Bvid, v.Title, v.Cover, v.AuthorName, v.DurationText)
 	}
-	for _, v := range s.stagedPlayHistory {
+	for _, v := range s.stage.playHistory {
 		add(v.History.Bvid, playHistoryTitle(v), v.Cover, v.AuthorName, playHistoryDuration(v))
 	}
-	for _, v := range s.stagedManual {
+	for _, v := range s.stage.manual {
 		add(v.Key, v.Title, v.Cover, v.Author, duration(v.Duration))
 	}
 	return rows, ready
@@ -194,8 +194,8 @@ func (s *State) stagedMediaCard(c *ui.Context, bvid, title, cover, author, lengt
 					}
 				})
 				task, ready := s.queuedTask(bvid)
-				busy := s.queueExtraBusy[bvid] != ""
-				extrasBusy := busy || s.queueRequested[bvid]
+				busy := s.queue.extraBusy[bvid] != ""
+				extrasBusy := busy || s.queue.requested[bvid]
 				ui.Row(c.Key("actions")).Label("视频下载选项").FillWidth().Wrap().Gap(style.SpaceSmall).AlignItems(ui.Center).Padding(4, 0, 0, 0).Children(func() {
 					s.queueStreamControls(c.Key("streams"), bvid)
 					ui.Box(c).Grow(1)
@@ -205,11 +205,11 @@ func (s *State) stagedMediaCard(c *ui.Context, bvid, title, cover, author, lengt
 					}
 					actions.Children(func() {
 						if s.downloadBackend != nil {
-							downloadCardButton(c.Key("cover"), "封面", components.ButtonOptions{Label: "保存封面", Variant: components.ButtonGhost, Disabled: !ready || task.Cover == "" || s.queueDownloading || s.batchesRunning() || extrasBusy}).OnClick(func() { s.startQueueExtra(bvid, "cover") })
-							downloadCardButton(c.Key("audio-only"), "音频", components.ButtonOptions{Label: "下载音频", Variant: components.ButtonGhost, Disabled: !ready || task.AudioURL == "" || s.queueDownloading || s.batchesRunning() || extrasBusy}).OnClick(func() { s.startQueueExtra(bvid, "audio") })
+							downloadCardButton(c.Key("cover"), "封面", components.ButtonOptions{Label: "保存封面", Variant: components.ButtonGhost, Disabled: !ready || task.Cover == "" || s.queue.downloading || s.batchesRunning() || extrasBusy}).OnClick(func() { s.startQueueExtra(bvid, "cover") })
+							downloadCardButton(c.Key("audio-only"), "音频", components.ButtonOptions{Label: "下载音频", Variant: components.ButtonGhost, Disabled: !ready || task.AudioURL == "" || s.queue.downloading || s.batchesRunning() || extrasBusy}).OnClick(func() { s.startQueueExtra(bvid, "audio") })
 						}
-						downloadCardButton(c.Key("remove"), "移除", components.ButtonOptions{Variant: components.ButtonGhost, Disabled: s.queueDownloading || busy}).OnClick(func() { s.removeStaged(bvid) })
-						downloadCardButton(c.Key("single-download"), downloadRequestLabel(s.queueRequested[bvid]), components.ButtonOptions{Label: "下载视频", Variant: components.ButtonPrimary, Icon: icons.Must("download"), Disabled: !ready || s.queueRequested[bvid] || s.runtime.Background == nil || s.downloadBackend == nil}).OnClick(func() { s.startSingleQueuedDownload(bvid) })
+						downloadCardButton(c.Key("remove"), "移除", components.ButtonOptions{Variant: components.ButtonGhost, Disabled: s.queue.downloading || busy}).OnClick(func() { s.removeStaged(bvid) })
+						downloadCardButton(c.Key("single-download"), downloadRequestLabel(s.queue.requested[bvid]), components.ButtonOptions{Label: "下载视频", Variant: components.ButtonPrimary, Icon: icons.Must("download"), Disabled: !ready || s.queue.requested[bvid] || s.runtime.Background == nil || s.downloadBackend == nil}).OnClick(func() { s.startSingleQueuedDownload(bvid) })
 					})
 				})
 			})
@@ -262,7 +262,7 @@ func (s *State) parsedGroupPanel(c *ui.Context, group *parsedVideoGroup) {
 			ui.Row(c.Key("group-actions")).FillWidth().Wrap().Gap(style.SpaceSmall).Children(func() {
 				button(c.Key("add-current"), "添加当前视频", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() {
 					s.stageManual(group.Current)
-					s.manualGroup = nil
+					s.manual.group = nil
 				})
 				button(c.Key("add-selected"), fmt.Sprintf("添加已选 (%d)", count), components.ButtonOptions{Variant: components.ButtonPrimary, Disabled: count == 0}).OnClick(func() {
 					for _, item := range group.Items {
@@ -270,16 +270,16 @@ func (s *State) parsedGroupPanel(c *ui.Context, group *parsedVideoGroup) {
 							s.stageManual(item)
 						}
 					}
-					s.manualGroup = nil
+					s.manual.group = nil
 				})
-				button(c.Key("cancel-group"), "取消", components.ButtonOptions{Variant: components.ButtonGhost}).OnClick(func() { s.manualGroup = nil })
+				button(c.Key("cancel-group"), "取消", components.ButtonOptions{Variant: components.ButtonGhost}).OnClick(func() { s.manual.group = nil })
 			})
 		})
 	}).Label("解析到的" + group.Kind).FillWidth().MinWidth(0).Radius(style.RadiusPanel).Clip()
 }
 
 func (s *State) queueStreamControls(c *ui.Context, bvid string) {
-	entry := s.queueResolves[bvid]
+	entry := s.queue.resolves[bvid]
 	if entry == nil || entry.data.Loading {
 		caption(c, "正在解析画质与音频")
 		return
@@ -297,14 +297,14 @@ func (s *State) queueStreamControls(c *ui.Context, bvid string) {
 
 	ui.Row(c.Key("video-field")).Gap(4).AlignItems(ui.Center).Children(func() {
 		ui.Text(c, "画质").FontSize(style.Font(c, style.FontMeta)).TextColor(c.Theme().TextMuted).Shrink(0)
-		video, _ := components.Select(c.Key("quality"), &entry.videoID, queueVideoOptions(play), components.SelectOptions{Label: "视频画质", Disabled: s.queueRequested[bvid]})
+		video, _ := components.Select(c.Key("quality"), &entry.videoID, queueVideoOptions(play), components.SelectOptions{Label: "视频画质", Disabled: s.queue.requested[bvid]})
 		video.Width(style.DownloadStreamWidth).MinWidth(0).MinHeight(style.DownloadControlHeight).Height(style.DownloadControlHeight).Padding(0, style.SpaceSmall).FontSize(style.Font(c, style.FontButton)).Radius(style.RadiusControl)
 	})
 	audioOptions := queueAudioOptions(play)
 	if len(audioOptions) > 0 {
 		ui.Row(c.Key("audio-field")).Gap(4).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, "音质").FontSize(style.Font(c, style.FontMeta)).TextColor(c.Theme().TextMuted).Shrink(0)
-			audio, _ := components.Select(c.Key("audio"), &entry.audioID, audioOptions, components.SelectOptions{Label: "音频音质", Disabled: s.queueRequested[bvid]})
+			audio, _ := components.Select(c.Key("audio"), &entry.audioID, audioOptions, components.SelectOptions{Label: "音频音质", Disabled: s.queue.requested[bvid]})
 			audio.Width(style.DownloadAudioWidth).MinWidth(0).MinHeight(style.DownloadControlHeight).Height(style.DownloadControlHeight).Padding(0, style.SpaceSmall).FontSize(style.Font(c, style.FontButton)).Radius(style.RadiusControl)
 		})
 	} else {
@@ -315,40 +315,40 @@ func (s *State) queueStreamControls(c *ui.Context, bvid string) {
 func (s *State) removeStaged(key string) {
 	s.cancelPendingManualKey(key)
 	if task, ok := s.queuedTask(key); ok {
-		delete(s.queueProgress, queueProgressKey(task.Bvid, task.Cid))
+		delete(s.queue.progress, queueProgressKey(task.Bvid, task.Cid))
 	}
-	delete(s.stagedKeys, key)
-	delete(s.stagedSourceNames, key)
-	delete(s.queueResolves, key)
-	s.stagedUploads = slices.DeleteFunc(s.stagedUploads, func(v model.VListItem) bool { return v.Bvid == key })
-	s.stagedFavorites = slices.DeleteFunc(s.stagedFavorites, func(v model.FavoriteMedias) bool { return favoriteBvid(v.Bvid, v.BvID) == key })
-	s.stagedCollections = slices.DeleteFunc(s.stagedCollections, func(v model.CollectionItemMedias) bool { return v.Bvid == key })
-	s.stagedSeasons = slices.DeleteFunc(s.stagedSeasons, func(v model.SeasonsArchivesItem) bool { return v.Bvid == key })
-	s.stagedSeries = slices.DeleteFunc(s.stagedSeries, func(v model.SeriesArchivesItem) bool { return v.Bvid == key })
-	s.stagedDynamics = slices.DeleteFunc(s.stagedDynamics, func(v model.DynamicArchiveItem) bool { return v.Bvid == key })
-	s.stagedPlayHistory = slices.DeleteFunc(s.stagedPlayHistory, func(v model.PlayHistoryItem) bool { return v.History.Bvid == key })
-	s.stagedManual = slices.DeleteFunc(s.stagedManual, func(v manualVideo) bool { return v.Key == key })
-	delete(s.queueProgress, key)
-	delete(s.queueExtraBusy, key)
-	s.notice = ""
+	delete(s.stage.keys, key)
+	delete(s.stage.sourceNames, key)
+	delete(s.queue.resolves, key)
+	s.stage.uploads = slices.DeleteFunc(s.stage.uploads, func(v model.VListItem) bool { return v.Bvid == key })
+	s.stage.favorites = slices.DeleteFunc(s.stage.favorites, func(v model.FavoriteMedias) bool { return favoriteBvid(v.Bvid, v.BvID) == key })
+	s.stage.collections = slices.DeleteFunc(s.stage.collections, func(v model.CollectionItemMedias) bool { return v.Bvid == key })
+	s.stage.seasons = slices.DeleteFunc(s.stage.seasons, func(v model.SeasonsArchivesItem) bool { return v.Bvid == key })
+	s.stage.series = slices.DeleteFunc(s.stage.series, func(v model.SeriesArchivesItem) bool { return v.Bvid == key })
+	s.stage.dynamics = slices.DeleteFunc(s.stage.dynamics, func(v model.DynamicArchiveItem) bool { return v.Bvid == key })
+	s.stage.playHistory = slices.DeleteFunc(s.stage.playHistory, func(v model.PlayHistoryItem) bool { return v.History.Bvid == key })
+	s.stage.manual = slices.DeleteFunc(s.stage.manual, func(v manualVideo) bool { return v.Key == key })
+	delete(s.queue.progress, key)
+	delete(s.queue.extraBusy, key)
+	s.stage.notice = ""
 }
 func (s *State) clearStaged() {
-	s.pendingManualDownloads = nil
-	s.queueRequested = make(map[string]bool)
-	s.stagedKeys = make(map[string]bool)
-	s.stagedSourceNames = make(map[string]string)
-	s.queueResolves = make(map[string]*queueResolve)
-	s.stagedUploads = nil
-	s.stagedFavorites = nil
-	s.stagedCollections = nil
-	s.stagedSeasons = nil
-	s.stagedSeries = nil
-	s.stagedDynamics = nil
-	s.stagedPlayHistory = nil
-	s.stagedManual = nil
-	s.queueProgress = make(map[string]download.Progress)
-	s.queueExtraBusy = make(map[string]string)
-	s.notice = ""
+	s.queue.pending = nil
+	s.queue.requested = make(map[string]bool)
+	s.stage.keys = make(map[string]bool)
+	s.stage.sourceNames = make(map[string]string)
+	s.queue.resolves = make(map[string]*queueResolve)
+	s.stage.uploads = nil
+	s.stage.favorites = nil
+	s.stage.collections = nil
+	s.stage.seasons = nil
+	s.stage.series = nil
+	s.stage.dynamics = nil
+	s.stage.playHistory = nil
+	s.stage.manual = nil
+	s.queue.progress = make(map[string]download.Progress)
+	s.queue.extraBusy = make(map[string]string)
+	s.stage.notice = ""
 }
 
 func downloadRequestLabel(queued bool) string {

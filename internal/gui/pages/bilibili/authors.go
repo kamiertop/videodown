@@ -14,6 +14,31 @@ import (
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
 
+// followsState 是“UP 主”页关注列表的分页状态：list 随滚动持续追加，
+// page 记录已连续加载的页数，退出登录后从第一页重新开始。
+type followsState struct {
+	list resource[model.FollowData]
+	page int
+}
+
+// authorState 是单个 UP 主主页的完整状态：资料、投稿、合集/系列列表与
+// 当前选中的合集/系列，以及各自的页码。target 是输入框里的原始解析目标。
+type authorState struct {
+	target         string
+	info           resource[model.UserInfoData]
+	uploads        resource[model.VideoListData]
+	lists          resource[model.SeasonsSeriesData]
+	seasonVideos   resource[model.SeasonsArchivesData]
+	seriesVideos   resource[model.SeriesArchivesData]
+	tab            string
+	uploadsPage    int
+	listPage       int
+	seasonPage     int
+	seriesPage     int
+	selectedSeason int
+	selectedSeries int
+}
+
 func (s *State) authors(c *ui.Context, navigate func(string)) {
 	if s.requiresLogin(c, navigate) {
 		return
@@ -26,33 +51,33 @@ func (s *State) authors(c *ui.Context, navigate func(string)) {
 			Gap(style.SpaceSmall).
 			AlignItems(ui.Center).
 			Children(func() {
-				ui.Text(c, fmt.Sprintf("我的关注 · %d", s.follows.Data.Total)).
+				ui.Text(c, fmt.Sprintf("我的关注 · %d", s.follows.list.Data.Total)).
 					FontWeight(style.WeightSemibold).
 					Shrink(0)
 				button(c.Key("refresh"),
 					"刷新",
-					components.ButtonOptions{Variant: components.ButtonOutline, Loading: s.follows.Loading, Disabled: s.api == nil},
+					components.ButtonOptions{Variant: components.ButtonOutline, Loading: s.follows.list.Loading, Disabled: s.api == nil},
 				).OnClick(func() { s.loadFollows(false) })
 				ui.Spacer(c).Grow(1)
 				textInput(c.Key("author"),
-					&s.author,
+					&s.authorInput,
 					"UP 主 UID 或空间链接",
 					"输入 UP 主 mid / 空间链接",
-					func() { s.findAuthor(s.author, navigate) },
+					func() { s.findAuthor(s.authorInput, navigate) },
 				).Width(450)
 
 				button(c.Key("parse-author"), "解析",
-					components.ButtonOptions{Loading: s.authorInfo.Loading, Disabled: s.api == nil},
-				).OnClick(func() { s.findAuthor(s.author, navigate) })
+					components.ButtonOptions{Loading: s.author.info.Loading, Disabled: s.api == nil},
+				).OnClick(func() { s.findAuthor(s.authorInput, navigate) })
 			})
 	})
-	s.errorRow(c, s.authorInfo.Error, func() { s.findAuthor(s.author, navigate) })
-	s.errorRow(c, s.follows.Error, func() { s.loadFollows(s.follows.Loaded) })
+	s.errorRow(c, s.author.info.Error, func() { s.findAuthor(s.authorInput, navigate) })
+	s.errorRow(c, s.follows.list.Error, func() { s.loadFollows(s.follows.list.Loaded) })
 	panel(c, "关注列表", func() {
 		components.ScrollArea(c.Key(followsScrollKey), s.scroll(followsScrollKey), components.ScrollAreaOptions{Label: "关注列表区域"}, func() {
 			ui.Column(c).FillWidth().Padding(style.SpaceSmall, style.SpaceMedium, style.SpaceMedium).Gap(style.SpaceMedium).Children(func() {
-				if len(s.follows.Data.List) == 0 {
-					if s.follows.Loading {
+				if len(s.follows.list.Data.List) == 0 {
+					if s.follows.list.Loading {
 						components.Spinner(c, components.SpinnerOptions{Size: 16, Label: "正在加载关注列表", ShowLabel: true})
 					} else {
 						empty(c, "暂无关注列表", "user")
@@ -64,23 +89,23 @@ func (s *State) authors(c *ui.Context, navigate func(string)) {
 					FillWidth().
 					Gap(style.SpaceMedium).
 					Children(func() {
-						for _, author := range s.follows.Data.List {
+						for _, author := range s.follows.list.Data.List {
 							s.authorCard(c.Key(author.Mid), author, navigate)
 						}
 					})
 				// 下拉到底部自动追加下一页，不再用整页替换的翻页按钮。
-				if s.follows.Loading {
+				if s.follows.list.Loading {
 					components.Spinner(c, components.SpinnerOptions{Size: 16, Label: "正在加载关注", ShowLabel: true})
-				} else if len(s.follows.Data.List) < s.follows.Data.Total {
-					caption(c, fmt.Sprintf("已加载 %d / %d 位 UP 主，滚动到底部自动加载", len(s.follows.Data.List), s.follows.Data.Total))
+				} else if len(s.follows.list.Data.List) < s.follows.list.Data.Total {
+					caption(c, fmt.Sprintf("已加载 %d / %d 位 UP 主，滚动到底部自动加载", len(s.follows.list.Data.List), s.follows.list.Data.Total))
 					const key = "author-follows"
-					if s.autoPageFallback(key, followsScrollKey) && s.follows.Error == "" {
+					if s.autoPageFallback(key, followsScrollKey) && s.follows.list.Error == "" {
 						button(c, "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() {
 							s.continueAutoPage(key, func() { s.loadFollows(true) })
 						})
 					}
 				} else {
-					caption(c, fmt.Sprintf("已加载全部 %d 位 UP 主", s.follows.Data.Total))
+					caption(c, fmt.Sprintf("已加载全部 %d 位 UP 主", s.follows.list.Data.Total))
 				}
 			})
 		}).Grow(1).MinWidth(0).MinHeight(0)
@@ -97,7 +122,7 @@ func authorColumns(c *ui.Context) int {
 }
 
 func (s *State) authorDetail(c *ui.Context, navigate func(string), goBack func()) {
-	profile := s.authorInfo.Data
+	profile := s.author.info.Data
 	panel(c, "UP 主信息", func() {
 		ui.Row(c).FillWidth().
 			Padding(style.AuthorDetailPaddingY, style.AuthorDetailPaddingX).
@@ -123,7 +148,7 @@ func (s *State) authorDetail(c *ui.Context, navigate func(string), goBack func()
 	components.ScrollArea(c.Key("author-videos-scroll"), s.scroll(fmt.Sprintf("author-videos/%d", profile.Mid)),
 		components.ScrollAreaOptions{Label: "UP 主视频区域"}, func() {
 			leftPadding := style.ScrollbarGutter
-			if s.authorTab == "lists" {
+			if s.author.tab == "lists" {
 				leftPadding = 0
 			}
 			ui.Column(c).FillWidth().Padding(0, style.ScrollbarGutter, 0, leftPadding).
@@ -135,11 +160,11 @@ func (s *State) authorDetail(c *ui.Context, navigate func(string), goBack func()
 
 func (s *State) authorVideoContent(c *ui.Context) {
 	s.stagingNotice(c)
-	s.errorRow(c, s.stageError, nil)
+	s.errorRow(c, s.stage.error, nil)
 	switch {
-	case s.authorTab == "uploads":
-		if len(s.uploads.Data.List.Vlist) == 0 {
-			if s.uploads.Loading {
+	case s.author.tab == "uploads":
+		if len(s.author.uploads.Data.List.Vlist) == 0 {
+			if s.author.uploads.Loading {
 				caption(c, "正在加载投稿")
 			} else {
 				empty(c, "暂无投稿", "play")
@@ -151,19 +176,19 @@ func (s *State) authorVideoContent(c *ui.Context) {
 			FillWidth().
 			Gap(style.SpaceMedium).
 			Children(func() {
-				for _, video := range s.uploads.Data.List.Vlist {
+				for _, video := range s.author.uploads.Data.List.Vlist {
 					s.mediaCard(c.Key(video.Bvid), video.Bvid, video.Title, video.Pic, video.Author, video.Length, video.Play, video.VideoReview, video.Created)
 				}
 			})
-		if s.uploads.Loading {
+		if s.author.uploads.Loading {
 			caption(c, "正在加载投稿")
 		}
-		s.errorRow(c, s.uploads.Error, func() { s.loadUploads(max(1, s.authorPage+1), s.uploads.Loaded) })
-		if len(s.uploads.Data.List.Vlist) < s.uploads.Data.Page.Count {
-			key := fmt.Sprintf("author-videos/%d", s.authorInfo.Data.Mid)
-			if s.autoPageFallback(key, key) && s.uploads.Error == "" && !s.uploads.Loading {
+		s.errorRow(c, s.author.uploads.Error, func() { s.loadUploads(max(1, s.author.uploadsPage+1), s.author.uploads.Loaded) })
+		if len(s.author.uploads.Data.List.Vlist) < s.author.uploads.Data.Page.Count {
+			key := fmt.Sprintf("author-videos/%d", s.author.info.Data.Mid)
+			if s.autoPageFallback(key, key) && s.author.uploads.Error == "" && !s.author.uploads.Loading {
 				button(c, "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() {
-					s.continueAutoPage(key, func() { s.loadUploads(s.authorPage+1, true) })
+					s.continueAutoPage(key, func() { s.loadUploads(s.author.uploadsPage+1, true) })
 				})
 			}
 		}
@@ -173,7 +198,7 @@ func (s *State) authorVideoContent(c *ui.Context) {
 }
 
 func (s *State) authorListsView(c *ui.Context) {
-	lists := s.authorLists.Data.ItemsLists
+	lists := s.author.lists.Data.ItemsLists
 	validLists := 0
 	for _, item := range lists.SeasonsList {
 		if item.Meta.SeasonId > 0 {
@@ -211,9 +236,9 @@ func (s *State) authorListsView(c *ui.Context) {
 							Padding(0).
 							OnClick(func() { s.loadAuthorLists(1, false) })
 					})
-					s.errorRow(c, s.authorLists.Error, func() {
-						if s.authorLists.Loaded {
-							s.loadAuthorLists(s.listPage+1, true)
+					s.errorRow(c, s.author.lists.Error, func() {
+						if s.author.lists.Loaded {
+							s.loadAuthorLists(s.author.listPage+1, true)
 						} else {
 							s.loadAuthorLists(1, false)
 						}
@@ -227,26 +252,26 @@ func (s *State) authorListsView(c *ui.Context) {
 							name = item.Meta.Name
 						}
 						authorListItem(c.Key(fmt.Sprintf("season-%d", item.Meta.SeasonId)), name, "合集", item.Meta.Total,
-							item.Meta.SeasonId == s.selectedSeason, func() { s.loadSeason(item.Meta.SeasonId, 1, false) })
+							item.Meta.SeasonId == s.author.selectedSeason, func() { s.loadSeason(item.Meta.SeasonId, 1, false) })
 					}
 					for _, item := range lists.SeriesList {
 						if item.Meta.SeriesId <= 0 {
 							continue
 						}
 						authorListItem(c.Key(fmt.Sprintf("series-%d", item.Meta.SeriesId)), item.Meta.Name, "系列", item.Meta.Total,
-							item.Meta.SeriesId == s.selectedSeries, func() { s.loadSeries(item.Meta.SeriesId, 1, false) })
+							item.Meta.SeriesId == s.author.selectedSeries, func() { s.loadSeries(item.Meta.SeriesId, 1, false) })
 					}
-					if s.authorLists.Loading {
+					if s.author.lists.Loading {
 						caption(c, "正在加载列表")
 					}
 					if len(lists.SeasonsList)+len(lists.SeriesList) < lists.Page.Total {
-						key := fmt.Sprintf("author-lists/%d", s.authorInfo.Data.Mid)
-						scrollKey := fmt.Sprintf("author-videos/%d", s.authorInfo.Data.Mid)
-						if s.autoPageFallback(key, scrollKey) && s.authorLists.Error == "" && !s.authorLists.Loading {
+						key := fmt.Sprintf("author-lists/%d", s.author.info.Data.Mid)
+						scrollKey := fmt.Sprintf("author-videos/%d", s.author.info.Data.Mid)
+						if s.autoPageFallback(key, scrollKey) && s.author.lists.Error == "" && !s.author.lists.Loading {
 							button(c.Key("more-lists"), "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).
 								FillWidth().
 								OnClick(func() {
-									s.continueAutoPage(key, func() { s.loadAuthorLists(s.listPage+1, true) })
+									s.continueAutoPage(key, func() { s.loadAuthorLists(s.author.listPage+1, true) })
 								})
 						}
 					}
@@ -254,9 +279,9 @@ func (s *State) authorListsView(c *ui.Context) {
 			}).Shrink(0)
 			ui.Column(c).Grow(1).MinWidth(0).Gap(style.SpaceMedium).Children(func() {
 				switch {
-				case s.selectedSeason != 0:
+				case s.author.selectedSeason != 0:
 					s.authorSeason(c)
-				case s.selectedSeries != 0:
+				case s.author.selectedSeries != 0:
 					s.authorSeries(c)
 				default:
 					empty(c, "选择一个合集或系列", "folder")
@@ -315,17 +340,17 @@ func (s *State) authorListsEmpty(c *ui.Context) {
 	panel(c, "合集与系列空状态", func() {
 		ui.Column(c).FillWidth().Grow(1).MinHeight(320).Padding(style.SpaceXLarge).Center().Gap(style.SpaceMedium).Children(func() {
 			switch {
-			case s.authorLists.Loading:
+			case s.author.lists.Loading:
 				components.Spinner(c, components.SpinnerOptions{Size: 32})
 				caption(c, "正在加载合集与系列")
-			case s.authorLists.Error != "":
+			case s.author.lists.Error != "":
 				ui.Icon(c, icons.Must("folder")).Size(36, 36).TextColor(c.Theme().TextMuted)
-				ui.Text(c, s.authorLists.Error).MaxLines(2).TextAlign(ui.Center).TextColor(c.Theme().Danger)
+				ui.Text(c, s.author.lists.Error).MaxLines(2).TextAlign(ui.Center).TextColor(c.Theme().Danger)
 				button(c.Key("retry-lists"), "重试", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() { s.loadAuthorLists(1, false) })
 			default:
 				ui.Icon(c, icons.Must("folder")).Size(36, 36).TextColor(c.Theme().TextMuted)
 				ui.Text(c, "暂无合集或系列").FontWeight(style.WeightSemibold)
-				button(c.Key("show-uploads"), "查看投稿", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() { s.authorTab = "uploads" })
+				button(c.Key("show-uploads"), "查看投稿", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() { s.author.tab = "uploads" })
 			}
 		})
 	}).Grow(1)
@@ -334,20 +359,20 @@ func (s *State) authorListsEmpty(c *ui.Context) {
 func (s *State) authorVideoKeys() []string {
 	var keys []string
 	switch {
-	case s.authorTab == "uploads":
-		for _, v := range s.uploads.Data.List.Vlist {
+	case s.author.tab == "uploads":
+		for _, v := range s.author.uploads.Data.List.Vlist {
 			if strings.HasPrefix(v.Bvid, "BV") {
 				keys = append(keys, v.Bvid)
 			}
 		}
-	case s.selectedSeason != 0:
-		for _, v := range s.seasonVideos.Data.Archives {
+	case s.author.selectedSeason != 0:
+		for _, v := range s.author.seasonVideos.Data.Archives {
 			if strings.HasPrefix(v.Bvid, "BV") {
 				keys = append(keys, v.Bvid)
 			}
 		}
-	case s.selectedSeries != 0:
-		for _, v := range s.seriesVideos.Data.Archives {
+	case s.author.selectedSeries != 0:
+		for _, v := range s.author.seriesVideos.Data.Archives {
 			if strings.HasPrefix(v.Bvid, "BV") {
 				keys = append(keys, v.Bvid)
 			}
@@ -357,13 +382,13 @@ func (s *State) authorVideoKeys() []string {
 }
 
 func (s *State) authorContentControls(c *ui.Context, navigate func(string)) {
-	loaded, total := len(s.uploads.Data.List.Vlist), s.uploads.Data.Page.Count
-	if s.authorTab == "lists" {
+	loaded, total := len(s.author.uploads.Data.List.Vlist), s.author.uploads.Data.Page.Count
+	if s.author.tab == "lists" {
 		loaded, total = 0, 0
-		if s.selectedSeason != 0 {
-			loaded, total = len(s.seasonVideos.Data.Archives), s.seasonVideos.Data.Page.Total
-		} else if s.selectedSeries != 0 {
-			loaded, total = len(s.seriesVideos.Data.Archives), s.seriesVideos.Data.Page.Total
+		if s.author.selectedSeason != 0 {
+			loaded, total = len(s.author.seasonVideos.Data.Archives), s.author.seasonVideos.Data.Page.Total
+		} else if s.author.selectedSeries != 0 {
+			loaded, total = len(s.author.seriesVideos.Data.Archives), s.author.seriesVideos.Data.Page.Total
 		}
 	}
 	keys := s.authorVideoKeys()
@@ -377,19 +402,19 @@ func (s *State) authorContentControls(c *ui.Context, navigate func(string)) {
 	tabs := func() {
 		for _, tab := range []struct{ id, label string }{{"uploads", "投稿"}, {"lists", "合集 / 系列"}} {
 			variant := components.ButtonSecondary
-			if s.authorTab == tab.id {
+			if s.author.tab == tab.id {
 				variant = components.ButtonPrimary
 			}
 			button(c.Key(tab.id), tab.label, components.ButtonOptions{Variant: variant}).MinWidth(104).Height(style.InputHeight).FontWeight(style.WeightSemibold).Shrink(0).OnClick(func() {
-				if s.authorTab != tab.id {
-					videoKey := fmt.Sprintf("author-videos/%d", s.authorInfo.Data.Mid)
-					listKey := fmt.Sprintf("author-lists/%d", s.authorInfo.Data.Mid)
+				if s.author.tab != tab.id {
+					videoKey := fmt.Sprintf("author-videos/%d", s.author.info.Data.Mid)
+					listKey := fmt.Sprintf("author-lists/%d", s.author.info.Data.Mid)
 					s.resetAutoPage(videoKey, videoKey)
 					s.resetAutoPage(listKey, videoKey)
-					s.authorTab = tab.id
+					s.author.tab = tab.id
 					s.selected = make(map[string]*bool)
 				}
-				if tab.id == "lists" && !s.authorLists.Loaded {
+				if tab.id == "lists" && !s.author.lists.Loaded {
 					s.loadAuthorLists(1, false)
 				}
 			})
@@ -446,44 +471,48 @@ func (s *State) authorContentControls(c *ui.Context, navigate func(string)) {
 }
 func (s *State) authorSeason(c *ui.Context) {
 	ui.Grid(c).Columns(s.columns(c, true)).FillWidth().Gap(style.SpaceMedium).Children(func() {
-		for _, video := range s.seasonVideos.Data.Archives {
-			s.mediaCard(c.Key(video.Bvid), video.Bvid, video.Title, video.Pic, s.authorInfo.Data.Name, duration(video.Duration), video.Stat.View, video.Stat.Danmaku, video.Pubdate)
+		for _, video := range s.author.seasonVideos.Data.Archives {
+			s.mediaCard(c.Key(video.Bvid), video.Bvid, video.Title, video.Pic, s.author.info.Data.Name, duration(video.Duration), video.Stat.View, video.Stat.Danmaku, video.Pubdate)
 		}
 	})
-	if s.seasonVideos.Loading {
+	if s.author.seasonVideos.Loading {
 		caption(c, "正在加载合集视频")
 	}
-	s.errorRow(c, s.seasonVideos.Error, func() { s.loadSeason(s.selectedSeason, max(1, s.seasonPage+1), s.seasonVideos.Loaded) })
-	if len(s.seasonVideos.Data.Archives) == 0 && !s.seasonVideos.Loading {
+	s.errorRow(c, s.author.seasonVideos.Error, func() {
+		s.loadSeason(s.author.selectedSeason, max(1, s.author.seasonPage+1), s.author.seasonVideos.Loaded)
+	})
+	if len(s.author.seasonVideos.Data.Archives) == 0 && !s.author.seasonVideos.Loading {
 		empty(c, "暂无合集视频", "play")
 	}
-	if len(s.seasonVideos.Data.Archives) < s.seasonVideos.Data.Page.Total {
-		key := fmt.Sprintf("author-videos/%d", s.authorInfo.Data.Mid)
-		if s.autoPageFallback(key, key) && s.seasonVideos.Error == "" && !s.seasonVideos.Loading {
+	if len(s.author.seasonVideos.Data.Archives) < s.author.seasonVideos.Data.Page.Total {
+		key := fmt.Sprintf("author-videos/%d", s.author.info.Data.Mid)
+		if s.autoPageFallback(key, key) && s.author.seasonVideos.Error == "" && !s.author.seasonVideos.Loading {
 			button(c, "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() {
-				s.continueAutoPage(key, func() { s.loadSeason(s.selectedSeason, s.seasonPage+1, true) })
+				s.continueAutoPage(key, func() { s.loadSeason(s.author.selectedSeason, s.author.seasonPage+1, true) })
 			})
 		}
 	}
 }
 func (s *State) authorSeries(c *ui.Context) {
 	ui.Grid(c).Columns(s.columns(c, true)).FillWidth().Gap(style.SpaceMedium).Children(func() {
-		for _, video := range s.seriesVideos.Data.Archives {
-			s.mediaCard(c.Key(video.Bvid), video.Bvid, video.Title, video.Pic, s.authorInfo.Data.Name, duration(video.Duration), video.Stat.View, video.Stat.Danmaku, video.PubDate)
+		for _, video := range s.author.seriesVideos.Data.Archives {
+			s.mediaCard(c.Key(video.Bvid), video.Bvid, video.Title, video.Pic, s.author.info.Data.Name, duration(video.Duration), video.Stat.View, video.Stat.Danmaku, video.PubDate)
 		}
 	})
-	if s.seriesVideos.Loading {
+	if s.author.seriesVideos.Loading {
 		caption(c, "正在加载系列视频")
 	}
-	s.errorRow(c, s.seriesVideos.Error, func() { s.loadSeries(s.selectedSeries, max(1, s.seriesPage+1), s.seriesVideos.Loaded) })
-	if len(s.seriesVideos.Data.Archives) == 0 && !s.seriesVideos.Loading {
+	s.errorRow(c, s.author.seriesVideos.Error, func() {
+		s.loadSeries(s.author.selectedSeries, max(1, s.author.seriesPage+1), s.author.seriesVideos.Loaded)
+	})
+	if len(s.author.seriesVideos.Data.Archives) == 0 && !s.author.seriesVideos.Loading {
 		empty(c, "暂无系列视频", "play")
 	}
-	if len(s.seriesVideos.Data.Archives) < s.seriesVideos.Data.Page.Total {
-		key := fmt.Sprintf("author-videos/%d", s.authorInfo.Data.Mid)
-		if s.autoPageFallback(key, key) && s.seriesVideos.Error == "" && !s.seriesVideos.Loading {
+	if len(s.author.seriesVideos.Data.Archives) < s.author.seriesVideos.Data.Page.Total {
+		key := fmt.Sprintf("author-videos/%d", s.author.info.Data.Mid)
+		if s.autoPageFallback(key, key) && s.author.seriesVideos.Error == "" && !s.author.seriesVideos.Loading {
 			button(c, "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() {
-				s.continueAutoPage(key, func() { s.loadSeries(s.selectedSeries, s.seriesPage+1, true) })
+				s.continueAutoPage(key, func() { s.loadSeries(s.author.selectedSeries, s.author.seriesPage+1, true) })
 			})
 		}
 	}
@@ -517,9 +546,9 @@ func (s *State) authorRoute(c *ui.Context, mid uint64, navigate func(string), go
 	if s.requiresLogin(c, navigate) {
 		return
 	}
-	if !s.authorInfo.Loaded || s.authorInfo.Data.Mid != mid {
-		if s.authorInfo.Error != "" {
-			s.errorRow(c, s.authorInfo.Error, func() { s.findAuthor(strconv.FormatUint(mid, 10), nil) })
+	if !s.author.info.Loaded || s.author.info.Data.Mid != mid {
+		if s.author.info.Error != "" {
+			s.errorRow(c, s.author.info.Error, func() { s.findAuthor(strconv.FormatUint(mid, 10), nil) })
 		} else {
 			empty(c, "正在加载 UP 主视频", "loader-circle")
 		}

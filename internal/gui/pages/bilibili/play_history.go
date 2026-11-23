@@ -11,6 +11,14 @@ import (
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
 
+// playState 是播放历史板块：内嵌共用的翻页 feed，另带接口的 max/view_at
+// 游标与按 BV 号的勾选集。
+type playState struct {
+	feed[model.PlayHistoryData]
+	cursor model.PlayHistoryCursor
+	picked map[string]*bool
+}
+
 func playHistoryTitle(item model.PlayHistoryItem) string {
 	if title := strings.TrimSpace(item.Title); title != "" {
 		return title
@@ -36,48 +44,37 @@ func playHistoryKey(item model.PlayHistoryItem) string {
 }
 
 func (s *State) loadPlayHistory(more bool) {
-	if !s.loggedIn || s.api == nil {
+	if !s.auth.loggedIn || s.api == nil {
 		return
 	}
 	if more {
-		if s.playHistoryMore.Loading || s.playHistory.Loading || !s.playHistoryHasMore {
+		if s.play.more.Loading || s.play.items.Loading || !s.play.hasMore {
 			return
 		}
-		s.playHistoryAutoAtY = s.scroll("play-history-videos").Y
-		cursor, generation := s.playHistoryCursor, s.playHistoryGeneration
-		load(s, &s.playHistoryMore, func() (model.PlayHistoryData, error) {
+		s.play.autoAtY = s.scroll("play-history-videos").Y
+		cursor, generation := s.play.cursor, s.play.generation
+		load(s, &s.play.more, func() (model.PlayHistoryData, error) {
 			return s.api.PlayHistory(cursor.Max, cursor.ViewAt)
 		}, func(page model.PlayHistoryData) {
-			if generation != s.playHistoryGeneration {
+			if generation != s.play.generation {
 				return
 			}
-			s.playHistory.Data.List = appendUnique(s.playHistory.Data.List, page.List, playHistoryKey)
-			s.playHistoryCursor = page.Cursor
-			s.playHistoryHasMore = playHistoryCursorChanged(cursor, page.Cursor) && len(page.List) > 0
+			s.play.items.Data.List = appendUnique(s.play.items.Data.List, page.List, playHistoryKey)
+			s.play.cursor = page.Cursor
+			s.play.hasMore = playHistoryCursorChanged(cursor, page.Cursor) && len(page.List) > 0
 		})
 		return
 	}
-	s.playHistoryGeneration++
-	s.playHistoryMore.seq++
-	s.playHistoryMore.Loading = false
-	s.playHistoryMore.Error = ""
-	s.playHistory.Data = model.PlayHistoryData{}
-	s.playHistory.Loaded = false
-	s.playHistory.Loading = false
-	s.playHistory.Error = ""
-	s.playHistoryCursor = model.PlayHistoryCursor{}
-	s.playHistoryHasMore = false
-	s.playHistorySelected = make(map[string]*bool)
-	s.playHistoryAutoPending = false
-	s.playHistoryAutoAtY = 0
-	s.playHistoryAutoFillPages = 0
-	s.scroll("play-history-videos").Y = 0
-	s.scroll("play-history-videos").MaxY = 0
-	load(s, &s.playHistory, func() (model.PlayHistoryData, error) {
+	s.play.feed.reset()
+	s.play.cursor = model.PlayHistoryCursor{}
+	s.play.picked = make(map[string]*bool)
+	scroll := s.scroll("play-history-videos")
+	scroll.Y, scroll.MaxY = 0, 0
+	load(s, &s.play.items, func() (model.PlayHistoryData, error) {
 		return s.api.PlayHistory(0, 0)
 	}, func(page model.PlayHistoryData) {
-		s.playHistoryCursor = page.Cursor
-		s.playHistoryHasMore = len(page.List) > 0 && playHistoryCursorChanged(model.PlayHistoryCursor{}, page.Cursor)
+		s.play.cursor = page.Cursor
+		s.play.hasMore = len(page.List) > 0 && playHistoryCursorChanged(model.PlayHistoryCursor{}, page.Cursor)
 	})
 }
 
@@ -87,8 +84,8 @@ func playHistoryCursorChanged(a, b model.PlayHistoryCursor) bool {
 
 func (s *State) playHistorySelectedCount() int {
 	count := 0
-	for _, item := range s.playHistory.Data.List {
-		if selected := s.playHistorySelected[item.History.Bvid]; selected != nil && *selected {
+	for _, item := range s.play.items.Data.List {
+		if selected := s.play.picked[item.History.Bvid]; selected != nil && *selected {
 			count++
 		}
 	}
@@ -96,56 +93,31 @@ func (s *State) playHistorySelectedCount() int {
 }
 
 func (s *State) playHistorySelection(bvid string) *bool {
-	if s.playHistorySelected[bvid] == nil {
-		s.playHistorySelected[bvid] = new(bool)
+	if s.play.picked[bvid] == nil {
+		s.play.picked[bvid] = new(bool)
 	}
-	return s.playHistorySelected[bvid]
+	return s.play.picked[bvid]
 }
 
 func (s *State) stageSelectedPlayHistory(navigate func(string)) {
 	if s.playHistorySelectedCount() == 0 {
 		return
 	}
-	for _, item := range s.playHistory.Data.List {
-		if selected := s.playHistorySelected[item.History.Bvid]; selected != nil && *selected {
+	for _, item := range s.play.items.Data.List {
+		if selected := s.play.picked[item.History.Bvid]; selected != nil && *selected {
 			s.stagePlayHistory(item)
 		}
 	}
-	s.playHistorySelected = make(map[string]*bool)
+	s.play.picked = make(map[string]*bool)
 	navigate("/bilibili/download")
 }
 
 func (s *State) maybeAutoLoadPlayHistory() {
-	state := s.scroll("play-history-videos")
-	if s.runtime.After == nil || s.playHistoryAutoPending || s.playHistoryMore.Loading || s.playHistoryMore.Error != "" ||
-		!s.playHistoryHasMore || !s.playHistoryAutoReady(state) {
-		return
-	}
-	s.playHistoryAutoPending = true
-	epoch, generation, cursor := s.epoch, s.playHistoryGeneration, s.playHistoryCursor
-	s.runtime.After(0, func() {
-		if s.stopped || s.epoch != epoch || s.playHistoryGeneration != generation {
-			return
-		}
-		s.playHistoryAutoPending = false
-		state := s.scroll("play-history-videos")
-		if s.section != "play-history" || s.playHistoryCursor != cursor || s.playHistoryMore.Error != "" || !s.playHistoryAutoReady(state) {
-			return
-		}
-		if state.MaxY <= 0 {
-			s.playHistoryAutoFillPages++
-		} else {
-			s.playHistoryAutoFillPages = 0
-		}
-		s.loadPlayHistory(true)
-	})
-}
-
-func (s *State) playHistoryAutoReady(state *ui.ScrollState) bool {
-	if state.MaxY <= 0 {
-		return s.playHistoryAutoFillPages < style.DynamicAutoFillLimit
-	}
-	return state.Y > s.playHistoryAutoAtY+1 && state.Y+style.DynamicAutoLoadThreshold >= state.MaxY
+	cursor := s.play.cursor
+	maybeAutoLoadFeed(s, &s.play.feed, "play-history-videos", "play-history",
+		nil,
+		func() bool { return s.play.cursor == cursor },
+		func() { s.loadPlayHistory(true) })
 }
 
 func (s *State) playHistoryPage(c *ui.Context, navigate func(string)) {
@@ -153,7 +125,7 @@ func (s *State) playHistoryPage(c *ui.Context, navigate func(string)) {
 		return
 	}
 	k := c.Theme()
-	items := s.playHistory.Data.List
+	items := s.play.items.Data.List
 	selected := s.playHistorySelectedCount()
 	selectable := 0
 	for _, item := range items {
@@ -168,7 +140,7 @@ func (s *State) playHistoryPage(c *ui.Context, navigate func(string)) {
 			ui.Text(c, "播放历史").Shrink(0).SingleLine().FontWeight(style.WeightSemibold)
 			ui.Text(c, fmt.Sprintf("已加载 %d 个", len(items))).Grow(1).MinWidth(0).SingleLine().
 				FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted)
-			button(c.Key("refresh"), "刷新", components.ButtonOptions{Variant: components.ButtonOutline, Icon: icons.Must("refresh-cw"), Loading: s.playHistory.Loading}).
+			button(c.Key("refresh"), "刷新", components.ButtonOptions{Variant: components.ButtonOutline, Icon: icons.Must("refresh-cw"), Loading: s.play.items.Loading}).
 				Height(32).OnClick(func() { s.loadPlayHistory(false) })
 			allSelected := selectable > 0 && selected == selectable
 			selectLabel := "全选"
@@ -186,13 +158,13 @@ func (s *State) playHistoryPage(c *ui.Context, navigate func(string)) {
 			button(c.Key("selected-download"), fmt.Sprintf("下载已选 (%d)", selected), components.ButtonOptions{Variant: components.ButtonPrimary, Disabled: selected == 0}).
 				Height(32).OnClick(func() { s.stageSelectedPlayHistory(navigate) })
 		})
-		if s.playHistory.Loading && !s.playHistory.Loaded {
+		if s.play.items.Loading && !s.play.items.Loaded {
 			empty(c, "正在加载播放历史", "loader-circle")
 			return
 		}
-		if s.playHistory.Error != "" {
+		if s.play.items.Error != "" {
 			ui.Column(c).FillWidth().Padding(style.SpaceLarge).Children(func() {
-				s.errorRow(c, s.playHistory.Error, func() { s.loadPlayHistory(false) })
+				s.errorRow(c, s.play.items.Error, func() { s.loadPlayHistory(false) })
 			})
 			return
 		}
@@ -210,17 +182,17 @@ func (s *State) playHistoryPage(c *ui.Context, navigate func(string)) {
 							s.playHistorySelection(item.History.Bvid))
 					}
 				})
-				if s.playHistoryMore.Loading {
+				if s.play.more.Loading {
 					caption(c, "正在加载更多")
 				}
-				if s.playHistoryMore.Error != "" {
-					s.errorRow(c, s.playHistoryMore.Error, func() { s.loadPlayHistory(true) })
+				if s.play.more.Error != "" {
+					s.errorRow(c, s.play.more.Error, func() { s.loadPlayHistory(true) })
 				}
-				shortListFallback := s.playHistoryHasMore && (s.runtime.After == nil ||
-					s.scroll("play-history-videos").MaxY <= 0 && s.playHistoryAutoFillPages >= style.DynamicAutoFillLimit)
-				if shortListFallback && s.playHistoryMore.Error == "" && !s.playHistoryMore.Loading {
+				shortListFallback := s.play.hasMore && (s.runtime.After == nil ||
+					s.scroll("play-history-videos").MaxY <= 0 && s.play.autoFill >= style.DynamicAutoFillLimit)
+				if shortListFallback && s.play.more.Error == "" && !s.play.more.Loading {
 					button(c.Key("more"), "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() {
-						s.playHistoryAutoFillPages = 0
+						s.play.autoFill = 0
 						s.loadPlayHistory(true)
 					})
 				}

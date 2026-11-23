@@ -5,9 +5,9 @@ import (
 	"context"
 
 	"github.com/egoist/mygo/ui"
+
 	biliapi "github.com/kamiertop/videodown/bilibili/api"
 	bilidownload "github.com/kamiertop/videodown/bilibili/download"
-	"github.com/kamiertop/videodown/bilibili/model"
 	"github.com/kamiertop/videodown/internal/gui/components"
 	"github.com/kamiertop/videodown/internal/gui/guiruntime"
 	"github.com/kamiertop/videodown/internal/gui/icons"
@@ -17,118 +17,58 @@ import (
 )
 
 // State contains data only: no frame-scoped elements or UI contexts.
+// 各板块状态按域拆入子结构（定义在对应板块的文件里），不再全部平铺；
+// 顶层只保留基础设施与跨板块共享的输入、选择状态。
 type State struct {
-	routeSeq uint64
-	ctx      context.Context
-	cancel   context.CancelFunc
+	// 基础设施与生命周期。
+	routeSeq, epoch uint64
+	ctx             context.Context
+	cancel          context.CancelFunc
 
 	api             *biliapi.BiliBili
 	downloadBackend *bilidownload.Service
 	runtime         guiruntime.Runtime
 
-	started, stopped, loggedIn, checking, loggingOut bool
-	activePath, authorTarget                         string
-	section, authError                               string
-	epoch, pollSeq                                   uint64
+	started, stopped    bool
+	activePath, section string
 
-	cancelPoll func()
-	account    model.MyInfoProfile
+	auth   authState        // 登录、二维码、账号资料（account.go）
+	images imagecache.Cache // 封面与头像缓存
 
-	qr        resource[model.QRCodeData]
-	qrImage   *ui.Bitmap
-	qrExpired bool
-	qrStatus  string
-	images    imagecache.Cache
+	follows followsState // 关注列表（authors.go）
+	author  authorState  // UP 主主页：投稿、合集、系列（authors.go）
+	library libraryState // 收藏夹与合集（favorites.go）
+	dynamic dynamicState // 关注动态（dynamic.go）
+	play    playState    // 播放历史（play_history.go）
+	history historyState // 下载历史（library.go）
+	stage   stageState   // 待下载暂存队列（staging.go）
+	queue   queueState   // 暂存队列的解析与下载调度（download_queue.go）
+	manual  manualState  // 链接解析（manual_download.go）
+	batches batchState   // 批量下载会话（batch_download.go）
 
-	follows    resource[model.FollowData]
-	followPage int
-
-	authorInfo   resource[model.UserInfoData]
-	uploads      resource[model.VideoListData]
-	authorLists  resource[model.SeasonsSeriesData]
-	seasonVideos resource[model.SeasonsArchivesData]
-	seriesVideos resource[model.SeriesArchivesData]
-	authorTab    string
-
-	authorPage, listPage, seasonPage, seriesPage, selectedSeason, selectedSeries int
-
-	favoritesData  resource[model.FavoritesData]
-	favoriteDetail resource[model.FavoriteData]
-	favoriteID     int64
-	favoritePage   int
-
-	collections                                        resource[model.CollectionData]
-	collectionDetail                                   resource[model.CollectionItemData]
-	collectionHasMore                                  bool
-	collectionID, collectionPage, collectionDetailPage int
-	dynamics                                           resource[model.DynamicArchivePage]
-	dynamicMore                                        resource[model.DynamicArchivePage]
-	dynamicOffset                                      string
-	dynamicHasMore                                     bool
-	dynamicGeneration                                  uint64
-	dynamicSelected                                    map[string]bool
-	dynamicAutoPending                                 bool
-	dynamicAutoAtY                                     float32
-	dynamicAutoFillPages                               int
-
-	playHistory              resource[model.PlayHistoryData]
-	playHistoryMore          resource[model.PlayHistoryData]
-	playHistoryCursor        model.PlayHistoryCursor
-	playHistoryHasMore       bool
-	playHistoryGeneration    uint64
-	playHistorySelected      map[string]*bool
-	playHistoryAutoPending   bool
-	playHistoryAutoAtY       float32
-	playHistoryAutoFillPages int
-
-	selected                                                   map[string]*bool
-	stagedUploads                                              []model.VListItem
-	stagedFavorites                                            []model.FavoriteMedias
-	stagedCollections                                          []model.CollectionItemMedias
-	stagedSeasons                                              []model.SeasonsArchivesItem
-	stagedSeries                                               []model.SeriesArchivesItem
-	stagedDynamics                                             []model.DynamicArchiveItem
-	stagedPlayHistory                                          []model.PlayHistoryItem
-	stagedManual                                               []manualVideo
-	notice                                                     string
-	stageError                                                 string
-	stagedKeys                                                 map[string]bool
-	stagedSourceNames                                          map[string]string
-	queueResolves                                              map[string]*queueResolve
-	queueDownloading, queueDownloadStop                        bool
-	queueDownloadTotal, queueDownloadDone, queueDownloadFailed int
-	queueDownloadError                                         string
-	queueProgress                                              map[string]bilidownload.Progress
-	queueExtraBusy                                             map[string]string
-	manualParse                                                resource[model.VideoDetailConciseData]
-	manualGroup                                                *parsedVideoGroup
-	manualParseInput                                           string
-
-	batches                []*batchSession
-	nextBatchID            uint64
-	nextDownloadOrder      uint64
-	pendingManualDownloads []manualDownloadRequest
-	activeManualDownloads  *manualWork
-	queueRequested         map[string]bool
-	downloadList           ui.ListState
-	shownManualGroup       *parsedVideoGroup
-
-	history                                                 resource[biliapi.HistoryPage]
-	historyMore                                             resource[biliapi.HistoryPage]
-	historyQuery                                            string
-	historySearchPending, historyMutating, historyClearOpen bool
-	historyActionError                                      string
-
-	link        string
-	author      string
-	favoriteTab string
-	searches    map[string]*string
-	scrolls     map[string]*ui.ScrollState
-	autoPages   map[string]*autoPageState
+	// 顶层输入与跨板块共享的卡片选择状态。
+	link, authorInput string
+	selected          map[string]*bool
+	searches          map[string]*string
+	scrolls           map[string]*ui.ScrollState
+	autoPages         map[string]*autoPageState
+	downloadList      ui.ListState
 }
 
 func NewState() *State {
-	return &State{images: make(imagecache.Cache), stagedKeys: make(map[string]bool), stagedSourceNames: make(map[string]string), queueResolves: make(map[string]*queueResolve), queueProgress: make(map[string]bilidownload.Progress), queueExtraBusy: make(map[string]string), selected: make(map[string]*bool), dynamicSelected: make(map[string]bool), playHistorySelected: make(map[string]*bool), authorTab: "uploads", favoriteTab: "favorite", searches: make(map[string]*string), scrolls: make(map[string]*ui.ScrollState), autoPages: make(map[string]*autoPageState)}
+	return &State{
+		images:    make(imagecache.Cache),
+		selected:  make(map[string]*bool),
+		author:    authorState{tab: "uploads"},
+		library:   libraryState{tab: "favorite"},
+		dynamic:   dynamicState{picked: make(map[string]bool)},
+		play:      playState{picked: make(map[string]*bool)},
+		stage:     stageState{keys: make(map[string]bool), sourceNames: make(map[string]string)},
+		queue:     queueState{resolves: make(map[string]*queueResolve), progress: make(map[string]bilidownload.Progress), extraBusy: make(map[string]string), requested: make(map[string]bool)},
+		searches:  make(map[string]*string),
+		scrolls:   make(map[string]*ui.ScrollState),
+		autoPages: make(map[string]*autoPageState),
+	}
 }
 func (s *State) Link() *string { return &s.link }
 
@@ -141,8 +81,8 @@ func (s *State) Layout(c *ui.Context, path string, navigate func(string), conten
 		s.routeSeq++
 	}
 	s.activePath = path
-	if (section == "favorite" || section == "collection") && s.favoriteTab != section {
-		s.favoriteTab = section
+	if (section == "favorite" || section == "collection") && s.library.tab != section {
+		s.library.tab = section
 		s.selected = make(map[string]*bool)
 	}
 	s.enter(section)
@@ -161,8 +101,8 @@ func (s *State) Layout(c *ui.Context, path string, navigate func(string), conten
 					}
 				})
 			}).Grow(1).MinHeight(0)
-			if s.loggedIn && s.account.Face != "" {
-				ui.Column(c.Key("account-avatar")).FillWidth().AlignItems(ui.Center).Gap(4).Children(func() { s.image(c, s.account.Face, 32, 32, true) })
+			if s.auth.loggedIn && s.auth.account.Face != "" {
+				ui.Column(c.Key("account-avatar")).FillWidth().AlignItems(ui.Center).Gap(4).Children(func() { s.image(c, s.auth.account.Face, 32, 32, true) })
 			}
 			s.navButton(c.Key("profile"), "账号", "账号", "user", section == "profile", func() { navigate("/bilibili/profile") })
 		})
@@ -175,7 +115,7 @@ func (s *State) Form(c *ui.Context, path string, navigate func(string), goBack f
 	p, _ := navigation.ByPath("/bilibili")
 	section := p.CurrentSection(path)
 	mid, detail := navigation.BilibiliAuthorID(path)
-	if detail && path == s.activePath && s.loggedIn {
+	if detail && path == s.activePath && s.auth.loggedIn {
 		s.ensureAuthor(mid)
 	}
 	ui.Column(c.Key("content")).Label("哔哩哔哩内容").Grow(1).MinWidth(0).MinHeight(0).Children(func() {
@@ -231,7 +171,7 @@ func (s *State) Render(c *ui.Context, section string, navigate func(string)) {
 	case "up":
 		s.authors(c, navigate)
 	case "dynamic":
-		s.dynamic(c, navigate)
+		s.dynamicPage(c, navigate)
 	case "favorite", "collection":
 		s.favorites(c, navigate)
 	case "play-history":

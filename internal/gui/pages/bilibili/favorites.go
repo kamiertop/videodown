@@ -2,6 +2,7 @@ package bilibili
 
 import (
 	"fmt"
+	"github.com/kamiertop/videodown/bilibili/model"
 	"github.com/kamiertop/videodown/internal/gui/components"
 	"strings"
 
@@ -9,6 +10,22 @@ import (
 	"github.com/kamiertop/videodown/internal/gui/icons"
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
+
+// libraryState 是“收藏 / 合集”页的状态：页签、收藏夹目录与选中收藏夹的
+// 详情分页，以及合集目录与选中合集的详情分页。
+type libraryState struct {
+	tab                  string // favorite | collection
+	folders              resource[model.FavoritesData]
+	folderDetail         resource[model.FavoriteData]
+	folderID             int64
+	folderPage           int
+	collections          resource[model.CollectionData]
+	collectionDetail     resource[model.CollectionItemData]
+	collectionHasMore    bool
+	collectionID         int
+	collectionPage       int
+	collectionDetailPage int
+}
 
 func (s *State) favorites(c *ui.Context, navigate func(string)) {
 	if s.requiresLogin(c, navigate) {
@@ -19,29 +36,29 @@ func (s *State) favorites(c *ui.Context, navigate func(string)) {
 		ui.Row(c).FillWidth().Padding(style.SpaceSmall).Gap(style.SpaceSmall).BorderColor(c.Theme().Border).BorderWidth(0, 0, style.BorderWidth, 0).Children(func() {
 			for _, tab := range []struct{ id, label string }{{"favorite", "收藏夹"}, {"collection", "合集"}} {
 				variant := components.ButtonSecondary
-				if s.favoriteTab == tab.id {
+				if s.library.tab == tab.id {
 					variant = components.ButtonPrimary
 				}
 				button(c.Key(tab.id), tab.label, components.ButtonOptions{Variant: variant}).MinWidth(84).Height(style.InputHeight).OnClick(func() {
-					if s.favoriteTab != tab.id {
+					if s.library.tab != tab.id {
 						navigate("/bilibili/" + tab.id)
 					}
 				})
 			}
 		})
 		title := "收藏夹"
-		count := int(s.favoritesData.Data.Count)
-		busy := s.favoritesData.Loading
-		if s.favoriteTab == "collection" {
+		count := int(s.library.folders.Data.Count)
+		busy := s.library.folders.Loading
+		if s.library.tab == "collection" {
 			title = "合集"
-			count = s.collections.Data.Count
-			busy = s.collections.Loading
+			count = s.library.collections.Data.Count
+			busy = s.library.collections.Loading
 		}
 		folderWidth := style.LibraryListWidth
 		if width, _ := c.Size(); width < style.AuthorControlsDownloadBreakpoint {
 			folderWidth = style.LibraryListWidth - style.SpaceLarge
 		}
-		ui.Row(c.Key(s.favoriteTab)).FillWidth().Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
+		ui.Row(c.Key(s.library.tab)).FillWidth().Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
 			ui.Column(c.Key("folders")).Label("视频库分组").Width(folderWidth).Shrink(0).MinHeight(0).
 				BorderColor(c.Theme().Border).BorderWidth(0, style.BorderWidth, 0, 0).Children(func() {
 				ui.Row(c).Label("视频库列表标题").FillWidth().Height(style.LibraryHeaderHeight).Padding(style.SpaceSmall, style.SpaceMedium).Gap(style.SpaceSmall).
@@ -52,14 +69,14 @@ func (s *State) favorites(c *ui.Context, navigate func(string)) {
 					})
 					ui.Spacer(c).Grow(1)
 					button(c.Key("refresh"), "刷新", components.ButtonOptions{Variant: components.ButtonGhost, Icon: icons.Must("refresh-cw"), Label: "刷新" + title, Loading: busy, Disabled: s.api == nil}).Height(30).Padding(0, 4).OnClick(func() {
-						if s.favoriteTab == "collection" {
+						if s.library.tab == "collection" {
 							s.loadCollections(1, false)
 						} else {
 							s.loadFavorites()
 						}
 					})
 				})
-				components.ScrollArea(c.Key("folders-scroll"), s.scroll("folders/"+s.favoriteTab), components.ScrollAreaOptions{}, func() {
+				components.ScrollArea(c.Key("folders-scroll"), s.scroll("folders/"+s.library.tab), components.ScrollAreaOptions{}, func() {
 					ui.Column(c).FillWidth().Padding(style.SpaceSmall).Gap(4).Children(func() { s.libraryFolders(c) })
 				}).Grow(1).MinHeight(0)
 				s.maybeAutoLibraryFolders()
@@ -128,32 +145,32 @@ func (s *State) libraryHeader(c *ui.Context, navigate func(string)) {
 }
 
 func (s *State) libraryTitleAndTotal() (string, int) {
-	if s.favoriteTab == "collection" {
-		for _, item := range s.collections.Data.List {
-			if item.ID == s.collectionID {
+	if s.library.tab == "collection" {
+		for _, item := range s.library.collections.Data.List {
+			if item.ID == s.library.collectionID {
 				return item.Title, item.MediaCount
 			}
 		}
 		return "合集", s.collectionTotal()
 	}
-	for _, item := range s.favoritesData.Data.List {
-		if item.ID == s.favoriteID {
+	for _, item := range s.library.folders.Data.List {
+		if item.ID == s.library.folderID {
 			return item.Title, int(item.MediaCount)
 		}
 	}
-	return "收藏夹", s.favoriteDetail.Data.Info.MediaCount
+	return "收藏夹", s.library.folderDetail.Data.Info.MediaCount
 }
 
 func (s *State) libraryVideoKeys() []string {
 	keys := make([]string, 0, s.currentVideoCount())
-	if s.favoriteTab == "collection" {
-		for _, video := range s.collectionDetail.Data.Medias {
+	if s.library.tab == "collection" {
+		for _, video := range s.library.collectionDetail.Data.Medias {
 			if strings.HasPrefix(video.Bvid, "BV") {
 				keys = append(keys, video.Bvid)
 			}
 		}
 	} else {
-		for _, video := range s.favoriteDetail.Data.Medias {
+		for _, video := range s.library.folderDetail.Data.Medias {
 			bvid := favoriteBvid(video.Bvid, video.BvID)
 			if video.Type == 2 && video.Attr != 1 && video.Attr != 9 && strings.HasPrefix(bvid, "BV") {
 				keys = append(keys, bvid)
@@ -164,38 +181,38 @@ func (s *State) libraryVideoKeys() []string {
 }
 
 func (s *State) libraryFolders(c *ui.Context) {
-	if s.favoriteTab == "collection" {
-		if s.collections.Loading {
+	if s.library.tab == "collection" {
+		if s.library.collections.Loading {
 			caption(c, "正在加载合集列表")
 		}
-		if len(s.collections.Data.List) == 0 {
+		if len(s.library.collections.Data.List) == 0 {
 			caption(c, "暂无合集")
 		}
-		for _, item := range s.collections.Data.List {
-			libraryFolder(c.Key(item.ID), item.Title, "合集", item.MediaCount, s.collectionID == item.ID, func() { s.loadCollection(item.ID, 1, false) })
+		for _, item := range s.library.collections.Data.List {
+			libraryFolder(c.Key(item.ID), item.Title, "合集", item.MediaCount, s.library.collectionID == item.ID, func() { s.loadCollection(item.ID, 1, false) })
 		}
-		s.errorRow(c, s.collections.Error, func() {
-			if s.collections.Loaded {
-				s.loadCollections(s.collectionPage+1, true)
+		s.errorRow(c, s.library.collections.Error, func() {
+			if s.library.collections.Loaded {
+				s.loadCollections(s.library.collectionPage+1, true)
 			} else {
 				s.loadCollections(1, false)
 			}
 		})
-		if s.collections.Data.HasMore {
+		if s.library.collections.Data.HasMore {
 			const key = "folders/collection"
-			if s.autoPageFallback(key, key) && s.collections.Error == "" && !s.collections.Loading {
+			if s.autoPageFallback(key, key) && s.library.collections.Error == "" && !s.library.collections.Loading {
 				button(c, "继续加载", components.ButtonOptions{Variant: components.ButtonGhost}).OnClick(func() {
-					s.continueAutoPage(key, func() { s.loadCollections(s.collectionPage+1, true) })
+					s.continueAutoPage(key, func() { s.loadCollections(s.library.collectionPage+1, true) })
 				})
 			}
 		}
 	} else {
-		s.errorRow(c, s.favoritesData.Error, s.loadFavorites)
-		if len(s.favoritesData.Data.List) == 0 {
+		s.errorRow(c, s.library.folders.Error, s.loadFavorites)
+		if len(s.library.folders.Data.List) == 0 {
 			caption(c, "暂无收藏夹")
 		}
-		for _, item := range s.favoritesData.Data.List {
-			libraryFolder(c.Key(item.ID), item.Title, "收藏夹", int(item.MediaCount), s.favoriteID == item.ID, func() { s.loadFavorite(item.ID, 1, false) })
+		for _, item := range s.library.folders.Data.List {
+			libraryFolder(c.Key(item.ID), item.Title, "收藏夹", int(item.MediaCount), s.library.folderID == item.ID, func() { s.loadFavorite(item.ID, 1, false) })
 		}
 	}
 }
@@ -236,39 +253,41 @@ func libraryFolder(c *ui.Context, title, kind string, count int, selected bool, 
 
 func (s *State) libraryVideos(c *ui.Context, navigate func(string)) {
 	s.stagingNotice(c)
-	s.errorRow(c, s.stageError, nil)
-	if s.favoriteTab == "collection" {
-		if s.collectionID == 0 {
+	s.errorRow(c, s.stage.error, nil)
+	if s.library.tab == "collection" {
+		if s.library.collectionID == 0 {
 			empty(c, "请选择合集", "star")
 			return
 		}
 		ui.Grid(c).Columns(s.columns(c, true)).FillWidth().Gap(style.SpaceMedium).Children(func() {
-			for _, video := range s.collectionDetail.Data.Medias {
+			for _, video := range s.library.collectionDetail.Data.Medias {
 				s.mediaCardWithAuthor(c.Key(video.ID), video.Bvid, video.Title, video.Cover, video.Upper.Name, duration(video.Duration), video.CntInfo.Play, video.CntInfo.Danmaku, video.Pubtime, uint64(max(0, video.Upper.Mid)), navigate)
 			}
 		})
-		if s.collectionDetail.Loading {
+		if s.library.collectionDetail.Loading {
 			caption(c, "正在加载合集视频")
 		}
-		s.errorRow(c, s.collectionDetail.Error, func() { s.loadCollection(s.collectionID, s.collectionDetailPage+1, s.collectionDetail.Loaded) })
-		if len(s.collectionDetail.Data.Medias) == 0 && !s.collectionDetail.Loading {
+		s.errorRow(c, s.library.collectionDetail.Error, func() {
+			s.loadCollection(s.library.collectionID, s.library.collectionDetailPage+1, s.library.collectionDetail.Loaded)
+		})
+		if len(s.library.collectionDetail.Data.Medias) == 0 && !s.library.collectionDetail.Loading {
 			empty(c, "暂无视频", "play")
 		}
-		if s.collectionHasMore {
+		if s.library.collectionHasMore {
 			key := s.libraryScrollKey()
-			if s.autoPageFallback(key, key) && s.collectionDetail.Error == "" && !s.collectionDetail.Loading {
+			if s.autoPageFallback(key, key) && s.library.collectionDetail.Error == "" && !s.library.collectionDetail.Loading {
 				button(c, "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() {
-					s.continueAutoPage(key, func() { s.loadCollection(s.collectionID, s.collectionDetailPage+1, true) })
+					s.continueAutoPage(key, func() { s.loadCollection(s.library.collectionID, s.library.collectionDetailPage+1, true) })
 				})
 			}
 		}
 	} else {
-		if s.favoriteID == 0 {
+		if s.library.folderID == 0 {
 			empty(c, "请选择收藏夹", "star")
 			return
 		}
 		ui.Grid(c).Columns(s.columns(c, true)).FillWidth().Gap(style.SpaceMedium).Children(func() {
-			for _, video := range s.favoriteDetail.Data.Medias {
+			for _, video := range s.library.folderDetail.Data.Medias {
 				bvid := favoriteBvid(video.Bvid, video.BvID)
 				if video.Type != 2 || video.Attr == 1 || video.Attr == 9 {
 					bvid = ""
@@ -276,18 +295,18 @@ func (s *State) libraryVideos(c *ui.Context, navigate func(string)) {
 				s.mediaCardWithAuthor(c.Key(video.ID), bvid, video.Title, video.Cover, video.Upper.Name, duration(video.Duration), video.CntInfo.Play, video.CntInfo.Danmaku, video.PubTime, uint64(max(int64(0), video.Upper.Mid)), navigate)
 			}
 		})
-		if s.favoriteDetail.Loading {
+		if s.library.folderDetail.Loading {
 			caption(c, "正在加载收藏视频")
 		}
-		s.errorRow(c, s.favoriteDetail.Error, func() { s.loadFavorite(s.favoriteID, s.favoritePage+1, s.favoriteDetail.Loaded) })
-		if len(s.favoriteDetail.Data.Medias) == 0 && !s.favoriteDetail.Loading {
+		s.errorRow(c, s.library.folderDetail.Error, func() { s.loadFavorite(s.library.folderID, s.library.folderPage+1, s.library.folderDetail.Loaded) })
+		if len(s.library.folderDetail.Data.Medias) == 0 && !s.library.folderDetail.Loading {
 			empty(c, "暂无视频", "play")
 		}
-		if s.favoriteDetail.Data.HasMore {
+		if s.library.folderDetail.Data.HasMore {
 			key := s.libraryScrollKey()
-			if s.autoPageFallback(key, key) && s.favoriteDetail.Error == "" && !s.favoriteDetail.Loading {
+			if s.autoPageFallback(key, key) && s.library.folderDetail.Error == "" && !s.library.folderDetail.Loading {
 				button(c, "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() {
-					s.continueAutoPage(key, func() { s.loadFavorite(s.favoriteID, s.favoritePage+1, true) })
+					s.continueAutoPage(key, func() { s.loadFavorite(s.library.folderID, s.library.folderPage+1, true) })
 				})
 			}
 		}

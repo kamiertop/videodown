@@ -16,6 +16,15 @@ var (
 	videoAVPattern = regexp.MustCompile(`(?i)av([0-9]+)`)
 )
 
+// manualState 是链接解析：输入框原始文本、解析结果与展开的合集/分P组。
+// shown 记录上一帧展示的组，用于新结果出现时回到列表顶部。
+type manualState struct {
+	parse resource[model.VideoDetailConciseData]
+	group *parsedVideoGroup
+	input string
+	shown *parsedVideoGroup
+}
+
 type manualVideo struct {
 	Key, Bvid, Title, Cover, Author, SourceName string
 	Cid                                         int64
@@ -156,23 +165,23 @@ func newParsedGroup(kind, title string, current manualVideo, items []manualVideo
 }
 
 func (s *State) parseDownloadInput() {
-	if s.manualParse.Loading || s.api == nil || s.runtime.Run == nil {
+	if s.manual.parse.Loading || s.api == nil || s.runtime.Run == nil {
 		return
 	}
 	raw := strings.TrimSpace(s.link)
 	bvid, avid, part, err := parseVideoReference(raw)
 	if err != nil {
-		s.manualParse.Error = err.Error()
+		s.manual.parse.Error = err.Error()
 		return
 	}
-	if !s.loggedIn {
-		s.manualParse.Error = "请先登录 B 站账号"
+	if !s.auth.loggedIn {
+		s.manual.parse.Error = "请先登录 B 站账号"
 		return
 	}
-	s.manualGroup = nil
-	s.manualParseInput = raw
+	s.manual.group = nil
+	s.manual.input = raw
 	api := s.api
-	load(s, &s.manualParse, func() (model.VideoDetailConciseData, error) {
+	load(s, &s.manual.parse, func() (model.VideoDetailConciseData, error) {
 		var detail model.VideoDetailConciseData
 		var err error
 		if bvid != "" {
@@ -188,12 +197,12 @@ func (s *State) parseDownloadInput() {
 		}
 		return detail, nil
 	}, func(detail model.VideoDetailConciseData) {
-		if s.manualParseInput != raw || strings.TrimSpace(s.link) != raw {
+		if s.manual.input != raw || strings.TrimSpace(s.link) != raw {
 			return
 		}
 		if group := groupFromView(detail.View, part); group != nil {
-			s.manualGroup = group
-			s.notice = ""
+			s.manual.group = group
+			s.stage.notice = ""
 			return
 		}
 		item := manualFromView(detail.View)
@@ -205,13 +214,13 @@ func (s *State) stageManual(item manualVideo) bool {
 	if !s.stageKey(item.Key) {
 		return false
 	}
-	s.stagedManual = append(s.stagedManual, item)
-	s.stagedSourceNames[item.Key] = item.SourceName
+	s.stage.manual = append(s.stage.manual, item)
+	s.stage.sourceNames[item.Key] = item.SourceName
 	return true
 }
 
 func (s *State) manualItem(key string) (manualVideo, bool) {
-	for _, item := range s.stagedManual {
+	for _, item := range s.stage.manual {
 		if item.Key == key {
 			return item, true
 		}

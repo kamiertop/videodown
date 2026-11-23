@@ -40,7 +40,7 @@ func TestDownloadListEmptyAndRemove(t *testing.T) {
 		t.Fatal(err)
 	}
 	tester.Frame()
-	if s.stagedKeys["BV0"] {
+	if s.stage.keys["BV0"] {
 		t.Fatal("remove button did not remove the task")
 	}
 	if _, ok := tester.Find("下载列表为空"); !ok {
@@ -82,7 +82,7 @@ func TestDownloadListRevealsNewParsedGroup(t *testing.T) {
 	s.downloadList.ScrollTo(10, ui.Start)
 	tester.Frame()
 
-	s.manualGroup = &parsedVideoGroup{
+	s.manual.group = &parsedVideoGroup{
 		Kind: "合集", Title: "解析测试",
 		Items: []manualVideo{{Key: "BVpart", Title: "分 P"}},
 		Open:  true,
@@ -107,7 +107,7 @@ func TestDownloadListRevealsNewParsedGroup(t *testing.T) {
 func TestDownloadListShowsBatchWithStagedTasks(t *testing.T) {
 	s := NewState()
 	stageTestUploads(s, 1)
-	s.batches = []*batchSession{{
+	s.batches.sessions = []*batchSession{{
 		ID: 1, Source: batchSource{Title: "批量任务"}, Status: "done",
 	}}
 	tester := downloadTester(s)
@@ -124,7 +124,7 @@ func TestDownloadListShowsBatchWithStagedTasks(t *testing.T) {
 		t.Fatal(err)
 	}
 	tester.Frame()
-	if len(s.batches) != 0 {
+	if len(s.batches.sessions) != 0 {
 		t.Fatal("batch close button did not dismiss the batch")
 	}
 	if _, ok := tester.Find("视频 000"); !ok {
@@ -135,14 +135,14 @@ func TestDownloadListShowsBatchWithStagedTasks(t *testing.T) {
 func TestDownloadListReadiness(t *testing.T) {
 	s := NewState()
 	stageTestUploads(s, 2)
-	s.queueResolves["BV0"] = &queueResolve{data: resource[biliapi.PlayUrlResult]{
+	s.queue.resolves["BV0"] = &queueResolve{data: resource[biliapi.PlayUrlResult]{
 		Loaded: true,
 		Data: biliapi.PlayUrlResult{
 			Detail:  &model.VideoDetailConciseData{},
 			PlayURL: &model.VideoURLData{Durl: []model.DurlItem{{Url: "https://example.com/video.mp4"}}},
 		},
 	}}
-	s.queueResolves["BV1"] = &queueResolve{data: resource[biliapi.PlayUrlResult]{
+	s.queue.resolves["BV1"] = &queueResolve{data: resource[biliapi.PlayUrlResult]{
 		Loaded: true,
 		Data: biliapi.PlayUrlResult{
 			Detail:  &model.VideoDetailConciseData{},

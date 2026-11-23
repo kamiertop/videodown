@@ -68,7 +68,7 @@ func (s *State) batchDownloadCard(c *ui.Context, b *batchSession) {
 				downloadCardButton(c.Key("stop"), "停止", components.ButtonOptions{Variant: components.ButtonOutline, Label: fmt.Sprintf("停止批量：%d", b.ID), Disabled: b.StopRequested}).OnClick(func() { s.stopBatch(b) })
 			} else {
 				if b.Status == "stopped" || b.Failed > 0 {
-					downloadCardButton(c.Key("resume"), "继续 / 重试", components.ButtonOptions{Variant: components.ButtonPrimary, Label: fmt.Sprintf("继续批量：%d", b.ID), Disabled: !s.loggedIn}).OnClick(func() { s.resumeBatch(b) })
+					downloadCardButton(c.Key("resume"), "继续 / 重试", components.ButtonOptions{Variant: components.ButtonPrimary, Label: fmt.Sprintf("继续批量：%d", b.ID), Disabled: !s.auth.loggedIn}).OnClick(func() { s.resumeBatch(b) })
 				}
 				downloadCardButton(c.Key("dismiss"), "关闭", components.ButtonOptions{Variant: components.ButtonGhost, Label: fmt.Sprintf("关闭批量：%d", b.ID)}).OnClick(func() { s.dismissBatch(b) })
 			}

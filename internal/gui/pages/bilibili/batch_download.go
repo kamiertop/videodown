@@ -11,6 +11,12 @@ import (
 	bilidownload "github.com/kamiertop/videodown/bilibili/download"
 )
 
+// batchState 汇总批量下载会话与自增的会话 ID。
+type batchState struct {
+	sessions []*batchSession
+	nextID   uint64
+}
+
 type batchPage struct {
 	Items           []bilidownload.Task
 	Total, Received int
@@ -42,7 +48,7 @@ type batchSession struct {
 }
 
 func (s *State) batchesRunning() bool {
-	for _, b := range s.batches {
+	for _, b := range s.batches.sessions {
 		if b.Active && b.Status != "queued" {
 			return true
 		}
@@ -52,23 +58,23 @@ func (s *State) batchesRunning() bool {
 
 func (s *State) PendingDownloadCount() int {
 	count := 0
-	for _, b := range s.batches {
+	for _, b := range s.batches.sessions {
 		if b.Active {
 			count++
 		}
 	}
-	if s.queueDownloading {
+	if s.queue.downloading {
 		count++
 	}
-	return count + len(s.pendingManualDownloads) + len(s.queueExtraBusy)
+	return count + len(s.queue.pending) + len(s.queue.extraBusy)
 }
 
 func (s *State) enqueueBatch(source batchSource, navigate ...func(string)) {
 	if s.downloadBackend == nil || s.runtime.Background == nil || s.runtime.Run == nil {
-		s.stageError = "下载服务尚未就绪"
+		s.stage.error = "下载服务尚未就绪"
 		return
 	}
-	for _, b := range s.batches {
+	for _, b := range s.batches.sessions {
 		if b.Active && b.Source.Key == source.Key {
 			if len(navigate) > 0 {
 				navigate[0]("/bilibili/download")
@@ -76,11 +82,11 @@ func (s *State) enqueueBatch(source batchSource, navigate ...func(string)) {
 			return
 		}
 	}
-	s.nextBatchID++
-	s.nextDownloadOrder++
-	b := &batchSession{ID: s.nextBatchID, Order: s.nextDownloadOrder, Source: source, Expanded: true, Seen: map[string]bool{}, Page: 1, Total: source.Total, HasMore: true, Active: true, Status: "queued"}
-	s.batches = append(s.batches, b)
-	s.stageError = ""
+	s.batches.nextID++
+	s.queue.nextOrder++
+	b := &batchSession{ID: s.batches.nextID, Order: s.queue.nextOrder, Source: source, Expanded: true, Seen: map[string]bool{}, Page: 1, Total: source.Total, HasMore: true, Active: true, Status: "queued"}
+	s.batches.sessions = append(s.batches.sessions, b)
+	s.stage.error = ""
 	if len(navigate) > 0 {
 		navigate[0]("/bilibili/download")
 	}
@@ -89,26 +95,26 @@ func (s *State) enqueueBatch(source batchSource, navigate ...func(string)) {
 
 // Batch sessions and manually requested videos share FIFO ordering and one download lock.
 func (s *State) pumpDownloads() {
-	if s.stopped || !s.loggedIn || len(s.queueExtraBusy) > 0 || s.batchesRunning() {
+	if s.stopped || !s.auth.loggedIn || len(s.queue.extraBusy) > 0 || s.batchesRunning() {
 		return
 	}
-	if s.queueDownloading {
+	if s.queue.downloading {
 		s.advanceManualDownloads()
 		return
 	}
 	var next *batchSession
-	for _, b := range s.batches {
+	for _, b := range s.batches.sessions {
 		if b.Active && b.Status == "queued" && (next == nil || b.Order < next.Order) {
 			next = b
 		}
 	}
-	if len(s.pendingManualDownloads) > 0 && (next == nil || s.pendingManualDownloads[0].order < next.Order) {
-		request := s.pendingManualDownloads[0]
-		s.pendingManualDownloads = s.pendingManualDownloads[1:]
-		s.queueDownloadTotal, s.queueDownloadDone, s.queueDownloadFailed = len(request.tasks), 0, 0
-		s.queueDownloadStop, s.queueDownloading = false, true
-		s.queueDownloadError = ""
-		s.activeManualDownloads = &manualWork{tasks: request.tasks, epoch: s.epoch}
+	if len(s.queue.pending) > 0 && (next == nil || s.queue.pending[0].order < next.Order) {
+		request := s.queue.pending[0]
+		s.queue.pending = s.queue.pending[1:]
+		s.queue.total, s.queue.done, s.queue.failed = len(request.tasks), 0, 0
+		s.queue.stop, s.queue.downloading = false, true
+		s.queue.error = ""
+		s.queue.active = &manualWork{tasks: request.tasks, epoch: s.epoch}
 		s.advanceManualDownloads()
 		return
 	}
@@ -321,14 +327,14 @@ func (s *State) resumeBatch(b *batchSession) {
 	}
 	b.Failed, b.Error, b.StopRequested = 0, "", false
 	b.FinishVersion++
-	s.nextDownloadOrder++
-	b.Order = s.nextDownloadOrder
+	s.queue.nextOrder++
+	b.Order = s.queue.nextOrder
 	b.Active, b.Status = true, "queued"
 	s.pumpDownloads()
 }
 func (s *State) dismissBatch(b *batchSession) {
 	if !b.Active {
-		s.batches = slices.DeleteFunc(s.batches, func(v *batchSession) bool { return v.ID == b.ID })
+		s.batches.sessions = slices.DeleteFunc(s.batches.sessions, func(v *batchSession) bool { return v.ID == b.ID })
 	}
 }
 

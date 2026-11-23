@@ -13,9 +13,9 @@ import (
 // clicking a card must leave the list and show the author page.
 func TestFollowCardOpensAuthorDetail(t *testing.T) {
 	s := NewState()
-	s.loggedIn = true
-	s.follows.Loaded = true
-	s.follows.Data = model.FollowData{Total: 1, List: []model.FollowDataList{
+	s.auth.loggedIn = true
+	s.follows.list.Loaded = true
+	s.follows.list.Data = model.FollowData{Total: 1, List: []model.FollowDataList{
 		{Mid: 42, Uname: "测试UP主", Sign: "签名"},
 	}}
 	path := "/bilibili/up"
@@ -45,8 +45,8 @@ func TestFollowCardOpensAuthorDetail(t *testing.T) {
 		t.Fatal("follows list re-rendered on the detail route")
 	}
 	// 资料加载完成后渲染详情页。
-	s.authorInfo.Loaded = true
-	s.authorInfo.Data = model.UserInfoData{Mid: 42, Name: "测试UP主"}
+	s.author.info.Loaded = true
+	s.author.info.Data = model.UserInfoData{Mid: 42, Name: "测试UP主"}
 	test.Frame()
 	if !test.HasText("返回") || !test.HasText("投稿") {
 		t.Fatal("author detail page missing after profile load")

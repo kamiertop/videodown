@@ -86,32 +86,32 @@ func (s *State) enter(section string) {
 	if !s.started || s.stopped {
 		return
 	}
-	if section == "profile" && changed && !s.loggedIn && !s.checking {
-		if s.qr.Loaded && !s.qrExpired {
+	if section == "profile" && changed && !s.auth.loggedIn && !s.auth.checking {
+		if s.auth.qr.Loaded && !s.auth.qrExpired {
 			s.schedulePoll()
-		} else if !s.qr.Loading && s.qr.Error == "" {
+		} else if !s.auth.qr.Loading && s.auth.qr.Error == "" {
 			s.newQRCode()
 		}
 	}
-	if section == "history" && (changed || !s.history.Loaded && !s.history.Loading && s.history.Error == "") {
+	if section == "history" && (changed || !s.history.page.Loaded && !s.history.page.Loading && s.history.page.Error == "") {
 		s.loadDownloadHistory(false)
 	}
-	if !s.loggedIn {
+	if !s.auth.loggedIn {
 		return
 	}
 	switch section {
 	case "download":
 		s.ensureQueueResolves()
 	case "up":
-		if !s.follows.Loaded && !s.follows.Loading && s.follows.Error == "" {
+		if !s.follows.list.Loaded && !s.follows.list.Loading && s.follows.list.Error == "" {
 			s.loadFollows(false)
 		}
 	case "dynamic":
-		if !s.dynamics.Loaded && !s.dynamics.Loading && s.dynamics.Error == "" {
+		if !s.dynamic.items.Loaded && !s.dynamic.items.Loading && s.dynamic.items.Error == "" {
 			s.loadDynamics(false)
 		}
 	case "play-history":
-		if !s.playHistory.Loaded && !s.playHistory.Loading && s.playHistory.Error == "" {
+		if !s.play.items.Loaded && !s.play.items.Loading && s.play.items.Error == "" {
 			s.loadPlayHistory(false)
 		}
 	case "favorite", "collection":

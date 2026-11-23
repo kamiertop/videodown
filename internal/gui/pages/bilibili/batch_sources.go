@@ -8,11 +8,11 @@ import (
 )
 
 func (s *State) downloadAllAuthor(navigate ...func(string)) {
-	if !s.loggedIn || s.api == nil || s.authorInfo.Data.Mid == 0 {
+	if !s.auth.loggedIn || s.api == nil || s.author.info.Data.Mid == 0 {
 		return
 	}
-	api, mid, name := s.api, s.authorInfo.Data.Mid, s.authorInfo.Data.Name
-	kind, seasonID, seriesID := s.authorTab, s.selectedSeason, s.selectedSeries
+	api, mid, name := s.api, s.author.info.Data.Mid, s.author.info.Data.Name
+	kind, seasonID, seriesID := s.author.tab, s.author.selectedSeason, s.author.selectedSeries
 	sourceName := s.authorSourceName()
 	key, title := fmt.Sprintf("up:%d", mid), name+" · 全部投稿"
 	if kind != "uploads" {
@@ -26,12 +26,12 @@ func (s *State) downloadAllAuthor(navigate ...func(string)) {
 			return
 		}
 	}
-	total := s.uploads.Data.Page.Count
+	total := s.author.uploads.Data.Page.Count
 	if kind != "uploads" {
 		if seasonID != 0 {
-			total = max(s.seasonVideos.Data.Page.Total, s.seasonVideos.Data.Meta.Total)
+			total = max(s.author.seasonVideos.Data.Page.Total, s.author.seasonVideos.Data.Meta.Total)
 		} else {
-			total = s.seriesVideos.Data.Page.Total
+			total = s.author.seriesVideos.Data.Page.Total
 		}
 	}
 	source := batchSource{Key: key, Title: title, Total: total, Load: func(page int) (batchPage, error) {
@@ -76,10 +76,10 @@ func (s *State) downloadAllAuthor(navigate ...func(string)) {
 }
 
 func (s *State) stageAllLibrary(navigate ...func(string)) {
-	if !s.loggedIn || s.api == nil {
+	if !s.auth.loggedIn || s.api == nil {
 		return
 	}
-	api, tab, favID, colID := s.api, s.favoriteTab, s.favoriteID, s.collectionID
+	api, tab, favID, colID := s.api, s.library.tab, s.library.folderID, s.library.collectionID
 	name, total := s.libraryTitleAndTotal()
 	if tab == "collection" && colID == 0 || tab != "collection" && favID == 0 {
 		return
