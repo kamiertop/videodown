@@ -2,9 +2,9 @@ package douyin
 
 import (
 	"fmt"
+	"github.com/kamiertop/videodown/internal/gui/style"
 	"testing"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/egoist/mygo/ui"
 	"github.com/kamiertop/videodown/douyin/model"
 )
@@ -21,7 +21,7 @@ func TestDownloadListGroupAndStagedTasks(t *testing.T) {
 	s.groups = []*downloadGroup{group}
 	s.stage(model.AwemeItem{AwemeId: "40", ItemTitle: "单独暂存作品"})
 	test := ui.NewTester(func(c *ui.Context) {
-		core.Use(c, core.Settings{})
+		style.UseTheme(c)
 		s.downloadPage(c)
 	}, 1200, 720)
 	test.Frame()

@@ -1,7 +1,6 @@
 package settings
 
 import (
-	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/egoist/mygo/ui"
 	"github.com/kamiertop/videodown/internal/gui/components"
 	"github.com/kamiertop/videodown/internal/gui/preferences"
@@ -16,7 +15,7 @@ func (s *State) generalSettings(c *ui.Context, w Services) {
 				MinWidth(0)
 
 			components.Button(c.Key("browse"), "选择目录",
-				input.ButtonOptions{Disabled: !w.SettingsAvailable || w.BrowsingSettings},
+				components.ButtonOptions{Disabled: !w.SettingsAvailable || w.BrowsingSettings},
 			).OnClick(func() {
 				if w.BrowseDirectory != nil {
 					w.BrowseDirectory()
@@ -27,20 +26,20 @@ func (s *State) generalSettings(c *ui.Context, w Services) {
 	settingCard(c, "界面主题", "palette", func() {
 		ui.Row(c).FillWidth().Gap(16).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, "主题模式").Grow(1)
-			choice := input.Select(
+			choice, changed := components.Select(
 				c.Key("theme"),
 				&s.Config.Theme,
-				[]input.SelectOption[string]{
+				[]components.SelectOption[string]{
 					{Value: "dark", Label: "dark - 深色模式"},
 					{Value: "light", Label: "light - 浅色模式"},
 					{Value: "cupcake", Label: "cupcake - 纸杯蛋糕"},
 					{Value: "caramellatte", Label: "caramellatte 焦糖"},
 					{Value: "system", Label: "跟随系统"},
 				},
-				input.SelectOptions{Label: "界面主题"},
+				components.SelectOptions{Label: "界面主题"},
 			)
-			choice.Element.Radius(style.RadiusMenu)
-			if choice.Changed() {
+			choice.Radius(style.RadiusMenu)
+			if changed {
 				s.ApplyTheme()
 				saveSetting(w, preferences.Changes{Theme: new(s.Config.Theme)})
 			}

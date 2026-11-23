@@ -2,17 +2,14 @@ package bilibili
 
 import (
 	"fmt"
+	"github.com/kamiertop/videodown/internal/gui/components"
 	"strings"
 	"time"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/icons"
-	"github.com/ELY-Open-Source/MujicaUI/input"
-	"github.com/ELY-Open-Source/MujicaUI/layout"
-	"github.com/ELY-Open-Source/MujicaUI/overlay"
 	"github.com/egoist/mygo/ui"
 	biliapi "github.com/kamiertop/videodown/bilibili/api"
 	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/internal/gui/icons"
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
 
@@ -125,14 +122,14 @@ func (s *State) openHistoryFile(path string, directory bool) {
 
 func (s *State) downloadHistory(c *ui.Context) {
 	s.scheduleHistorySearch()
-	k := core.Tokens(c)
+	k := c.Theme()
 	panel(c.Key("toolbar"), "历史工具栏", func() {
 		ui.Row(c).FillWidth().Height(style.LibraryHeaderHeight).Padding(style.SpaceSmall, style.SpaceMedium).
 			Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, fmt.Sprintf("下载历史 · %d", s.history.Data.Total)).FontWeight(style.WeightSemibold).Shrink(0)
 			textInput(c.Key("search"), s.search("history"), "搜索下载历史", "搜索标题、UP 主或 BV 号", func() { s.loadDownloadHistory(false) }).Grow(1).MinWidth(0)
-			button(c.Key("refresh"), "刷新", input.ButtonOptions{Variant: input.Outline, Icon: icons.Must("refresh-cw"), Loading: s.history.Loading, Disabled: s.historyMutating || s.api == nil}).OnClick(func() { s.loadDownloadHistory(false) })
-			button(c.Key("clear"), "清空", input.ButtonOptions{Variant: input.Ghost, Icon: icons.Must("trash-2"), Disabled: s.historyMutating || s.history.Data.Total == 0 || s.api == nil}).OnClick(func() { s.historyClearOpen = true })
+			button(c.Key("refresh"), "刷新", components.ButtonOptions{Variant: components.ButtonOutline, Icon: icons.Must("refresh-cw"), Loading: s.history.Loading, Disabled: s.historyMutating || s.api == nil}).OnClick(func() { s.loadDownloadHistory(false) })
+			button(c.Key("clear"), "清空", components.ButtonOptions{Variant: components.ButtonGhost, Icon: icons.Must("trash-2"), Disabled: s.historyMutating || s.history.Data.Total == 0 || s.api == nil}).OnClick(func() { s.historyClearOpen = true })
 		})
 	})
 	s.errorRow(c, s.historyActionError, nil)
@@ -142,7 +139,7 @@ func (s *State) downloadHistory(c *ui.Context) {
 	if s.history.Error != "" {
 		s.errorRow(c, s.history.Error, func() { s.loadDownloadHistory(false) })
 	}
-	layout.ScrollArea(c.Key("history-scroll"), s.scroll("download-history-items"), layout.ScrollAreaOptions{}, func() {
+	components.ScrollArea(c.Key("history-scroll"), s.scroll("download-history-items"), components.ScrollAreaOptions{}, func() {
 		ui.Column(c).FillWidth().Padding(0, style.ScrollbarGutter, style.SpaceMedium, 0).Gap(style.SpaceSmall).Children(func() {
 			if len(s.history.Data.Items) == 0 && !s.history.Loading && !s.historySearchPending && s.history.Error == "" {
 				message := "暂无下载历史"
@@ -159,18 +156,18 @@ func (s *State) downloadHistory(c *ui.Context) {
 			}
 			s.errorRow(c, s.historyMore.Error, func() { s.loadDownloadHistory(true) })
 			if s.history.Data.HasMore && !s.historyMore.Loading && s.historyMore.Error == "" && s.autoPageFallback("download-history", "download-history-items") {
-				button(c.Key("more"), "加载更多", input.ButtonOptions{Variant: input.Outline, Disabled: s.history.Loading || s.historyMutating || s.historySearchPending}).OnClick(func() { s.continueAutoPage("download-history", func() { s.loadDownloadHistory(true) }) })
+				button(c.Key("more"), "加载更多", components.ButtonOptions{Variant: components.ButtonOutline, Disabled: s.history.Loading || s.historyMutating || s.historySearchPending}).OnClick(func() { s.continueAutoPage("download-history", func() { s.loadDownloadHistory(true) }) })
 			}
 		})
 	}).Label("下载历史列表").Grow(1).MinHeight(0).MinWidth(0)
 	s.maybeAutoPage("download-history", "download-history-items", func() bool {
 		return s.section == "history" && !s.history.Loading && !s.historyMore.Loading && !s.historyMutating && !s.historySearchPending && s.history.Error == "" && s.historyMore.Error == "" && s.history.Data.HasMore
 	}, func() { s.loadDownloadHistory(true) })
-	overlay.Dialog(c.Key("clear-dialog"), &s.historyClearOpen, overlay.DialogOptions{Title: "清空下载历史", Description: "清空所有下载记录？本地文件会保留。", KeepOnEscape: s.historyMutating, KeepOnBackdrop: true, HideClose: s.historyMutating}, func() {
+	components.Dialog(c.Key("clear-dialog"), &s.historyClearOpen, components.DialogOptions{Title: "清空下载历史", Description: "清空所有下载记录？本地文件会保留。", KeepOnEscape: s.historyMutating, KeepOnBackdrop: true, HideClose: s.historyMutating}, func() {
 		s.errorRow(c, s.historyActionError, nil)
 		ui.Row(c).FillWidth().Gap(style.SpaceSmall).Justify(ui.End).Children(func() {
-			button(c.Key("cancel"), "取消", input.ButtonOptions{Variant: input.Outline, Disabled: s.historyMutating}).OnClick(func() { s.historyClearOpen = false })
-			button(c.Key("confirm"), "确认清空", input.ButtonOptions{Variant: input.Danger, Loading: s.historyMutating}).OnClick(func() {
+			button(c.Key("cancel"), "取消", components.ButtonOptions{Variant: components.ButtonOutline, Disabled: s.historyMutating}).OnClick(func() { s.historyClearOpen = false })
+			button(c.Key("confirm"), "确认清空", components.ButtonOptions{Variant: components.ButtonDanger, Loading: s.historyMutating}).OnClick(func() {
 				if s.api != nil {
 					s.changeHistory(s.api.ClearDownloadHistory)
 				}
@@ -180,7 +177,7 @@ func (s *State) downloadHistory(c *ui.Context) {
 }
 
 func (s *State) downloadHistoryCard(c *ui.Context, item model.DownloadHistoryItem) {
-	k := core.Tokens(c)
+	k := c.Theme()
 	panel(c, "下载记录："+item.Title, func() {
 		ui.Row(c).FillWidth().Padding(style.DownloadCardPadding).Gap(style.SpaceMedium).AlignItems(ui.Start).Children(func() {
 			ui.Box(c.Key("cover")).Size(style.DownloadCoverWidth, style.DownloadCoverHeight).Clip().Radius(style.RadiusMedia).Children(func() {
@@ -198,9 +195,9 @@ func (s *State) downloadHistoryCard(c *ui.Context, item model.DownloadHistoryIte
 					ui.Text(c, item.Title).Grow(1).MinWidth(0).MaxLines(2).FontWeight(style.WeightSemibold)
 
 					ui.Row(c.Key("actions")).Gap(style.SpaceSmall).Children(func() {
-						downloadCardButton(c.Key("open"), "本地打开", input.ButtonOptions{Variant: input.Primary, Icon: icons.Must("play"), Disabled: item.Path == "" || s.runtime.OpenFile == nil}).OnClick(func() { s.openHistoryFile(item.Path, false) })
-						downloadCardButton(c.Key("location"), "打开目录", input.ButtonOptions{Variant: input.Outline, Icon: icons.Must("folder"), Disabled: item.Path == "" || s.runtime.OpenLocation == nil}).OnClick(func() { s.openHistoryFile(item.Path, true) })
-						downloadCardButton(c.Key("delete"), "删除记录", input.ButtonOptions{Variant: input.Ghost, Disabled: s.historyMutating || s.api == nil}).OnClick(func() {
+						downloadCardButton(c.Key("open"), "本地打开", components.ButtonOptions{Variant: components.ButtonPrimary, Icon: icons.Must("play"), Disabled: item.Path == "" || s.runtime.OpenFile == nil}).OnClick(func() { s.openHistoryFile(item.Path, false) })
+						downloadCardButton(c.Key("location"), "打开目录", components.ButtonOptions{Variant: components.ButtonOutline, Icon: icons.Must("folder"), Disabled: item.Path == "" || s.runtime.OpenLocation == nil}).OnClick(func() { s.openHistoryFile(item.Path, true) })
+						downloadCardButton(c.Key("delete"), "删除记录", components.ButtonOptions{Variant: components.ButtonGhost, Disabled: s.historyMutating || s.api == nil}).OnClick(func() {
 							api := s.api
 							s.changeHistory(func() error { return api.DeleteDownloadHistory(item.Cid, item.DownloadKind) })
 						})

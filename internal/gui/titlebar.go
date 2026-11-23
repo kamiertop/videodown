@@ -1,25 +1,21 @@
 package gui
 
 import (
+	"github.com/kamiertop/videodown/internal/gui/components"
 	"strings"
 
 	"github.com/kamiertop/videodown/internal/gui/assets"
+	"github.com/kamiertop/videodown/internal/gui/icons"
 	"github.com/kamiertop/videodown/internal/gui/style"
 
 	"github.com/egoist/mygo/ui"
-
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/icons"
-	"github.com/ELY-Open-Source/MujicaUI/input"
-	"github.com/ELY-Open-Source/MujicaUI/theme"
 )
 
 // ellipsisVertical is the vertical three-dots control, as Lucide's
-// more-vertical, which MujicaUI's icon set lacks.
+// more-vertical.
 var ellipsisVertical = ui.MustParseSVG([]byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>`))
 
-// arrowLeft and arrowRight point through history, as a browser toolbar's,
-// which MujicaUI's icon set lacks.
+// arrowLeft and arrowRight point through history, as a browser toolbar's.
 var (
 	arrowLeft  = ui.MustParseSVG([]byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>`))
 	arrowRight = ui.MustParseSVG([]byte(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 5 7 7-7 7"/><path d="M5 12h14"/></svg>`))
@@ -28,9 +24,8 @@ var (
 // Equal side columns keep the brand at the window center independently of
 // navigation and control widths.
 func (s *Shell) titleBar(c *ui.Context) {
-	k := core.Tokens(c)
-	d := core.Density(c)
-	u := d.Unit()
+	k := c.Theme()
+	u := k.Space(1)
 	ui.Row(c).FillWidth().MinWidth(0).MinHeight(style.TitlebarHeight).Shrink(0).
 		Padding(0, u*3).Gap(u*2).
 		Background(k.Surface).BorderWidth(0, 0, style.BorderWidth, 0).BorderColor(k.Border).
@@ -49,10 +44,10 @@ func (s *Shell) titleBar(c *ui.Context) {
 }
 
 func titleBrand(c *ui.Context) {
-	ui.Row(c).Label("应用标识").Shrink(0).AlignItems(ui.Center).Gap(core.Density(c).Unit() * 1.5).Children(func() {
+	ui.Row(c).Label("应用标识").Shrink(0).AlignItems(ui.Center).Gap(c.Theme().Space(1.5)).Children(func() {
 		ui.Image(c, assets.AppIcon).Size(25, 25)
 		ui.Text(c, appName).
-			Font(theme.SerifFont).
+			Font(style.SerifFont).
 			FontSize(style.Font(c, style.FontHeading)).
 			FontWeight(style.WeightSemibold).
 			SingleLine()
@@ -70,12 +65,12 @@ func (s *Shell) topNavigation(c *ui.Context) {
 		} {
 			path := s.router.Path()
 			active := path == item.path || item.path != "/" && strings.HasPrefix(path, item.path+"/")
-			k := core.Tokens(c)
+			k := c.Theme()
 			button := ui.ButtonBase(c.Key(item.path)).Height(32).Shrink(0).Padding(0, 8).Gap(5).
 				Radius(style.RadiusChrome).FontWeight(style.WeightSemibold).Label("前往" + item.label).Tooltip(item.label)
 			bg, fg := ui.Transparent, k.TextMuted
 			if active {
-				bg, fg = k.Selection, k.AccentText
+				bg, fg = k.Selection, k.Accent
 			} else if button.Hovered() {
 				bg, fg = k.SurfaceHover, k.Text
 			}
@@ -100,7 +95,7 @@ func (s *Shell) topNavigation(c *ui.Context) {
 
 func (s *Shell) githubButton(c *ui.Context) {
 	services := c.Services()
-	input.IconButton(c.Key("github"), assets.GitHub, "打开 GitHub 仓库", input.IconButtonOptions{Variant: input.Ghost}).
+	components.IconButton(c.Key("github"), assets.GitHub, "打开 GitHub 仓库", components.IconButtonOptions{}).
 		Size(32, 32).Tooltip("GitHub").OnClick(func() { services.OpenURL(assets.RepositoryURL) })
 }
 
@@ -121,7 +116,7 @@ func (s *Shell) historyButton(c *ui.Context, d int) {
 // windowButtons draws the app's settings control and the window's.
 func (s *Shell) windowButtons(c *ui.Context) {
 	ui.Row(c).Gap(4).Shrink(0).Children(func() {
-		if input.IconButton(c, ellipsisVertical, "打开设置", input.IconButtonOptions{Variant: input.Ghost}).
+		if components.IconButton(c, ellipsisVertical, "打开设置", components.IconButtonOptions{}).
 			Margin(0, 4, 0, 0).Clicked() {
 			s.router.Push("/settings")
 		}
@@ -153,19 +148,20 @@ func (s *Shell) windowButtons(c *ui.Context) {
 // windowButton is one borderless chrome control, tinted red on hover when
 // danger, as the close button's, and muted when disabled.
 func windowButton(c *ui.Context, key string, icon *ui.SVG, label string, danger, disabled bool) ui.Element {
-	k := core.Tokens(c)
+	k := c.Theme()
 	b := ui.ButtonBase(c.Key(key)).
-		Size(theme.MinHitSize, theme.MinHitSize).
+		Size(style.MinHitSize, style.MinHitSize).
 		Radius(style.RadiusChrome).
 		Label(label).
 		Disabled(disabled)
+	dangerFill, onDanger := k.Danger, ui.Hex("#FFF8EE")
 	bg, fg := ui.Color{}, k.TextMuted
 	switch {
 	case disabled:
 	case danger && b.Pressed():
-		bg, fg = k.DangerFill.Mix(ui.RGB(0, 0, 0), 0.25), k.OnDanger
+		bg, fg = dangerFill.Mix(ui.RGB(0, 0, 0), 0.25), onDanger
 	case danger && b.Hovered():
-		bg, fg = k.DangerFill, k.OnDanger
+		bg, fg = dangerFill, onDanger
 	case b.Pressed():
 		bg, fg = k.Selection, k.Text
 	case b.Hovered():

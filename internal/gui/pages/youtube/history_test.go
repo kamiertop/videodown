@@ -1,14 +1,17 @@
 package youtube
 
 import (
+	"errors"
 	"image/png"
+
+	"github.com/kamiertop/videodown/internal/gui/style"
 	"math"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/egoist/mygo/ui"
+	"github.com/kamiertop/videodown/internal/storage"
 	yt "github.com/kamiertop/videodown/youtube"
 )
 
@@ -24,7 +27,7 @@ func TestHistoryRowsAlignAndShowPaths(t *testing.T) {
 		s.runtime.OpenLocation = func(path string) error { opened = path; return nil }
 		scroll := &ui.ScrollState{}
 		test := ui.NewTester(func(c *ui.Context) {
-			core.Use(c, core.Settings{})
+			style.UseTheme(c)
 			s.Layout(c, "/youtube/history", func(string) {}, func() { s.Form(c, "/youtube/history", scroll) })
 		}, width, 600)
 		test.Frame()
@@ -50,10 +53,16 @@ func TestHistoryRowsAlignAndShowPaths(t *testing.T) {
 			if !ok || button.X+button.W > float32(width) || title.X+title.W > play.X || play.X+play.W > button.X || button.W > 100 || button.H > 36 {
 				t.Fatal("history columns overlap")
 			}
-			if math.Abs(float64(button.Y+button.H/2-row.Y-row.H/2)) > 1 {
-				t.Fatal("button is not vertically centered")
+			del, ok := test.Find("删除记录：" + item.Path)
+			if !ok || button.X+button.W > del.X {
+				t.Fatal("delete action missing or misplaced")
 			}
-			if i > 0 && (row.X != previousRow.X || row.H != previousRow.H || button.X != previousButton.X || title.X != previousTitle.X) {
+			// 操作与标题同行并垂直居中（与 B 站/抖音卡片一致）。
+			if math.Abs(float64(button.Y+button.H/2-title.Y-title.H/2)) > 8 {
+				t.Fatal("button is not aligned with the title row")
+			}
+			if i > 0 && (row.X != previousRow.X || math.Abs(float64(row.H-previousRow.H)) > 1 || button.X != previousButton.X || title.X != previousTitle.X) {
+				// 行高允许 1 DIP 的字体度量舍入差（中英文路径字形不同）。
 				t.Fatal("history rows are not aligned")
 			}
 			previousRow, previousButton, previousTitle = row, button, title
@@ -94,7 +103,7 @@ func TestHistorySearchAndClear(t *testing.T) {
 	}
 	scroll := &ui.ScrollState{}
 	test := ui.NewTester(func(c *ui.Context) {
-		core.Use(c, core.Settings{})
+		style.UseTheme(c)
 		s.historyPage(c, scroll)
 	}, 760, 600)
 	test.Frame()
@@ -124,5 +133,120 @@ func TestHistorySearchAndClear(t *testing.T) {
 	test.Frame()
 	if !test.HasText("旅行视频") || !test.HasText("音乐现场") || !test.HasText("下载历史 · 2") || len(s.history) != 2 {
 		t.Fatal("clearing search did not restore history")
+	}
+}
+
+// TestHistoryOpenFailureShowsMessage verifies that opening a moved or
+// deleted file reports the reason as a toast instead of failing silently.
+func TestHistoryOpenFailureShowsMessage(t *testing.T) {
+	s := NewState()
+	s.history = []yt.History{{ID: "gone1", Title: "被移动的视频", Path: "/download/moved/video.mp4"}}
+	s.runtime.OpenFile = func(string) error { return errors.New("文件不存在") }
+	s.runtime.OpenLocation = func(string) error { return errors.New("文件所在目录不存在") }
+	var toasts []string
+	s.runtime.Notify = func(message string, failed bool) {
+		if failed {
+			toasts = append(toasts, message)
+		}
+	}
+	scroll := &ui.ScrollState{}
+	test := ui.NewTester(func(c *ui.Context) {
+		style.UseTheme(c)
+		s.Layout(c, "/youtube/history", func(string) {}, func() { s.Form(c, "/youtube/history", scroll) })
+	}, 1200, 600)
+	test.Frame()
+	if err := test.Click("打开视频：/download/moved/video.mp4"); err != nil {
+		t.Fatal(err)
+	}
+	test.Frame()
+	if len(toasts) != 1 || toasts[0] != "打开失败：文件不存在" {
+		t.Fatalf("open failure toast = %v", toasts)
+	}
+	if err := test.Click("打开目录：/download/moved/video.mp4"); err != nil {
+		t.Fatal(err)
+	}
+	test.Frame()
+	if len(toasts) != 2 || toasts[1] != "打开失败：文件所在目录不存在" {
+		t.Fatalf("open-location failure toast = %v", toasts)
+	}
+	// 成功打开不再弹出错误。
+	s.runtime.OpenFile = func(string) error { return nil }
+	if err := test.Click("打开视频：/download/moved/video.mp4"); err != nil {
+		t.Fatal(err)
+	}
+	test.Frame()
+	if len(toasts) != 2 {
+		t.Fatal("successful open raised an error toast")
+	}
+}
+
+// TestHistoryOpenFailureInlineFallback verifies the page-level red note when
+// no toast channel exists (tests and offscreen rendering).
+func TestHistoryOpenFailureInlineFallback(t *testing.T) {
+	s := NewState()
+	s.history = []yt.History{{ID: "gone2", Title: "被移动的视频", Path: "/download/moved/video.mp4"}}
+	s.runtime.OpenFile = func(string) error { return errors.New("文件不存在") }
+	scroll := &ui.ScrollState{}
+	test := ui.NewTester(func(c *ui.Context) {
+		style.UseTheme(c)
+		s.Layout(c, "/youtube/history", func(string) {}, func() { s.Form(c, "/youtube/history", scroll) })
+	}, 1200, 600)
+	test.Frame()
+	if err := test.Click("打开视频：/download/moved/video.mp4"); err != nil {
+		t.Fatal(err)
+	}
+	test.Frame()
+	if !test.HasText("打开失败：文件不存在") {
+		t.Fatal("inline fallback message missing")
+	}
+}
+
+// TestHistoryDeleteRecord verifies the delete action removes the record from
+// the list, matching the bilibili and douyin history cards.
+func TestHistoryDeleteRecord(t *testing.T) {
+	store, err := storage.OpenMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	api := yt.New(store)
+	if err := store.SaveHistory("youtube:downloaded:vid1:18", `{"id":"vid1","title":"旅行视频","path":"/download/travel.mp4"}`); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveHistory("youtube:downloaded:vid2:22", `{"id":"vid2","title":"音乐现场","path":"/download/music.mkv"}`); err != nil {
+		t.Fatal(err)
+	}
+
+	s := NewState()
+	s.api = api
+	s.runtime.Run = func(work func() error, done func(error)) { done(work()) }
+	scroll := &ui.ScrollState{}
+	test := ui.NewTester(func(c *ui.Context) {
+		style.UseTheme(c)
+		s.Layout(c, "/youtube/history", func(string) {}, func() { s.Form(c, "/youtube/history", scroll) })
+	}, 1200, 600)
+	// 模拟历史加载完成。
+	s.mergeHistory([]yt.History{
+		{ID: "vid1", Title: "旅行视频", Path: "/download/travel.mp4"},
+		{ID: "vid2", Title: "音乐现场", Path: "/download/music.mkv"},
+	})
+	test.Frame()
+	if !test.HasText("旅行视频") || !test.HasText("音乐现场") {
+		t.Fatal("history items missing")
+	}
+	if err := test.Click("删除记录：/download/travel.mp4"); err != nil {
+		t.Fatal(err)
+	}
+	test.Frame()
+	if test.HasText("旅行视频") {
+		t.Fatal("deleted record still listed")
+	}
+	if !test.HasText("音乐现场") {
+		t.Fatal("delete removed the wrong record")
+	}
+	// 存储层也已删除。
+	rows, err := api.History()
+	if err != nil || len(rows) != 1 || rows[0].ID != "vid2" {
+		t.Fatalf("store rows after delete: %v (err=%v)", rows, err)
 	}
 }

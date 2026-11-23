@@ -47,3 +47,5 @@ tmp
 
 # Generated Windows executable resources.
 /zz_appicon_windows_*.syso
+
+.pi

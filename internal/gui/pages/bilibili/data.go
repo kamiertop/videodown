@@ -13,6 +13,10 @@ import (
 
 const pageSize = 20
 
+// followsScrollKey 是“UP 主”页关注列表面板的独立滚动区域，
+// 与页面级滚动区分开，让顶部工具栏固定不动。
+const followsScrollKey = "up-follows"
+
 func (s *State) clearPrivateData() {
 	s.history.seq++
 	s.history.Loading = false
@@ -20,6 +24,8 @@ func (s *State) clearPrivateData() {
 	s.historyMore.Loading = false
 	s.historySearchPending, s.historyMutating, s.historyClearOpen = false, false, false
 	s.follows = resource[model.FollowData]{}
+	// followPage 记录已连续加载的页数；退出登录后从第一页重新开始。
+	s.followPage = 0
 	s.authorInfo = resource[model.UserInfoData]{}
 	s.uploads = resource[model.VideoListData]{}
 	s.authorLists = resource[model.SeasonsSeriesData]{}
@@ -81,11 +87,48 @@ func (s *State) clearPrivateData() {
 	s.queueDownloadError = ""
 	s.queueDownloadTotal, s.queueDownloadDone, s.queueDownloadFailed = 0, 0, 0
 }
-func (s *State) loadFollows(page int) {
+func (s *State) loadFollows(more bool) {
 	if s.follows.Loading || !s.loggedIn {
 		return
 	}
-	load(s, &s.follows, func() (model.FollowData, error) { return s.api.FollowList(page, pageSize) }, func(model.FollowData) { s.followPage = page })
+	const key = "author-follows"
+	if !more {
+		s.followPage = 0
+		s.resetAutoPage(key, followsScrollKey)
+	}
+	if more && len(s.follows.Data.List) >= s.follows.Data.Total {
+		return
+	}
+	page := 1
+	if more {
+		page = s.followPage + 1
+	}
+	old := s.follows.Data
+	load(s, &s.follows, func() (model.FollowData, error) {
+		d, err := s.api.FollowList(page, pageSize)
+		if err == nil && more {
+			d.List = mergeFollowPages(old.List, d.List)
+		}
+		return d, err
+	}, func(model.FollowData) { s.followPage = page })
+}
+
+// mergeFollowPages appends a fetched page to the loaded items. The list is
+// ordered by follow time, which can shift between requests, so duplicates
+// are dropped by mid.
+func mergeFollowPages(oldItems, page []model.FollowDataList) []model.FollowDataList {
+	seen := make(map[int64]bool, len(oldItems)+len(page))
+	for _, v := range oldItems {
+		seen[v.Mid] = true
+	}
+	items := append([]model.FollowDataList(nil), oldItems...)
+	for _, v := range page {
+		if !seen[v.Mid] {
+			items = append(items, v)
+			seen[v.Mid] = true
+		}
+	}
+	return items
 }
 func (s *State) findAuthor(raw string, navigate func(string)) {
 	raw = strings.TrimSpace(raw)

@@ -247,6 +247,15 @@ func (s *Service) History() ([]History, error) {
 	}
 	return result, nil
 }
+// DeleteHistory 删除一个视频的全部下载记录（同一视频可能有视频与音频两条）；
+// 不会删除已经保存到本地的文件。
+func (s *Service) DeleteHistory(videoID string) error {
+	if strings.TrimSpace(videoID) == "" {
+		return errors.New("视频ID为空")
+	}
+	return s.store.DeleteHistoryPrefix("youtube:downloaded:" + videoID + ":")
+}
+
 func (s *Service) Download(ctx context.Context, video Video, formatID int, notify func(Progress)) (string, error) {
 	// 与 B 站/抖音一致：任务执行期间计数，供关闭程序前判断是否有任务未完成。
 	s.active.Add(1)

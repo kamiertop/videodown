@@ -2,14 +2,13 @@ package bilibili
 
 import (
 	"fmt"
+	"github.com/kamiertop/videodown/internal/gui/components"
 	"slices"
 	"strings"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/data"
-	"github.com/ELY-Open-Source/MujicaUI/icons"
-	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/egoist/mygo/ui"
+	"github.com/kamiertop/videodown/internal/gui/icons"
+	newc "github.com/oneo-me/onevra/source/components"
 
 	"github.com/kamiertop/videodown/bilibili/download"
 	"github.com/kamiertop/videodown/bilibili/model"
@@ -24,8 +23,8 @@ func (s *State) download(c *ui.Context) {
 			if s.manualParse.Loading {
 				parseLabel = "解析中"
 			}
-			button(c.Key("parse"), parseLabel, input.ButtonOptions{Variant: input.Primary, Disabled: strings.TrimSpace(s.link) == "" || s.manualParse.Loading || s.api == nil}).OnClick(s.parseDownloadInput)
-			button(c.Key("clear"), "清空", input.ButtonOptions{Variant: input.Outline, Disabled: strings.TrimSpace(s.link) == ""}).OnClick(func() {
+			button(c.Key("parse"), parseLabel, components.ButtonOptions{Variant: components.ButtonPrimary, Disabled: strings.TrimSpace(s.link) == "" || s.manualParse.Loading || s.api == nil}).OnClick(s.parseDownloadInput)
+			button(c.Key("clear"), "清空", components.ButtonOptions{Variant: components.ButtonOutline, Disabled: strings.TrimSpace(s.link) == ""}).OnClick(func() {
 				s.link = ""
 				s.manualParseInput = ""
 				s.manualParse.seq++
@@ -38,7 +37,7 @@ func (s *State) download(c *ui.Context) {
 	})
 	s.errorRow(c, s.manualParse.Error, nil)
 	if s.notice != "" {
-		ui.Text(c, s.notice).FontSize(style.Font(c, style.FontMeta)).TextColor(core.Tokens(c).TextMuted).MaxLines(1)
+		ui.Text(c, s.notice).FontSize(style.Font(c, style.FontMeta)).TextColor(c.Theme().TextMuted).MaxLines(1)
 	}
 	rows, ready := s.downloadRows()
 	if len(s.stagedKeys) > 0 {
@@ -46,13 +45,13 @@ func (s *State) download(c *ui.Context) {
 			ui.Column(c).FillWidth().Padding(style.SpaceSmall, style.SpaceMedium).Gap(style.SpaceSmall).Children(func() {
 				ui.Row(c).FillWidth().Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
 					ui.Text(c, fmt.Sprintf("待下载 · %d", len(s.stagedKeys))).FontWeight(style.WeightSemibold)
-					ui.Text(c, fmt.Sprintf("已就绪 %d · 已排队 %d", ready, len(s.queueRequested))).Grow(1).FontSize(style.Font(c, style.FontMeta)).TextColor(core.Tokens(c).TextMuted)
+					ui.Text(c, fmt.Sprintf("已就绪 %d · 已排队 %d", ready, len(s.queueRequested))).Grow(1).FontSize(style.Font(c, style.FontMeta)).TextColor(c.Theme().TextMuted)
 					if s.queueDownloading {
-						button(c.Key("stop-queue"), "停止后续任务", input.ButtonOptions{Variant: input.Outline, Disabled: s.queueDownloadStop}).OnClick(s.stopQueuedDownloads)
+						button(c.Key("stop-queue"), "停止后续任务", components.ButtonOptions{Variant: components.ButtonOutline, Disabled: s.queueDownloadStop}).OnClick(s.stopQueuedDownloads)
 					} else {
-						button(c.Key("download"), "开始下载", input.ButtonOptions{Variant: input.Primary, Icon: icons.Must("download"), Disabled: len(s.stagedKeys) == 0 || ready != len(s.stagedKeys) || s.downloadBackend == nil || s.runtime.Background == nil || len(s.queueRequested) == len(s.stagedKeys)}).OnClick(s.startQueuedDownloads)
+						button(c.Key("download"), "开始下载", components.ButtonOptions{Variant: components.ButtonPrimary, Icon: icons.Must("download"), Disabled: len(s.stagedKeys) == 0 || ready != len(s.stagedKeys) || s.downloadBackend == nil || s.runtime.Background == nil || len(s.queueRequested) == len(s.stagedKeys)}).OnClick(s.startQueuedDownloads)
 					}
-					button(c.Key("clear-queue"), "清空列表", input.ButtonOptions{Variant: input.Ghost, Disabled: len(s.stagedKeys) == 0 || s.queueDownloading || len(s.queueExtraBusy) != 0}).OnClick(func() { s.clearStaged() })
+					button(c.Key("clear-queue"), "清空列表", components.ButtonOptions{Variant: components.ButtonGhost, Disabled: len(s.stagedKeys) == 0 || s.queueDownloading || len(s.queueExtraBusy) != 0}).OnClick(func() { s.clearStaged() })
 				})
 				if s.queueDownloadTotal > 0 {
 					caption(c, fmt.Sprintf("已完成 %d/%d · 失败 %d", s.queueDownloadDone, s.queueDownloadTotal, s.queueDownloadFailed))
@@ -138,7 +137,7 @@ func (s *State) downloadRows() ([]downloadRow, int) {
 }
 
 func (s *State) stagedMediaCard(c *ui.Context, bvid, title, cover, author, length string) {
-	k := core.Tokens(c)
+	k := c.Theme()
 	width, _ := c.Size()
 	wide := width >= style.DownloadCompactBreakpoint
 	panel(c, bvid, func() {
@@ -206,11 +205,11 @@ func (s *State) stagedMediaCard(c *ui.Context, bvid, title, cover, author, lengt
 					}
 					actions.Children(func() {
 						if s.downloadBackend != nil {
-							downloadCardButton(c.Key("cover"), "封面", input.ButtonOptions{Label: "保存封面", Variant: input.Ghost, Disabled: !ready || task.Cover == "" || s.queueDownloading || s.batchesRunning() || extrasBusy}).OnClick(func() { s.startQueueExtra(bvid, "cover") })
-							downloadCardButton(c.Key("audio-only"), "音频", input.ButtonOptions{Label: "下载音频", Variant: input.Ghost, Disabled: !ready || task.AudioURL == "" || s.queueDownloading || s.batchesRunning() || extrasBusy}).OnClick(func() { s.startQueueExtra(bvid, "audio") })
+							downloadCardButton(c.Key("cover"), "封面", components.ButtonOptions{Label: "保存封面", Variant: components.ButtonGhost, Disabled: !ready || task.Cover == "" || s.queueDownloading || s.batchesRunning() || extrasBusy}).OnClick(func() { s.startQueueExtra(bvid, "cover") })
+							downloadCardButton(c.Key("audio-only"), "音频", components.ButtonOptions{Label: "下载音频", Variant: components.ButtonGhost, Disabled: !ready || task.AudioURL == "" || s.queueDownloading || s.batchesRunning() || extrasBusy}).OnClick(func() { s.startQueueExtra(bvid, "audio") })
 						}
-						downloadCardButton(c.Key("remove"), "移除", input.ButtonOptions{Variant: input.Ghost, Disabled: s.queueDownloading || busy}).OnClick(func() { s.removeStaged(bvid) })
-						downloadCardButton(c.Key("single-download"), downloadRequestLabel(s.queueRequested[bvid]), input.ButtonOptions{Label: "下载视频", Variant: input.Primary, Icon: icons.Must("download"), Disabled: !ready || s.queueRequested[bvid] || s.runtime.Background == nil || s.downloadBackend == nil}).OnClick(func() { s.startSingleQueuedDownload(bvid) })
+						downloadCardButton(c.Key("remove"), "移除", components.ButtonOptions{Variant: components.ButtonGhost, Disabled: s.queueDownloading || busy}).OnClick(func() { s.removeStaged(bvid) })
+						downloadCardButton(c.Key("single-download"), downloadRequestLabel(s.queueRequested[bvid]), components.ButtonOptions{Label: "下载视频", Variant: components.ButtonPrimary, Icon: icons.Must("download"), Disabled: !ready || s.queueRequested[bvid] || s.runtime.Background == nil || s.downloadBackend == nil}).OnClick(func() { s.startSingleQueuedDownload(bvid) })
 					})
 				})
 			})
@@ -219,7 +218,7 @@ func (s *State) stagedMediaCard(c *ui.Context, bvid, title, cover, author, lengt
 }
 
 // Keep download card controls compact while retaining the shared button style.
-func downloadCardButton(c *ui.Context, label string, opts input.ButtonOptions) ui.Element {
+func downloadCardButton(c *ui.Context, label string, opts components.ButtonOptions) ui.Element {
 	return button(c, label, opts).MinHeight(style.DownloadControlHeight).Height(style.DownloadControlHeight).Padding(0, style.SpaceSmall)
 }
 
@@ -231,50 +230,52 @@ func (s *State) parsedGroupPanel(c *ui.Context, group *parsedVideoGroup) {
 		}
 	}
 	title := fmt.Sprintf("%s · %s · %d 个视频 · 已选 %d", group.Kind, group.Title, len(group.Items), count)
-	data.Accordion(c, &group.OpenSections, []data.AccordionItem{{ID: "videos", Title: title, Content: func() {
-		ui.Column(c.Key("items")).FillWidth().Gap(4).Children(func() {
-			for _, item := range group.Items {
-				selected := group.Selected[item.Key]
-				k := core.Tokens(c)
-				row := ui.ButtonBase(c.Key(item.Key)).Label("选择待添加："+item.Title).FillWidth().MinWidth(0).
-					MinHeight(style.InputHeight).Padding(6, style.SpaceSmall).Gap(style.SpaceSmall).Radius(style.RadiusControl).FocusRing(true)
-				if selected {
-					row.Background(k.Selection).TextColor(k.AccentText)
-				} else {
-					row.TextColor(k.Text)
-				}
-				if row.Hovered() {
-					row.Background(k.SurfaceHover)
-				}
-				row.Children(func() {
-					icon := "plus"
-					if selected {
-						icon = "check"
-					}
-					ui.Icon(c, icons.Must(icon)).Size(16, 16).Shrink(0)
-					ui.Text(c, item.Title).Grow(1).MinWidth(0).MaxLines(1)
-					if item.Duration > 0 {
-						ui.Text(c, duration(item.Duration)).FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted).Shrink(0)
-					}
-				}).OnClick(func() { group.Selected[item.Key] = !group.Selected[item.Key] })
-			}
-		})
-		ui.Row(c.Key("group-actions")).FillWidth().Wrap().Gap(style.SpaceSmall).Children(func() {
-			button(c.Key("add-current"), "添加当前视频", input.ButtonOptions{Variant: input.Outline}).OnClick(func() {
-				s.stageManual(group.Current)
-				s.manualGroup = nil
-			})
-			button(c.Key("add-selected"), fmt.Sprintf("添加已选 (%d)", count), input.ButtonOptions{Variant: input.Primary, Disabled: count == 0}).OnClick(func() {
+	newc.Accordion(c, func(g *newc.AccordionGroup) {
+		g.Item(title, &group.Open, func() {
+			ui.Column(c.Key("items")).FillWidth().Gap(4).Children(func() {
 				for _, item := range group.Items {
-					if group.Selected[item.Key] {
-						s.stageManual(item)
+					selected := group.Selected[item.Key]
+					k := c.Theme()
+					row := ui.ButtonBase(c.Key(item.Key)).Label("选择待添加："+item.Title).FillWidth().MinWidth(0).
+						MinHeight(style.InputHeight).Padding(6, style.SpaceSmall).Gap(style.SpaceSmall).Radius(style.RadiusControl).FocusRing(true)
+					if selected {
+						row.Background(k.Selection).TextColor(k.Accent)
+					} else {
+						row.TextColor(k.Text)
 					}
+					if row.Hovered() {
+						row.Background(k.SurfaceHover)
+					}
+					row.Children(func() {
+						icon := "plus"
+						if selected {
+							icon = "check"
+						}
+						ui.Icon(c, icons.Must(icon)).Size(16, 16).Shrink(0)
+						ui.Text(c, item.Title).Grow(1).MinWidth(0).MaxLines(1)
+						if item.Duration > 0 {
+							ui.Text(c, duration(item.Duration)).FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted).Shrink(0)
+						}
+					}).OnClick(func() { group.Selected[item.Key] = !group.Selected[item.Key] })
 				}
-				s.manualGroup = nil
 			})
-			button(c.Key("cancel-group"), "取消", input.ButtonOptions{Variant: input.Ghost}).OnClick(func() { s.manualGroup = nil })
+			ui.Row(c.Key("group-actions")).FillWidth().Wrap().Gap(style.SpaceSmall).Children(func() {
+				button(c.Key("add-current"), "添加当前视频", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() {
+					s.stageManual(group.Current)
+					s.manualGroup = nil
+				})
+				button(c.Key("add-selected"), fmt.Sprintf("添加已选 (%d)", count), components.ButtonOptions{Variant: components.ButtonPrimary, Disabled: count == 0}).OnClick(func() {
+					for _, item := range group.Items {
+						if group.Selected[item.Key] {
+							s.stageManual(item)
+						}
+					}
+					s.manualGroup = nil
+				})
+				button(c.Key("cancel-group"), "取消", components.ButtonOptions{Variant: components.ButtonGhost}).OnClick(func() { s.manualGroup = nil })
+			})
 		})
-	}}}, data.AccordionOptions{}).Element.Label("解析到的" + group.Kind).FillWidth().MinWidth(0).Radius(style.RadiusPanel).Clip()
+	}).Label("解析到的" + group.Kind).FillWidth().MinWidth(0).Radius(style.RadiusPanel).Clip()
 }
 
 func (s *State) queueStreamControls(c *ui.Context, bvid string) {
@@ -285,7 +286,7 @@ func (s *State) queueStreamControls(c *ui.Context, bvid string) {
 	}
 	if entry.data.Error != "" {
 		s.errorRow(c, entry.data.Error, nil)
-		button(c.Key("retry-resolve"), "重新解析", input.ButtonOptions{Variant: input.Outline}).OnClick(func() { s.retryQueueItem(bvid) })
+		button(c.Key("retry-resolve"), "重新解析", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() { s.retryQueueItem(bvid) })
 		return
 	}
 	if !entry.data.Loaded || entry.data.Data.PlayURL == nil {
@@ -295,16 +296,16 @@ func (s *State) queueStreamControls(c *ui.Context, bvid string) {
 	play := entry.data.Data.PlayURL
 
 	ui.Row(c.Key("video-field")).Gap(4).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, "画质").FontSize(style.Font(c, style.FontMeta)).TextColor(core.Tokens(c).TextMuted).Shrink(0)
-		video := input.Select(c.Key("quality"), &entry.videoID, queueVideoOptions(play), input.SelectOptions{Label: "视频画质", Disabled: s.queueRequested[bvid]})
-		video.Element.Width(style.DownloadStreamWidth).MinWidth(0).MinHeight(style.DownloadControlHeight).Height(style.DownloadControlHeight).Padding(0, style.SpaceSmall).FontSize(style.Font(c, style.FontButton)).Radius(style.RadiusControl)
+		ui.Text(c, "画质").FontSize(style.Font(c, style.FontMeta)).TextColor(c.Theme().TextMuted).Shrink(0)
+		video, _ := components.Select(c.Key("quality"), &entry.videoID, queueVideoOptions(play), components.SelectOptions{Label: "视频画质", Disabled: s.queueRequested[bvid]})
+		video.Width(style.DownloadStreamWidth).MinWidth(0).MinHeight(style.DownloadControlHeight).Height(style.DownloadControlHeight).Padding(0, style.SpaceSmall).FontSize(style.Font(c, style.FontButton)).Radius(style.RadiusControl)
 	})
 	audioOptions := queueAudioOptions(play)
 	if len(audioOptions) > 0 {
 		ui.Row(c.Key("audio-field")).Gap(4).AlignItems(ui.Center).Children(func() {
-			ui.Text(c, "音质").FontSize(style.Font(c, style.FontMeta)).TextColor(core.Tokens(c).TextMuted).Shrink(0)
-			audio := input.Select(c.Key("audio"), &entry.audioID, audioOptions, input.SelectOptions{Label: "音频音质", Disabled: s.queueRequested[bvid]})
-			audio.Element.Width(style.DownloadAudioWidth).MinWidth(0).MinHeight(style.DownloadControlHeight).Height(style.DownloadControlHeight).Padding(0, style.SpaceSmall).FontSize(style.Font(c, style.FontButton)).Radius(style.RadiusControl)
+			ui.Text(c, "音质").FontSize(style.Font(c, style.FontMeta)).TextColor(c.Theme().TextMuted).Shrink(0)
+			audio, _ := components.Select(c.Key("audio"), &entry.audioID, audioOptions, components.SelectOptions{Label: "音频音质", Disabled: s.queueRequested[bvid]})
+			audio.Width(style.DownloadAudioWidth).MinWidth(0).MinHeight(style.DownloadControlHeight).Height(style.DownloadControlHeight).Padding(0, style.SpaceSmall).FontSize(style.Font(c, style.FontButton)).Radius(style.RadiusControl)
 		})
 	} else {
 		caption(c, "无独立音轨")

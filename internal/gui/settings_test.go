@@ -252,22 +252,28 @@ func TestSettingsSaveDoesNotMoveFormAndToastExpires(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			test.Advance(2 * time.Second)
+			// 让第一条 toast 走过大半寿命但仍存活，再触发第二次保存。
+			test.Advance(toastSuccessTimeout*3/4 - 200*time.Millisecond)
 		}
 	}
-	// A second successful save replaces the existing toast and starts a fresh lifetime.
-	test.Advance(2 * time.Second)
+	// A second successful save starts a fresh toast lifetime: it outlives
+	// the first toast's deadline and expires on its own.
+	test.Advance(toastSuccessTimeout / 2)
 	if !test.HasText("保存成功") {
 		t.Fatal("replacement toast expired too soon")
 	}
-	test.Advance(2 * time.Second)
+	test.Advance(toastSuccessTimeout)
 	if test.HasText("保存成功") {
 		t.Fatal("success toast did not expire")
 	}
 	checkBounds()
 	s.notify("保存失败：测试错误", true)
 	test.Frame()
-	test.Advance(7 * time.Second)
+	test.Advance(toastErrorTimeout / 2)
+	if !test.HasText("保存失败：测试错误") {
+		t.Fatal("error toast missing")
+	}
+	test.Advance(toastErrorTimeout)
 	if test.HasText("保存失败：测试错误") {
 		t.Fatal("error toast did not expire")
 	}

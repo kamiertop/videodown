@@ -23,11 +23,11 @@ type manualVideo struct {
 }
 
 type parsedVideoGroup struct {
-	Kind, Title  string
-	Current      manualVideo
-	Items        []manualVideo
-	Selected     map[string]bool
-	OpenSections []string
+	Kind, Title string
+	Current     manualVideo
+	Items       []manualVideo
+	Selected    map[string]bool
+	Open        bool
 }
 
 func parseVideoReference(raw string) (bvid string, avid, part int, err error) {
@@ -152,7 +152,7 @@ func newParsedGroup(kind, title string, current manualVideo, items []manualVideo
 	for _, item := range items {
 		selected[item.Key] = true
 	}
-	return &parsedVideoGroup{Kind: kind, Title: title, Current: current, Items: items, Selected: selected, OpenSections: []string{"videos"}}
+	return &parsedVideoGroup{Kind: kind, Title: title, Current: current, Items: items, Selected: selected, Open: true}
 }
 
 func (s *State) parseDownloadInput() {

@@ -4,7 +4,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/egoist/mygo/ui"
 	"github.com/kamiertop/videodown/douyin/model"
 	"github.com/kamiertop/videodown/internal/gui/assets"
@@ -12,14 +11,14 @@ import (
 )
 
 func (s *State) videoCard(c *ui.Context, v model.AwemeItem, navigate func(string)) {
-	k := core.Tokens(c)
+	k := c.Theme()
 	card := ui.ButtonBase(c).Label("选择抖音作品：" + title(v)).Column().AlignSelf(ui.Stretch).MinWidth(0).Clip().Radius(style.RadiusMedia).Background(k.Surface).TextColor(k.Text).FocusRing(true)
 	authorHovered := false
 	card.Children(func() {
 		ui.Box(c).Label("抖音作品封面").FillWidth().AspectRatio(style.DouyinMediaAspectRatio).Shrink(0).Clip().Children(func() {
 			s.imageWithAspect(c, cover(v), 0, 0, false, style.RadiusMedia, style.DouyinMediaAspectRatio)
 			if v.IsTop != 0 {
-				ui.Text(c, "置顶").Absolute().Start(style.SpaceSmall).Top(style.SpaceSmall).Padding(3, 6).Radius(style.RadiusChrome).Background(k.Selection).TextColor(k.AccentText).FontSize(style.Font(c, style.FontMeta))
+				ui.Text(c, "置顶").Absolute().Start(style.SpaceSmall).Top(style.SpaceSmall).Padding(3, 6).Radius(style.RadiusChrome).Background(k.Selection).TextColor(k.Accent).FontSize(style.Font(c, style.FontMeta))
 			}
 			livePhoto := v.IsLivePhoto != 0 || v.IsSliedes
 			for _, image := range v.Images {
@@ -48,7 +47,7 @@ func (s *State) videoCard(c *ui.Context, v model.AwemeItem, navigate func(string
 						link := ui.ButtonBase(c.Key("author")).Label("进入抖音作者主页："+v.Author.Nickname).MinWidth(0).MaxWidthPercent(100).Padding(0, 0, style.MediaAuthorUnderlineGap, 0).BorderWidth(0, 0, style.MediaAuthorUnderlineWidth, 0).BorderColor(ui.Transparent).Background(ui.Transparent).TextColor(k.TextMuted).Cursor(ui.CursorPointer)
 						authorHovered = link.Hovered() || link.FocusVisible()
 						if authorHovered {
-							link.TextColor(k.AccentText).BorderColor(k.Accent)
+							link.TextColor(k.Accent).BorderColor(k.Accent)
 						}
 						link.Children(func() { ui.Text(c, "@"+v.Author.Nickname).SingleLine().FontSize(style.Font(c, style.FontMeta)) }).OnClick(func() { navigate("/douyin/user/" + url.PathEscape(v.Author.SecUid)) })
 					} else {

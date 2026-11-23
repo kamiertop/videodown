@@ -2,24 +2,26 @@ package douyin
 
 import "github.com/kamiertop/videodown/internal/gui/style"
 
-func (s *State) maybeMoreFolders() {
-	if s.runtime.After == nil || s.folderAutoPending || !s.folders.Loaded || s.folders.Loading || s.folders.Error != "" || !s.folderMore {
+// maybeMoreFolders 在目录滚动接近底部时自动追加下一页；
+// 每类目录的加载状态各自独立。
+func (s *State) maybeMoreFolders(cat *folderCatalog) {
+	if s.runtime.After == nil || cat.autoPending || !cat.folders.Loaded || cat.folders.Loading || cat.folders.Error != "" || !cat.more {
 		return
 	}
-	scroll := s.scroll("folders")
+	scroll := s.scroll(cat.scrollKey)
 	if scroll.MaxY > 0 && scroll.Y+style.DynamicAutoLoadThreshold < scroll.MaxY {
 		return
 	}
-	s.folderAutoPending = true
-	epoch, version, path := s.epoch, s.folderVersion, s.activePath
+	cat.autoPending = true
+	epoch, version, path := s.epoch, cat.version, s.activePath
 	s.runtime.After(0, func() {
-		if s.stopped || s.epoch != epoch || s.folderVersion != version || s.activePath != path {
+		if s.stopped || s.epoch != epoch || cat.version != version || s.activePath != path {
 			return
 		}
-		s.folderAutoPending = false
+		cat.autoPending = false
 		if scroll.MaxY > 0 && scroll.Y+style.DynamicAutoLoadThreshold < scroll.MaxY {
 			return
 		}
-		s.loadFolders(true)
+		s.loadFolders(cat, true)
 	})
 }

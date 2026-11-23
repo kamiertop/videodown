@@ -2,11 +2,10 @@ package bilibili
 
 import (
 	"fmt"
+	"github.com/kamiertop/videodown/internal/gui/components"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/icons"
-	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/egoist/mygo/ui"
+	"github.com/kamiertop/videodown/internal/gui/icons"
 
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
@@ -62,8 +61,8 @@ func (s *State) loggedInProfile(c *ui.Context) {
 			})
 			s.errorRow(c, s.authError, s.checkAccount)
 			ui.Row(c).FillWidth().Gap(style.SpaceSmall).Justify(ui.End).Children(func() {
-				button(c.Key("refresh-account"), "刷新资料", input.ButtonOptions{Variant: input.Outline, Loading: s.checking}).OnClick(s.checkAccount)
-				button(c.Key("logout"), "退出登录", input.ButtonOptions{Variant: input.Danger, Loading: s.loggingOut}).OnClick(s.logout)
+				button(c.Key("refresh-account"), "刷新资料", components.ButtonOptions{Variant: components.ButtonOutline, Loading: s.checking}).OnClick(s.checkAccount)
+				button(c.Key("logout"), "退出登录", components.ButtonOptions{Variant: components.ButtonDanger, Loading: s.loggingOut}).OnClick(s.logout)
 			})
 		})
 	})
@@ -73,7 +72,7 @@ func profileFact(c *ui.Context, label, value string) {
 	if value == "" {
 		value = "暂无"
 	}
-	k := core.Tokens(c)
+	k := c.Theme()
 	ui.Column(c).MinWidth(0).MinHeight(style.ProfileFactHeight).Padding(style.SpaceMedium).Gap(style.SpaceSmall).
 		Radius(style.RadiusPanel).Background(k.Background).Children(func() {
 		ui.Text(c, label).FillWidth().TextColor(k.TextMuted)
@@ -85,11 +84,11 @@ func (s *State) loginProfile(c *ui.Context) {
 	panel(c, "账号登录", func() {
 		ui.Column(c).FillWidth().Padding(style.SpaceXLarge).Gap(20).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, "扫码登录").FontWeight(style.WeightSemibold)
-			ui.Column(c).Size(style.QRCodeSize, style.QRCodeSize).Center().Gap(style.SpaceMedium).Radius(style.RadiusPanel).Border(style.BorderWidth, core.Tokens(c).Border).Background(ui.RGB(255, 255, 255)).Children(func() {
+			ui.Column(c).Size(style.QRCodeSize, style.QRCodeSize).Center().Gap(style.SpaceMedium).Radius(style.RadiusPanel).Border(style.BorderWidth, c.Theme().Border).Background(ui.RGB(255, 255, 255)).Children(func() {
 				if s.qrImage != nil && !s.qrExpired {
 					ui.Image(c, s.qrImage).Size(style.QRCodeSize, style.QRCodeSize)
 				} else {
-					ui.Icon(c, icons.Must("maximize")).Size(48, 48).TextColor(core.Tokens(c).TextMuted)
+					ui.Icon(c, icons.Must("maximize")).Size(48, 48).TextColor(c.Theme().TextMuted)
 					text := "二维码待获取"
 					if s.qrExpired {
 						text = "二维码已过期"
@@ -104,7 +103,7 @@ func (s *State) loginProfile(c *ui.Context) {
 			if s.qr.Loaded {
 				label = "刷新二维码"
 			}
-			button(c.Key("qr"), label, input.ButtonOptions{Variant: input.Outline, Icon: icons.Must("refresh-cw"), Loading: s.qr.Loading, Disabled: s.api == nil}).OnClick(s.newQRCode)
+			button(c.Key("qr"), label, components.ButtonOptions{Variant: components.ButtonOutline, Icon: icons.Must("refresh-cw"), Loading: s.qr.Loading, Disabled: s.api == nil}).OnClick(s.newQRCode)
 			s.errorRow(c, s.qr.Error, s.newQRCode)
 			s.errorRow(c, s.authError, s.checkAccount)
 		})
@@ -116,9 +115,9 @@ func (s *State) errorRow(c *ui.Context, message string, retry func()) {
 		return
 	}
 	ui.Row(c).FillWidth().Wrap().Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
-		ui.Text(c, message).Grow(1).MinWidth(0).TextColor(core.Tokens(c).Danger)
+		ui.Text(c, message).Grow(1).MinWidth(0).TextColor(c.Theme().Danger)
 		if retry != nil {
-			button(c.Key("retry"), "重试", input.ButtonOptions{Variant: input.Ghost}).OnClick(retry)
+			button(c.Key("retry"), "重试", components.ButtonOptions{Variant: components.ButtonGhost}).OnClick(retry)
 		}
 	})
 }
@@ -130,7 +129,7 @@ func (s *State) requiresLogin(c *ui.Context, navigate func(string)) bool {
 	panel(c, "登录提示", func() {
 		ui.Column(c).FillWidth().Padding(style.SpaceXLarge).Gap(style.SpaceMedium).Center().Children(func() {
 			caption(c, "请先登录哔哩哔哩账号")
-			button(c, "前往账号", input.ButtonOptions{Variant: input.Outline}).OnClick(func() { navigate("/bilibili/profile") })
+			button(c, "前往账号", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() { navigate("/bilibili/profile") })
 		})
 	})
 	return true

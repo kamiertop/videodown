@@ -2,13 +2,11 @@ package douyin
 
 import (
 	"fmt"
+	"github.com/kamiertop/videodown/internal/gui/components"
 	"net/url"
 	"strings"
 	"time"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/input"
-	"github.com/ELY-Open-Source/MujicaUI/layout"
 	"github.com/egoist/mygo/ui"
 	"github.com/kamiertop/videodown/douyin/model"
 	"github.com/kamiertop/videodown/internal/gui/style"
@@ -87,7 +85,7 @@ func (s *State) authorsPage(c *ui.Context, navigate func(string)) {
 	panel(c, "抖音用户工具栏", func() {
 		ui.Row(c).FillWidth().Wrap().Padding(style.SpaceSmall).Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, fmt.Sprintf("我的关注 · %d", s.follows.Data.Total)).Shrink(0).FontWeight(style.WeightSemibold)
-			button(c, "刷新", input.ButtonOptions{Variant: input.Outline, Loading: s.follows.Loading}).OnClick(func() {
+			button(c, "刷新", components.ButtonOptions{Variant: components.ButtonOutline, Loading: s.follows.Loading}).OnClick(func() {
 				if strings.TrimSpace(s.followSearchInput) != "" {
 					s.searchFollows()
 				} else {
@@ -96,7 +94,7 @@ func (s *State) authorsPage(c *ui.Context, navigate func(string)) {
 			})
 			field(c.Key("follow-search"), &s.followSearchInput, "搜索已关注用户", "搜索已关注的昵称 / 抖音号", nil).Grow(1).MinWidth(180)
 			field(c.Key("author"), &s.authorInput, "抖音用户主页", "输入用户主页链接或 sec_uid", func() { s.findAuthor(navigate) }).Grow(1).MinWidth(200)
-			button(c, "解析", input.ButtonOptions{Variant: input.Primary}).OnClick(func() { s.findAuthor(navigate) })
+			button(c, "解析", components.ButtonOptions{Variant: components.ButtonPrimary}).OnClick(func() { s.findAuthor(navigate) })
 		})
 	})
 	s.syncFollowSearch()
@@ -106,7 +104,7 @@ func (s *State) authorsPage(c *ui.Context, navigate func(string)) {
 	} else {
 		s.errorRow(c, s.follows.Error, func() { s.loadFollows(s.follows.Loaded) })
 	}
-	layout.ScrollArea(c.Key("authors"), s.scroll("authors"), layout.ScrollAreaOptions{}, func() {
+	components.ScrollArea(c.Key("authors"), s.scroll("authors"), components.ScrollAreaOptions{}, func() {
 		ui.Column(c).FillWidth().Padding(0, style.ScrollbarGutter, style.SpaceMedium, 0).Gap(style.SpaceMedium).Children(func() {
 			width, _ := c.Size()
 			columns := max(1, min(style.AuthorGridMaxColumns, int((width-style.PlatformNavWidth-2*style.PagePadding)/style.AuthorCardMinWidth)))
@@ -124,11 +122,11 @@ func (s *State) authorsPage(c *ui.Context, navigate func(string)) {
 			})
 			switch {
 			case searching && (s.followSearchPending || s.followResults.Loading):
-				core.Spinner(c, core.SpinnerOptions{Size: 16, Label: "正在搜索关注", ShowLabel: true})
+				components.Spinner(c, components.SpinnerOptions{Size: 16, Label: "正在搜索关注", ShowLabel: true})
 			case searching && s.followResults.Loaded && len(s.followResults.Data) == 0:
 				empty(c, "未找到匹配的关注用户")
 			case !searching && s.follows.Loading:
-				core.Spinner(c, core.SpinnerOptions{Size: 16, Label: "正在加载关注用户", ShowLabel: true})
+				components.Spinner(c, components.SpinnerOptions{Size: 16, Label: "正在加载关注用户", ShowLabel: true})
 			case !searching && s.follows.Loaded && len(s.follows.Data.Followings) == 0:
 				empty(c, "暂无关注用户")
 			}
@@ -142,10 +140,10 @@ func (s *State) authorCard(c *ui.Context, uid, name, signature, avatar string, n
 	if uid == "" {
 		return
 	}
-	k := core.Tokens(c)
+	k := c.Theme()
 	card := ui.ButtonBase(c).Label("查看抖音用户："+name).MinWidth(0).Padding(style.AuthorCardPadding).Gap(style.AuthorCardGap).Column().AlignItems(ui.Center).Radius(style.RadiusPanel).Border(style.BorderWidth, k.Border).Background(k.Surface).FocusRing(true)
 	if card.Hovered() {
-		card.Background(k.Selection).Border(style.BorderWidth, k.AccentText)
+		card.Background(k.Selection).Border(style.BorderWidth, k.Accent)
 	}
 	card.Children(func() {
 		s.image(c, avatar, style.AuthorAvatarSize, style.AuthorAvatarSize, true)

@@ -5,7 +5,7 @@
 > ⚠️下载哔哩哔哩和YouTube视频请安装FFmpeg
 
 VideoDown 是一个使用 [Go](https://go.dev)、[MyGo](https://github.com/egoist/mygo) 和
-[MujicaUI](https://github.com/ELY-Open-Source/MujicaUI) 开发的原生桌面视频下载工具，支持哔哩哔哩、抖音、YouTube。
+[Onevra](https://github.com/oneo-me/onevra) 的界面组件开发的原生桌面视频下载工具，支持哔哩哔哩、抖音、YouTube。
 界面与业务逻辑均使用 Go 编写，构建不需要 CGO、Node.js 或浏览器运行时。
 
 > 本项目仍可能受到平台接口变化影响。如果接口返回结构、鉴权参数或风控策略变化，部分功能可能需要同步调整。
@@ -86,7 +86,7 @@ VideoDown 是一个使用 [Go](https://go.dev)、[MyGo](https://github.com/egois
 
 ## 技术栈
 
-- 原生界面与窗口：MyGo、MujicaUI
+- 原生界面与窗口：MyGo、Onevra UI
 - 业务逻辑：Go、req/v3
 - 配置与 Cookie：结构化 TOML
 - 下载历史：SQLite、sqlx、[glebarez/go-sqlite](https://github.com/glebarez/go-sqlite) 纯 Go 驱动（无需 CGO）

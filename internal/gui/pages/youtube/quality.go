@@ -3,11 +3,10 @@ package youtube
 import (
 	"strings"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/egoist/mygo/ui"
 	"github.com/kamiertop/videodown/internal/gui/style"
 	yt "github.com/kamiertop/videodown/youtube"
+	newc "github.com/oneo-me/onevra/source/components"
 )
 
 // Keep the closed control short while the popup preserves every format detail.
@@ -21,7 +20,7 @@ func (s *State) qualitySelect(c *ui.Context) {
 }
 
 func qualitySelect(c *ui.Context, value *int, formats []yt.Format, compactWidth float32, controlLabel, popupLabel string, disabled bool) ui.Element {
-	selectBox := ui.SelectBase(c.Key("quality"), value)
+	sel := newc.Select(c, value)
 	label, detail := "选择画质", ""
 	if len(formats) == 0 {
 		label = "没有可用格式"
@@ -37,40 +36,30 @@ func qualitySelect(c *ui.Context, value *int, formats []yt.Format, compactWidth 
 			break
 		}
 	}
-	selectBox.Trigger.Label(controlLabel).Width(compactWidth).Disabled(disabled).Tooltip(detail)
-	input.SelectField(c, selectBox.Trigger, selectBox.Open(), func() { ui.Text(c, label).SingleLine().Grow(1).Shrink(1) })
-	selectBox.Trigger.Radius(style.RadiusControl)
+	sel.Trigger.Label(controlLabel).Width(compactWidth).MinWidth(0).MinHeight(style.DownloadControlHeight).Disabled(disabled).Tooltip(detail).Radius(style.RadiusControl)
+	sel.Trigger.Children(func() { ui.Text(c, label).SingleLine().Grow(1).Shrink(1) })
 	if disabled {
-		return selectBox.Trigger
+		return sel.Trigger
 	}
-	selectBox.Popup(func(panel ui.Element) {
-		input.SelectPanel(c, panel)
+	sel.Popup(func(panel ui.Element) {
 		panel.Label(popupLabel).Width(compactWidth).Radius(style.RadiusMenu)
 		ui.Scroll(c).FillWidth().MaxHeight(320).Children(func() {
 			for _, format := range formats {
-				row := selectBox.Item(format.ID)
-				k := core.Tokens(c)
-				chosen := format.ID == *value
+				row := sel.Item(format.ID)
 				row.Label(format.Label).FillWidth().MinWidth(0).Padding(8).Gap(8).AlignItems(ui.Center).Radius(style.RadiusControl)
-				if chosen {
-					row.Background(k.Selection).TextColor(k.AccentText)
-				} else if row.Highlighted() {
-					row.Background(k.SurfaceHover)
-				}
 				heading, details := qualityLines(format.Label)
 				row.Children(func() {
-					input.SelectCheck(c, chosen)
 					ui.Column(c).Grow(1).MinWidth(0).Gap(3).Children(func() {
 						ui.Text(c, heading).FillWidth().MaxLines(2).FontWeight(style.WeightSemibold)
 						if details != "" {
-							ui.Text(c, details).FillWidth().MaxLines(3).FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted)
+							ui.Text(c, details).FillWidth().MaxLines(3).FontSize(style.Font(c, style.FontMeta)).TextColor(c.Theme().TextMuted)
 						}
 					})
 				})
 			}
 		})
 	})
-	return selectBox.Trigger
+	return sel.Trigger
 }
 
 func qualityLines(label string) (string, string) {

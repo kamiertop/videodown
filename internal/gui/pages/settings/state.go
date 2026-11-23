@@ -3,8 +3,14 @@
 package settings
 
 import (
-	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/kamiertop/videodown/internal/gui/preferences"
+)
+
+// 窗口外观模式；与桌面设置对应。
+const (
+	ModeSystem = iota
+	ModeLight
+	ModeDark
 )
 
 type State struct {
@@ -36,10 +42,10 @@ type Services struct {
 }
 
 func (s *State) ApplyTheme() {
-	s.Mode = int(core.Light)
+	s.Mode = ModeLight
 	if s.Config.Theme == "dark" {
-		s.Mode = int(core.Dark)
+		s.Mode = ModeDark
 	} else if s.Config.Theme == "system" {
-		s.Mode = int(core.System)
+		s.Mode = ModeSystem
 	}
 }

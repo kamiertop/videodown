@@ -104,7 +104,7 @@ func (s *State) enter(section string) {
 		s.ensureQueueResolves()
 	case "up":
 		if !s.follows.Loaded && !s.follows.Loading && s.follows.Error == "" {
-			s.loadFollows(1)
+			s.loadFollows(false)
 		}
 	case "dynamic":
 		if !s.dynamics.Loaded && !s.dynamics.Loading && s.dynamics.Error == "" {

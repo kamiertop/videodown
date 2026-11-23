@@ -2,10 +2,9 @@ package douyin
 
 import (
 	"fmt"
+	"github.com/kamiertop/videodown/internal/gui/components"
 	"strings"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/feedback"
 	"github.com/egoist/mygo/ui"
 	dyDownload "github.com/kamiertop/videodown/douyin/download"
 	"github.com/kamiertop/videodown/douyin/model"
@@ -13,14 +12,14 @@ import (
 
 func progressView(c *ui.Context, p dyDownload.Progress) {
 	if p.Phase == "sleep" {
-		core.Spinner(c, core.SpinnerOptions{Size: 14, Label: fmt.Sprintf("休眠中 · %d 秒", max(0, p.SleepRemaining)), ShowLabel: true})
+		components.Spinner(c, components.SpinnerOptions{Size: 14, Label: fmt.Sprintf("休眠中 · %d 秒", max(0, p.SleepRemaining)), ShowLabel: true})
 		return
 	}
 	label := map[string]string{"video": "下载视频", "audio": "下载音频", "image": "保存图片", "merge": "合并文件", "done": "已完成", "error": "下载失败"}[p.Phase]
 	if label == "" {
 		label = "下载中"
 	}
-	feedback.Progress(c, max(0, min(100, p.Percent))/100, feedback.ProgressOptions{Label: label, ShowValue: true, Indeterminate: p.Phase == "merge" || p.Percent < 0})
+	components.Progress(c, max(0, min(100, p.Percent))/100, components.ProgressOptions{Label: label, ShowValue: true, Indeterminate: p.Phase == "merge" || p.Percent < 0})
 }
 func (s *State) saveCover(item *queuedVideo) {
 	if s.backend == nil || s.runtime.Background == nil || item.CoverBusy {

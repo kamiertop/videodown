@@ -2,9 +2,9 @@ package bilibili
 
 import (
 	"fmt"
+	"github.com/kamiertop/videodown/internal/gui/style"
 	"testing"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/egoist/mygo/ui"
 	biliapi "github.com/kamiertop/videodown/bilibili/api"
 	"github.com/kamiertop/videodown/bilibili/model"
@@ -12,7 +12,7 @@ import (
 
 func downloadTester(s *State) *ui.Tester {
 	return ui.NewTester(func(c *ui.Context) {
-		core.Use(c, core.Settings{})
+		style.UseTheme(c)
 		s.download(c)
 	}, 1200, 880)
 }
@@ -84,8 +84,8 @@ func TestDownloadListRevealsNewParsedGroup(t *testing.T) {
 
 	s.manualGroup = &parsedVideoGroup{
 		Kind: "合集", Title: "解析测试",
-		Items:        []manualVideo{{Key: "BVpart", Title: "分 P"}},
-		OpenSections: []string{"videos"},
+		Items: []manualVideo{{Key: "BVpart", Title: "分 P"}},
+		Open:  true,
 	}
 	tester.Frame()
 	first, _ := s.downloadList.Visible()

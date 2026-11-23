@@ -8,9 +8,6 @@ import (
 	"github.com/kamiertop/videodown/internal/gui/components"
 	"github.com/kamiertop/videodown/internal/gui/style"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/input"
-	"github.com/ELY-Open-Source/MujicaUI/theme"
 	"github.com/egoist/mygo/ui"
 )
 
@@ -36,7 +33,7 @@ func filenameParts(template string) []filenamePart {
 }
 
 func (s *State) filenameOrder(c *ui.Context, disabled bool) {
-	k := core.Tokens(c)
+	k := c.Theme()
 	parts := filenameParts(s.Config.Filename)
 	region := ui.Column(c.Key("order")).Label("文件名字段排序区").FillWidth().MinHeight(52).
 		Padding(8).Border(style.BorderWidth, k.Border).Radius(style.RadiusMenu).Disabled(disabled)
@@ -47,13 +44,13 @@ func (s *State) filenameOrder(c *ui.Context, disabled bool) {
 			for _, part := range parts {
 				// Position-only motion avoids keeping removed button paint callbacks
 				// alive beyond their build pass, as an exit transition would do.
-				ui.Column(c.Key(part)).Transition(ui.ElementTransition{Position: true, Duration: core.Motion(c, theme.StateDuration)}).Children(func() {
+				ui.Column(c.Key(part)).Transition(ui.ElementTransition{Position: true, Duration: style.Motion(c, style.StateDuration)}).Children(func() {
 					handle := state.items[part]
 					if handle == nil {
 						handle = &ui.Handle{}
 						state.items[part] = handle
 					}
-					chip := components.Button(c, part.Token, input.ButtonOptions{Variant: input.Secondary, Disabled: disabled}).
+					chip := components.Button(c, part.Token, components.ButtonOptions{Variant: components.ButtonSecondary, Disabled: disabled}).
 						Label("排序字段 " + part.Token).Radius(style.RadiusMenu).Cursor(ui.CursorGrab).Bind(handle).Drag(part)
 					if chip.Dragging() {
 						chip.Cursor(ui.CursorGrabbing)

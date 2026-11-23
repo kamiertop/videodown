@@ -2,14 +2,12 @@ package bilibili
 
 import (
 	"fmt"
+	"github.com/kamiertop/videodown/internal/gui/components"
 	"strconv"
 	"strings"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/icons"
-	"github.com/ELY-Open-Source/MujicaUI/input"
-	"github.com/ELY-Open-Source/MujicaUI/layout"
 	"github.com/egoist/mygo/ui"
+	"github.com/kamiertop/videodown/internal/gui/icons"
 
 	"github.com/kamiertop/videodown/bilibili/model"
 	"github.com/kamiertop/videodown/internal/gui/navigation"
@@ -20,10 +18,11 @@ func (s *State) authors(c *ui.Context, navigate func(string)) {
 	if s.requiresLogin(c, navigate) {
 		return
 	}
+	// 顶部工具栏固定不随列表滚动；内边距收紧一档，给列表多留高度。
 	panel(c, "UP 主工具栏", func() {
 		ui.Row(c).
 			FillWidth().
-			Padding(style.SpaceMedium).
+			Padding(style.SpaceSmall).
 			Gap(style.SpaceSmall).
 			AlignItems(ui.Center).
 			Children(func() {
@@ -32,8 +31,8 @@ func (s *State) authors(c *ui.Context, navigate func(string)) {
 					Shrink(0)
 				button(c.Key("refresh"),
 					"刷新",
-					input.ButtonOptions{Variant: input.Outline, Loading: s.follows.Loading, Disabled: s.api == nil},
-				).OnClick(func() { s.loadFollows(max(1, s.followPage)) })
+					components.ButtonOptions{Variant: components.ButtonOutline, Loading: s.follows.Loading, Disabled: s.api == nil},
+				).OnClick(func() { s.loadFollows(false) })
 				ui.Spacer(c).Grow(1)
 				textInput(c.Key("author"),
 					&s.author,
@@ -43,49 +42,50 @@ func (s *State) authors(c *ui.Context, navigate func(string)) {
 				).Width(450)
 
 				button(c.Key("parse-author"), "解析",
-					input.ButtonOptions{Loading: s.authorInfo.Loading, Disabled: s.api == nil},
+					components.ButtonOptions{Loading: s.authorInfo.Loading, Disabled: s.api == nil},
 				).OnClick(func() { s.findAuthor(s.author, navigate) })
 			})
 	})
 	s.errorRow(c, s.authorInfo.Error, func() { s.findAuthor(s.author, navigate) })
+	s.errorRow(c, s.follows.Error, func() { s.loadFollows(s.follows.Loaded) })
 	panel(c, "关注列表", func() {
-		ui.Column(c).FillWidth().Padding(style.SpaceMedium).Gap(style.SpaceMedium).Children(func() {
-			s.errorRow(c, s.follows.Error, func() { s.loadFollows(max(1, s.followPage)) })
-			if s.follows.Loading {
-				caption(c, "正在加载关注列表")
-			}
-			if len(s.follows.Data.List) == 0 {
-				empty(c, "暂无关注列表", "user")
-				return
-			}
-			ui.Grid(c).
-				Columns(authorColumns(c)).
-				FillWidth().
-				Gap(style.SpaceMedium).
-				Children(func() {
-					for _, author := range s.follows.Data.List {
-						s.authorCard(c.Key(author.Mid), author, navigate)
+		components.ScrollArea(c.Key(followsScrollKey), s.scroll(followsScrollKey), components.ScrollAreaOptions{Label: "关注列表区域"}, func() {
+			ui.Column(c).FillWidth().Padding(style.SpaceSmall, style.SpaceMedium, style.SpaceMedium).Gap(style.SpaceMedium).Children(func() {
+				if len(s.follows.Data.List) == 0 {
+					if s.follows.Loading {
+						components.Spinner(c, components.SpinnerOptions{Size: 16, Label: "正在加载关注列表", ShowLabel: true})
+					} else {
+						empty(c, "暂无关注列表", "user")
 					}
-				})
-			ui.Row(c).
-				FillWidth().
-				Gap(style.SpaceSmall).
-				Justify(ui.Center).
-				Children(func() {
-					button(c.Key("previous"), "上一页", input.ButtonOptions{
-						Variant:  input.Outline,
-						Disabled: s.follows.Loading || s.followPage <= 1},
-					).OnClick(func() { s.loadFollows(s.followPage - 1) })
-
-					caption(c, fmt.Sprintf("第 %d / %d 页", max(1, s.followPage), max(1, (s.follows.Data.Total+pageSize-1)/pageSize)))
-
-					button(c.Key("next"), "下一页", input.ButtonOptions{
-						Variant:  input.Outline,
-						Disabled: s.follows.Loading || s.followPage*pageSize >= s.follows.Data.Total},
-					).OnClick(func() { s.loadFollows(s.followPage + 1) })
-				})
-		})
-	}).Grow(1)
+					return
+				}
+				ui.Grid(c).
+					Columns(authorColumns(c)).
+					FillWidth().
+					Gap(style.SpaceMedium).
+					Children(func() {
+						for _, author := range s.follows.Data.List {
+							s.authorCard(c.Key(author.Mid), author, navigate)
+						}
+					})
+				// 下拉到底部自动追加下一页，不再用整页替换的翻页按钮。
+				if s.follows.Loading {
+					components.Spinner(c, components.SpinnerOptions{Size: 16, Label: "正在加载关注", ShowLabel: true})
+				} else if len(s.follows.Data.List) < s.follows.Data.Total {
+					caption(c, fmt.Sprintf("已加载 %d / %d 位 UP 主，滚动到底部自动加载", len(s.follows.Data.List), s.follows.Data.Total))
+					const key = "author-follows"
+					if s.autoPageFallback(key, followsScrollKey) && s.follows.Error == "" {
+						button(c, "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() {
+							s.continueAutoPage(key, func() { s.loadFollows(true) })
+						})
+					}
+				} else {
+					caption(c, fmt.Sprintf("已加载全部 %d 位 UP 主", s.follows.Data.Total))
+				}
+			})
+		}).Grow(1).MinWidth(0).MinHeight(0)
+	}).Grow(1).MinHeight(0)
+	s.maybeMoreAuthorFollows()
 }
 
 func authorColumns(c *ui.Context) int {
@@ -113,15 +113,15 @@ func (s *State) authorDetail(c *ui.Context, navigate func(string), goBack func()
 						}
 					})
 					if strings.TrimSpace(profile.Sign) != "" {
-						ui.Text(c, profile.Sign).FillWidth().MaxLines(1).TextColor(core.Tokens(c).TextMuted)
+						ui.Text(c, profile.Sign).FillWidth().MaxLines(1).TextColor(c.Theme().TextMuted)
 					}
 				})
-				button(c.Key("back-to-authors"), "返回", input.ButtonOptions{Variant: input.Outline, Icon: icons.Must("chevron-left")}).OnClick(goBack)
+				button(c.Key("back-to-authors"), "返回", components.ButtonOptions{Variant: components.ButtonOutline, Icon: icons.Must("chevron-left")}).OnClick(goBack)
 			})
 	})
 	s.authorContentControls(c, navigate)
-	layout.ScrollArea(c.Key("author-videos-scroll"), s.scroll(fmt.Sprintf("author-videos/%d", profile.Mid)),
-		layout.ScrollAreaOptions{Label: "UP 主视频区域"}, func() {
+	components.ScrollArea(c.Key("author-videos-scroll"), s.scroll(fmt.Sprintf("author-videos/%d", profile.Mid)),
+		components.ScrollAreaOptions{Label: "UP 主视频区域"}, func() {
 			leftPadding := style.ScrollbarGutter
 			if s.authorTab == "lists" {
 				leftPadding = 0
@@ -162,7 +162,7 @@ func (s *State) authorVideoContent(c *ui.Context) {
 		if len(s.uploads.Data.List.Vlist) < s.uploads.Data.Page.Count {
 			key := fmt.Sprintf("author-videos/%d", s.authorInfo.Data.Mid)
 			if s.autoPageFallback(key, key) && s.uploads.Error == "" && !s.uploads.Loading {
-				button(c, "继续加载", input.ButtonOptions{Variant: input.Outline}).OnClick(func() {
+				button(c, "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() {
 					s.continueAutoPage(key, func() { s.loadUploads(s.authorPage+1, true) })
 				})
 			}
@@ -206,7 +206,7 @@ func (s *State) authorListsView(c *ui.Context) {
 					ui.Row(c).FillWidth().AlignItems(ui.Center).Children(func() {
 						ui.Text(c, "列表").Grow(1).FontWeight(style.WeightSemibold)
 						button(c.Key("refresh-lists"), "",
-							input.ButtonOptions{Variant: input.Ghost, Icon: icons.Must("refresh-cw"), Label: "刷新合集与系列"},
+							components.ButtonOptions{Variant: components.ButtonGhost, Icon: icons.Must("refresh-cw"), Label: "刷新合集与系列"},
 						).Size(30, 30).
 							Padding(0).
 							OnClick(func() { s.loadAuthorLists(1, false) })
@@ -243,7 +243,7 @@ func (s *State) authorListsView(c *ui.Context) {
 						key := fmt.Sprintf("author-lists/%d", s.authorInfo.Data.Mid)
 						scrollKey := fmt.Sprintf("author-videos/%d", s.authorInfo.Data.Mid)
 						if s.autoPageFallback(key, scrollKey) && s.authorLists.Error == "" && !s.authorLists.Loading {
-							button(c.Key("more-lists"), "继续加载", input.ButtonOptions{Variant: input.Outline}).
+							button(c.Key("more-lists"), "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).
 								FillWidth().
 								OnClick(func() {
 									s.continueAutoPage(key, func() { s.loadAuthorLists(s.listPage+1, true) })
@@ -266,7 +266,7 @@ func (s *State) authorListsView(c *ui.Context) {
 }
 
 func authorListItem(c *ui.Context, name, kind string, count int, selected bool, onClick func()) {
-	k := core.Tokens(c)
+	k := c.Theme()
 	background, border := k.Surface, k.Border.Alpha(.35)
 	iconBackground, iconColor := k.Background, k.TextMuted
 	badgeBackground, badgeColor := k.Background, k.TextMuted
@@ -316,16 +316,16 @@ func (s *State) authorListsEmpty(c *ui.Context) {
 		ui.Column(c).FillWidth().Grow(1).MinHeight(320).Padding(style.SpaceXLarge).Center().Gap(style.SpaceMedium).Children(func() {
 			switch {
 			case s.authorLists.Loading:
-				core.Spinner(c, core.SpinnerOptions{Size: 32})
+				components.Spinner(c, components.SpinnerOptions{Size: 32})
 				caption(c, "正在加载合集与系列")
 			case s.authorLists.Error != "":
-				ui.Icon(c, icons.Must("folder")).Size(36, 36).TextColor(core.Tokens(c).TextMuted)
-				ui.Text(c, s.authorLists.Error).MaxLines(2).TextAlign(ui.Center).TextColor(core.Tokens(c).Danger)
-				button(c.Key("retry-lists"), "重试", input.ButtonOptions{Variant: input.Outline}).OnClick(func() { s.loadAuthorLists(1, false) })
+				ui.Icon(c, icons.Must("folder")).Size(36, 36).TextColor(c.Theme().TextMuted)
+				ui.Text(c, s.authorLists.Error).MaxLines(2).TextAlign(ui.Center).TextColor(c.Theme().Danger)
+				button(c.Key("retry-lists"), "重试", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() { s.loadAuthorLists(1, false) })
 			default:
-				ui.Icon(c, icons.Must("folder")).Size(36, 36).TextColor(core.Tokens(c).TextMuted)
+				ui.Icon(c, icons.Must("folder")).Size(36, 36).TextColor(c.Theme().TextMuted)
 				ui.Text(c, "暂无合集或系列").FontWeight(style.WeightSemibold)
-				button(c.Key("show-uploads"), "查看投稿", input.ButtonOptions{Variant: input.Outline}).OnClick(func() { s.authorTab = "uploads" })
+				button(c.Key("show-uploads"), "查看投稿", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() { s.authorTab = "uploads" })
 			}
 		})
 	}).Grow(1)
@@ -376,11 +376,11 @@ func (s *State) authorContentControls(c *ui.Context, navigate func(string)) {
 	all := len(keys) > 0 && selected == len(keys)
 	tabs := func() {
 		for _, tab := range []struct{ id, label string }{{"uploads", "投稿"}, {"lists", "合集 / 系列"}} {
-			variant := input.Secondary
+			variant := components.ButtonSecondary
 			if s.authorTab == tab.id {
-				variant = input.Primary
+				variant = components.ButtonPrimary
 			}
-			button(c.Key(tab.id), tab.label, input.ButtonOptions{Variant: variant}).MinWidth(104).Height(style.InputHeight).FontWeight(style.WeightSemibold).Shrink(0).OnClick(func() {
+			button(c.Key(tab.id), tab.label, components.ButtonOptions{Variant: variant}).MinWidth(104).Height(style.InputHeight).FontWeight(style.WeightSemibold).Shrink(0).OnClick(func() {
 				if s.authorTab != tab.id {
 					videoKey := fmt.Sprintf("author-videos/%d", s.authorInfo.Data.Mid)
 					listKey := fmt.Sprintf("author-lists/%d", s.authorInfo.Data.Mid)
@@ -404,12 +404,12 @@ func (s *State) authorContentControls(c *ui.Context, navigate func(string)) {
 			if all {
 				label = "取消全选"
 			}
-			button(c.Key("select-all"), label, input.ButtonOptions{Variant: input.Ghost}).OnClick(func() {
+			button(c.Key("select-all"), label, components.ButtonOptions{Variant: components.ButtonGhost}).OnClick(func() {
 				for _, key := range keys {
 					*s.selection(key) = !all
 				}
 			})
-			button(c.Key("download-selected"), fmt.Sprintf("下载已选 (%d)", selected), input.ButtonOptions{Variant: input.Outline, Disabled: selected == 0}).OnClick(func() {
+			button(c.Key("download-selected"), fmt.Sprintf("下载已选 (%d)", selected), components.ButtonOptions{Variant: components.ButtonOutline, Disabled: selected == 0}).OnClick(func() {
 				if s.stageSelectedAuthorVideos() == 0 {
 					return
 				}
@@ -421,7 +421,7 @@ func (s *State) authorContentControls(c *ui.Context, navigate func(string)) {
 		}
 	}
 	downloadControls := func() {
-		button(c.Key("download-all"), "一键下载全部", input.ButtonOptions{Variant: input.Primary, Disabled: len(keys) == 0 || s.api == nil || s.downloadBackend == nil}).OnClick(func() { s.downloadAllAuthor(navigate) })
+		button(c.Key("download-all"), "一键下载全部", components.ButtonOptions{Variant: components.ButtonPrimary, Disabled: len(keys) == 0 || s.api == nil || s.downloadBackend == nil}).OnClick(func() { s.downloadAllAuthor(navigate) })
 	}
 
 	panel(c, "UP 主内容操作", func() {
@@ -460,7 +460,7 @@ func (s *State) authorSeason(c *ui.Context) {
 	if len(s.seasonVideos.Data.Archives) < s.seasonVideos.Data.Page.Total {
 		key := fmt.Sprintf("author-videos/%d", s.authorInfo.Data.Mid)
 		if s.autoPageFallback(key, key) && s.seasonVideos.Error == "" && !s.seasonVideos.Loading {
-			button(c, "继续加载", input.ButtonOptions{Variant: input.Outline}).OnClick(func() {
+			button(c, "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() {
 				s.continueAutoPage(key, func() { s.loadSeason(s.selectedSeason, s.seasonPage+1, true) })
 			})
 		}
@@ -482,7 +482,7 @@ func (s *State) authorSeries(c *ui.Context) {
 	if len(s.seriesVideos.Data.Archives) < s.seriesVideos.Data.Page.Total {
 		key := fmt.Sprintf("author-videos/%d", s.authorInfo.Data.Mid)
 		if s.autoPageFallback(key, key) && s.seriesVideos.Error == "" && !s.seriesVideos.Loading {
-			button(c, "继续加载", input.ButtonOptions{Variant: input.Outline}).OnClick(func() {
+			button(c, "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() {
 				s.continueAutoPage(key, func() { s.loadSeries(s.selectedSeries, s.seriesPage+1, true) })
 			})
 		}
@@ -492,7 +492,7 @@ func (s *State) authorSeries(c *ui.Context) {
 // The card itself is the control, keeping pointer and keyboard activation on
 // the same target. Reserve hint space so hover never moves the grid.
 func (s *State) authorCard(c *ui.Context, author model.FollowDataList, navigate func(string)) {
-	k := core.Tokens(c)
+	k := c.Theme()
 	card := ui.ButtonBase(c).Label("进入"+author.Uname+"的主页").
 		Column().AlignSelf(ui.Stretch).MinWidth(0).Padding(style.AuthorCardPadding).Gap(style.AuthorCardGap).AlignItems(ui.Center).Clip().
 		Radius(style.RadiusPanel).Border(style.BorderEmphasis, k.Border.Alpha(.7)).Background(k.Surface).TextColor(k.Text)
@@ -506,8 +506,8 @@ func (s *State) authorCard(c *ui.Context, author model.FollowDataList, navigate 
 		ui.Text(c, author.Sign).FillWidth().TextAlign(ui.Center).MaxLines(2).TextColor(k.TextMuted)
 		ui.Row(c).FillWidth().MinWidth(0).Height(style.AuthorHintHeight).Clip().Justify(ui.Center).AlignItems(ui.Center).Gap(4).Children(func() {
 			if highlighted {
-				ui.Text(c, "进入主页").SingleLine().MaxLines(1).FontWeight(style.WeightSemibold).TextColor(k.AccentText)
-				ui.Icon(c, icons.Must("chevron-right")).Size(16, 16).Shrink(0).TextColor(k.AccentText)
+				ui.Text(c, "进入主页").SingleLine().MaxLines(1).FontWeight(style.WeightSemibold).TextColor(k.Accent)
+				ui.Icon(c, icons.Must("chevron-right")).Size(16, 16).Shrink(0).TextColor(k.Accent)
 			}
 		})
 	}).OnClick(func() { navigate(navigation.BilibiliAuthorPath(uint64(author.Mid))) })

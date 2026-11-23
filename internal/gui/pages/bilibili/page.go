@@ -4,16 +4,13 @@ package bilibili
 import (
 	"context"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/icons"
-	"github.com/ELY-Open-Source/MujicaUI/input"
-	"github.com/ELY-Open-Source/MujicaUI/layout"
 	"github.com/egoist/mygo/ui"
 	biliapi "github.com/kamiertop/videodown/bilibili/api"
 	bilidownload "github.com/kamiertop/videodown/bilibili/download"
 	"github.com/kamiertop/videodown/bilibili/model"
 	"github.com/kamiertop/videodown/internal/gui/components"
 	"github.com/kamiertop/videodown/internal/gui/guiruntime"
+	"github.com/kamiertop/videodown/internal/gui/icons"
 	"github.com/kamiertop/videodown/internal/gui/imagecache"
 	"github.com/kamiertop/videodown/internal/gui/navigation"
 	"github.com/kamiertop/videodown/internal/gui/style"
@@ -149,12 +146,12 @@ func (s *State) Layout(c *ui.Context, path string, navigate func(string), conten
 		s.selected = make(map[string]*bool)
 	}
 	s.enter(section)
-	k := core.Tokens(c)
+	k := c.Theme()
 	ui.Row(c.Key("bilibili-layout")).Fill().MinHeight(0).AlignItems(ui.Stretch).Children(func() {
 		ui.Column(c.Key("rail")).Label("哔哩哔哩导航").Width(style.PlatformNavWidth).Shrink(0).Padding(8).Gap(6).
 			Background(k.Surface).BorderColor(k.Border).BorderWidth(0, style.BorderWidth, 0, 0).Children(func() {
 			ui.Text(c, "B 站").FillWidth().TextAlign(ui.Center).FontSize(style.Font(c, style.FontCompact)).TextColor(k.TextMuted)
-			layout.ScrollArea(c.Key("menu-scroll"), s.scroll("menu"), layout.ScrollAreaOptions{}, func() {
+			components.ScrollArea(c.Key("menu-scroll"), s.scroll("menu"), components.ScrollAreaOptions{}, func() {
 				ui.Column(c).FillWidth().Gap(6).Children(func() {
 					names := []string{"download", "user", "play", "star", "history", "clock"}
 					labels := []string{"下载", "UP 主", "动态", "收藏 / 合集", "播放历史", "下载历史"}
@@ -182,11 +179,16 @@ func (s *State) Form(c *ui.Context, path string, navigate func(string), goBack f
 		s.ensureAuthor(mid)
 	}
 	ui.Column(c.Key("content")).Label("哔哩哔哩内容").Grow(1).MinWidth(0).MinHeight(0).Children(func() {
-		if section == "download" || section == "history" {
+		// download、history 与 up 自管内容滚动：up 的工具栏固定在顶部，
+		// 仅关注列表在面板内滚动；up 的深层路由（UP 主主页）走下面的 detail 分支。
+		if section == "download" || section == "history" || section == "up" && !detail {
 			ui.Column(c.Key(path)).Fill().MinWidth(0).MinHeight(0).Padding(style.PagePadding).Gap(style.SpaceMedium).FontSize(style.Body(c)).Children(func() {
-				if section == "history" {
+				switch section {
+				case "history":
 					s.downloadHistory(c)
-				} else {
+				case "up":
+					s.authors(c, navigate)
+				default:
 					s.download(c)
 				}
 			})
@@ -199,7 +201,7 @@ func (s *State) Form(c *ui.Context, path string, navigate func(string), goBack f
 			})
 			return
 		}
-		layout.ScrollArea(c.Key(path), s.scroll(path), layout.ScrollAreaOptions{}, func() {
+		components.ScrollArea(c.Key(path), s.scroll(path), components.ScrollAreaOptions{}, func() {
 			_, height := c.Size()
 			body := ui.Column(c.Key(section)).FillWidth().MinHeight(height - style.TitlebarHeight - 2*style.BorderWidth).Padding(style.PagePadding).Gap(style.SpaceMedium).FontSize(style.Body(c))
 			body.Children(func() { s.Render(c, section, navigate) })
@@ -208,16 +210,16 @@ func (s *State) Form(c *ui.Context, path string, navigate func(string), goBack f
 }
 
 func (s *State) navButton(c *ui.Context, label, caption, icon string, active bool, action func()) {
-	k := core.Tokens(c)
+	k := c.Theme()
 	iconSVG := icons.Must(icon)
-	b := components.Button(c, caption, input.ButtonOptions{Variant: input.Ghost, Icon: iconSVG, Label: label}).
+	b := components.Button(c, caption, components.ButtonOptions{Variant: components.ButtonGhost, Icon: iconSVG, Label: label}).
 		FillWidth().Height(style.PlatformNavItemHeight).Shrink(0).Column().Center().Gap(7).Padding(4).Radius(style.RadiusMenu).FontSize(style.Font(c, style.FontCompact)).
 		Border(style.BorderWidth, k.Border.Alpha(.6)).Background(k.Background).TextColor(k.Text)
 	if b.Hovered() {
 		b.Background(k.Selection)
 	}
 	if active {
-		b.Background(k.Selection).Border(style.BorderWidth, k.AccentText).TextColor(k.AccentText)
+		b.Background(k.Selection).Border(style.BorderWidth, k.Accent).TextColor(k.Accent)
 	}
 	b.OnClick(action)
 }

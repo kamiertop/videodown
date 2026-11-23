@@ -47,3 +47,11 @@ The `isDrc` flag and distinction between stream renditions were checked against
 on 2026-10-30. The Go picker filters duplicate default-language renditions, gives
 DRC its own stable selection ID, and uses the same selection rules for the UI,
 audio downloads and video/audio merging.
+
+## Lucide icons (via oneo-me/onevra)
+
+- Source: https://github.com/oneo-me/onevra (module `github.com/oneo-me/onevra/source`, package `icons/lucide`)
+- Upstream: https://lucide.dev, pinned per the module's `upstream.json`
+- License: ISC; full copyright and permission notice in the module's `icons/lucide/LICENSE`.
+- Use: the application resolves named icons (`internal/gui/icons`) to the generated
+  Lucide accessors and renders them as SVGs through MyGo.

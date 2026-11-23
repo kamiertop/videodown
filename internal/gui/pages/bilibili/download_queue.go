@@ -3,12 +3,12 @@ package bilibili
 import (
 	"errors"
 	"fmt"
+	"github.com/kamiertop/videodown/internal/gui/components"
 	"slices"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/ELY-Open-Source/MujicaUI/input"
 	biliapi "github.com/kamiertop/videodown/bilibili/api"
 	bilidownload "github.com/kamiertop/videodown/bilibili/download"
 	"github.com/kamiertop/videodown/bilibili/model"
@@ -193,7 +193,7 @@ func queueStreamURL(primary, alternate string) string {
 	return strings.TrimSpace(alternate)
 }
 
-func queueVideoOptions(play *model.VideoURLData) []input.SelectOption[int] {
+func queueVideoOptions(play *model.VideoURLData) []components.SelectOption[int] {
 	byID := make(map[int]model.VideoItem)
 	for _, item := range play.Dash.Video {
 		if queueStreamURL(item.BaseUrl, item.BaseUrl1) == "" {
@@ -205,14 +205,14 @@ func queueVideoOptions(play *model.VideoURLData) []input.SelectOption[int] {
 		}
 	}
 	if len(byID) == 0 && len(play.Durl) > 0 {
-		return []input.SelectOption[int]{{Value: 0, Label: "默认视频流"}}
+		return []components.SelectOption[int]{{Value: 0, Label: "默认视频流"}}
 	}
 	ids := make([]int, 0, len(byID))
 	for id := range byID {
 		ids = append(ids, id)
 	}
 	sort.Sort(sort.Reverse(sort.IntSlice(ids)))
-	options := make([]input.SelectOption[int], 0, len(ids))
+	options := make([]components.SelectOption[int], 0, len(ids))
 	for _, id := range ids {
 		label := fmt.Sprintf("画质 %d", id)
 		for _, format := range play.SupportFormats {
@@ -228,12 +228,12 @@ func queueVideoOptions(play *model.VideoURLData) []input.SelectOption[int] {
 		if id == 0 && byID[id].Height > 0 {
 			label = fmt.Sprintf("%dP", byID[id].Height)
 		}
-		options = append(options, input.SelectOption[int]{Value: id, Label: label})
+		options = append(options, components.SelectOption[int]{Value: id, Label: label})
 	}
 	return options
 }
 
-func queueAudioOptions(play *model.VideoURLData) []input.SelectOption[int] {
+func queueAudioOptions(play *model.VideoURLData) []components.SelectOption[int] {
 	byID := make(map[int]model.AudioItem)
 	for _, item := range play.Dash.Audio {
 		if queueStreamURL(item.BaseUrl, item.BaseUrl1) == "" {
@@ -249,14 +249,14 @@ func queueAudioOptions(play *model.VideoURLData) []input.SelectOption[int] {
 		ids = append(ids, id)
 	}
 	sort.Slice(ids, func(i, j int) bool { return byID[ids[i]].Bandwidth > byID[ids[j]].Bandwidth })
-	options := make([]input.SelectOption[int], 0, len(ids))
+	options := make([]components.SelectOption[int], 0, len(ids))
 	for _, id := range ids {
 		item := byID[id]
 		label := fmt.Sprintf("%d kbps", item.Bandwidth/1000)
 		if item.Codecs != "" {
 			label += " · " + item.Codecs
 		}
-		options = append(options, input.SelectOption[int]{Value: id, Label: label})
+		options = append(options, components.SelectOption[int]{Value: id, Label: label})
 	}
 	return options
 }

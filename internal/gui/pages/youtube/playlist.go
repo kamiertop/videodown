@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/egoist/mygo/ui"
 
 	"github.com/kamiertop/videodown/internal/gui/components"
@@ -131,9 +129,9 @@ func (s *State) playlistPage(c *ui.Context) {
 		panel(c.Key("playlist-input"), "YouTube 播放列表输入栏", func() {
 			ui.Row(c).FillWidth().MinWidth(0).Padding(style.SpaceSmall).Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
 				field := roundedInput(c.Key("link"), &s.playlistLink, "YouTube 播放列表链接", "粘贴包含 list= 的 YouTube 播放列表链接", false)
-				field.Element.Grow(1).MinWidth(0)
-				field.Input.OnSubmit(func() { s.loadPlaylist(false) })
-				components.Button(c.Key("parse"), "解析列表", input.ButtonOptions{Variant: input.Primary, Loading: s.playlistLoading, Disabled: s.api == nil || strings.TrimSpace(s.playlistLink) == "" || s.playlistLoading}).OnClick(func() { s.loadPlaylist(false) })
+				field.Grow(1).MinWidth(0)
+				field.OnSubmit(func() { s.loadPlaylist(false) })
+				components.Button(c.Key("parse"), "解析列表", components.ButtonOptions{Variant: components.ButtonPrimary, Loading: s.playlistLoading, Disabled: s.api == nil || strings.TrimSpace(s.playlistLink) == "" || s.playlistLoading}).OnClick(func() { s.loadPlaylist(false) })
 			})
 		})
 
@@ -160,15 +158,15 @@ func (s *State) playlistPage(c *ui.Context) {
 					if allSelected {
 						selectLabel = "取消全选"
 					}
-					components.Button(c.Key("all"), selectLabel, input.ButtonOptions{Variant: input.Outline, Disabled: len(s.playlistRows) == 0}).OnClick(func() {
+					components.Button(c.Key("all"), selectLabel, components.ButtonOptions{Variant: components.ButtonOutline, Disabled: len(s.playlistRows) == 0}).OnClick(func() {
 						for _, row := range s.playlistRows {
 							row.Selected = !allSelected
 						}
 					})
-					components.Button(c.Key("remove-selected"), "移除已选", input.ButtonOptions{Variant: input.Ghost, Disabled: selected == 0}).OnClick(func() { s.removePlaylistRows(func(row *playlistRow) bool { return row.Selected }) })
-					components.Button(c.Key("clear"), "清空列表", input.ButtonOptions{Variant: input.Ghost}).OnClick(s.clearPlaylist)
-					ui.Text(c, fmt.Sprintf("%d / %d", selected, len(s.playlistRows))).Shrink(0).MaxLines(1).TextColor(core.Tokens(c).TextMuted)
-					components.Button(c.Key("add"), "加入队列", input.ButtonOptions{Variant: input.Primary, Disabled: addable == 0 || s.api == nil}).OnClick(s.enqueuePlaylist)
+					components.Button(c.Key("remove-selected"), "移除已选", components.ButtonOptions{Variant: components.ButtonGhost, Disabled: selected == 0}).OnClick(func() { s.removePlaylistRows(func(row *playlistRow) bool { return row.Selected }) })
+					components.Button(c.Key("clear"), "清空列表", components.ButtonOptions{Variant: components.ButtonGhost}).OnClick(s.clearPlaylist)
+					ui.Text(c, fmt.Sprintf("%d / %d", selected, len(s.playlistRows))).Shrink(0).MaxLines(1).TextColor(c.Theme().TextMuted)
+					components.Button(c.Key("add"), "加入队列", components.ButtonOptions{Variant: components.ButtonPrimary, Disabled: addable == 0 || s.api == nil}).OnClick(s.enqueuePlaylist)
 				})
 			})
 		}
@@ -201,7 +199,7 @@ func (s *State) playlistResults(c *ui.Context) {
 	}
 	list.Rows(func(row ui.ListRow) {
 		if row.Index == len(rows) {
-			components.Button(row.Context.Key("more"), "加载更多", input.ButtonOptions{Variant: input.Outline, Loading: s.playlistLoading, Disabled: s.playlistLoading}).OnClick(func() { s.loadPlaylist(true) })
+			components.Button(row.Context.Key("more"), "加载更多", components.ButtonOptions{Variant: components.ButtonOutline, Loading: s.playlistLoading, Disabled: s.playlistLoading}).OnClick(func() { s.loadPlaylist(true) })
 			return
 		}
 		s.playlistCard(row.Context, rows[row.Index])
@@ -209,7 +207,7 @@ func (s *State) playlistResults(c *ui.Context) {
 }
 
 func (s *State) playlistCard(c *ui.Context, row *playlistRow) {
-	k := core.Tokens(c)
+	k := c.Theme()
 	card := ui.ButtonBase(c).Row().Label("选择视频："+row.Video.ID).FillWidth().MinWidth(0).Padding(style.SpaceMedium).Gap(style.SpaceMedium).AlignItems(ui.Center).Radius(style.RadiusPanel).Background(k.Surface).Border(style.BorderWidth, k.Border).Cursor(ui.CursorPointer)
 	if row.Selected {
 		card.Background(k.Selection)
@@ -228,7 +226,7 @@ func (s *State) playlistCard(c *ui.Context, row *playlistRow) {
 			if label := s.playlistTaskLabel(row); label != "" {
 				ui.Text(c, label).FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted)
 			}
-			components.Button(c.Key("remove"), "移除", input.ButtonOptions{Variant: input.Ghost, Label: "移除列表视频：" + row.Video.ID}).MinWidth(0).Padding(4, 8).OnClick(func() {
+			components.Button(c.Key("remove"), "移除", components.ButtonOptions{Variant: components.ButtonGhost, Label: "移除列表视频：" + row.Video.ID}).MinWidth(0).Padding(4, 8).OnClick(func() {
 				s.removePlaylistRows(func(item *playlistRow) bool { return item == row })
 			}).Tooltip("从当前解析列表移除")
 		})

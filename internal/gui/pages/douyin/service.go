@@ -35,6 +35,40 @@ type source struct {
 	Load       func(int) (videoPage, error)
 }
 
+// folderCatalog 是一类收藏目录（收藏夹 / 合集 / 某用户的系列）的独立状态，
+// 与哔哩哔哩的收藏夹目录、合集目录各自保留一致：页签切换、来回导航都
+// 不再重新请求已加载的目录。
+type folderCatalog struct {
+	kind, uid   string // uid 仅系列目录使用
+	folders     resource[[]folder]
+	cursor      int
+	more        bool
+	next        func(int) ([]folder, int, bool, error)
+	version     uint64
+	autoPending bool
+	scrollKey   string
+}
+
+// sourceKind 把目录映射到其条目的视频来源类型；系列条目走合集接口。
+func (f *folderCatalog) sourceKind() string {
+	if f.kind == "series" {
+		return "collection"
+	}
+	return f.kind
+}
+
+// listSection 是一个板块独立的视频列表：数据、分页、自动加载与滚动位置
+// 各归各的，切走再回来原样恢复，与哔哩哔哩每板块独立资源一致。
+type listSection struct {
+	videos, more resource[videoPage]
+	// src 描述当前展示的数据；零值表示目录视图（右侧空列表）。
+	src         source
+	autoPending bool
+	autoAt      float32
+	autoFill    int
+	scrollKey   string
+}
+
 type State struct {
 	api                                    *dyapi.Douyin
 	backend                                *dyDownload.Service
@@ -58,38 +92,38 @@ type State struct {
 	followGeneration                       uint64
 	cancelFollowSearch                     func()
 	author                                 resource[model.User]
-	folders                                resource[[]folder]
+	folderCatalogs                         map[string]*folderCatalog
 	libraryTab                             string
 	authorTab                              string
-	folderCursor                           int
-	folderMore                             bool
-	folderAutoPending                      bool
-	folderNext                             func(int) ([]folder, int, bool, error)
-	folderVersion                          uint64
 	pendingFolder                          string
-	videos                                 resource[videoPage]
-	more                                   resource[videoPage]
-	source                                 source
-	sourceVersion                          uint64
-	selected                               map[string]bool
-	scrolls                                map[string]*ui.ScrollState
-	images                                 imagecache.Cache
-	autoPending                            bool
-	autoAt                                 float32
-	autoFill                               int
-	downloadList                           ui.ListState
-	staged                                 []*queuedVideo
-	groups                                 []*downloadGroup
-	nextGroup                              uint64
-	history                                resource[dyDownload.HistoryPage]
-	historyMore                            resource[dyDownload.HistoryPage]
-	historyQuery                           string
-	historySearch                          string
-	historyBusy, clearOpen                 bool
+	// 每板块独立的视频列表，替代旧的单个共享列表 + 来源切换。
+	dynamicFeed            listSection // 关注动态
+	favoriteFeed           listSection // 收藏视频（基础列表）
+	playHistoryFeed        listSection // 播放历史
+	folderFeed             listSection // 当前打开的收藏夹 / 合集 / 系列
+	authorFeed             listSection // 当前打开的用户作品
+	scrolls                map[string]*ui.ScrollState
+	images                 imagecache.Cache
+	selected               map[string]bool
+	downloadList           ui.ListState
+	staged                 []*queuedVideo
+	groups                 []*downloadGroup
+	nextGroup              uint64
+	history                resource[dyDownload.HistoryPage]
+	historyMore            resource[dyDownload.HistoryPage]
+	historyQuery           string
+	historySearch          string
+	historyBusy, clearOpen bool
 }
 
 func NewState() *State {
-	return &State{selected: map[string]bool{}, scrolls: map[string]*ui.ScrollState{}, images: imagecache.Cache{}, libraryTab: "favorite"}
+	s := &State{selected: map[string]bool{}, scrolls: map[string]*ui.ScrollState{}, images: imagecache.Cache{}, libraryTab: "favorite"}
+	s.dynamicFeed.scrollKey = "videos/dynamic"
+	s.favoriteFeed.scrollKey = "videos/favorite"
+	s.playHistoryFeed.scrollKey = "videos/play-history"
+	s.folderFeed.scrollKey = "videos/folder"
+	s.authorFeed.scrollKey = "videos/user"
+	return s
 }
 func (s *State) Configure(api *dyapi.Douyin, backend *dyDownload.Service, runtime guiruntime.Runtime) {
 	s.api, s.backend, s.runtime = api, backend, runtime
@@ -212,16 +246,11 @@ func (s *State) saveCookie(clear bool) {
 		s.followResults = resource[[]model.SearchFollowResponse]{}
 		s.followSearchPending, s.followAutoPending = false, false
 		s.followGeneration++
-		s.folders = resource[[]folder]{}
-		s.videos = resource[videoPage]{}
-		s.more = resource[videoPage]{}
-		s.source = source{}
-		s.selected = map[string]bool{}
+		s.folderCatalogs = nil
+		s.pendingFolder = ""
+		s.clearLists()
 		s.groups = nil
 		s.staged = nil
-		s.folderVersion++
-		s.sourceVersion++
-		s.autoPending = false
 		s.cookie = ""
 		s.editCookie = false
 		s.loadProfile()

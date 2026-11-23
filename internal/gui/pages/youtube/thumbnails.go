@@ -4,11 +4,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/icons"
-	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/egoist/mygo/ui"
 	"github.com/kamiertop/videodown/internal/gui/components"
+	"github.com/kamiertop/videodown/internal/gui/icons"
 	"github.com/kamiertop/videodown/internal/gui/style"
 	yt "github.com/kamiertop/videodown/youtube"
 )
@@ -80,7 +78,7 @@ func (s *State) requestThumbnail(video yt.Video, entry *thumbnail) {
 // Source rows and queue groups share one bounded cache. Offscreen rows and
 // collapsed group children do not request images.
 func (s *State) thumbnailFrame(c *ui.Context, video yt.Video, width, height float32, label string) {
-	k := core.Tokens(c)
+	k := c.Theme()
 	frame := ui.Box(c).Label(label).Size(width, height).Shrink(0).Clip().Radius(style.RadiusMedia).Background(k.Background).Center()
 	entry := s.thumbnails[video.ID]
 	if frame.Bounds().W == 0 {
@@ -97,9 +95,9 @@ func (s *State) thumbnailFrame(c *ui.Context, video yt.Video, width, height floa
 		case entry != nil && entry.Bitmap != nil:
 			ui.Image(c, entry.Bitmap).Fill().Fit(ui.Cover)
 		case entry != nil && entry.Loading:
-			core.Spinner(c, core.SpinnerOptions{Size: 16, Label: "正在加载封面"})
+			components.Spinner(c, components.SpinnerOptions{Size: 16, Label: "正在加载封面"})
 		case entry != nil && entry.Error != "":
-			components.Button(c.Key("retry"), "", input.ButtonOptions{Variant: input.Ghost, Icon: icons.Must("refresh-cw"), Label: "重试封面：" + video.ID}).Size(28, 28).MinWidth(28).Padding(0).Tooltip(entry.Error).OnClick(func() { s.requestThumbnail(video, entry) })
+			components.Button(c.Key("retry"), "", components.ButtonOptions{Variant: components.ButtonGhost, Icon: icons.Must("refresh-cw"), Label: "重试封面：" + video.ID}).Size(28, 28).MinWidth(28).Padding(0).Tooltip(entry.Error).OnClick(func() { s.requestThumbnail(video, entry) })
 		default:
 			ui.Icon(c, icons.Must("image")).Size(20, 20).TextColor(k.TextMuted)
 		}

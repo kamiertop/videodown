@@ -45,3 +45,14 @@ func (s *State) maybeAutoAuthorLists(mid uint64) {
 			len(lists.SeasonsList)+len(lists.SeriesList) < lists.Page.Total
 	}, func() { s.loadAuthorLists(s.listPage+1, true) })
 }
+
+// maybeMoreAuthorFollows keeps appending the follow grid as the UP 主 page
+// scrolls near its end, replacing the manual pager that jumped the layout.
+func (s *State) maybeMoreAuthorFollows() {
+	const key = "author-follows"
+	s.maybeAutoPage(key, followsScrollKey, func() bool {
+		return s.activePath == "/bilibili/up" &&
+			s.follows.Loaded && !s.follows.Loading && s.follows.Error == "" &&
+			len(s.follows.Data.List) < s.follows.Data.Total
+	}, func() { s.loadFollows(true) })
+}

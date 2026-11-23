@@ -3,8 +3,6 @@ package settings
 import (
 	"fmt"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/egoist/mygo/ui"
 	"github.com/kamiertop/videodown/internal/gui/components"
 	"github.com/kamiertop/videodown/internal/gui/preferences"
@@ -14,11 +12,7 @@ import (
 func (s *State) downloadSettings(c *ui.Context, w Services) {
 	settingCard(c, "并发数量", "zap", func() {
 		components.Muted(c, fmt.Sprintf("同时下载视频的数量 [ %d ]", int(s.Config.Concurrency)))
-		var marks []input.SliderMark
-		for i := 1; i <= 10; i++ {
-			marks = append(marks, input.SliderMark{Value: float64(i), Label: fmt.Sprint(i)})
-		}
-		slider := input.Slider(c.Key("concurrency"), &s.Config.Concurrency, input.SliderOptions{Label: "并发下载数量", Min: 1, Max: 10, Step: 1, Marks: marks})
+		slider := components.Slider(c.Key("concurrency"), &s.Config.Concurrency, components.SliderOptions{Label: "并发下载数量", Min: 1, Max: 10, Step: 1})
 		if slider.Changed() {
 			saveSetting(w, preferences.Changes{Concurrency: new(int(s.Config.Concurrency))})
 		}
@@ -28,14 +22,14 @@ func (s *State) downloadSettings(c *ui.Context, w Services) {
 		ui.Row(c).FillWidth().Gap(12).AlignItems(ui.Center).Children(func() {
 			ui.Column(c).Grow(1).MinWidth(0).Children(func() {
 				sliderValue := min(s.Config.Sleep, 600)
-				result := input.Slider(c.Key("sleep"), &sliderValue, input.SliderOptions{Label: "下载后休眠滑块", Min: 0, Max: 600, Step: 5})
+				result := components.Slider(c.Key("sleep"), &sliderValue, components.SliderOptions{Label: "下载后休眠滑块", Min: 0, Max: 600, Step: 5})
 				if result.Changed() {
 					s.Config.Sleep = sliderValue
 					saveSetting(w, preferences.Changes{Sleep: new(int64(s.Config.Sleep))})
 				}
 			})
 			ui.Column(c).Width(132).Shrink(0).Children(func() {
-				field := input.NumberInput(c.Key("seconds"), &s.Config.Sleep, input.NumberInputOptions{Label: "下载后休眠秒数", Min: 0, Max: 3600, Step: 1})
+				field := components.NumberInput(c.Key("seconds"), &s.Config.Sleep, components.NumberInputOptions{Label: "下载后休眠秒数", Min: 0, Max: 3600, Step: 1})
 				if field.Changed() {
 					saveSetting(w, preferences.Changes{Sleep: new(int64(s.Config.Sleep))})
 				}
@@ -51,11 +45,11 @@ func presets(c *ui.Context, value *float64, values []int, w Services, key string
 	if columns > 6 {
 		columns = 5
 	}
-	k := core.Tokens(c)
+	k := c.Theme()
 	// Compose the library's individual Toggles so each item's radius can be
 	// styled; ToggleGroup currently exposes only its outer element.
 	ui.Grid(c.Key(key+"-presets")).Columns(columns).FillWidth().AlignSelf(ui.Stretch).
-		Radius(style.RadiusMenu).Border(style.BorderWidth, k.ControlBorder).Background(k.Surface).Padding(4).Gap(4).
+		Radius(style.RadiusMenu).Border(style.BorderWidth, k.Border).Background(k.Surface).Padding(4).Gap(4).
 		Role(ui.RoleGroup).Label("休眠快捷选项").FocusGroup(ui.Horizontal).Children(func() {
 		for _, n := range values {
 			label := fmt.Sprintf("%d 秒", n)
@@ -63,7 +57,7 @@ func presets(c *ui.Context, value *float64, values []int, w Services, key string
 				label = "不休眠"
 			}
 			on := *value == float64(n)
-			input.Toggle(c.Key(n), &on, label, input.ToggleOptions{Label: label}).
+			components.Toggle(c.Key(n), &on, label, components.ToggleOptions{Label: label}).
 				FillWidth().
 				MinWidth(0).
 				Radius(style.RadiusChoice).

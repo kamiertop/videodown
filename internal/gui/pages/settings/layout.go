@@ -1,12 +1,9 @@
 package settings
 
 import (
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/icons"
-	"github.com/ELY-Open-Source/MujicaUI/input"
-	"github.com/ELY-Open-Source/MujicaUI/layout"
 	"github.com/egoist/mygo/ui"
 	"github.com/kamiertop/videodown/internal/gui/components"
+	"github.com/kamiertop/videodown/internal/gui/icons"
 	"github.com/kamiertop/videodown/internal/gui/navigation"
 	"github.com/kamiertop/videodown/internal/gui/preferences"
 	"github.com/kamiertop/videodown/internal/gui/style"
@@ -15,7 +12,7 @@ import (
 // Layout uses a fixed category rail
 // and an independently scrolling form, with a centered maximum content width.
 func (s *State) Layout(c *ui.Context, p navigation.Page, path string, navigate func(string), content func()) {
-	k := core.Tokens(c)
+	k := c.Theme()
 	width, _ := c.Size()
 	compact := width < style.CompactBreakpoint
 	root := ui.Row(c.Key("settings-layout")).Fill().MinHeight(0).AlignItems(ui.Stretch)
@@ -60,7 +57,7 @@ func (s *State) Layout(c *ui.Context, p navigation.Page, path string, navigate f
 
 // Form owns only the scrolling content of a settings subroute.
 func (s *State) Form(c *ui.Context, p navigation.Page, path string, window Services, scroll *ui.ScrollState) {
-	layout.ScrollArea(c, scroll, layout.ScrollAreaOptions{}, func() {
+	components.ScrollArea(c, scroll, components.ScrollAreaOptions{}, func() {
 		ui.Column(c).FillWidth().Padding(24).AlignItems(ui.Center).Children(func() {
 			maximum := float32(672)
 			id := p.CurrentSection(path)
@@ -94,7 +91,7 @@ func (s *State) settingsPage(c *ui.Context, id string, w Services) {
 }
 
 func settingCard(c *ui.Context, title, icon string, body func()) {
-	k := core.Tokens(c)
+	k := c.Theme()
 	ui.Column(c).
 		FillWidth().
 		Padding(24).
@@ -110,7 +107,7 @@ func settingCard(c *ui.Context, title, icon string, body func()) {
 						if !ok {
 							svg = icons.Must("settings")
 						}
-						ui.Icon(c, svg).Size(20, 20).TextColor(k.AccentText)
+						ui.Icon(c, svg).Size(20, 20).TextColor(k.Accent)
 						ui.Text(c, title).FontSize(style.Font(c, style.FontHeading)).FontWeight(style.WeightSemibold)
 					})
 			}
@@ -128,12 +125,12 @@ func toggleCard(c *ui.Context, title, icon, label, description string, value *bo
 	})
 }
 func insetToggle(c *ui.Context, label, description string, value *bool, disabled bool, changed func()) {
-	k := core.Tokens(c)
+	k := c.Theme()
 	ui.Row(c).FillWidth().Padding(16).Gap(24).AlignItems(ui.Center).Radius(style.RadiusMenu).Background(k.Background).Border(style.BorderWidth, k.Border.Alpha(.6)).Children(func() {
 		ui.Column(c).Grow(1).MinWidth(0).Gap(6).Children(func() {
 			ui.Text(c, label).FillWidth().FontWeight(style.WeightSemibold)
 			components.Muted(c, description)
 		})
-		components.SettingsSwitch(c, value, label+"开关", input.SwitchOptions{Disabled: disabled, Description: description}).OnClick(changed)
+		components.SettingsSwitch(c, value, label+"开关", components.SwitchOptions{Disabled: disabled, Description: description}).OnClick(changed)
 	})
 }

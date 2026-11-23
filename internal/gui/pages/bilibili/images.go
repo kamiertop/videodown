@@ -4,9 +4,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/icons"
 	"github.com/egoist/mygo/ui"
+	"github.com/kamiertop/videodown/internal/gui/icons"
 	"github.com/kamiertop/videodown/internal/gui/imagecache"
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
@@ -23,7 +22,7 @@ func (s *State) imageWithRadius(c *ui.Context, url string, width, height float32
 	if strings.HasPrefix(url, "//") {
 		url = "https:" + url
 	}
-	frame := ui.Box(c).Shrink(0).Clip().Radius(radius).Background(core.Tokens(c).Background).Center()
+	frame := ui.Box(c).Shrink(0).Clip().Radius(radius).Background(c.Theme().Background).Center()
 	if width == 0 {
 		frame.FillWidth().AspectRatio(style.MediaAspectRatio)
 	} else {
@@ -67,7 +66,7 @@ func (s *State) imageWithRadius(c *ui.Context, url string, width, height float32
 			if avatar {
 				name = "user"
 			}
-			ui.Icon(c, icons.Must(name)).Size(24, 24).TextColor(core.Tokens(c).TextMuted)
+			ui.Icon(c, icons.Must(name)).Size(24, 24).TextColor(c.Theme().TextMuted)
 		}
 	})
 }

@@ -7,8 +7,6 @@ import (
 	"github.com/kamiertop/videodown/internal/gui/components"
 	"github.com/kamiertop/videodown/internal/gui/style"
 
-	"github.com/ELY-Open-Source/MujicaUI/input"
-	"github.com/ELY-Open-Source/MujicaUI/overlay"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 )
@@ -108,14 +106,14 @@ func (s *Shell) closeDialogs(c *ui.Context) {
 	if state.Prompt == closing.ConfirmTasks {
 		title, description = "还有任务未完成", "退出会中断正在进行的下载任务。"
 	}
-	overlay.Dialog(c, &state.Open,
-		overlay.DialogOptions{Title: title, Description: description, KeepOnBackdrop: true, KeepOnEscape: state.Saving, HideClose: state.Saving},
+	components.Dialog(c, &state.Open,
+		components.DialogOptions{Title: title, Description: description, KeepOnBackdrop: true, KeepOnEscape: state.Saving, HideClose: state.Saving},
 		func() {
 			if state.Active > 0 {
 				components.Muted(c, fmt.Sprintf("仍有 %d 个任务正在下载，退出会中断这些任务。", state.Active))
 			}
 			if state.Prompt == closing.Choose {
-				input.Checkbox(c.Key("remember-close"), &state.Remember, "记住选择，下次不再询问", input.CheckboxOptions{Disabled: state.Saving})
+				components.Checkbox(c.Key("remember-close"), &state.Remember, "记住选择，下次不再询问", components.CheckboxOptions{Disabled: state.Saving})
 			}
 			if s.trayError != "" {
 				components.Muted(c, s.trayError)
@@ -131,7 +129,7 @@ func (s *Shell) closeDialogs(c *ui.Context) {
 					if state.Prompt == closing.ConfirmTasks {
 						label = "最小化到托盘，继续下载"
 					}
-					components.Button(c.Key("hide"), label, input.ButtonOptions{Variant: input.Outline, Disabled: s.tray == nil || state.Saving}).
+					components.Button(c.Key("hide"), label, components.ButtonOptions{Variant: components.ButtonOutline, Disabled: s.tray == nil || state.Saving}).
 						FillWidth().
 						Radius(style.RadiusMenu).
 						OnClick(func() {
@@ -146,7 +144,7 @@ func (s *Shell) closeDialogs(c *ui.Context) {
 					if state.Prompt == closing.ConfirmTasks {
 						label = "仍要退出"
 					}
-					components.Button(c.Key("exit"), label, input.ButtonOptions{Variant: input.Ghost, Loading: state.Saving}).
+					components.Button(c.Key("exit"), label, components.ButtonOptions{Variant: components.ButtonGhost, Loading: state.Saving}).
 						FillWidth().
 						Radius(style.RadiusMenu).
 						OnClick(func() {
@@ -158,7 +156,7 @@ func (s *Shell) closeDialogs(c *ui.Context) {
 								mygo.App.Quit()
 							}
 						})
-					components.Button(c.Key("cancel"), "取消", input.ButtonOptions{Variant: input.Ghost, Disabled: state.Saving}).
+					components.Button(c.Key("cancel"), "取消", components.ButtonOptions{Variant: components.ButtonGhost, Disabled: state.Saving}).
 						FillWidth().
 						Radius(style.RadiusMenu).
 						OnClick(func() { state.Open = false; state.Remember = false })

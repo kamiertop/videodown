@@ -2,14 +2,12 @@ package bilibili
 
 import (
 	"fmt"
+	"github.com/kamiertop/videodown/internal/gui/components"
 	"strings"
 	"time"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/icons"
-	"github.com/ELY-Open-Source/MujicaUI/input"
-	"github.com/ELY-Open-Source/MujicaUI/layout"
 	"github.com/egoist/mygo/ui"
+	"github.com/kamiertop/videodown/internal/gui/icons"
 
 	"github.com/kamiertop/videodown/bilibili/model"
 	"github.com/kamiertop/videodown/internal/gui/navigation"
@@ -132,7 +130,7 @@ func (s *State) dynamic(c *ui.Context, navigate func(string)) {
 	if s.requiresLogin(c, navigate) {
 		return
 	}
-	k := core.Tokens(c)
+	k := c.Theme()
 	items := s.dynamics.Data.Items
 	selected := s.dynamicSelectedCount()
 	_, height := c.Size()
@@ -142,13 +140,13 @@ func (s *State) dynamic(c *ui.Context, navigate func(string)) {
 			ui.Text(c, "关注动态").Shrink(0).SingleLine().FontWeight(style.WeightSemibold)
 			ui.Text(c, fmt.Sprintf("已加载 %d 个 · 已选 %d 个", len(items), selected)).Grow(1).MinWidth(0).SingleLine().
 				FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted)
-			button(c.Key("refresh"), "刷新", input.ButtonOptions{Variant: input.Outline, Icon: icons.Must("refresh-cw"), Loading: s.dynamics.Loading}).
+			button(c.Key("refresh"), "刷新", components.ButtonOptions{Variant: components.ButtonOutline, Icon: icons.Must("refresh-cw"), Loading: s.dynamics.Loading}).
 				Height(32).OnClick(func() { s.loadDynamics(false) })
 			if selected > 0 {
-				button(c.Key("clear-selection"), "清空选择", input.ButtonOptions{Variant: input.Ghost}).
+				button(c.Key("clear-selection"), "清空选择", components.ButtonOptions{Variant: components.ButtonGhost}).
 					Height(32).OnClick(func() { s.dynamicSelected = make(map[string]bool) })
 			}
-			button(c.Key("selected-download"), fmt.Sprintf("下载已选 (%d)", selected), input.ButtonOptions{Variant: input.Primary, Disabled: selected == 0}).
+			button(c.Key("selected-download"), fmt.Sprintf("下载已选 (%d)", selected), components.ButtonOptions{Variant: components.ButtonPrimary, Disabled: selected == 0}).
 				Height(32).OnClick(func() { s.stageSelectedDynamics(navigate) })
 		})
 	})
@@ -178,7 +176,7 @@ func (s *State) dynamic(c *ui.Context, navigate func(string)) {
 				})
 			} else if s.dynamicHasMore && (s.runtime.After == nil || s.dynamicAutoFillPages >= style.DynamicAutoFillLimit) {
 				ui.Row(c).FillWidth().Justify(ui.Center).Padding(style.SpaceMedium).Children(func() {
-					button(c.Key("more"), "继续加载", input.ButtonOptions{Variant: input.Outline}).
+					button(c.Key("more"), "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).
 						OnClick(func() { s.dynamicAutoFillPages = 0; s.loadDynamics(true) })
 				})
 			}
@@ -186,7 +184,7 @@ func (s *State) dynamic(c *ui.Context, navigate func(string)) {
 		}
 		ui.Column(c).FillWidth().Grow(1).MinHeight(0).Children(func() {
 			s.dynamicColumns(c)
-			layout.ScrollArea(c.Key("dynamic-scroll"), s.scroll("dynamic-videos"), layout.ScrollAreaOptions{}, func() {
+			components.ScrollArea(c.Key("dynamic-scroll"), s.scroll("dynamic-videos"), components.ScrollAreaOptions{}, func() {
 				ui.Column(c).FillWidth().Padding(0, style.ScrollbarGutter, 0, 0).Children(func() {
 					for _, item := range items {
 						s.dynamicRow(c.Key(item.Bvid), item, navigate)
@@ -206,7 +204,7 @@ func (s *State) dynamic(c *ui.Context, navigate func(string)) {
 					if s.dynamicMore.Loading {
 						caption(c, "正在加载更多")
 					} else if shortListFallback && s.dynamicMore.Error == "" {
-						button(c.Key("more"), "继续加载", input.ButtonOptions{Variant: input.Outline}).
+						button(c.Key("more"), "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).
 							Height(32).OnClick(func() {
 							s.dynamicAutoFillPages = 0
 							s.loadDynamics(true)
@@ -219,7 +217,7 @@ func (s *State) dynamic(c *ui.Context, navigate func(string)) {
 }
 
 func (s *State) dynamicColumns(c *ui.Context) {
-	k := core.Tokens(c)
+	k := c.Theme()
 	ui.Row(c).FillWidth().Height(style.DynamicColumnsHeight).
 		Padding(0, style.ScrollbarGutter+style.SpaceMedium, 0, style.SpaceMedium).Gap(style.DynamicColumnGap).
 		AlignItems(ui.Center).Background(k.Background).BorderColor(k.Border).BorderWidth(0, 0, style.BorderWidth, 0).
@@ -233,7 +231,7 @@ func (s *State) dynamicColumns(c *ui.Context) {
 }
 
 func (s *State) dynamicRow(c *ui.Context, item model.DynamicArchiveItem, navigate func(string)) {
-	k := core.Tokens(c)
+	k := c.Theme()
 	title := item.Title
 	if title == "" {
 		title = "未命名视频"
@@ -275,7 +273,7 @@ func (s *State) dynamicRow(c *ui.Context, item model.DynamicArchiveItem, navigat
 					Background(ui.Transparent).TextColor(k.TextMuted).Cursor(ui.CursorPointer)
 				if link.Hovered() || link.FocusVisible() {
 					authorHovered = true
-					link.TextColor(k.AccentText).BorderColor(k.Accent)
+					link.TextColor(k.Accent).BorderColor(k.Accent)
 				}
 				link.Children(func() { ui.Text(c, author).SingleLine().MaxWidthPercent(100) }).
 					OnClick(func() { navigate(navigation.BilibiliAuthorPath(uint64(item.Mid))) })
@@ -286,7 +284,7 @@ func (s *State) dynamicRow(c *ui.Context, item model.DynamicArchiveItem, navigat
 		ui.Text(c, dynamicTime(item)).Width(style.DynamicTimeWidth).Shrink(0).SingleLine().
 			FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted)
 		ui.Row(c).Width(style.DynamicActionWidth).Shrink(0).Justify(ui.End).Children(func() {
-			one := button(c.Key("download"), "下载", input.ButtonOptions{Variant: input.Primary, Label: "下载视频：" + title, Disabled: !valid}).Height(30)
+			one := button(c.Key("download"), "下载", components.ButtonOptions{Variant: components.ButtonPrimary, Label: "下载视频：" + title, Disabled: !valid}).Height(30)
 			downloadHovered = one.Hovered() || one.FocusVisible()
 			one.OnClick(func() {
 				s.stageDynamic(item)

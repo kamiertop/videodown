@@ -3,10 +3,10 @@ package youtube
 import (
 	"context"
 	"fmt"
+	"github.com/kamiertop/videodown/internal/gui/style"
 	"testing"
 	"time"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/egoist/mygo/ui"
 	yt "github.com/kamiertop/videodown/youtube"
 )
@@ -27,7 +27,7 @@ func TestDownloadListVirtualizesExpandedGroup(t *testing.T) {
 	target := s.queue[40]
 	target.Status = "ready"
 	test := ui.NewTester(func(c *ui.Context) {
-		core.Use(c, core.Settings{})
+		style.UseTheme(c)
 		s.Form(c, "/youtube/download", nil)
 	}, 1200, 720)
 	test.Frame()
@@ -85,7 +85,7 @@ func TestPlaylistListKeepsSelectionAndPagination(t *testing.T) {
 	}
 	firstRow := s.playlistRows[0]
 	test := ui.NewTester(func(c *ui.Context) {
-		core.Use(c, core.Settings{})
+		style.UseTheme(c)
 		s.Form(c, "/youtube/playlist", nil)
 	}, 1200, 720)
 	test.Frame()

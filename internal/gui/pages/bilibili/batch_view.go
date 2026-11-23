@@ -2,13 +2,11 @@ package bilibili
 
 import (
 	"fmt"
+	"github.com/kamiertop/videodown/internal/gui/components"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/feedback"
-	"github.com/ELY-Open-Source/MujicaUI/icons"
-	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/egoist/mygo/ui"
 	bilidownload "github.com/kamiertop/videodown/bilibili/download"
+	"github.com/kamiertop/videodown/internal/gui/icons"
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
 
@@ -53,7 +51,7 @@ func batchStatus(b *batchSession) string {
 }
 
 func (s *State) batchDownloadCard(c *ui.Context, b *batchSession) {
-	k := core.Tokens(c)
+	k := c.Theme()
 	panel(c, fmt.Sprintf("批量下载：%d", b.ID), func() {
 		var disclosure ui.CollapsibleParts
 		ui.Row(c.Key("header")).FillWidth().Padding(style.SpaceSmall).Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
@@ -67,19 +65,19 @@ func (s *State) batchDownloadCard(c *ui.Context, b *batchSession) {
 				ui.Text(c, b.Source.Title).Grow(1).MinWidth(0).MaxLines(1).FontWeight(style.WeightSemibold)
 			})
 			if b.Active {
-				downloadCardButton(c.Key("stop"), "停止", input.ButtonOptions{Variant: input.Outline, Label: fmt.Sprintf("停止批量：%d", b.ID), Disabled: b.StopRequested}).OnClick(func() { s.stopBatch(b) })
+				downloadCardButton(c.Key("stop"), "停止", components.ButtonOptions{Variant: components.ButtonOutline, Label: fmt.Sprintf("停止批量：%d", b.ID), Disabled: b.StopRequested}).OnClick(func() { s.stopBatch(b) })
 			} else {
 				if b.Status == "stopped" || b.Failed > 0 {
-					downloadCardButton(c.Key("resume"), "继续 / 重试", input.ButtonOptions{Variant: input.Primary, Label: fmt.Sprintf("继续批量：%d", b.ID), Disabled: !s.loggedIn}).OnClick(func() { s.resumeBatch(b) })
+					downloadCardButton(c.Key("resume"), "继续 / 重试", components.ButtonOptions{Variant: components.ButtonPrimary, Label: fmt.Sprintf("继续批量：%d", b.ID), Disabled: !s.loggedIn}).OnClick(func() { s.resumeBatch(b) })
 				}
-				downloadCardButton(c.Key("dismiss"), "关闭", input.ButtonOptions{Variant: input.Ghost, Label: fmt.Sprintf("关闭批量：%d", b.ID)}).OnClick(func() { s.dismissBatch(b) })
+				downloadCardButton(c.Key("dismiss"), "关闭", components.ButtonOptions{Variant: components.ButtonGhost, Label: fmt.Sprintf("关闭批量：%d", b.ID)}).OnClick(func() { s.dismissBatch(b) })
 			}
 		})
 		ui.Row(c.Key("summary")).FillWidth().Padding(0, style.SpaceMedium, style.SpaceSmall).Gap(style.SpaceSmall).Wrap().AlignItems(ui.Center).Children(func() {
 			if b.Active && b.Status != "queued" {
-				core.Spinner(c, core.SpinnerOptions{Size: 14, Label: batchStatus(b)})
+				components.Spinner(c, components.SpinnerOptions{Size: 14, Label: batchStatus(b)})
 			}
-			ui.Text(c, batchStatus(b)).FontSize(style.Font(c, style.FontMeta)).TextColor(k.AccentText)
+			ui.Text(c, batchStatus(b)).FontSize(style.Font(c, style.FontMeta)).TextColor(k.Accent)
 			ui.Text(c, fmt.Sprintf("已加载 %d/%d · 已完成 %d · 跳过 %d · 失败 %d", len(b.Items), max(b.Total, len(b.Items)), b.Done, b.Skipped, b.Failed)).FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted)
 		})
 		disclosure.Panel(func() {
@@ -98,11 +96,11 @@ func (s *State) batchDownloadCard(c *ui.Context, b *batchSession) {
 						ui.Column(c.Key("info")).Grow(1).MinWidth(0).Gap(4).Children(func() {
 							ui.Text(c, item.Task.Title).FillWidth().MaxLines(2).FontWeight(style.WeightSemibold)
 							if item.Error != "" {
-								ui.Text(c, item.Error).FillWidth().MaxLines(2).TextColor(k.DangerFill).FontSize(style.Font(c, style.FontMeta))
+								ui.Text(c, item.Error).FillWidth().MaxLines(2).TextColor(k.Danger).FontSize(style.Font(c, style.FontMeta))
 							} else if item.Status == "downloading" && item.Progress.Phase != "" {
 								downloadProgress(c.Key("progress"), item.Progress)
 							} else if item.Status == "downloading" {
-								core.Spinner(c, core.SpinnerOptions{Size: 14, Label: "正在解析地址", ShowLabel: true})
+								components.Spinner(c, components.SpinnerOptions{Size: 14, Label: "正在解析地址", ShowLabel: true})
 							} else {
 								ui.Text(c, "等待解析与下载").FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted)
 							}
@@ -127,15 +125,17 @@ func phaseLabel(phase string) string {
 
 func downloadProgress(c *ui.Context, p bilidownload.Progress) {
 	if p.Phase == "sleep" {
-		label := fmt.Sprintf("休眠中 · %d 秒", max(0, p.SleepRemaining))
-		core.Spinner(c.Key("sleep"), core.SpinnerOptions{Size: 14, Label: label, ShowLabel: true})
+		// 进度条保持在顶部位置不变，休眠指示放在它下面，
+		// 阶段切换时不会把进度条顶下去。
 		fraction := 0.0
 		if p.SleepTotal > 0 {
 			fraction = float64(p.SleepTotal-p.SleepRemaining) / float64(p.SleepTotal)
 		}
-		feedback.Progress(c.Key("sleep-progress"), max(0, min(1, fraction)), feedback.ProgressOptions{})
+		components.Progress(c.Key("sleep-progress"), max(0, min(1, fraction)), components.ProgressOptions{}).Label("休眠进度")
+		label := fmt.Sprintf("休眠中 · %d 秒", max(0, p.SleepRemaining))
+		components.Spinner(c.Key("sleep"), components.SpinnerOptions{Size: 14, Label: label, ShowLabel: true})
 		return
 	}
 	percent := max(0, min(100, p.Percent))
-	feedback.Progress(c, percent/100, feedback.ProgressOptions{Label: phaseLabel(p.Phase), ShowValue: true, Indeterminate: p.Phase == "merge" || p.Percent < 0})
+	components.Progress(c, percent/100, components.ProgressOptions{Label: phaseLabel(p.Phase), ShowValue: true, Indeterminate: p.Phase == "merge" || p.Percent < 0})
 }

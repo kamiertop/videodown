@@ -3,12 +3,12 @@ module github.com/kamiertop/videodown
 go 1.27.3
 
 require (
-	github.com/ELY-Open-Source/MujicaUI v0.0.0-20261110124549-877e99239894
-	github.com/dop251/goja v0.0.0-20261110204830-f493a2b600d6
-	github.com/egoist/mygo v0.9.0
+	github.com/dop251/goja v0.0.0-20261122185237-35fdc4b88e39
+	github.com/egoist/mygo v0.10.0
 	github.com/glebarez/go-sqlite v1.23.0
 	github.com/imroc/req/v3 v3.61.0
 	github.com/jmoiron/sqlx v1.4.0
+	github.com/oneo-me/onevra/source v0.2026.18
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/rs/zerolog v1.35.1
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
@@ -21,13 +21,13 @@ require (
 	github.com/ProtonMail/go-crypto v1.4.1 // indirect
 	github.com/andybalholm/brotli v1.2.8 // indirect
 	github.com/cloudflare/circl v1.6.2 // indirect
-	github.com/dlclark/regexp2/v2 v2.13.0 // indirect
+	github.com/dlclark/regexp2/v2 v2.13.2 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.11.3 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect
 	github.com/go-text/typesetting v0.3.5 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
-	github.com/google/pprof v0.0.0-20261111200114-fac431ef4d26 // indirect
+	github.com/google/pprof v0.0.0-20261118010117-084b33a85f63 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/icholy/digest v1.2.0 // indirect
 	github.com/klauspost/compress v1.20.4 // indirect
@@ -40,8 +40,8 @@ require (
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/ulikunitz/xz v0.5.15 // indirect
 	go.digitalxero.dev/rpm v0.3.4 // indirect
-	golang.org/x/crypto v0.58.0 // indirect
-	golang.org/x/net v0.62.0 // indirect
+	golang.org/x/crypto v0.59.0 // indirect
+	golang.org/x/net v0.63.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect
 	golang.org/x/text v0.44.0 // indirect
 	modernc.org/libc v1.74.4 // indirect

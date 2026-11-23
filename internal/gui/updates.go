@@ -5,11 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/feedback"
-	"github.com/ELY-Open-Source/MujicaUI/input"
-	"github.com/ELY-Open-Source/MujicaUI/layout"
-	"github.com/ELY-Open-Source/MujicaUI/overlay"
 	"github.com/egoist/mygo/ui"
 	"golang.org/x/mod/semver"
 
@@ -107,7 +102,7 @@ func (s *Shell) updateDialog(c *ui.Context) {
 	if !semver.IsValid(s.updateResult.CurrentVersion) {
 		title = "发现正式版本"
 	}
-	overlay.Dialog(c.Key("app-update"), &s.updateOpen, overlay.DialogOptions{Title: title, Description: "最新版本：" + s.updateResult.LatestVersion}, func() {
+	components.Dialog(c.Key("app-update"), &s.updateOpen, components.DialogOptions{Title: title, Description: "最新版本：" + s.updateResult.LatestVersion}, func() {
 		ui.Column(c).FillWidth().Gap(style.SpaceMedium).Children(func() {
 			current := s.updateResult.CurrentVersion
 			if current == "" {
@@ -115,32 +110,32 @@ func (s *Shell) updateDialog(c *ui.Context) {
 			}
 			components.Muted(c, "当前版本："+current)
 			if s.updateResult.ReleaseNotes != "" {
-				layout.ScrollArea(c.Key("release-notes"), &s.updateNotes, layout.ScrollAreaOptions{}, func() { ui.Text(c, s.updateResult.ReleaseNotes).FillWidth() }).MaxHeight(180)
+				components.ScrollArea(c.Key("release-notes"), &s.updateNotes, components.ScrollAreaOptions{}, func() { ui.Text(c, s.updateResult.ReleaseNotes).FillWidth() }).MaxHeight(180)
 			}
 			if s.updateError != "" {
 				components.Muted(c, s.updateError)
 			}
 			if s.updateInstalling {
 				if s.updateDownloaded {
-					core.Spinner(c.Key("update-installing"), core.SpinnerOptions{Size: 14, Label: "正在安装更新，应用即将重启…", ShowLabel: true})
+					components.Spinner(c.Key("update-installing"), components.SpinnerOptions{Size: 14, Label: "正在安装更新，应用即将重启…", ShowLabel: true})
 					return
 				}
 				if s.updateTotal > 0 {
 					fraction := float64(s.updateDone) / float64(s.updateTotal)
-					feedback.Progress(c.Key("update-progress"), max(0, min(1, fraction)), feedback.ProgressOptions{})
+					components.Progress(c.Key("update-progress"), max(0, min(1, fraction)), components.ProgressOptions{})
 					components.Muted(c, fmt.Sprintf("正在下载更新 %.1f / %.1f MB", mb(s.updateDone), mb(s.updateTotal)))
 				} else {
 					// The server sent no Content-Length; only downloaded bytes are known.
 					components.Muted(c, fmt.Sprintf("正在下载更新 %.1f MB", mb(s.updateDone)))
 				}
 				ui.Row(c).FillWidth().Justify(ui.End).Gap(style.SpaceSmall).Children(func() {
-					components.Button(c, "取消", input.ButtonOptions{Variant: input.Outline}).OnClick(s.stopUpdateDownload)
+					components.Button(c, "取消", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(s.stopUpdateDownload)
 				})
 				return
 			}
 			ui.Row(c).FillWidth().Justify(ui.End).Gap(style.SpaceSmall).Children(func() {
-				components.Button(c, "稍后再说", input.ButtonOptions{Variant: input.Outline}).OnClick(func() { s.updateOpen = false })
-				components.Button(c, "立即更新", input.ButtonOptions{Variant: input.Primary}).OnClick(s.installUpdate)
+				components.Button(c, "稍后再说", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() { s.updateOpen = false })
+				components.Button(c, "立即更新", components.ButtonOptions{Variant: components.ButtonPrimary}).OnClick(s.installUpdate)
 			})
 		})
 	})

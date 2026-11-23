@@ -3,11 +3,9 @@ package youtube
 import (
 	"strings"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/icons"
-	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/egoist/mygo/ui"
 	"github.com/kamiertop/videodown/internal/gui/components"
+	"github.com/kamiertop/videodown/internal/gui/icons"
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
 
@@ -16,7 +14,7 @@ func (s *State) Layout(c *ui.Context, path string, navigate func(string), conten
 	if path == "/youtube" {
 		section = "download"
 	}
-	k := core.Tokens(c)
+	k := c.Theme()
 	ui.Row(c.Key("youtube-layout")).Fill().MinHeight(0).AlignItems(ui.Stretch).Children(func() {
 		ui.Column(c.Key("rail")).
 			Label("YouTube 导航").Width(style.PlatformNavWidth).Shrink(0).FillHeight().
@@ -33,10 +31,10 @@ func (s *State) Layout(c *ui.Context, path string, navigate func(string), conten
 	})
 }
 func (s *State) navButton(c *ui.Context, id, label, icon string, active bool, navigate func(string)) {
-	k := core.Tokens(c)
-	b := components.Button(c.Key(id), label, input.ButtonOptions{Variant: input.Ghost, Icon: icons.Must(icon), Label: "YouTube" + label}).FillWidth().Height(style.PlatformNavItemHeight).Column().Center().Gap(7).Padding(4).FontSize(style.Font(c, style.FontCompact)).Border(1, k.Border).Background(k.Background)
+	k := c.Theme()
+	b := components.Button(c.Key(id), label, components.ButtonOptions{Variant: components.ButtonGhost, Icon: icons.Must(icon), Label: "YouTube" + label}).FillWidth().Height(style.PlatformNavItemHeight).Column().Center().Gap(7).Padding(4).FontSize(style.Font(c, style.FontCompact)).Border(1, k.Border).Background(k.Background)
 	if active {
-		b.Background(k.Selection).TextColor(k.AccentText).Border(1, k.AccentText)
+		b.Background(k.Selection).TextColor(k.Accent).Border(1, k.Accent)
 	}
 	b.OnClick(func() { navigate("/youtube/" + id) })
 }

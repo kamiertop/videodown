@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/egoist/mygo/ui"
 	"github.com/kamiertop/videodown/internal/gui/navigation"
 	"github.com/kamiertop/videodown/internal/gui/style"
@@ -40,7 +39,7 @@ func (s *State) mediaCardWithAuthor(c *ui.Context, bvid, title, cover, author, l
 }
 
 func (s *State) mediaCardWithSelection(c *ui.Context, bvid, title, cover, author, length string, play, danmaku, published int, authorID uint64, navigate func(string), selection *bool) {
-	k := core.Tokens(c)
+	k := c.Theme()
 	valid := strings.HasPrefix(bvid, "BV")
 	linkedAuthor := authorID > 0 && strings.TrimSpace(author) != "" && navigate != nil
 	selected := valid && *selection
@@ -66,7 +65,7 @@ func (s *State) mediaCardWithSelection(c *ui.Context, bvid, title, cover, author
 							Background(ui.Transparent).TextColor(k.TextMuted).Cursor(ui.CursorPointer)
 						authorHovered = link.Hovered() || link.FocusVisible()
 						if authorHovered {
-							link.TextColor(k.AccentText).BorderColor(k.Accent)
+							link.TextColor(k.Accent).BorderColor(k.Accent)
 						}
 						link.Children(func() { ui.Text(c, author).SingleLine() }).
 							OnClick(func() { navigate(navigation.BilibiliAuthorPath(authorID)) })

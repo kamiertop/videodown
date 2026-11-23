@@ -4,16 +4,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/egoist/mygo/ui"
+
+	"github.com/kamiertop/videodown/internal/gui/style"
 )
 
 func TestSettingsSwitchPointerAndKeyboard(t *testing.T) {
 	on, disabled := false, false
 	test := ui.NewTester(func(c *ui.Context) {
-		core.Use(c, core.Settings{})
-		SettingsSwitch(c, &on, "测试开关", input.SwitchOptions{Disabled: disabled})
+		style.UseTheme(c)
+		SettingsSwitch(c, &on, "测试开关", SwitchOptions{Disabled: disabled})
 	}, 200, 100)
 	if err := test.Click("测试开关"); err != nil {
 		t.Fatal(err)

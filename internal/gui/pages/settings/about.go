@@ -1,7 +1,6 @@
 package settings
 
 import (
-	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/egoist/mygo/ui"
 	"github.com/kamiertop/videodown/internal/gui/assets"
 	"github.com/kamiertop/videodown/internal/gui/components"
@@ -43,7 +42,7 @@ func (s *State) aboutSettings(c *ui.Context) {
 			Margin(4, 0, 0, 0).
 			Children(func() {
 				services := c.Services()
-				components.Button(c.Key("source"), "GitHub", input.ButtonOptions{Variant: input.Ghost, Icon: assets.GitHub}).
+				components.Button(c.Key("source"), "GitHub", components.ButtonOptions{Variant: components.ButtonGhost, Icon: assets.GitHub}).
 					OnClick(func() { services.OpenURL(assets.RepositoryURL) })
 			})
 	})

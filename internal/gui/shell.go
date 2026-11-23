@@ -1,4 +1,4 @@
-// Package gui is videodown's native UI: a MyGo window drawn with MujicaUI
+// Package gui is videodown's native UI: a MyGo window drawn with Onevra
 // components for the Go-native application.
 package gui
 
@@ -6,7 +6,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 	biliapi "github.com/kamiertop/videodown/bilibili/api"
@@ -190,7 +189,7 @@ func (s *Shell) OpenWindow() {
 // window needs a frame.
 func (s *Shell) view(c *ui.Context) {
 	s.pushToasts(c)
-	core.Use(c, s.themeSettings())
+	s.applyTheme(c)
 	style.Apply(c)
 	registerShortcut(c)
 	// The transparent window shows the desktop around the rounded frame,
@@ -199,7 +198,7 @@ func (s *Shell) view(c *ui.Context) {
 	if s.win != nil && s.win.IsMaximized() {
 		radius = 0
 	}
-	k := core.Tokens(c)
+	k := c.Theme()
 	c.Root().Background(k.Background).Radius(radius).Clip().Border(style.BorderWidth, k.Border.Alpha(0.5))
 	ui.Column(c).
 		Fill().

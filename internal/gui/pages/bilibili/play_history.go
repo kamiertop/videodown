@@ -2,14 +2,12 @@ package bilibili
 
 import (
 	"fmt"
+	"github.com/kamiertop/videodown/internal/gui/components"
 	"strings"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/icons"
-	"github.com/ELY-Open-Source/MujicaUI/input"
-	"github.com/ELY-Open-Source/MujicaUI/layout"
 	"github.com/egoist/mygo/ui"
 	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/internal/gui/icons"
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
 
@@ -154,7 +152,7 @@ func (s *State) playHistoryPage(c *ui.Context, navigate func(string)) {
 	if s.requiresLogin(c, navigate) {
 		return
 	}
-	k := core.Tokens(c)
+	k := c.Theme()
 	items := s.playHistory.Data.List
 	selected := s.playHistorySelectedCount()
 	selectable := 0
@@ -170,14 +168,14 @@ func (s *State) playHistoryPage(c *ui.Context, navigate func(string)) {
 			ui.Text(c, "播放历史").Shrink(0).SingleLine().FontWeight(style.WeightSemibold)
 			ui.Text(c, fmt.Sprintf("已加载 %d 个", len(items))).Grow(1).MinWidth(0).SingleLine().
 				FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted)
-			button(c.Key("refresh"), "刷新", input.ButtonOptions{Variant: input.Outline, Icon: icons.Must("refresh-cw"), Loading: s.playHistory.Loading}).
+			button(c.Key("refresh"), "刷新", components.ButtonOptions{Variant: components.ButtonOutline, Icon: icons.Must("refresh-cw"), Loading: s.playHistory.Loading}).
 				Height(32).OnClick(func() { s.loadPlayHistory(false) })
 			allSelected := selectable > 0 && selected == selectable
 			selectLabel := "全选"
 			if allSelected {
 				selectLabel = "取消全选"
 			}
-			button(c.Key("select-all"), selectLabel, input.ButtonOptions{Variant: input.Ghost, Disabled: selectable == 0}).
+			button(c.Key("select-all"), selectLabel, components.ButtonOptions{Variant: components.ButtonGhost, Disabled: selectable == 0}).
 				Height(32).OnClick(func() {
 				for _, item := range items {
 					if strings.HasPrefix(item.History.Bvid, "BV") {
@@ -185,7 +183,7 @@ func (s *State) playHistoryPage(c *ui.Context, navigate func(string)) {
 					}
 				}
 			})
-			button(c.Key("selected-download"), fmt.Sprintf("下载已选 (%d)", selected), input.ButtonOptions{Variant: input.Primary, Disabled: selected == 0}).
+			button(c.Key("selected-download"), fmt.Sprintf("下载已选 (%d)", selected), components.ButtonOptions{Variant: components.ButtonPrimary, Disabled: selected == 0}).
 				Height(32).OnClick(func() { s.stageSelectedPlayHistory(navigate) })
 		})
 		if s.playHistory.Loading && !s.playHistory.Loaded {
@@ -202,7 +200,7 @@ func (s *State) playHistoryPage(c *ui.Context, navigate func(string)) {
 			empty(c, "暂无播放历史", "history")
 			return
 		}
-		layout.ScrollArea(c.Key("play-history-scroll"), s.scroll("play-history-videos"), layout.ScrollAreaOptions{}, func() {
+		components.ScrollArea(c.Key("play-history-scroll"), s.scroll("play-history-videos"), components.ScrollAreaOptions{}, func() {
 			ui.Column(c).FillWidth().Padding(style.SpaceMedium, style.ScrollbarGutter, style.SpaceMedium, style.SpaceMedium).
 				Gap(style.SpaceMedium).Children(func() {
 				ui.Grid(c).Columns(s.columns(c, false)).FillWidth().Gap(style.SpaceMedium).Children(func() {
@@ -221,7 +219,7 @@ func (s *State) playHistoryPage(c *ui.Context, navigate func(string)) {
 				shortListFallback := s.playHistoryHasMore && (s.runtime.After == nil ||
 					s.scroll("play-history-videos").MaxY <= 0 && s.playHistoryAutoFillPages >= style.DynamicAutoFillLimit)
 				if shortListFallback && s.playHistoryMore.Error == "" && !s.playHistoryMore.Loading {
-					button(c.Key("more"), "继续加载", input.ButtonOptions{Variant: input.Outline}).OnClick(func() {
+					button(c.Key("more"), "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() {
 						s.playHistoryAutoFillPages = 0
 						s.loadPlayHistory(true)
 					})

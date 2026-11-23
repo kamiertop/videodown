@@ -132,6 +132,13 @@ func (s *Shell) notify(message string, failed bool) {
 	s.pendingToasts = append(s.pendingToasts, pendingToast{message: message, failed: failed})
 }
 
+// Toast lifetimes: adjust here; the expiry test derives its timing from
+// these constants.
+const (
+	toastErrorTimeout   = 2 * time.Second
+	toastSuccessTimeout = 2 * time.Second
+)
+
 // pushToasts queues notifications raised outside the frame; the window's
 // engine draws its toasts itself, above every layer of the view.
 func (s *Shell) pushToasts(c *ui.Context) {
@@ -139,10 +146,10 @@ func (s *Shell) pushToasts(c *ui.Context) {
 		toast := ui.Toast{Title: m.message}
 		if m.failed {
 			toast.Type = "error"
-			toast.Timeout = 4 * time.Second
+			toast.Timeout = toastErrorTimeout
 		} else {
 			toast.Type = "success"
-			toast.Timeout = 3 * time.Second
+			toast.Timeout = toastSuccessTimeout
 		}
 		c.AddToast(toast)
 	}

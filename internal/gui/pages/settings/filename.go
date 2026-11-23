@@ -6,8 +6,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/input"
 	"github.com/egoist/mygo/ui"
 	"github.com/kamiertop/videodown/internal/gui/components"
 	"github.com/kamiertop/videodown/internal/gui/preferences"
@@ -35,13 +33,13 @@ func (s *State) filenameSettings(c *ui.Context, w Services) {
 		ui.Grid(c).FillWidth().Columns(2).Gap(8).Children(func() {
 			for _, field := range filenameFields {
 				selected := strings.Contains(s.Config.Filename, field.token)
-				variant := input.Outline
+				variant := components.ButtonOutline
 				marker := "○ "
 				if selected {
-					variant = input.Secondary
+					variant = components.ButtonSecondary
 					marker = "✓ "
 				}
-				components.Button(c.Key(field.token), marker+field.label+"  "+field.token, input.ButtonOptions{Variant: variant, Disabled: w.SettingsBusy}).
+				components.Button(c.Key(field.token), marker+field.label+"  "+field.token, components.ButtonOptions{Variant: variant, Disabled: w.SettingsBusy}).
 					Radius(style.RadiusMenu).
 					Label(field.token).
 					MinWidth(0).
@@ -55,11 +53,11 @@ func (s *State) filenameSettings(c *ui.Context, w Services) {
 		ui.Text(c, "字段之间的分隔符").FontWeight(style.WeightSemibold)
 		ui.Row(c).FillWidth().Wrap().Gap(8).Children(func() {
 			for _, item := range []struct{ value, label string }{{" - ", "短横线"}, {"_", "下划线"}, {" ", "空格"}, {" | ", "竖线"}} {
-				variant := input.Outline
+				variant := components.ButtonOutline
 				if s.separator == item.value {
-					variant = input.Secondary
+					variant = components.ButtonSecondary
 				}
-				components.Button(c.Key(item.label), item.label, input.ButtonOptions{Variant: variant, Disabled: w.SettingsBusy}).Radius(style.RadiusMenu).OnClick(func() {
+				components.Button(c.Key(item.label), item.label, components.ButtonOptions{Variant: variant, Disabled: w.SettingsBusy}).Radius(style.RadiusMenu).OnClick(func() {
 					s.separator = item.value
 					s.Config.Filename = strings.Join(filenameTokens.FindAllString(s.Config.Filename, -1), item.value)
 				})
@@ -69,32 +67,32 @@ func (s *State) filenameSettings(c *ui.Context, w Services) {
 		components.Muted(c, "超长文件名处理：超过 200 字节时自动改用视频 ID 命名；抖音标题尾部的话题标签会先去除。")
 		ui.Row(c).FillWidth().Gap(12).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, "直接编辑模板").Shrink(0).FontWeight(style.WeightSemibold)
-			field := input.TextInput(c.Key("filename"), &s.Config.Filename, input.TextInputOptions{Label: "文件名模板", Placeholder: "{title}", Disabled: w.SettingsBusy})
-			field.Element.Grow(1).MinWidth(0)
-			field.Input.OnSubmit(func() { s.saveFilename(w) })
+			field := components.TextInput(c.Key("filename"), &s.Config.Filename, components.TextInputOptions{Label: "文件名模板", Placeholder: "{title}", Disabled: w.SettingsBusy})
+			field.Grow(1).MinWidth(0)
+			field.OnSubmit(func() { s.saveFilename(w) })
 		})
 		ui.Column(c).
 			FillWidth().
 			Padding(16).
 			Gap(16).
 			Radius(style.RadiusPanel).
-			Border(style.BorderWidth, core.Tokens(c).Border).
+			Border(style.BorderWidth, c.Theme().Border).
 			Children(func() {
 				insetToggle(c, "目录分组规则", "选择下载文件的目录组织方式", &s.Config.Grouping, w.SettingsBusy, func() {})
 				ui.Row(c).FillWidth().Wrap().Gap(8).Children(func() {
 					for _, rule := range []struct{ id, label string }{{"none", "不分组"}, {"author", "按作者"}, {"author_source", "作者+来源"}, {"source", "来源"}, {"date", "下载日期"}} {
-						variant := input.Outline
+						variant := components.ButtonOutline
 						if s.Config.GroupingRule == rule.id {
-							variant = input.Secondary
+							variant = components.ButtonSecondary
 						}
-						components.Button(c.Key(rule.id), rule.label, input.ButtonOptions{Variant: variant, Disabled: !s.Config.Grouping || w.SettingsBusy}).
+						components.Button(c.Key(rule.id), rule.label, components.ButtonOptions{Variant: variant, Disabled: !s.Config.Grouping || w.SettingsBusy}).
 							Radius(style.RadiusMenu).
 							OnClick(func() { s.Config.GroupingRule = rule.id })
 					}
 				})
 				previewBox(c, "示例路径", s.groupedPreview())
 			})
-		components.Button(c.Key("save-template"), "保存模板", input.ButtonOptions{Loading: w.SettingsBusy}).
+		components.Button(c.Key("save-template"), "保存模板", components.ButtonOptions{Loading: w.SettingsBusy}).
 			Radius(style.RadiusMenu).
 			FillWidth().
 			OnClick(func() { s.saveFilename(w) })
@@ -118,7 +116,7 @@ func (s *State) toggleFilenameField(token string) {
 }
 
 func previewBox(c *ui.Context, label, value string) {
-	ui.Column(c).FillWidth().Padding(16).Gap(8).Radius(style.RadiusPanel).Background(core.Tokens(c).Background).Border(style.BorderWidth, core.Tokens(c).Border).Children(func() { components.Muted(c, label); ui.Text(c, value).FillWidth().TextColor(core.Tokens(c).AccentText) })
+	ui.Column(c).FillWidth().Padding(16).Gap(8).Radius(style.RadiusPanel).Background(c.Theme().Background).Border(style.BorderWidth, c.Theme().Border).Children(func() { components.Muted(c, label); ui.Text(c, value).FillWidth().TextColor(c.Theme().Accent) })
 }
 
 func filenamePreview(template string) string {

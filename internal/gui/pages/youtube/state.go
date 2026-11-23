@@ -47,6 +47,8 @@ type State struct {
 	playlistGeneration    uint64
 	playlistCancel        context.CancelFunc
 	Link, cookie, message string
+	actionError           string
+	historyBusy           bool
 	authMessage           string
 	cookieSaved           bool
 	busy, stopped         bool

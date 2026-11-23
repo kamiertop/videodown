@@ -143,8 +143,8 @@ func (s *State) stage(v model.AwemeItem) {
 	s.staged = append(s.staged, &queuedVideo{Data: v, Track: bestTrack(v), ResolvedAt: time.Now()})
 }
 
-func (s *State) stageSelected(navigate func(string)) {
-	for _, v := range s.videos.Data.Items {
+func (s *State) stageSelected(list *listSection, navigate func(string)) {
+	for _, v := range list.videos.Data.Items {
 		if s.selected[v.AwemeId] {
 			s.stage(v)
 		}
@@ -215,18 +215,18 @@ func (s *State) request(items []*queuedVideo) {
 	s.pump()
 }
 
-func (s *State) requestAll(navigate func(string)) {
-	if s.source.Load == nil || s.backend == nil {
+func (s *State) requestAll(list *listSection, navigate func(string)) {
+	if list.src.Load == nil || s.backend == nil {
 		return
 	}
 	for _, g := range s.groups {
-		if g.Source.Key == s.source.Key && (g.Status == "queued" || g.Status == "active") {
+		if g.Source.Key == list.src.Key && (g.Status == "queued" || g.Status == "active") {
 			navigate("/douyin/download")
 			return
 		}
 	}
 	s.nextGroup++
-	s.groups = append(s.groups, &downloadGroup{ID: s.nextGroup, Order: s.nextGroup, Title: s.source.Title, Source: s.source, Open: true, More: true, Status: "queued", Seen: map[string]bool{}})
+	s.groups = append(s.groups, &downloadGroup{ID: s.nextGroup, Order: s.nextGroup, Title: list.src.Title, Source: list.src, Open: true, More: true, Status: "queued", Seen: map[string]bool{}})
 	navigate("/douyin/download")
 	s.pump()
 }

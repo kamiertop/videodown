@@ -17,12 +17,14 @@ internal/gui/
   guiruntime/              页面共用的后台任务与文件操作接口
   imagecache/              图片请求、解码与有容量限制的缓存
   preferences/             结构化配置的表单适配与有类型的变更项
-  theme.go                 主题名称与原生颜色映射
+  theme.go                 主题模式解析与 Onevra 调色板定制
   style/tokens.go          原生字号、字重、圆角、边框、间距与常用尺寸
   content.go               路由组装与每页滚动
   assets/                  图标的嵌入、解析与共用标识
   navigation/              路由与页面定义
-  components/              共享按钮、菜单、设置开关和辅助文本
+  components/              应用组件库（唯一 UI 入口）：按钮、表单控件、滚动、
+                           对话框、进度、代码块、设置开关和加载标记，封装 Onevra
+  icons/                   命名图标目录，基于 Onevra 的 Lucide 图标集
   pages/
     state.go               组装各页面状态和分发路由
     home/                  两个平台图标入口

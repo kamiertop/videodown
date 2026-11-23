@@ -2,12 +2,14 @@
 // 几何尺寸使用 DIP（设备无关像素），由界面框架处理屏幕缩放；
 // 字号是辅助功能文字缩放前的基准值，使用时应通过 Font 或 Body 获取。
 // 宽高比、透明度、行高倍数和数量上限没有 DIP 单位。
-// 颜色由当前 MujicaUI 主题提供，不在此处固定。
+// 颜色由当前 Onevra 主题提供，不在此处固定。
 package style
 
 import (
-	"github.com/ELY-Open-Source/MujicaUI/core"
+	"time"
+
 	"github.com/egoist/mygo/ui"
+	newctheme "github.com/oneo-me/onevra/source/theme"
 )
 
 const (
@@ -44,6 +46,12 @@ const (
 	WeightBold             = 700 // 粗体字重。
 	LineHeight     float32 = 1.5 // 全局默认行高倍数，相对于当前字号计算。
 
+	SerifFont = "Georgia, Songti SC, SimSun, Noto Serif CJK SC, serif" // 标题栏应用名的衬线字体。
+	MonoFont  = "monospace"                                            // 代码块等宽字体。
+
+	// StateDuration 是控件状态过渡动画的时长；系统请求减少动效时由 Motion 归零。
+	StateDuration = 120 * time.Millisecond
+
 	// 圆角：常规控件保持矩形轮廓，仅轻微圆角
 
 	RadiusWindow  float32 = 16 // 窗口外框圆角；窗口最大化时由窗口代码设为 0。
@@ -58,6 +66,7 @@ const (
 
 	BorderWidth    float32 = 1  // 常规边框宽度。
 	BorderEmphasis float32 = 2  // 选中或强调描边的宽度。
+	MinHitSize     float32 = 28 // 图标按钮等最小命中区域边长。
 	SpaceSmall     float32 = 8  // 小间距，适合相关控件及卡片内边距。
 	SpaceMedium    float32 = 12 // 中间距，适合卡片、网格及内容分组。
 	SpaceLarge     float32 = 16 // 大间距。
@@ -148,12 +157,28 @@ const (
 )
 
 // Font 将基准字号转换为遵循系统辅助功能文字缩放的实际字号。
-func Font(c *ui.Context, size float32) float32 { return core.FontSize(c, size) }
+func Font(c *ui.Context, size float32) float32 {
+	if s := c.Preferences().TextScale; s > 0 {
+		return size * s
+	}
+	return size
+}
+
+// Motion 返回 d，或零当系统请求减少动效时。
+func Motion(c *ui.Context, d time.Duration) time.Duration {
+	if c.Preferences().ReduceMotion {
+		return 0
+	}
+	return d
+}
+
+// UseTheme 安装 Onevra 浅色主题，供测试和离屏渲染使用。
+func UseTheme(c *ui.Context) { c.SetTheme(newctheme.LightPalette()) }
 
 // Body 返回应用默认正文字号，已经应用系统文字缩放。
 func Body(c *ui.Context) float32 { return Font(c, FontBody) }
 
-// Apply 在 core.Use 设置主题后调用，为原生控件设置默认字号、滚动条宽度和行高。
+// Apply 在主题安装后调用，为原生控件设置默认字号、滚动条宽度和行高。
 // 先复制主题再修改，避免直接修改共用主题对象。
 func Apply(c *ui.Context) {
 	theme := *c.Theme()

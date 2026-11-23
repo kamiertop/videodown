@@ -2,13 +2,11 @@ package bilibili
 
 import (
 	"fmt"
+	"github.com/kamiertop/videodown/internal/gui/components"
 	"strings"
 
-	"github.com/ELY-Open-Source/MujicaUI/core"
-	"github.com/ELY-Open-Source/MujicaUI/icons"
-	"github.com/ELY-Open-Source/MujicaUI/input"
-	"github.com/ELY-Open-Source/MujicaUI/layout"
 	"github.com/egoist/mygo/ui"
+	"github.com/kamiertop/videodown/internal/gui/icons"
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
 
@@ -18,13 +16,13 @@ func (s *State) favorites(c *ui.Context, navigate func(string)) {
 	}
 	_, height := c.Size()
 	panel(c, "我的视频库", func() {
-		ui.Row(c).FillWidth().Padding(style.SpaceSmall).Gap(style.SpaceSmall).BorderColor(core.Tokens(c).Border).BorderWidth(0, 0, style.BorderWidth, 0).Children(func() {
+		ui.Row(c).FillWidth().Padding(style.SpaceSmall).Gap(style.SpaceSmall).BorderColor(c.Theme().Border).BorderWidth(0, 0, style.BorderWidth, 0).Children(func() {
 			for _, tab := range []struct{ id, label string }{{"favorite", "收藏夹"}, {"collection", "合集"}} {
-				variant := input.Secondary
+				variant := components.ButtonSecondary
 				if s.favoriteTab == tab.id {
-					variant = input.Primary
+					variant = components.ButtonPrimary
 				}
-				button(c.Key(tab.id), tab.label, input.ButtonOptions{Variant: variant}).MinWidth(84).Height(style.InputHeight).OnClick(func() {
+				button(c.Key(tab.id), tab.label, components.ButtonOptions{Variant: variant}).MinWidth(84).Height(style.InputHeight).OnClick(func() {
 					if s.favoriteTab != tab.id {
 						navigate("/bilibili/" + tab.id)
 					}
@@ -45,15 +43,15 @@ func (s *State) favorites(c *ui.Context, navigate func(string)) {
 		}
 		ui.Row(c.Key(s.favoriteTab)).FillWidth().Grow(1).MinHeight(0).AlignItems(ui.Stretch).Children(func() {
 			ui.Column(c.Key("folders")).Label("视频库分组").Width(folderWidth).Shrink(0).MinHeight(0).
-				BorderColor(core.Tokens(c).Border).BorderWidth(0, style.BorderWidth, 0, 0).Children(func() {
+				BorderColor(c.Theme().Border).BorderWidth(0, style.BorderWidth, 0, 0).Children(func() {
 				ui.Row(c).Label("视频库列表标题").FillWidth().Height(style.LibraryHeaderHeight).Padding(style.SpaceSmall, style.SpaceMedium).Gap(style.SpaceSmall).
-					AlignItems(ui.Center).BorderColor(core.Tokens(c).Border).BorderWidth(0, 0, style.BorderWidth, 0).Children(func() {
+					AlignItems(ui.Center).BorderColor(c.Theme().Border).BorderWidth(0, 0, style.BorderWidth, 0).Children(func() {
 					ui.Text(c, title).FontWeight(style.WeightSemibold).Shrink(0)
-					ui.Box(c).MinWidth(28).Height(24).Padding(0, 6).Radius(12).Background(core.Tokens(c).Accent.Alpha(.12)).Center().Children(func() {
-						ui.Text(c, fmt.Sprint(count)).SingleLine().FontSize(style.Font(c, style.FontMeta)).FontWeight(style.WeightSemibold).TextColor(core.Tokens(c).Accent)
+					ui.Box(c).MinWidth(28).Height(24).Padding(0, 6).Radius(12).Background(c.Theme().Accent.Alpha(.12)).Center().Children(func() {
+						ui.Text(c, fmt.Sprint(count)).SingleLine().FontSize(style.Font(c, style.FontMeta)).FontWeight(style.WeightSemibold).TextColor(c.Theme().Accent)
 					})
 					ui.Spacer(c).Grow(1)
-					button(c.Key("refresh"), "刷新", input.ButtonOptions{Variant: input.Ghost, Icon: icons.Must("refresh-cw"), Label: "刷新" + title, Loading: busy, Disabled: s.api == nil}).Height(30).Padding(0, 4).OnClick(func() {
+					button(c.Key("refresh"), "刷新", components.ButtonOptions{Variant: components.ButtonGhost, Icon: icons.Must("refresh-cw"), Label: "刷新" + title, Loading: busy, Disabled: s.api == nil}).Height(30).Padding(0, 4).OnClick(func() {
 						if s.favoriteTab == "collection" {
 							s.loadCollections(1, false)
 						} else {
@@ -61,7 +59,7 @@ func (s *State) favorites(c *ui.Context, navigate func(string)) {
 						}
 					})
 				})
-				layout.ScrollArea(c.Key("folders-scroll"), s.scroll("folders/"+s.favoriteTab), layout.ScrollAreaOptions{}, func() {
+				components.ScrollArea(c.Key("folders-scroll"), s.scroll("folders/"+s.favoriteTab), components.ScrollAreaOptions{}, func() {
 					ui.Column(c).FillWidth().Padding(style.SpaceSmall).Gap(4).Children(func() { s.libraryFolders(c) })
 				}).Grow(1).MinHeight(0)
 				s.maybeAutoLibraryFolders()
@@ -69,7 +67,7 @@ func (s *State) favorites(c *ui.Context, navigate func(string)) {
 			ui.Column(c).Grow(1).MinWidth(0).MinHeight(0).Children(func() {
 				s.libraryHeader(c, navigate)
 				key := s.libraryScrollKey()
-				layout.ScrollArea(c.Key(key), s.scroll(key), layout.ScrollAreaOptions{}, func() {
+				components.ScrollArea(c.Key(key), s.scroll(key), components.ScrollAreaOptions{}, func() {
 					ui.Column(c).FillWidth().Padding(style.SpaceMedium, style.ScrollbarGutter, style.SpaceMedium, style.SpaceMedium).
 						Gap(style.SpaceMedium).Children(func() { s.libraryVideos(c, navigate) })
 				}).Grow(1).MinHeight(0)
@@ -80,7 +78,7 @@ func (s *State) favorites(c *ui.Context, navigate func(string)) {
 }
 
 func (s *State) libraryHeader(c *ui.Context, navigate func(string)) {
-	k := core.Tokens(c)
+	k := c.Theme()
 	width, _ := c.Size()
 	compact := width < style.AuthorControlsDownloadBreakpoint
 	title, total := s.libraryTitleAndTotal()
@@ -93,12 +91,12 @@ func (s *State) libraryHeader(c *ui.Context, navigate func(string)) {
 		if allSelected {
 			label = "取消全选"
 		}
-		button(c.Key("select"), label, input.ButtonOptions{Variant: input.Ghost, Disabled: len(keys) == 0}).Height(32).Padding(0, 6).FontSize(style.Font(c, style.FontMeta)).OnClick(func() {
+		button(c.Key("select"), label, components.ButtonOptions{Variant: components.ButtonGhost, Disabled: len(keys) == 0}).Height(32).Padding(0, 6).FontSize(style.Font(c, style.FontMeta)).OnClick(func() {
 			for _, key := range keys {
 				*s.selection(key) = !allSelected
 			}
 		})
-		button(c.Key("selected"), fmt.Sprintf("下载已选 (%d)", selected), input.ButtonOptions{Variant: input.Outline, Disabled: selected == 0}).Height(32).Padding(0, 7).FontSize(style.Font(c, style.FontMeta)).OnClick(func() {
+		button(c.Key("selected"), fmt.Sprintf("下载已选 (%d)", selected), components.ButtonOptions{Variant: components.ButtonOutline, Disabled: selected == 0}).Height(32).Padding(0, 7).FontSize(style.Font(c, style.FontMeta)).OnClick(func() {
 			s.stageSelectedLibrary()
 			for _, key := range keys {
 				*s.selection(key) = false
@@ -110,7 +108,7 @@ func (s *State) libraryHeader(c *ui.Context, navigate func(string)) {
 			if compact {
 				allLabel = "下载全部"
 			}
-			button(c.Key("all"), allLabel, input.ButtonOptions{Variant: input.Primary, Label: "一键下载全部", Disabled: s.api == nil || len(keys) == 0}).Height(32).Padding(0, 7).FontSize(style.Font(c, style.FontMeta)).OnClick(func() { s.stageAllLibrary(navigate) })
+			button(c.Key("all"), allLabel, components.ButtonOptions{Variant: components.ButtonPrimary, Label: "一键下载全部", Disabled: s.api == nil || len(keys) == 0}).Height(32).Padding(0, 7).FontSize(style.Font(c, style.FontMeta)).OnClick(func() { s.stageAllLibrary(navigate) })
 		}
 	}
 	ui.Row(c).Label("视频库内容标题").FillWidth().Height(style.LibraryHeaderHeight).Padding(style.SpaceSmall, style.SpaceMedium).Gap(style.SpaceSmall).
@@ -186,7 +184,7 @@ func (s *State) libraryFolders(c *ui.Context) {
 		if s.collections.Data.HasMore {
 			const key = "folders/collection"
 			if s.autoPageFallback(key, key) && s.collections.Error == "" && !s.collections.Loading {
-				button(c, "继续加载", input.ButtonOptions{Variant: input.Ghost}).OnClick(func() {
+				button(c, "继续加载", components.ButtonOptions{Variant: components.ButtonGhost}).OnClick(func() {
 					s.continueAutoPage(key, func() { s.loadCollections(s.collectionPage+1, true) })
 				})
 			}
@@ -203,7 +201,7 @@ func (s *State) libraryFolders(c *ui.Context) {
 }
 
 func libraryFolder(c *ui.Context, title, kind string, count int, selected bool, onClick func()) {
-	k := core.Tokens(c)
+	k := c.Theme()
 	background, border := k.Surface, k.Border.Alpha(0)
 	iconBackground, iconBorder, iconColor := k.Background, k.Border.Alpha(.7), k.Warning.Alpha(.6)
 	badgeBackground, badgeColor := k.Background, k.TextMuted
@@ -259,7 +257,7 @@ func (s *State) libraryVideos(c *ui.Context, navigate func(string)) {
 		if s.collectionHasMore {
 			key := s.libraryScrollKey()
 			if s.autoPageFallback(key, key) && s.collectionDetail.Error == "" && !s.collectionDetail.Loading {
-				button(c, "继续加载", input.ButtonOptions{Variant: input.Outline}).OnClick(func() {
+				button(c, "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() {
 					s.continueAutoPage(key, func() { s.loadCollection(s.collectionID, s.collectionDetailPage+1, true) })
 				})
 			}
@@ -288,7 +286,7 @@ func (s *State) libraryVideos(c *ui.Context, navigate func(string)) {
 		if s.favoriteDetail.Data.HasMore {
 			key := s.libraryScrollKey()
 			if s.autoPageFallback(key, key) && s.favoriteDetail.Error == "" && !s.favoriteDetail.Loading {
-				button(c, "继续加载", input.ButtonOptions{Variant: input.Outline}).OnClick(func() {
+				button(c, "继续加载", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() {
 					s.continueAutoPage(key, func() { s.loadFavorite(s.favoriteID, s.favoritePage+1, true) })
 				})
 			}
