@@ -2,14 +2,15 @@ package douyin
 
 import (
 	"fmt"
-	"github.com/kamiertop/videodown/internal/gui/components"
 	"net/url"
 	"strings"
 	"time"
 
-	"github.com/egoist/mygo/ui"
 	"github.com/kamiertop/videodown/douyin/model"
+	"github.com/kamiertop/videodown/internal/gui/components"
 	"github.com/kamiertop/videodown/internal/gui/style"
+
+	"github.com/egoist/mygo/ui"
 )
 
 const followSearchDelay = 450 * time.Millisecond

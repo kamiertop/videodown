@@ -21,15 +21,18 @@ type resource[T any] struct {
 	Error           string
 	seq             uint64
 }
+
 type videoPage struct {
 	Items []model.AwemeItem
 	Next  int
 	More  bool
 }
+
 type folder struct {
 	Key, Title, Author string
 	Count              int
 }
+
 type source struct {
 	Key, Title string
 	Load       func(int) (videoPage, error)
@@ -125,16 +128,20 @@ func NewState() *State {
 	s.authorFeed.scrollKey = "videos/user"
 	return s
 }
+
 func (s *State) Configure(api *dyapi.Douyin, backend *dyDownload.Service, runtime guiruntime.Runtime) {
 	s.api, s.backend, s.runtime = api, backend, runtime
 }
+
 func (s *State) Link() *string { return &s.link }
+
 func (s *State) scroll(key string) *ui.ScrollState {
 	if s.scrolls[key] == nil {
 		s.scrolls[key] = &ui.ScrollState{}
 	}
 	return s.scrolls[key]
 }
+
 func (s *State) Start() {
 	if s.started || s.api == nil {
 		return
@@ -144,6 +151,7 @@ func (s *State) Start() {
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	s.loadProfile()
 }
+
 func (s *State) Stop() {
 	s.stopped = true
 	if s.cancelFollowSearch != nil {
@@ -185,6 +193,7 @@ func status(code int) error {
 	}
 	return nil
 }
+
 func (s *State) loadProfile() {
 	if s.api == nil {
 		return
@@ -210,6 +219,7 @@ func (s *State) loadProfile() {
 		}
 	})
 }
+
 func (s *State) saveCookie(clear bool) {
 	if s.authBusy || s.api == nil || s.runtime.Run == nil || s.PendingDownloadCount() > 0 {
 		return

@@ -2,13 +2,12 @@ package douyin
 
 import (
 	"errors"
-
 	"fmt"
-	dyapi "github.com/kamiertop/videodown/douyin/api"
 	"net/url"
 	"strconv"
 	"strings"
 
+	dyapi "github.com/kamiertop/videodown/douyin/api"
 	"github.com/kamiertop/videodown/douyin/model"
 )
 
@@ -108,6 +107,7 @@ func (s *State) activeList(path string) *listSection {
 	}
 	return nil
 }
+
 func (s *State) baseSource(kind string) source {
 	api := s.api
 	return source{Key: kind,
@@ -561,7 +561,9 @@ func (s *State) enterAuthor(uid string) {
 	}
 	s.loadAuthor(uid)
 }
+
 func (s *State) loggedIn() bool {
 	return s.profile.Loaded && s.profile.Error == "" && (s.profile.Data.Uid != "" || s.profile.Data.SecUid != "")
 }
+
 func duration(seconds int) string { return fmt.Sprintf("%d:%02d", seconds/60, seconds%60) }

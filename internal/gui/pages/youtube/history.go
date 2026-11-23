@@ -87,52 +87,48 @@ func (s *State) historyPage(c *ui.Context, scroll *ui.ScrollState) {
 								row.BorderWidth(0, 0, style.BorderWidth, 0).BorderColor(k.Border)
 							}
 							row.Children(func() {
-								ui.Column(c).
-									Grow(1).
-									MinWidth(0).
-									Gap(style.SpaceSmall).
-									Children(func() {
-										// 标题与操作同行，与哔哩哔哩、抖音的历史卡片一致。
-										ui.Row(c).FillWidth().MinWidth(0).Gap(style.SpaceSmall).AlignItems(ui.Center).
-											Children(func() {
-												ui.Text(c, item.Title).
-													Grow(1).
-													MinWidth(0).
-													MaxLines(1).
-													FontWeight(style.WeightSemibold).
-													Tooltip(item.Title)
-												if item.Kind == "audio" {
-													ui.Text(c, "音频").
-														Shrink(0).
-														FontSize(style.Font(c, style.FontMeta)).
-														TextColor(k.TextMuted)
-												}
-												ui.Row(c.Key("actions")).Shrink(0).Gap(style.SpaceSmall).Children(func() {
-													historyCardButton(c.Key("open"), "本地打开", components.ButtonOptions{
-														Variant:  components.ButtonPrimary,
-														Icon:     icons.Must("play"),
-														Label:    "打开视频：" + item.Path,
-														Disabled: s.runtime.OpenFile == nil || item.Path == "",
-													}).Tooltip("使用默认播放器打开").OnClick(func() { s.openFile(item.Path, false) })
-													historyCardButton(c.Key("directory"), "打开目录", components.ButtonOptions{
-														Variant:  components.ButtonOutline,
-														Icon:     icons.Must("folder"),
-														Label:    "打开目录：" + item.Path,
-														Disabled: s.runtime.OpenLocation == nil || item.Path == "",
-													}).OnClick(func() { s.openFile(item.Path, true) })
-													historyCardButton(c.Key("delete"), "删除记录", components.ButtonOptions{
-														Variant:  components.ButtonGhost,
-														Label:    "删除记录：" + item.Path,
-														Disabled: s.api == nil || s.historyBusy,
-													}).OnClick(func() { s.deleteHistory(item) })
-												})
+								ui.Column(c).Grow(1).MinWidth(0).Gap(style.SpaceSmall).Children(func() {
+									// 标题与操作同行，与哔哩哔哩、抖音的历史卡片一致。
+									ui.Row(c).FillWidth().MinWidth(0).Gap(style.SpaceSmall).AlignItems(ui.Center).
+										Children(func() {
+											ui.Text(c, item.Title).
+												Grow(1).
+												MinWidth(0).
+												MaxLines(1).
+												FontWeight(style.WeightSemibold).
+												Tooltip(item.Title)
+											if item.Kind == "audio" {
+												ui.Text(c, "音频").
+													Shrink(0).
+													FontSize(style.Font(c, style.FontMeta)).
+													TextColor(k.TextMuted)
+											}
+											ui.Row(c.Key("actions")).Shrink(0).Gap(style.SpaceSmall).Children(func() {
+												historyCardButton(c.Key("open"), "本地打开", components.ButtonOptions{
+													Variant:  components.ButtonPrimary,
+													Icon:     icons.Must("play"),
+													Label:    "打开视频：" + item.Path,
+													Disabled: s.runtime.OpenFile == nil || item.Path == "",
+												}).Tooltip("使用默认播放器打开").OnClick(func() { s.openFile(item.Path, false) })
+												historyCardButton(c.Key("directory"), "打开目录", components.ButtonOptions{
+													Variant:  components.ButtonOutline,
+													Icon:     icons.Must("folder"),
+													Label:    "打开目录：" + item.Path,
+													Disabled: s.runtime.OpenLocation == nil || item.Path == "",
+												}).OnClick(func() { s.openFile(item.Path, true) })
+												historyCardButton(c.Key("delete"), "删除记录", components.ButtonOptions{
+													Variant:  components.ButtonGhost,
+													Label:    "删除记录：" + item.Path,
+													Disabled: s.api == nil || s.historyBusy,
+												}).OnClick(func() { s.deleteHistory(item) })
 											})
-										path := item.Path
-										if path == "" {
-											path = "未记录保存路径"
-										}
-										ui.Text(c, path).FillWidth().MaxLines(1).FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted).Tooltip(path)
-									})
+										})
+									path := item.Path
+									if path == "" {
+										path = "未记录保存路径"
+									}
+									ui.Text(c, path).FillWidth().MaxLines(1).FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted).Tooltip(path)
+								})
 							})
 						}
 					})

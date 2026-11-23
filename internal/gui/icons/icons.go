@@ -60,5 +60,6 @@ func Must(name string) *ui.SVG {
 	if !ok {
 		panic(fmt.Sprintf("icons: unknown icon %q", name))
 	}
+
 	return icon
 }

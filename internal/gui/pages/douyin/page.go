@@ -44,6 +44,7 @@ func field(c *ui.Context, value *string, label, placeholder string, submit func(
 	}
 	return frame
 }
+
 func (s *State) errorRow(c *ui.Context, message string, retry func()) {
 	if message == "" {
 		return
@@ -55,12 +56,14 @@ func (s *State) errorRow(c *ui.Context, message string, retry func()) {
 		}
 	})
 }
+
 func empty(c *ui.Context, message string) {
 	ui.Column(c).FillWidth().Grow(1).MinHeight(200).Center().Gap(style.SpaceMedium).Children(func() {
 		ui.Icon(c, icons.Must("play")).Size(28, 28).TextColor(c.Theme().TextMuted)
 		caption(c, message)
 	})
 }
+
 func section(path string) string {
 	parts := strings.Split(strings.Trim(path, "/"), "/")
 	if len(parts) < 2 {
@@ -68,38 +71,49 @@ func section(path string) string {
 	}
 	return parts[1]
 }
+
 func (s *State) Layout(c *ui.Context, path string, navigate func(string), content func()) {
 	s.enter(path)
 	k := c.Theme()
 	ui.Row(c.Key("douyin-layout")).Fill().MinHeight(0).AlignItems(ui.Stretch).Children(func() {
-		ui.Column(c.Key("rail")).Label("抖音导航").Width(style.PlatformNavWidth).Shrink(0).FillHeight().Padding(8).Gap(6).Background(k.Surface).BorderColor(k.Border).BorderWidth(0, 1, 0, 0).Children(func() {
-			ui.Text(c, "抖音").FillWidth().TextAlign(ui.Center).FontSize(style.Font(c, style.FontCompact)).TextColor(k.TextMuted)
-			components.ScrollArea(c.Key("menu"), s.scroll("menu"), components.ScrollAreaOptions{}, func() {
-				ui.Column(c).FillWidth().Gap(6).Children(func() {
-					ids := []string{"download", "user", "dynamic", "favorite", "play-history", "history"}
-					labels := []string{"下载", "用户", "动态", "收藏 / 合集", "播放历史", "下载历史"}
-					names := []string{"download", "user", "play", "star", "history", "clock"}
-					for i, id := range ids {
-						b := button(c.Key(id), labels[i], components.ButtonOptions{Variant: components.ButtonGhost, Icon: icons.Must(names[i]), Label: "抖音" + labels[i]}).FillWidth().Height(style.PlatformNavItemHeight).Column().Center().Gap(7).Padding(4).FontSize(style.Font(c, style.FontCompact)).Border(1, k.Border).Background(k.Background)
-						if section(path) == id {
-							b.Background(k.Selection).TextColor(k.Accent).Border(1, k.Accent)
+		ui.Column(c.Key("rail")).
+			Label("抖音导航").
+			Width(style.PlatformNavWidth).
+			Shrink(0).
+			FillHeight().
+			Padding(8).
+			Gap(6).
+			Background(k.Surface).
+			BorderColor(k.Border).
+			BorderWidth(0, 1, 0, 0).
+			Children(func() {
+				ui.Text(c, "抖音").FillWidth().TextAlign(ui.Center).FontSize(style.Font(c, style.FontCompact)).TextColor(k.TextMuted)
+				components.ScrollArea(c.Key("menu"), s.scroll("menu"), components.ScrollAreaOptions{}, func() {
+					ui.Column(c).FillWidth().Gap(6).Children(func() {
+						ids := []string{"download", "user", "dynamic", "favorite", "play-history", "history"}
+						labels := []string{"下载", "用户", "动态", "收藏 / 合集", "播放历史", "下载历史"}
+						names := []string{"download", "user", "play", "star", "history", "clock"}
+						for i, id := range ids {
+							b := button(c.Key(id), labels[i], components.ButtonOptions{Variant: components.ButtonGhost, Icon: icons.Must(names[i]), Label: "抖音" + labels[i]}).FillWidth().Height(style.PlatformNavItemHeight).Column().Center().Gap(7).Padding(4).FontSize(style.Font(c, style.FontCompact)).Border(1, k.Border).Background(k.Background)
+							if section(path) == id {
+								b.Background(k.Selection).TextColor(k.Accent).Border(1, k.Accent)
+							}
+							b.OnClick(func() { navigate("/douyin/" + id) })
 						}
-						b.OnClick(func() { navigate("/douyin/" + id) })
-					}
-				})
-			}).Grow(1).MinHeight(0)
-			avatar := first(s.profile.Data.AvatarThumb.UrlList)
-			if avatar == "" {
-				avatar = first(s.profile.Data.AvatarMedium.UrlList)
-			}
-			if avatar == "" {
-				avatar = first(s.profile.Data.AvatarLarger.UrlList)
-			}
-			if s.loggedIn() && avatar != "" {
-				ui.Column(c.Key("account-avatar")).Label("抖音账号头像").FillWidth().AlignItems(ui.Center).Children(func() { s.image(c, avatar, 32, 32, true) })
-			}
-			button(c.Key("account"), "账号", components.ButtonOptions{Variant: components.ButtonGhost, Icon: icons.Must("user"), Label: "抖音账号"}).FillWidth().Height(style.PlatformNavItemHeight).Column().Center().Gap(7).Padding(4).FontSize(style.Font(c, style.FontCompact)).OnClick(func() { navigate("/douyin/profile") })
-		})
+					})
+				}).Grow(1).MinHeight(0)
+				avatar := first(s.profile.Data.AvatarThumb.UrlList)
+				if avatar == "" {
+					avatar = first(s.profile.Data.AvatarMedium.UrlList)
+				}
+				if avatar == "" {
+					avatar = first(s.profile.Data.AvatarLarger.UrlList)
+				}
+				if s.loggedIn() && avatar != "" {
+					ui.Column(c.Key("account-avatar")).Label("抖音账号头像").FillWidth().AlignItems(ui.Center).Children(func() { s.image(c, avatar, 32, 32, true) })
+				}
+				button(c.Key("account"), "账号", components.ButtonOptions{Variant: components.ButtonGhost, Icon: icons.Must("user"), Label: "抖音账号"}).FillWidth().Height(style.PlatformNavItemHeight).Column().Center().Gap(7).Padding(4).FontSize(style.Font(c, style.FontCompact)).OnClick(func() { navigate("/douyin/profile") })
+			})
 		content()
 	})
 }
@@ -147,9 +161,11 @@ func (s *State) Form(c *ui.Context, path string, navigate func(string), back fun
 		}
 	})
 }
+
 func (s *State) Render(c *ui.Context, id string, navigate func(string)) {
 	s.Form(c, "/douyin/"+id, navigate, func() { navigate("/douyin/user") })
 }
+
 func (s *State) accountPage(c *ui.Context) {
 	ui.Column(c).Fill().MinWidth(0).Center().Children(func() {
 		panel(c, "抖音账号信息", func() {
@@ -186,6 +202,7 @@ func (s *State) accountPage(c *ui.Context) {
 		}).MaxWidth(style.ProfileCardMaxWidth)
 	})
 }
+
 func (s *State) libraryPage(c *ui.Context, path string, navigate func(string)) {
 	authorMode := section(path) == "user"
 	libraryMode := section(path) == "favorite"
@@ -325,6 +342,7 @@ func (s *State) libraryPage(c *ui.Context, path string, navigate func(string)) {
 		})
 	})
 }
+
 func (s *State) downloadPage(c *ui.Context) {
 	panel(c, "抖音视频输入栏", func() {
 		ui.Row(c).FillWidth().Padding(style.SpaceSmall).Gap(style.SpaceSmall).Children(func() {
@@ -429,6 +447,7 @@ func groupStatus(g *downloadGroup) string {
 	}
 	return map[string]string{"queued": "排队中", "active": "下载中", "done": "已完成", "stopped": "已停止"}[g.Status]
 }
+
 func (s *State) downloadCard(c *ui.Context, item *queuedVideo, batch bool) {
 	queued := item.Status == "active" || item.Status == "queued"
 	width, _ := c.Size()
@@ -511,6 +530,7 @@ func (s *State) downloadCard(c *ui.Context, item *queuedVideo, batch bool) {
 		})
 	})
 }
+
 func (s *State) historyPage(c *ui.Context) {
 	if s.historySearch != s.historyQuery {
 		s.loadHistory(false)

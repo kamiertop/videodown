@@ -20,6 +20,7 @@ func (s *Shell) settingsServices() settings.Services {
 		FFmpegChecking: s.ffmpegChecking, FFmpegChecked: s.ffmpegChecked, FFmpegPath: s.ffmpegPath, FFmpegVersion: s.ffmpegVersion, FFmpegError: s.ffmpegError,
 	}
 }
+
 func (s *Shell) saveSettings(values preferences.Changes) {
 	if s.settingsBusy {
 		s.pendingSettings = s.pendingSettings.Merge(values)
@@ -46,7 +47,9 @@ func (s *Shell) saveSettings(values preferences.Changes) {
 	})
 }
 func (s *Shell) browseDirectory() { s.browseSetting(true) }
-func (s *Shell) browseFFmpeg()    { s.browseSetting(false) }
+
+func (s *Shell) browseFFmpeg() { s.browseSetting(false) }
+
 func (s *Shell) browseSetting(directory bool) {
 	if s.win == nil || s.settingsStore == nil {
 		return
