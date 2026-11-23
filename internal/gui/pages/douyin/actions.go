@@ -2,12 +2,13 @@ package douyin
 
 import (
 	"fmt"
-	"github.com/kamiertop/videodown/internal/gui/components"
 	"strings"
 
-	"github.com/egoist/mygo/ui"
 	dyDownload "github.com/kamiertop/videodown/douyin/download"
 	"github.com/kamiertop/videodown/douyin/model"
+	"github.com/kamiertop/videodown/internal/gui/components"
+
+	"github.com/egoist/mygo/ui"
 )
 
 func progressView(c *ui.Context, p dyDownload.Progress) {
@@ -104,6 +105,18 @@ func (s *State) changeHistory(work func() error) {
 		s.loadHistory(false)
 	})
 }
+// reportActionError 把打开文件等操作失败以 toast 弹出（右下角）；
+// 没有 toast 通道的环境（测试、离屏渲染）退回页面内红字提示。
+func (s *State) reportActionError(message string) {
+	if s.runtime.Notify != nil {
+		s.runtime.Notify(message, true)
+		return
+	}
+	s.actionError = message
+}
+
+// openFile 打开下载文件或其所在目录；文件被移动或删除时弹出提示，
+// 不再静默失败。
 func (s *State) openFile(path string, directory bool) {
 	action := s.runtime.OpenFile
 	if directory {
@@ -113,13 +126,14 @@ func (s *State) openFile(path string, directory bool) {
 		return
 	}
 	if path == "" {
-		s.actionError = "文件路径为空"
+		s.reportActionError("打开失败：文件路径为空")
 		return
 	}
 	epoch := s.epoch
+	s.actionError = ""
 	s.runtime.Run(func() error { return action(path) }, func(err error) {
 		if !s.stopped && s.epoch == epoch && err != nil {
-			s.actionError = err.Error()
+			s.reportActionError("打开失败：" + err.Error())
 		}
 	})
 }
