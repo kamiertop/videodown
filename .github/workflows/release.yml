@@ -45,6 +45,12 @@ jobs:
           cache: true
           cache-dependency-path: go.sum
 
+      - name: Install CJK fonts for native UI tests
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+
       - name: Test and check native UI
         shell: bash
         run: |
