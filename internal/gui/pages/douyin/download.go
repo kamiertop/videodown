@@ -188,7 +188,7 @@ func (s *State) parse() {
 			return
 		}
 		if err != nil {
-			s.actionError = err.Error()
+			s.reportActionError(err.Error())
 			return
 		}
 		s.stage(video)

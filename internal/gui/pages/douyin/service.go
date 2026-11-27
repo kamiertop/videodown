@@ -250,7 +250,7 @@ func (s *State) saveCookie(clear bool) {
 		}
 		s.authBusy = false
 		if err != nil {
-			s.actionError = err.Error()
+			s.reportActionError(err.Error())
 			return
 		}
 		s.epoch++

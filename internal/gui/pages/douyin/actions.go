@@ -28,7 +28,7 @@ func (s *State) saveCover(item *queuedVideo) {
 	}
 	task, err := taskFor(item.Data, item.Track, "")
 	if err != nil && task.Cover == "" {
-		s.actionError = err.Error()
+		s.reportActionError(err.Error())
 		return
 	}
 	covers := []model.Cover{item.Data.Video.Cover, item.Data.Video.OriginCover}
@@ -43,7 +43,7 @@ func (s *State) saveCover(item *queuedVideo) {
 		if !s.stopped && s.epoch == epoch {
 			item.CoverBusy = false
 			if err != nil {
-				s.actionError = err.Error()
+				s.reportActionError(err.Error())
 			} else {
 				s.notice = "封面已保存"
 			}
@@ -98,7 +98,7 @@ func (s *State) changeHistory(work func() error) {
 		}
 		s.historyBusy = false
 		if err != nil {
-			s.actionError = err.Error()
+			s.reportActionError(err.Error())
 			return
 		}
 		s.clearOpen = false

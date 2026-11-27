@@ -5,9 +5,42 @@ import (
 	"testing"
 
 	"github.com/egoist/mygo/ui"
+	dyapi "github.com/kamiertop/videodown/douyin/api"
 	"github.com/kamiertop/videodown/douyin/download"
 	"github.com/kamiertop/videodown/internal/gui/style"
 )
+
+func TestParseFailureDoesNotPersistAcrossPages(t *testing.T) {
+	s := NewState()
+	s.api = &dyapi.Douyin{}
+	s.link = "无效链接"
+	s.runtime.Run = func(work func() error, done func(error)) { done(work()) }
+	var notifications []string
+	s.runtime.Notify = func(message string, failed bool) {
+		if failed {
+			notifications = append(notifications, message)
+		}
+	}
+	path := "/douyin/download"
+	test := ui.NewTester(func(c *ui.Context) {
+		style.UseTheme(c)
+		s.Form(c, path, func(string) {}, func() {})
+	}, 1200, 720)
+	test.Frame()
+	if err := test.Click("解析"); err != nil {
+		t.Fatal(err)
+	}
+	const message = "请输入有效的抖音链接或作品 ID"
+	if len(notifications) != 1 || notifications[0] != message {
+		t.Fatalf("parse failure notifications = %v", notifications)
+	}
+	for _, path = range []string{"/douyin/download", "/douyin/user", "/douyin/history", "/douyin/download"} {
+		test.Frame()
+		if test.HasText(message) {
+			t.Fatalf("parse error rendered inline on %s", path)
+		}
+	}
+}
 
 // TestHistoryOpenFailureShowsToast verifies that opening a moved or deleted
 // file reports the reason as a toast instead of failing silently, matching

@@ -235,7 +235,7 @@ func (s *State) findAuthor(navigate func(string)) {
 			return
 		}
 		if err != nil {
-			s.actionError = err.Error()
+			s.reportActionError(err.Error())
 			return
 		}
 		navigate("/douyin/user/" + url.PathEscape(uid))
