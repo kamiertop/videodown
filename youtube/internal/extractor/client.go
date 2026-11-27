@@ -29,7 +29,7 @@ var ErrNoFormat = errors.New("no video format provided")
 // DefaultClient type to use. No reason to change but you could if you wanted to.
 var DefaultClient = VisionOSClient
 
-// Profile fields follow yt-dlp's tv_samsung fix (#17723, #17805).
+// AuthenticatedClient Profile fields follow yt-dlp's tv_samsung fix (#17723, #17805).
 var AuthenticatedClient = ClientInfo{Name: "TVHTML5", Version: "5.20260707", DeviceMake: "Samsung", DeviceModel: "UKS9800", OSName: "Tizen", OSVersion: "2.4.0", UserAgent: "Mozilla/5.0 (SMART-TV; Linux; Tizen 2.4.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/2.4.0 TV Safari/538.1"}
 
 var VisionOSClient = ClientInfo{Name: "VISIONOS", Version: "1.02", DeviceMake: "Apple", OSName: "visionOS", OSVersion: "26.5.23O471", DeviceModel: "RealityDevice17,1", UserAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15"}

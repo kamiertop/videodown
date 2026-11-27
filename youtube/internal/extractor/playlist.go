@@ -1,4 +1,4 @@
-// Playlist renderer paths and continuation protocol adapted from kkdai/youtube,
+// Package extractor Playlist renderer paths and continuation protocol adapted from kkdai/youtube,
 // commit 3876742b95fd1cd96f836f396c2d54be8912a297 (MIT; see LICENSE).
 // This implementation uses encoding/json, bounded pages and explicit pagination.
 package extractor

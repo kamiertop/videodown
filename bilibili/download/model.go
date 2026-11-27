@@ -27,8 +27,8 @@ type Result struct {
 	Error   string
 }
 
-// DownloadKey 标识一个待判断是否已下载的视频：多 P 收藏条目带具体 cid，普通列表项常只有 bvid。
-type DownloadKey struct {
+// Key DownloadKey 标识一个待判断是否已下载的视频：多 P 收藏条目带具体 cid，普通列表项常只有 bvid。
+type Key struct {
 	Bvid string
 	Cid  int64
 }

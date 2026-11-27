@@ -35,7 +35,7 @@ func TestDownloadedVideoKeys(t *testing.T) {
 	s.markDownloaded(Task{Bvid: "BV3", Cid: -300, Title: "c"}, existing, kindCover)
 	s.markDownloaded(Task{Bvid: "BV4", Cid: 400, Title: "d"}, existing, kindVideo)
 
-	keys := []DownloadKey{
+	keys := []Key{
 		{Bvid: "BV1", Cid: 100}, // 精确 cid 命中
 		{Bvid: "BV1", Cid: 0},   // 仅 bvid，任意分 P 命中
 		{Bvid: " bv1 ", Cid: 0}, // 大小写与空白归一化后命中
@@ -68,7 +68,7 @@ func TestDownloadedVideoKeysAllWithCid(t *testing.T) {
 	s.markDownloaded(Task{Bvid: "BV1", Cid: 100, Title: "a"}, existing, kindVideo)
 	s.markDownloaded(Task{Bvid: "BV2", Cid: 200, Title: "b"}, filepath.Join(dir, "deleted.mp4"), kindVideo)
 
-	got, err := s.DownloadedVideoKeys([]DownloadKey{
+	got, err := s.DownloadedVideoKeys([]Key{
 		{Bvid: "BV1", Cid: 100},
 		{Bvid: "BV2", Cid: 200},
 		{Bvid: "BV3", Cid: 300},

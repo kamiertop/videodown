@@ -1,4 +1,4 @@
-// Account cookie verification. The account/account_menu endpoint powers
+// Package extractor Account cookie verification. The account/account_menu endpoint powers
 // YouTube's web account switcher; yt-dlp reads the same menu for account
 // selection (see THIRD_PARTY_NOTICES.md).
 package extractor

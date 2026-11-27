@@ -1,4 +1,4 @@
-// 进度指示：基于 Onevra Progress，支持标签、百分比与不定进度。
+// Package components 进度指示：基于 Onevra Progress，支持标签、百分比与不定进度。
 package components
 
 import (

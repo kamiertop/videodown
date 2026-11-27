@@ -1,4 +1,4 @@
-// 滚动区域：基于 Onevra ScrollView，绑定应用管理的滚动状态。
+// Package components 滚动区域：基于 Onevra ScrollView，绑定应用管理的滚动状态。
 package components
 
 import (

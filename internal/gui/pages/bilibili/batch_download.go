@@ -229,7 +229,7 @@ func (s *State) runBatchItem(b *batchSession, item *batchItem) {
 	skipped := false
 	s.runtime.Background(func() error {
 		if backend != nil && backend.SkipDownloaded() {
-			keys, err := backend.DownloadedVideoKeys([]bilidownload.DownloadKey{{Bvid: task.Bvid, Cid: task.Cid}})
+			keys, err := backend.DownloadedVideoKeys([]bilidownload.Key{{Bvid: task.Bvid, Cid: task.Cid}})
 			if err != nil {
 				return err
 			}

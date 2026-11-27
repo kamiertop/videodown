@@ -1,4 +1,4 @@
-// 模态对话框：基于 Onevra Dialog，带标题、描述与关闭按钮。
+// Package components 模态对话框：基于 Onevra Dialog，带标题、描述与关闭按钮。
 package components
 
 import (

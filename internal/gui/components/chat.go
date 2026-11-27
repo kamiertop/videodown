@@ -1,4 +1,3 @@
-// 代码块：等宽展示可复制命令，带折叠与自动换行，不做语法高亮。
 package components
 
 import (
