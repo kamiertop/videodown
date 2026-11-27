@@ -220,7 +220,7 @@ func (config playerConfig) decrypt(ctx context.Context, cyphertext []byte) ([]by
 	}
 
 	// apply operations
-	bs := []byte(cyphertext)
+	bs := cyphertext
 	for _, op := range operations {
 		bs = op(bs)
 	}

@@ -3,11 +3,12 @@ package youtube
 import (
 	"context"
 	"fmt"
-	"github.com/kamiertop/videodown/internal/gui/style"
 	"testing"
 	"time"
 
 	"github.com/egoist/mygo/ui"
+
+	"github.com/kamiertop/videodown/internal/gui/style"
 	yt "github.com/kamiertop/videodown/youtube"
 )
 

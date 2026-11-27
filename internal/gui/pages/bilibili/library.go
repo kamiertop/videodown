@@ -2,13 +2,14 @@ package bilibili
 
 import (
 	"fmt"
-	"github.com/kamiertop/videodown/internal/gui/components"
 	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
+
 	biliapi "github.com/kamiertop/videodown/bilibili/api"
 	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/internal/gui/components"
 	"github.com/kamiertop/videodown/internal/gui/icons"
 	"github.com/kamiertop/videodown/internal/gui/style"
 )

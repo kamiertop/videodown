@@ -2,6 +2,7 @@ package updater
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"os"
@@ -9,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/imroc/req/v3"
+
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/logger"
 )
@@ -90,7 +92,7 @@ func TestCancelledNativeCheckDoesNotRequest(t *testing.T) {
 	u := New(logger.New(), store)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := u.Check(ctx); err != context.Canceled {
+	if _, err := u.Check(ctx); !errors.Is(err, context.Canceled) {
 		t.Fatalf("cancelled check: %v", err)
 	}
 }

@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v1.0.0-alpha.6
+
+### Enhancement
+
+- YouTube 账号页保存 Cookie 后自动验证：通过网页账号菜单确认登录并显示头像、昵称与邮箱，替换 Cookie 后立即刷新账号信息
+- 抖音帐号页面修改Cookie时增加取消按钮
+
 ## v1.0.0-alpha.5
 
 ### Refactor

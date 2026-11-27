@@ -2,11 +2,12 @@ package douyin
 
 import (
 	"fmt"
-	"github.com/kamiertop/videodown/internal/gui/style"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
+
 	"github.com/kamiertop/videodown/douyin/model"
+	"github.com/kamiertop/videodown/internal/gui/style"
 )
 
 func TestDownloadListGroupAndStagedTasks(t *testing.T) {

@@ -1,10 +1,10 @@
 package gui
 
 import (
-	"github.com/kamiertop/videodown/internal/gui/components"
 	"strings"
 
 	"github.com/kamiertop/videodown/internal/gui/assets"
+	"github.com/kamiertop/videodown/internal/gui/components"
 	"github.com/kamiertop/videodown/internal/gui/icons"
 	"github.com/kamiertop/videodown/internal/gui/style"
 

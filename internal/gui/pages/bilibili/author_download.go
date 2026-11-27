@@ -1,8 +1,9 @@
 package bilibili
 
 import (
-	"github.com/kamiertop/videodown/bilibili/model"
 	"strings"
+
+	"github.com/kamiertop/videodown/bilibili/model"
 )
 
 func bestAuthorStreams(play *model.VideoURLData) (videoURL, audioURL string) {

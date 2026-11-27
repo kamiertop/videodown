@@ -2,9 +2,10 @@ package bilibili
 
 import (
 	"fmt"
-	"github.com/kamiertop/videodown/internal/gui/components"
 	"slices"
 	"strings"
+
+	"github.com/kamiertop/videodown/internal/gui/components"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/kamiertop/videodown/internal/gui/icons"

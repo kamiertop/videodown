@@ -1,12 +1,14 @@
 package gui
 
 import (
-	"github.com/egoist/mygo"
-	"github.com/egoist/mygo/ui"
-	"github.com/kamiertop/videodown/internal/gui/closing"
-	"github.com/kamiertop/videodown/internal/storage"
 	"testing"
 	"time"
+
+	"github.com/egoist/mygo"
+	"github.com/egoist/mygo/ui"
+
+	"github.com/kamiertop/videodown/internal/gui/closing"
+	"github.com/kamiertop/videodown/internal/storage"
 )
 
 func TestFirstCloseDialog(t *testing.T) {

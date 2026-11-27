@@ -2,12 +2,13 @@ package bilibili
 
 import (
 	"fmt"
-	"github.com/kamiertop/videodown/internal/gui/style"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
+
 	biliapi "github.com/kamiertop/videodown/bilibili/api"
 	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/internal/gui/style"
 )
 
 func downloadTester(s *State) *ui.Tester {

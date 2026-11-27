@@ -3,14 +3,14 @@ package youtube
 import (
 	"errors"
 	"image/png"
-
-	"github.com/kamiertop/videodown/internal/gui/style"
 	"math"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
+
+	"github.com/kamiertop/videodown/internal/gui/style"
 	"github.com/kamiertop/videodown/internal/storage"
 	yt "github.com/kamiertop/videodown/youtube"
 )

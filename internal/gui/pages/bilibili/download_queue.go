@@ -3,7 +3,6 @@ package bilibili
 import (
 	"errors"
 	"fmt"
-	"github.com/kamiertop/videodown/internal/gui/components"
 	"slices"
 	"sort"
 	"strings"
@@ -12,6 +11,7 @@ import (
 	biliapi "github.com/kamiertop/videodown/bilibili/api"
 	bilidownload "github.com/kamiertop/videodown/bilibili/download"
 	"github.com/kamiertop/videodown/bilibili/model"
+	"github.com/kamiertop/videodown/internal/gui/components"
 )
 
 // queueState 是暂存队列的下载调度：每个待下载项的播放地址解析缓存、
