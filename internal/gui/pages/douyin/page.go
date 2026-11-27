@@ -186,7 +186,7 @@ func (s *State) accountPage(c *ui.Context) {
 					})
 					ui.Row(c).FillWidth().Gap(style.SpaceSmall).Children(func() {
 						button(c, "刷新账号", components.ButtonOptions{Variant: components.ButtonOutline, Disabled: s.authBusy}).OnClick(s.loadProfile)
-						button(c, "更新 Cookie", components.ButtonOptions{Variant: components.ButtonOutline, Disabled: s.PendingDownloadCount() > 0}).OnClick(func() { s.editCookie = !s.editCookie })
+						button(c, "更新 Cookie", components.ButtonOptions{Variant: components.ButtonOutline, Disabled: s.PendingDownloadCount() > 0}).OnClick(func() { s.editCookie = true })
 						button(c, "退出登录", components.ButtonOptions{Variant: components.ButtonGhost, Disabled: s.authBusy || s.PendingDownloadCount() > 0}).OnClick(func() { s.saveCookie(true) })
 					})
 				}
@@ -194,6 +194,9 @@ func (s *State) accountPage(c *ui.Context) {
 					components.TextArea(c.Key("cookie"), &s.cookie, components.TextAreaOptions{Label: "抖音 Cookie", Placeholder: "粘贴抖音网页 Cookie", MinHeight: 110, MaxHeight: 160, Disabled: s.authBusy}).FillWidth()
 					ui.Row(c).FillWidth().Gap(style.SpaceSmall).Children(func() {
 						button(c, "保存并验证", components.ButtonOptions{Variant: components.ButtonPrimary, Loading: s.authBusy, Disabled: strings.TrimSpace(s.cookie) == "" || s.api == nil || s.PendingDownloadCount() > 0}).OnClick(func() { s.saveCookie(false) })
+						if s.loggedIn() {
+							button(c, "取消", components.ButtonOptions{Variant: components.ButtonGhost, Disabled: s.authBusy}).OnClick(s.cancelEditCookie)
+						}
 						services := c.Services()
 						button(c, "打开抖音", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() { services.OpenURL("https://www.douyin.com/") })
 					})

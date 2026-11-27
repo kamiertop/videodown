@@ -2,6 +2,7 @@ package youtube
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -345,5 +346,59 @@ func TestProxySwitchDefaultsAndPersistence(t *testing.T) {
 	}
 	if !service.ProxyEnabled() {
 		t.Fatal("could not re-enable saved proxy")
+	}
+}
+
+func TestAccountVerifiesCookie(t *testing.T) {
+	store, err := storage.OpenMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	service := New(store)
+	service.transport = transportFunc(func(r *http.Request) (*http.Response, error) {
+		data := `ytcfg.set({"LOGGED_IN":true,"VISITOR_DATA":"visitor-fixture","INNERTUBE_CLIENT_VERSION":"2.20261029.00.00"});`
+		if strings.HasSuffix(r.URL.Path, "/account/account_menu") {
+			data = `{"actions":[{"openPopupAction":{"popup":{"multiPageMenuRenderer":{"sections":[{"multiPageMenuSectionRenderer":{"items":[{"accountItemRenderer":{"accountName":{"simpleText":"账号_fixture"},"email":{"simpleText":"fixture@example.com"},"accountPhoto":{"thumbnails":[{"url":"https://yt3.ggpht.com/fixture"}]},"isSelected":true}}]}}]}}}}]}`
+		}
+		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(data)), Request: r}, nil
+	})
+	if _, err := service.Account(context.Background()); err == nil {
+		t.Fatal("accepted missing cookie")
+	}
+	if err := service.SetCookie("SAPISID=fixture; LOGIN_INFO=fixture"); err != nil {
+		t.Fatal(err)
+	}
+	info, err := service.Account(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !info.LoggedIn || info.Name != "账号_fixture" || info.Email != "fixture@example.com" || info.Avatar != "https://yt3.ggpht.com/fixture" {
+		t.Fatalf("unexpected account info %+v", info)
+	}
+}
+
+func TestAccountNetworkErrorClassification(t *testing.T) {
+	store, err := storage.OpenMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	service := New(store)
+	if err := service.SetCookie("SAPISID=fixture; LOGIN_INFO=fixture"); err != nil {
+		t.Fatal(err)
+	}
+	service.transport = transportFunc(func(r *http.Request) (*http.Response, error) {
+		return nil, errors.New("Get \"https://www.youtube.com/\": net/http: request canceled")
+	})
+	_, err = service.Account(context.Background())
+	if !errors.Is(err, ErrAccountNetwork) {
+		t.Fatalf("want ErrAccountNetwork, got %v", err)
+	}
+	if !errors.Is(err, extractor.ErrAccountNetwork) {
+		t.Fatal("service did not re-export the network sentinel")
+	}
+	if !strings.Contains(err.Error(), "连接超时或被中断") {
+		t.Fatalf("raw error surfaced untranslated: %v", err)
 	}
 }

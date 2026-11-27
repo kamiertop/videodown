@@ -220,6 +220,16 @@ func (s *State) loadProfile() {
 	})
 }
 
+// cancelEditCookie 收起更新 Cookie 的编辑框并丢弃未保存的草稿；
+// 已保存的登录态不受影响。仅在已登录时提供（登录表单没有可取消的对象）。
+func (s *State) cancelEditCookie() {
+	if s.authBusy {
+		return
+	}
+	s.editCookie = false
+	s.cookie = ""
+}
+
 func (s *State) saveCookie(clear bool) {
 	if s.authBusy || s.api == nil || s.runtime.Run == nil || s.PendingDownloadCount() > 0 {
 		return

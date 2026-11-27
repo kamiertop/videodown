@@ -63,6 +63,22 @@ type History struct {
 	Kind       string `json:"kind,omitempty"`
 }
 
+// AccountInfo 汇总已验证登录的账号资料，供账号页展示 Cookie 是否生效。
+type AccountInfo struct {
+	LoggedIn bool
+	Name     string
+	Email    string
+	Avatar   string
+}
+
+var (
+	// ErrAccountNetwork 账号验证的网络错误：请求未到达 YouTube 或响应被
+	// 中断，与 Cookie 本身是否有效无关，界面应引导检查代理而非换 Cookie。
+	ErrAccountNetwork = extractor.ErrAccountNetwork
+	// ErrCookieNotLoggedIn Cookie 已送达 YouTube 但会话未登录。
+	ErrCookieNotLoggedIn = extractor.ErrCookieNotLoggedIn
+)
+
 type cachedVideo struct {
 	client *extractor.Client
 	video  *extractor.Video
@@ -247,6 +263,7 @@ func (s *Service) History() ([]History, error) {
 	}
 	return result, nil
 }
+
 // DeleteHistory 删除一个视频的全部下载记录（同一视频可能有视频与音频两条）；
 // 不会删除已经保存到本地的文件。
 func (s *Service) DeleteHistory(videoID string) error {
@@ -515,6 +532,19 @@ func (s *Service) fetchVideo(ctx context.Context, id string) (*extractor.Client,
 		return client, nil, err
 	}
 	return nil, nil, errors.New("播放器未提供可下载的直链格式，当前精简解析器尚不支持该响应")
+}
+
+// Account 验证已保存的 Cookie 并返回当前登录账号的资料；Cookie 未设置或
+// 未生效时返回错误，账号页据此给出明确提示。
+func (s *Service) Account(ctx context.Context) (AccountInfo, error) {
+	if s.Cookie() == "" {
+		return AccountInfo{}, errors.New("未设置 Cookie")
+	}
+	account, err := s.client().GetAccountContext(ctx)
+	if err != nil {
+		return AccountInfo{}, err
+	}
+	return AccountInfo{LoggedIn: account.LoggedIn, Name: account.Name, Email: account.Email, Avatar: account.Avatar}, nil
 }
 
 func (s *Service) parseError(err error) error {

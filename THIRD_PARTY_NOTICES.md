@@ -29,6 +29,13 @@ The SID authorization protocol and authenticated TV client fields are also based
 on yt-dlp's `_get_sid_authorization_header` and `INNERTUBE_CLIENTS` documentation
 in the same source file. The Go implementation adds origin-scoped session
 signatures, authenticated player timestamps, and a public anonymous fallback.
+The account verification request targets the `account/account_menu` endpoint
+that powers YouTube's web account switcher, mirroring yt-dlp's account
+selection flow in the same source file. The live menu response no longer
+carries the `accountItemRenderer` account list; parsing covers both the
+legacy list (with `isSelected` markers) and the current
+`activeAccountHeaderRenderer` shape, the latter verified against the live
+endpoint on 2026-11-27.
 
 ## yt-dlp EJS player solver
 

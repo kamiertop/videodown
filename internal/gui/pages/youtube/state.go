@@ -2,6 +2,7 @@ package youtube
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -13,59 +14,71 @@ import (
 )
 
 type State struct {
-	proxy                 string
-	proxyEnabled          bool
-	proxyMessage          string
-	proxySaveSeq          uint64
-	proxySaveCancel       func()
-	proxySavePending      bool
-	proxyBusy             bool
-	imageClient           *req.Client
-	started               bool
-	detailsInFlight       int
-	audioOnly             bool
-	queue                 []*queueItem
-	queueGroups           []*queueGroup
-	downloadList          ui.ListState
-	revealPreview         bool
-	playlistTasks         map[string]*queueItem
-	thumbnails            map[string]*thumbnail
-	thumbnailUse          uint64
-	thumbnailLoader       func(context.Context, []string) (*ui.Bitmap, error)
-	nextQueue             uint64
-	active                map[*queueItem]context.CancelFunc
-	queuePaused           bool
-	parseCancel           context.CancelFunc
-	playlistLink          string
-	playlist              yt.Playlist
-	playlistRows          []*playlistRow
-	playlistList          ui.ListState
-	playlistRemoved       map[string]bool
-	playlistLoading       bool
-	playlistError         string
-	playlistSource        string
-	playlistGeneration    uint64
-	playlistCancel        context.CancelFunc
-	Link, cookie, message string
-	actionError           string
-	historyBusy           bool
-	authMessage           string
-	cookieSaved           bool
-	busy, stopped         bool
-	video                 yt.Video
-	format                int
-	history               []yt.History
-	historySearch         string
-	cover                 *ui.Bitmap
-	api                   *yt.Service
-	runtime               guiruntime.Runtime
-	dispatch              func(func())
-	ctx                   context.Context
-	stop                  context.CancelFunc
-	generation            uint64
-	coverGeneration       uint64
-	coverError            string
-	coverLoading          bool
+	proxy                   string
+	proxyEnabled            bool
+	proxyMessage            string
+	proxySaveSeq            uint64
+	proxySaveCancel         func()
+	proxySavePending        bool
+	proxyBusy               bool
+	imageClient             *req.Client
+	started                 bool
+	detailsInFlight         int
+	audioOnly               bool
+	queue                   []*queueItem
+	queueGroups             []*queueGroup
+	downloadList            ui.ListState
+	revealPreview           bool
+	playlistTasks           map[string]*queueItem
+	thumbnails              map[string]*thumbnail
+	thumbnailUse            uint64
+	thumbnailLoader         func(context.Context, []string) (*ui.Bitmap, error)
+	nextQueue               uint64
+	active                  map[*queueItem]context.CancelFunc
+	queuePaused             bool
+	parseCancel             context.CancelFunc
+	playlistLink            string
+	playlist                yt.Playlist
+	playlistRows            []*playlistRow
+	playlistList            ui.ListState
+	playlistRemoved         map[string]bool
+	playlistLoading         bool
+	playlistError           string
+	playlistSource          string
+	playlistGeneration      uint64
+	playlistCancel          context.CancelFunc
+	Link, cookie, message   string
+	actionError             string
+	historyBusy             bool
+	authMessage             string
+	cookieSaved             bool
+	account                 yt.AccountInfo
+	accountError            string
+	accountNetwork          bool
+	accountBusy             bool
+	accountLoader           func(context.Context) (yt.AccountInfo, error)
+	accountAvatar           *ui.Bitmap
+	accountAvatarLoading    bool
+	accountAvatarError      string
+	accountAvatarGeneration uint64
+	accountGeneration       uint64
+	accountCancel           context.CancelFunc
+	accountCheckedAt        time.Time
+	busy, stopped           bool
+	video                   yt.Video
+	format                  int
+	history                 []yt.History
+	historySearch           string
+	cover                   *ui.Bitmap
+	api                     *yt.Service
+	runtime                 guiruntime.Runtime
+	dispatch                func(func())
+	ctx                     context.Context
+	stop                    context.CancelFunc
+	generation              uint64
+	coverGeneration         uint64
+	coverError              string
+	coverLoading            bool
 }
 
 func NewState() *State { return &State{} }
@@ -96,6 +109,8 @@ func (s *State) Start() {
 			s.mergeHistory(history)
 		}
 	})
+	// 启动即验证已保存的 Cookie，账号页可直接展示登录账号。
+	s.checkAccount()
 }
 func (s *State) PendingDownloadCount() int { return len(s.active) + s.waitingCount() }
 
@@ -202,7 +217,73 @@ func (s *State) saveCookie() {
 		s.video = yt.Video{}
 		s.cover = nil
 		s.coverGeneration++
-		s.authMessage = "Cookie 已保存"
+		if !s.cookieSaved {
+			s.authMessage = "Cookie 已清除"
+		}
+		// 保存后立即验证，账号页会显示验证结果与登录账号。
+		s.checkAccount()
+	})
+}
+
+// checkAccount 用保存的 Cookie 请求账号菜单，验证登录并读取头像、昵称
+// 与邮箱，让用户确认 Cookie 确实生效；结果写入 s.account。
+// 每次调用都取消在途验证并重新请求（含取消启动时的自动验证），迟到的
+// 旧结果一律丢弃，保证界面显示的永远是最新一次验证。
+func (s *State) checkAccount() {
+	if s.api == nil || s.runtime.Background == nil {
+		return
+	}
+	// 丢弃在途验证与其迟到的完成回调。
+	s.accountGeneration++
+	if s.accountCancel != nil {
+		s.accountCancel()
+		s.accountCancel = nil
+	}
+	s.account = yt.AccountInfo{}
+	s.accountError = ""
+	s.accountNetwork = false
+	s.accountAvatar = nil
+	s.accountAvatarLoading = false
+	s.accountAvatarError = ""
+	s.accountAvatarGeneration++
+	s.accountCheckedAt = time.Time{}
+	if !s.cookieSaved {
+		return
+	}
+	s.accountBusy = true
+	api, saved := s.api, s.api.Cookie()
+	loader := s.accountLoader
+	if loader == nil {
+		loader = api.Account
+	}
+	generation := s.accountGeneration
+	ctx, cancel := context.WithTimeout(s.ctx, 60*time.Second)
+	s.accountCancel = cancel
+	var account yt.AccountInfo
+	s.runtime.Background(func() error {
+		defer cancel()
+		var err error
+		account, err = loader(ctx)
+		return err
+	}, func(err error) {
+		if s.stopped || generation != s.accountGeneration {
+			return
+		}
+		s.accountBusy = false
+		s.accountCancel = nil
+		// 验证期间 Cookie 又被修改：放弃本次结果，用新 Cookie 重查。
+		if api.Cookie() != saved {
+			s.checkAccount()
+			return
+		}
+		if err != nil {
+			s.accountError = err.Error()
+			s.accountNetwork = errors.Is(err, yt.ErrAccountNetwork)
+			return
+		}
+		s.account = account
+		s.accountCheckedAt = time.Now()
+		s.loadAccountAvatar()
 	})
 }
 
@@ -303,6 +384,10 @@ func (s *State) saveProxy() {
 			s.coverGeneration++
 			s.coverLoading = false
 			s.coverError = ""
+			// 代理变更后出口变了：上次因网络失败的验证立即重试。
+			if s.cookieSaved && s.accountNetwork {
+				s.checkAccount()
+			}
 		}
 		if s.proxySavePending {
 			s.proxySavePending = false

@@ -27,6 +27,9 @@ type PlaylistEntry struct {
 
 var playlistIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{2,80}$`)
 
+// innertubeVersionPattern reads the WEB client version the current page ships.
+var innertubeVersionPattern = regexp.MustCompile(`"INNERTUBE_CLIENT_VERSION"\s*:\s*"([^"]+)"`)
+
 func PlaylistID(input string) (string, error) {
 	u, err := url.Parse(strings.TrimSpace(input))
 	if err != nil || (u.Scheme != "https" && u.Scheme != "http") {
@@ -59,7 +62,7 @@ func (c *Client) GetPlaylistPage(ctx context.Context, input, continuation string
 	web.parseSessionConfig(string(page))
 	web.visitorId.updated = time.Now()
 	// Use the version supplied by the page rather than depending on a pinned version.
-	if match := regexp.MustCompile(`"INNERTUBE_CLIENT_VERSION"\s*:\s*"([^"]+)"`).FindSubmatch(page); len(match) > 1 {
+	if match := innertubeVersionPattern.FindSubmatch(page); len(match) > 1 {
 		web.client.Version = string(match[1])
 	}
 	var root map[string]any
@@ -112,7 +115,7 @@ func (c *Client) GetPlaylistPage(ctx context.Context, input, continuation string
 	return next, nil
 }
 
-func playlistText(v any) string {
+func rendererText(v any) string {
 	m, _ := v.(map[string]any)
 	if text, _ := m["simpleText"].(string); text != "" {
 		return text
@@ -127,8 +130,8 @@ func playlistText(v any) string {
 	return text.String()
 }
 
-// visitPlaylistKey follows renderer names while retaining array order.
-func visitPlaylistKey(node any, key string, fn func(map[string]any)) {
+// visitRenderer follows renderer names while retaining array order.
+func visitRenderer(node any, key string, fn func(map[string]any)) {
 	switch n := node.(type) {
 	case map[string]any:
 		if match, ok := n[key].(map[string]any); ok {
@@ -136,11 +139,11 @@ func visitPlaylistKey(node any, key string, fn func(map[string]any)) {
 			return
 		}
 		for _, child := range n {
-			visitPlaylistKey(child, key, fn)
+			visitRenderer(child, key, fn)
 		}
 	case []any:
 		for _, child := range n {
-			visitPlaylistKey(child, key, fn)
+			visitRenderer(child, key, fn)
 		}
 	}
 }
@@ -150,18 +153,18 @@ func parsePlaylistPage(root map[string]any) (PlaylistPage, error) {
 	alerts, _ := root["alerts"].([]any)
 	for _, alert := range alerts {
 		var message string
-		visitPlaylistKey(alert, "alertRenderer", func(m map[string]any) {
+		visitRenderer(alert, "alertRenderer", func(m map[string]any) {
 			if m["type"] == "ERROR" {
-				message = playlistText(m["text"])
+				message = rendererText(m["text"])
 			}
 		})
 		if message != "" {
 			return result, fmt.Errorf("播放列表不可用：%s", message)
 		}
 	}
-	visitPlaylistKey(root["metadata"], "playlistMetadataRenderer", func(m map[string]any) { result.Title, _ = m["title"].(string) })
+	visitRenderer(root["metadata"], "playlistMetadataRenderer", func(m map[string]any) { result.Title, _ = m["title"].(string) })
 	if result.Title == "" {
-		visitPlaylistKey(root["header"], "playlistHeaderRenderer", func(m map[string]any) { result.Title = playlistText(m["title"]) })
+		visitRenderer(root["header"], "playlistHeaderRenderer", func(m map[string]any) { result.Title = rendererText(m["title"]) })
 	}
 	var contents []any
 	foundContents := false
@@ -171,14 +174,14 @@ func parsePlaylistPage(root map[string]any) (PlaylistPage, error) {
 			contents = append(contents, items...)
 		}
 	}
-	visitPlaylistKey(root["contents"], "playlistVideoListRenderer", collect)
+	visitRenderer(root["contents"], "playlistVideoListRenderer", collect)
 	// Current WEB pages place lockupViewModel entries directly in item sections.
 	if !foundContents {
-		visitPlaylistKey(root["contents"], "itemSectionRenderer", collect)
+		visitRenderer(root["contents"], "itemSectionRenderer", collect)
 	}
-	visitPlaylistKey(root["continuationContents"], "playlistVideoListContinuation", collect)
+	visitRenderer(root["continuationContents"], "playlistVideoListContinuation", collect)
 	for _, key := range []string{"onResponseReceivedActions", "onResponseReceivedEndpoints"} {
-		visitPlaylistKey(root[key], "appendContinuationItemsAction", func(m map[string]any) {
+		visitRenderer(root[key], "appendContinuationItemsAction", func(m map[string]any) {
 			if items, ok := m["continuationItems"].([]any); ok {
 				foundContents = true
 				contents = append(contents, items...)
@@ -205,14 +208,14 @@ func parsePlaylistPage(root map[string]any) (PlaylistPage, error) {
 			}
 			seconds, _ := v["lengthSeconds"].(string)
 			n, _ := strconv.Atoi(seconds)
-			title := playlistText(v["title"])
+			title := rendererText(v["title"])
 			if title == "[Deleted video]" || title == "[Private video]" {
 				continue
 			}
 			if title == "" {
 				title = id
 			}
-			result.Videos = append(result.Videos, PlaylistEntry{ID: id, Title: title, Author: playlistText(v["shortBylineText"]), Duration: time.Duration(n) * time.Second})
+			result.Videos = append(result.Videos, PlaylistEntry{ID: id, Title: title, Author: rendererText(v["shortBylineText"]), Duration: time.Duration(n) * time.Second})
 		}
 		if token := playlistContinuation(value); token != "" {
 			result.Continuation = token
@@ -226,7 +229,7 @@ func parsePlaylistPage(root map[string]any) (PlaylistPage, error) {
 
 func playlistContinuation(node any) string {
 	var token string
-	visitPlaylistKey(node, "continuationCommand", func(m map[string]any) {
+	visitRenderer(node, "continuationCommand", func(m map[string]any) {
 		if token != "" {
 			return
 		}
@@ -264,7 +267,7 @@ func playlistLockup(v map[string]any) (PlaylistEntry, bool) {
 			entry.Author, _ = playlistPath(parts[0], "text", "content").(string)
 		}
 	}
-	visitPlaylistKey(v["contentImage"], "thumbnailBadgeViewModel", func(badge map[string]any) {
+	visitRenderer(v["contentImage"], "thumbnailBadgeViewModel", func(badge map[string]any) {
 		text, _ := badge["text"].(string)
 		if text == "" {
 			text, _ = playlistPath(badge, "text", "content").(string)

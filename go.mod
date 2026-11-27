@@ -3,12 +3,12 @@ module github.com/kamiertop/videodown
 go 1.27.3
 
 require (
-	github.com/dop251/goja v0.0.0-20261122185237-35fdc4b88e39
+	github.com/dop251/goja v0.0.0-20261125210501-5e92a7e24d0c
 	github.com/egoist/mygo v0.10.0
 	github.com/glebarez/go-sqlite v1.23.0
 	github.com/imroc/req/v3 v3.61.0
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/oneo-me/onevra/source v0.2026.18
+	github.com/oneo-me/onevra/source v0.2026.19
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/rs/zerolog v1.35.1
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
@@ -21,7 +21,7 @@ require (
 	github.com/ProtonMail/go-crypto v1.4.1 // indirect
 	github.com/andybalholm/brotli v1.2.8 // indirect
 	github.com/cloudflare/circl v1.6.2 // indirect
-	github.com/dlclark/regexp2/v2 v2.13.2 // indirect
+	github.com/dlclark/regexp2/v2 v2.13.3 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/ebitengine/purego v0.11.3 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.4+incompatible // indirect

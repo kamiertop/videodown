@@ -253,3 +253,43 @@ func TestLiveYouTubeResolveURL(t *testing.T) {
 	}
 
 }
+
+// TestLiveAccount verifies the stored cookie end to end: run with
+// VIDEODOWN_YOUTUBE_CONFIG=<config.toml path> (saved credentials only).
+func TestLiveAccount(t *testing.T) {
+	path := os.Getenv("VIDEODOWN_YOUTUBE_CONFIG")
+	if path == "" {
+		t.Skip("requires explicit config path")
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var config struct {
+		YouTube struct {
+			Cookie string `toml:"cookie"`
+		} `toml:"youtube"`
+	}
+	if err := toml.Unmarshal(raw, &config); err != nil {
+		t.Fatal(err)
+	}
+	store, err := storage.OpenMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	service := New(store)
+	if err := service.SetCookie(config.YouTube.Cookie); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	account, err := service.Account(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("account=%+v", account)
+	if !account.LoggedIn {
+		t.Fatal("stored cookie is not logged in")
+	}
+}

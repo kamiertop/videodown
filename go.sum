@@ -10,8 +10,14 @@ github.com/cloudflare/circl v1.6.2 h1:hL7VBpHHKzrV5WTfHCaBsgx/HGbBYlgrwvNXEVDYYs
 github.com/cloudflare/circl v1.6.2/go.mod h1:2eXP6Qfat4O/Yhh8BznvKnJ+uzEoTQ6jVKJRn81BiS4=
 github.com/dlclark/regexp2/v2 v2.13.2 h1:8vXJIqwqJRYqTHVl/DNQW8FPGNpkTn1aPrx2HZondsQ=
 github.com/dlclark/regexp2/v2 v2.13.2/go.mod h1:avUrQvPaLz2DrFNHJF0taWAFFX2C1GMSSoeiqFjcBmU=
+github.com/dlclark/regexp2/v2 v2.13.3 h1:yaOp65mbYbiTPk4kYd3MLa35486bjjHC4PYxaojrRCY=
+github.com/dlclark/regexp2/v2 v2.13.3/go.mod h1:avUrQvPaLz2DrFNHJF0taWAFFX2C1GMSSoeiqFjcBmU=
 github.com/dop251/goja v0.0.0-20261122185237-35fdc4b88e39 h1:njdoK99Ob0Aa/s2LfWKFvC47tNqC0GnCpb1uBkkPrLU=
 github.com/dop251/goja v0.0.0-20261122185237-35fdc4b88e39/go.mod h1:L1yoLBco9M3b2Gdh1UZHg+BIePeAdV1bwknaLLxAgoc=
+github.com/dop251/goja v0.0.0-20261124180248-00ef7861e082 h1:TeTaX4/PnNLpsk+16aweSAN5ROezx2mqcUUqDCsFbz4=
+github.com/dop251/goja v0.0.0-20261124180248-00ef7861e082/go.mod h1:L1yoLBco9M3b2Gdh1UZHg+BIePeAdV1bwknaLLxAgoc=
+github.com/dop251/goja v0.0.0-20261125210501-5e92a7e24d0c h1:DrPWTQKJbBWxW/xaQcnUMPtoYScy0n7bkJR3ONvcIBA=
+github.com/dop251/goja v0.0.0-20261125210501-5e92a7e24d0c/go.mod h1:L1yoLBco9M3b2Gdh1UZHg+BIePeAdV1bwknaLLxAgoc=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/ebitengine/purego v0.11.3 h1:OB+JLpdm7ioymhyA+6s5kbb/uOuYycAgL8NNTFc5MLg=
@@ -61,6 +67,8 @@ github.com/ncruces/go-strftime v1.0.0 h1:HMFp8mLCTPp341M/ZnA4qaf7ZlsbTc+miZjCLOF
 github.com/ncruces/go-strftime v1.0.0/go.mod h1:Fwc5htZGVVkseilnfgOVb9mKy6w1naJmn9CehxcKcls=
 github.com/oneo-me/onevra/source v0.2026.18 h1:XayEPjX17ytyMoBJDQs1MyfSIuzE+jCaaeDEhS9l4ZM=
 github.com/oneo-me/onevra/source v0.2026.18/go.mod h1:/+3SV9M2gM5Gq4ljua6afXcp+s4+3Lk/5wWSOg/qSAA=
+github.com/oneo-me/onevra/source v0.2026.19 h1:d9c5ZctKIZm3EN8/K4PnLsLA49Sg7H9LABE1U4k3WJ4=
+github.com/oneo-me/onevra/source v0.2026.19/go.mod h1:0BkJjs1GGv61oMOzRfTyD1PCKcXwZnoy4pu6KPoOidY=
 github.com/pelletier/go-toml/v2 v2.4.3 h1:GTRvJQutkOSftxIFD5xw9aepkYNuPWmVJpffdDPYVpY=
 github.com/pelletier/go-toml/v2 v2.4.3/go.mod h1:2gIqNv+qfxSVS7cM2xJQKtLSTLUE9V8t9Stt+h56mCY=
 github.com/quic-go/go-ossfuzz-seeds v0.1.0 h1:APacT+iIaNF6fd8AGEiN3bT/Jtkd2jz4v4TzM7MFjy0=
