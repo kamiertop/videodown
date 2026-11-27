@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 )
 
 var templateToken = regexp.MustCompile(`\{(title|author|source|folder|collection|publish_date|date|time|id|author_id)\}`)
@@ -106,6 +107,22 @@ func isReservedWindowsName(name string) bool {
 // "(N)" 后缀空间。超过上限的名字必须由调用方退回短视频 ID 之类的短名字，
 // 否则 os.Stat/os.Create 会返回 ENAMETOOLONG。
 const MaxFileNameBytes = 200
+
+// ExistingVideoFile reports whether path points to a non-empty regular file.
+func ExistingVideoFile(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.Mode().IsRegular() && info.Size() > 0
+}
+
+var videoPublishMu sync.Mutex
+
+// PublishVideoFile moves a completed video to an unused destination path.
+func PublishVideoFile(tempPath, targetPath string) (string, error) {
+	videoPublishMu.Lock()
+	defer videoPublishMu.Unlock()
+	path := UniqueFilePath(targetPath)
+	return path, os.Rename(tempPath, path)
+}
 
 // UniqueFilePath 在给定路径已存在时，生成一个唯一的文件路径。
 // 注意：stat 返回“不存在”以外的错误（例如文件名过长的 ENAMETOOLONG）时

@@ -257,12 +257,42 @@ func (s *Service) buildDownloadFileName(task Task) (string, error) {
 	return fileName, nil
 }
 
+func (s *Service) videoTargetPath(task Task) (string, error) {
+	dir, err := s.resolveTargetDir(s.store.DownloadDirectory(), task)
+	if err != nil {
+		return "", err
+	}
+	name, err := s.buildDownloadFileName(task)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, name+".mp4"), nil
+}
+
+// HasLocalVideo checks the current save path before resolving playback streams.
+func (s *Service) HasLocalVideo(task Task) bool {
+	cfg := s.store.Config().Download
+	if !cfg.SkipDownloaded || strings.TrimSpace(task.Title) == "" {
+		return false
+	}
+	authorGrouping := cfg.Grouping && (cfg.GroupingRule == "author" || cfg.GroupingRule == "author_source")
+	if strings.TrimSpace(task.UpperName) == "" && (authorGrouping || strings.Contains(cfg.FilenameTemplate, "{author}")) {
+		return false
+	}
+	if task.Pubtime <= 0 && strings.Contains(cfg.FilenameTemplate, "{publish_date}") {
+		return false
+	}
+	path, err := s.videoTargetPath(task)
+	return err == nil && utils.ExistingVideoFile(path)
+}
+
 // downloadDashTask 下载一个 DASH 任务，供单个下载和批量下载复用；
 // 第二个返回值表示任务因已下载而被跳过，跳过的任务没有发起网络请求。
 func (s *Service) downloadDashTask(task Task) (string, bool, error) {
 	s.resetDownloadProgress(task.Bvid, task.Cid)
 	// 增量下载开启时才跳过已下载的视频；关闭后即使缓存命中也重新下载（设置读取失败按开启兜底）。
-	if s.store.Config().Download.SkipDownloaded {
+	skipDownloaded := s.SkipDownloaded()
+	if skipDownloaded {
 		// 下载前先检查是否已下载，避免重复下载同一 CID 的视频
 		if path, ok := s.isDownloaded(task.Cid); ok {
 			s.emitProgress(Progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
@@ -270,38 +300,31 @@ func (s *Service) downloadDashTask(task Task) (string, bool, error) {
 		}
 	}
 
+	targetPath, err := s.videoTargetPath(task)
+	if err != nil {
+		return "", false, err
+	}
+	targetDir := filepath.Dir(targetPath)
+	if skipDownloaded && strings.TrimSpace(task.Title) != "" && utils.ExistingVideoFile(targetPath) {
+		s.emitProgress(Progress{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Phase: "done", Percent: 100})
+		return targetPath, true, nil
+	}
 	if task.VideoURL == "" {
 		return "", false, errors.New("视频流地址为空")
 	}
-
 	cookies, err := s.getCookie()
 	if err != nil {
 		return "", false, err
 	}
-
-	storagePath := s.store.DownloadDirectory()
-
-	targetDir, err := s.resolveTargetDir(storagePath, task)
-	if err != nil {
-		return "", false, err
-	}
-
 	if err = os.MkdirAll(targetDir, 0o755); err != nil {
 		return "", false, errors.New("创建下载目录失败")
-	}
-
-	fileName, err := s.buildDownloadFileName(task)
-	if err != nil {
-		return "", false, err
 	}
 	if strings.TrimSpace(task.Bvid) == "" {
 		task.Bvid = "BV_UNKNOWN"
 	}
 
-	outPath := utils.UniqueFilePath(filepath.Join(targetDir, fileName+".mp4"))
-
-	tmpDir := filepath.Join(storagePath, ".tmp", fmt.Sprintf("%s-%d", task.Bvid, time.Now().UnixNano()))
-	if err = os.MkdirAll(tmpDir, 0o755); err != nil {
+	tmpDir, err := os.MkdirTemp(targetDir, ".bilibili-")
+	if err != nil {
 		return "", false, errors.New("创建临时目录失败")
 	}
 	defer func() {
@@ -320,24 +343,25 @@ func (s *Service) downloadDashTask(task Task) (string, bool, error) {
 	}
 
 	ff := utils.NewFFmpeg(s.store.Config().Download.FFmpegPath)
+	mergedPath := filepath.Join(tmpDir, "output.mp4")
 	if task.AudioURL == "" {
 		s.emitProgress(p.withPhase("merge").withPercent(95))
-		if err = ff.Remux(videoTmp, outPath); err != nil {
+		err = ff.Remux(videoTmp, mergedPath)
+	} else {
+		audioTmp := filepath.Join(tmpDir, "audio.m4s")
+		if err = s.downloadToFile(task.AudioURL, audioTmp, task.Bvid, task.Title, task.Cid, "audio", cookies, 60, 30); err != nil {
 			s.emitProgress(p.withPhase("error"))
 			return "", false, err
 		}
-		s.markDownloaded(task, outPath, kindVideo)
-		s.emitProgress(p.withPhase("done").withPercent(100))
-		return outPath, false, nil
+		s.emitProgress(p.withPhase("merge").withPercent(95))
+		err = ff.Merge(videoTmp, audioTmp, mergedPath)
 	}
-
-	audioTmp := filepath.Join(tmpDir, "audio.m4s")
-	if err = s.downloadToFile(task.AudioURL, audioTmp, task.Bvid, task.Title, task.Cid, "audio", cookies, 60, 30); err != nil {
+	if err != nil {
 		s.emitProgress(p.withPhase("error"))
 		return "", false, err
 	}
-	s.emitProgress(p.withPhase("merge").withPercent(95))
-	if err = ff.Merge(videoTmp, audioTmp, outPath); err != nil {
+	outPath, err := utils.PublishVideoFile(mergedPath, targetPath)
+	if err != nil {
 		s.emitProgress(p.withPhase("error"))
 		return "", false, err
 	}
@@ -429,7 +453,7 @@ func (s *Service) DownloadVideosByDash(tasks []Task) (BatchResult, error) {
 				// 每个任务独立下载，失败不影响其他任务；下载完成后根据设置项休眠，避免连续请求过快；并发 worker 互不阻塞
 				s.active.Add(1)
 				path, skipped, err := s.downloadDashTask(task)
-				item := Result{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Path: path}
+				item := Result{Bvid: task.Bvid, Cid: task.Cid, Title: task.Title, Path: path, Skipped: skipped}
 				if err != nil {
 					s.logger.Errorf("download failed for BV %s CID %d: %v", task.Bvid, task.Cid, err)
 					item.Error = err.Error()

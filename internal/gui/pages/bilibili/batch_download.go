@@ -233,7 +233,7 @@ func (s *State) runBatchItem(b *batchSession, item *batchItem) {
 			if err != nil {
 				return err
 			}
-			if len(keys) > 0 {
+			if len(keys) > 0 || backend.HasLocalVideo(task) {
 				skipped = true
 				return nil
 			}
@@ -267,6 +267,7 @@ func (s *State) runBatchItem(b *batchSession, item *batchItem) {
 			return errors.New("没有可下载的视频流")
 		}
 		result, err := backend.DownloadVideosByDash([]bilidownload.Task{task})
+		skipped = len(result.Results) == 1 && result.Results[0].Skipped
 		return downloadResultError(result, err)
 	}, func(err error) {
 		if s.stopped || epoch != s.epoch {

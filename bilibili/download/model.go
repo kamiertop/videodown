@@ -19,11 +19,12 @@ type Task struct {
 
 // Result records the outcome of one download task.
 type Result struct {
-	Bvid  string
-	Cid   int64
-	Title string
-	Path  string
-	Error string
+	Bvid    string
+	Cid     int64
+	Title   string
+	Path    string
+	Skipped bool
+	Error   string
 }
 
 // DownloadKey 标识一个待判断是否已下载的视频：多 P 收藏条目带具体 cid，普通列表项常只有 bvid。

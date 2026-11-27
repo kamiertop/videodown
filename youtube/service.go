@@ -364,18 +364,6 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 		return "", errors.New("所选画质已不可用，请重新解析")
 	}
 	audioOnly := strings.HasPrefix(selected.MimeType, "audio/")
-	var audio *extractor.Format
-	if !audioOnly && selected.AudioChannels == 0 {
-		if len(audioFormats) > 0 {
-			audio = audioFormats[0]
-		}
-		if audio == nil {
-			return "", errors.New("未找到配套音频")
-		}
-		if _, _, err = utils.CheckFFmpeg(cfg.Download.FFmpegPath); err != nil {
-			return "", err
-		}
-	}
 	dir := s.store.DownloadDirectory()
 	if cfg.Download.Grouping && cfg.Download.GroupingRule != "none" {
 		switch cfg.Download.GroupingRule {
@@ -388,9 +376,6 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 		case "date":
 			dir = filepath.Join(dir, time.Now().Format(time.DateOnly))
 		}
-	}
-	if err = os.MkdirAll(dir, 0755); err != nil {
-		return "", err
 	}
 	name := utils.ApplyFilenameTemplate(cfg.Download.FilenameTemplate,
 		map[string]string{"title": raw.Title,
@@ -411,28 +396,37 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 	if audioOnly && strings.Contains(selected.MimeType, "mp4") {
 		ext = ".m4a"
 	}
-	if audio != nil {
+	needsMerge := !audioOnly && selected.AudioChannels == 0
+	if needsMerge {
 		ext = ".mkv"
 	}
-	// 与 B 站/抖音一致：最终路径在下载前查重确定并直接写入——需要合并时两路流
-	// 先落临时目录、由 ffmpeg 直接输出到最终路径；无需合并时直接下载到最终路径。
-	// 下载中途失败时移除未写完的最终文件，不留半截内容占用该路径。
-	outPath := utils.UniqueFilePath(filepath.Join(dir, name+ext))
-	complete := false
-	defer func() {
-		if !complete {
-			_ = os.Remove(outPath)
+	targetPath := filepath.Join(dir, name+ext)
+	if cfg.Download.SkipDownloaded && utils.ExistingVideoFile(targetPath) {
+		emit(Progress{Phase: "已跳过", Percent: 100})
+		return targetPath, nil
+	}
+	var audio *extractor.Format
+	if needsMerge {
+		if len(audioFormats) > 0 {
+			audio = audioFormats[0]
 		}
-	}()
+		if audio == nil {
+			return "", errors.New("未找到配套音频")
+		}
+		if _, _, err = utils.CheckFFmpeg(cfg.Download.FFmpegPath); err != nil {
+			return "", err
+		}
+	}
+	if err = os.MkdirAll(dir, 0755); err != nil {
+		return "", err
+	}
 	temp, err := os.MkdirTemp(dir, ".youtube-")
 	if err != nil {
 		return "", err
 	}
 	defer os.RemoveAll(temp)
-	videoPath := outPath
-	if audio != nil {
-		videoPath = filepath.Join(temp, "video"+ext)
-	}
+	videoPath := filepath.Join(temp, "video"+ext)
+	completedPath := videoPath
 	err = s.downloadStream(ctx, client, raw, selected, videoPath, func(done, total int64) {
 		p := float64(0)
 		if total > 0 {
@@ -459,15 +453,18 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 			return "", err
 		}
 		emit(Progress{Phase: "合并音视频", Percent: 98})
-		if err = utils.NewFFmpeg(cfg.Download.FFmpegPath).MergeContext(ctx, videoPath, audioPath, outPath); err != nil {
+		completedPath = filepath.Join(temp, "merged"+ext)
+		if err = utils.NewFFmpeg(cfg.Download.FFmpegPath).MergeContext(ctx, videoPath, audioPath, completedPath); err != nil {
 			return "", err
 		}
 	}
 	if err = ctx.Err(); err != nil {
 		return "", err
 	}
-	complete = true
-	final := outPath
+	final, err := utils.PublishVideoFile(completedPath, targetPath)
+	if err != nil {
+		return "", err
+	}
 	kind := "video"
 	if audioOnly {
 		kind = "audio"

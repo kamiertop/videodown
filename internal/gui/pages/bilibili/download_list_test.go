@@ -2,13 +2,18 @@ package bilibili
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
 
 	biliapi "github.com/kamiertop/videodown/bilibili/api"
+	bilidownload "github.com/kamiertop/videodown/bilibili/download"
 	"github.com/kamiertop/videodown/bilibili/model"
 	"github.com/kamiertop/videodown/internal/gui/style"
+	"github.com/kamiertop/videodown/internal/storage"
+	"github.com/kamiertop/videodown/logger"
 )
 
 func downloadTester(s *State) *ui.Tester {
@@ -153,5 +158,42 @@ func TestDownloadListReadiness(t *testing.T) {
 	_, ready := s.downloadRows()
 	if ready != 1 {
 		t.Fatalf("ready downloads = %d, want 1", ready)
+	}
+}
+
+func TestBatchSkipsLocalVideoBeforeResolvingPlayback(t *testing.T) {
+	store, err := storage.OpenMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Close()
+	dir := t.TempDir()
+	if err := store.UpdateConfig(func(c *storage.Config) error {
+		c.Download.Directory = dir
+		c.Download.Grouping = true
+		c.Download.GroupingRule = "author"
+		c.Download.FilenameTemplate = "{title}"
+		c.Download.SkipDownloaded = true
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	authorDir := filepath.Join(dir, "author")
+	if err := os.Mkdir(authorDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(authorDir, "video.mp4"), []byte("existing"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	s := NewState()
+	s.downloadBackend = bilidownload.New(logger.New(), store, nil)
+	s.runtime.Background = func(work func() error, done func(error)) { done(work()) }
+	item := &batchItem{Task: bilidownload.Task{Bvid: "BV1xx411c7mD", Title: "video", UpperName: "author"}}
+	batch := &batchSession{Items: []*batchItem{item}, Active: true}
+	// Leave the API unset to verify that the batch never reaches playback resolution.
+	s.runBatchItem(batch, item)
+	if item.Status != "skipped" || batch.Skipped != 1 {
+		t.Fatalf("status=%q skipped=%d error=%q", item.Status, batch.Skipped, item.Error)
 	}
 }

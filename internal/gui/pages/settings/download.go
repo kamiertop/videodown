@@ -38,7 +38,7 @@ func (s *State) downloadSettings(c *ui.Context, w Services) {
 		})
 		presets(c, &s.Config.Sleep, []int{0, 10, 30, 60, 120, 300}, w, "Sleep", func(v float64) preferences.Changes { return preferences.Changes{Sleep: new(int64(v))} })
 	})
-	toggleCard(c, "增量下载（跳过已下载）", "download", "一键下载全部时自动跳过已下载内容", "B 站 / 抖音跳过历史中已存在且文件仍在的视频；文件删除后会重新下载。关闭后恢复全量下载。", &s.Config.SkipDownloaded, w, func(v bool) preferences.Changes { return preferences.Changes{SkipDownloaded: new(v)} })
+	toggleCard(c, "增量下载（跳过已下载）", "download", "一键下载全部时自动跳过已下载内容", "B 站、抖音和 YouTube 会检查历史记录和当前保存路径，跳过本地已有的内容。关闭后恢复全量下载。", &s.Config.SkipDownloaded, w, func(v bool) preferences.Changes { return preferences.Changes{SkipDownloaded: new(v)} })
 }
 func presets(c *ui.Context, value *float64, values []int, w Services, key string, changes func(float64) preferences.Changes) {
 	columns := len(values)

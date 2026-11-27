@@ -24,6 +24,23 @@ func TestDownloadDashTaskRespectsIncrementalSwitch(t *testing.T) {
 		t.Fatalf("write file: %v", err)
 	}
 	task := Task{Bvid: "BV1xx411c7mD", Cid: 1001, Title: "已下载视频", VideoURL: ""}
+	localDir := t.TempDir()
+	if err := s.store.UpdateConfig(func(c *storage.Config) error {
+		c.Download.Directory = localDir
+		c.Download.Grouping = false
+		c.Download.FilenameTemplate = "{id}"
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	localPath := filepath.Join(localDir, task.Bvid+".mp4")
+	if err := os.WriteFile(localPath, []byte("video"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if path, skipped, err := s.downloadDashTask(task); err != nil || !skipped || path != localPath {
+		t.Fatalf("local file without history: path=%q skipped=%v err=%v", path, skipped, err)
+	}
+
 	s.markDownloaded(task, file, kindVideo)
 
 	// 开关未设置时默认开启：VideoURL 为空也能命中跳过（未发起网络请求）。

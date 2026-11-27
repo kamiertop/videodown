@@ -49,6 +49,22 @@ func TestAudioDownloadKeepsOriginalStreamAndSeparateHistory(t *testing.T) {
 		format    int
 		ext, path string
 	}{{140, ".m4a", "/audio"}, {-1, ".webm", "/opus"}, {18, ".mp4", "/video"}} {
+		dir := filepath.Join(store.DownloadDirectory(), "author", "YouTube")
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		localPath := filepath.Join(dir, "fixture"+tc.ext)
+		if err := os.WriteFile(localPath, []byte("existing"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		before := len(mediaPaths)
+		got, err := s.Download(context.Background(), v, tc.format, nil)
+		if err != nil || got != localPath || len(mediaPaths) != before {
+			t.Fatalf("local file without history: path=%q media requests=%v err=%v", got, mediaPaths[before:], err)
+		}
+		if err := os.Remove(localPath); err != nil {
+			t.Fatal(err)
+		}
 		path, err := s.Download(context.Background(), v, tc.format, nil)
 		if err != nil {
 			t.Fatal(err)

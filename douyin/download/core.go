@@ -221,6 +221,9 @@ func (d *Service) downloadURLToFile(rawURL, targetPath string, task Task, phase 
 		}
 		if readErr != nil {
 			if errors.Is(readErr, io.EOF) {
+				if total >= 0 && downloaded < total {
+					return io.ErrUnexpectedEOF
+				}
 				break
 			}
 			return readErr
@@ -252,7 +255,8 @@ func (d *Service) downloadTask(task Task) (string, bool, error) {
 	}
 
 	// 与 B 站一致：增量下载开启时跳过已下载的作品；关闭后即使缓存命中也重新下载（设置读取失败按开启兜底）。
-	if d.store.Config().Download.SkipDownloaded {
+	skipDownloaded := d.store.Config().Download.SkipDownloaded
+	if skipDownloaded {
 		// 下载前先检查是否已下载，避免重复下载同一作品；批量会话在界面已过滤，这里是手动路径和并发窗口的兜底。
 		if path, ok := d.isDownloaded(task.AwemeID); ok {
 			d.emitProgress(Progress{AwemeID: task.AwemeID, Title: task.Title, Phase: "done", Percent: 100})
@@ -265,6 +269,15 @@ func (d *Service) downloadTask(task Task) (string, bool, error) {
 	if err != nil {
 		return "", false, err
 	}
+	isAlbum := len(task.Assets) > 0 || len(task.ImageURLs) > 0
+	var targetPath string
+	if !isAlbum {
+		targetPath = filepath.Join(targetDir, d.videoFileName(task))
+		if skipDownloaded && utils.ExistingVideoFile(targetPath) {
+			d.emitProgress(Progress{AwemeID: task.AwemeID, Title: task.Title, Phase: "done", Percent: 100})
+			return targetPath, true, nil
+		}
+	}
 	if err = os.MkdirAll(targetDir, 0o755); err != nil {
 		return "", false, errors.New("创建下载目录失败")
 	}
@@ -276,7 +289,7 @@ func (d *Service) downloadTask(task Task) (string, bool, error) {
 		AwemeID: task.AwemeID,
 		Title:   task.Title,
 	}
-	if len(task.Assets) > 0 || len(task.ImageURLs) > 0 {
+	if isAlbum {
 		// 图文/动图保存为一个目录，素材按 001.<原始扩展名> 顺序落盘，配乐单独保存为 music.mp3。
 		dirName := utils.FileName(task.Title)
 		if dirName == "" {
@@ -329,6 +342,29 @@ func (d *Service) downloadTask(task Task) (string, bool, error) {
 	if strings.TrimSpace(task.VideoURL) == "" {
 		return "", false, errors.New("视频下载地址为空")
 	}
+	tmpDir, err := os.MkdirTemp(targetDir, ".douyin-")
+	if err != nil {
+		return "", false, err
+	}
+	defer os.RemoveAll(tmpDir)
+	tmpPath := filepath.Join(tmpDir, "video.mp4")
+
+	if err = d.downloadURLToFile(task.VideoURL, tmpPath, task, "video", 0, 100); err != nil {
+		d.emitProgress(p.withPhase("error"))
+		return "", false, err
+	}
+	outPath, err := utils.PublishVideoFile(tmpPath, targetPath)
+	if err != nil {
+		d.emitProgress(p.withPhase("error"))
+		return "", false, err
+	}
+	d.emitProgress(p.withPhase("done").withPercent(100))
+	d.markDownloaded(task, outPath, false, 0, kindVideo)
+
+	return outPath, false, nil
+}
+
+func (d *Service) videoFileName(task Task) string {
 	template := d.store.Config().Download.FilenameTemplate
 	now := time.Now()
 	values := map[string]string{"title": task.Title,
@@ -344,15 +380,7 @@ func (d *Service) downloadTask(task Task) (string, bool, error) {
 		fileName = "douyin"
 	}
 	fileName = safeFileName(fileName, task.AwemeID)
-	outPath := utils.UniqueFilePath(filepath.Join(targetDir, fileName+".mp4"))
-	if err = d.downloadURLToFile(task.VideoURL, outPath, task, "video", 0, 100); err != nil {
-		d.emitProgress(p.withPhase("error"))
-		return "", false, err
-	}
-	d.emitProgress(p.withPhase("done").withPercent(100))
-	d.markDownloaded(task, outPath, false, 0, kindVideo)
-
-	return outPath, false, nil
+	return fileName + ".mp4"
 }
 
 func (d *Service) sleepAfterTask(task Task) {
