@@ -7,7 +7,7 @@ import (
 
 	"github.com/egoist/mygo"
 	"github.com/kamiertop/videodown/internal/gui/guiruntime"
-	"github.com/kamiertop/videodown/utils"
+	"github.com/kamiertop/videodown/internal/mediafile"
 )
 
 type backgroundJob struct {
@@ -66,8 +66,8 @@ func (j *backgroundJobs) execute(job backgroundJob) {
 }
 func (s *Shell) pageRuntime() guiruntime.Runtime {
 	return guiruntime.Runtime{
-		OpenFile:     utils.OpenLocalFile,
-		OpenLocation: utils.OpenDownloadLocation,
+		OpenFile:     mediafile.OpenLocalFile,
+		OpenLocation: mediafile.OpenDownloadLocation,
 		Notify:       func(message string, failed bool) { s.notify(message, failed) },
 		Run: func(work func() error, done func(error)) {
 			win := s.win

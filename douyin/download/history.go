@@ -3,9 +3,12 @@ package download
 import (
 	"encoding/json/v2"
 	"errors"
-	"os"
+	"fmt"
 	"strings"
 	"time"
+
+	"github.com/kamiertop/videodown/internal/mediafile"
+	"github.com/kamiertop/videodown/internal/storage"
 )
 
 type HistoryItem struct {
@@ -145,28 +148,28 @@ func (d *Service) scanDownloadHistory() ([]HistoryItem, error) {
 	return items, nil
 }
 
-// isDownloaded 判断 awemeID 是否已下载并返回已下载文件（或图文目录）路径：缓存存在且文件仍在磁盘上。
-// 与 B 站 bilibili/download/util.go 的 isDownloaded 语义一致，文件被删后自动视为未下载。
-func (d *Service) isDownloaded(awemeID string) (string, bool) {
+// downloadedPath returns a history path only when it still exists.
+func (d *Service) downloadedPath(awemeID string) (string, error) {
 	key := cacheKey(awemeID)
 	if key == "" {
-		return "", false
+		return "", nil
 	}
-	val, err := d.store.History(key)
+	raw, err := d.store.History(key)
+	if errors.Is(err, storage.ErrNotFound) {
+		return "", nil
+	}
 	if err != nil {
-		return "", false
+		return "", fmt.Errorf("读取抖音下载历史（作品 %s）: %w", awemeID, err)
 	}
 	var history HistoryItem
-	if err := json.Unmarshal([]byte(val), &history); err != nil {
-		return "", false
+	if err := json.Unmarshal([]byte(raw), &history); err != nil {
+		return "", fmt.Errorf("解析抖音下载历史（作品 %s）: %w", awemeID, err)
 	}
-	if history.Path == "" {
-		return "", false
+	exists, err := mediafile.HistoryPathExists(history.Path)
+	if !exists {
+		return "", err
 	}
-	if _, err := os.Stat(history.Path); errors.Is(err, os.ErrNotExist) {
-		return "", false
-	}
-	return history.Path, true
+	return history.Path, nil
 }
 
 // DownloadedAwemeIDs 返回给定 awemeID 中已下载（且文件仍在）的子集，
@@ -183,7 +186,11 @@ func (d *Service) DownloadedAwemeIDs(awemeIDs []string) ([]string, error) {
 			continue
 		}
 		seen[id] = struct{}{}
-		if _, ok := d.isDownloaded(id); ok {
+		path, err := d.downloadedPath(id)
+		if err != nil {
+			return nil, err
+		}
+		if path != "" {
 			downloaded = append(downloaded, id)
 		}
 	}

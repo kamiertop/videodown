@@ -4,8 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"github.com/kamiertop/videodown/utils"
 )
 
 func TestDirectory(t *testing.T) {
@@ -19,37 +17,55 @@ func TestDirectory(t *testing.T) {
 		*customDir = dir
 
 		got, err := Directory()
-		utils.NoError(t, err)
-		utils.Equal(t, dir, got)
+		if err != nil {
+			t.Fatalf("Directory(): %v", err)
+		}
+		if want := dir; got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
 	})
 
 	t.Run("自定义相对路径", func(t *testing.T) {
 		*customDir = "./testdata"
 
 		want, err := filepath.Abs(*customDir)
-		utils.NoError(t, err)
+		if err != nil {
+			t.Fatalf("resolve absolute test path: %v", err)
+		}
 
 		got, err := Directory()
-		utils.NoError(t, err)
+		if err != nil {
+			t.Fatalf("Directory(): %v", err)
+		}
 
-		utils.Equal(t, want, got)
+		if want := want; got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
 	})
 
 	t.Run("默认目录", func(t *testing.T) {
 		*customDir = ""
 
 		executable, err := os.Executable()
-		utils.NoError(t, err)
+		if err != nil {
+			t.Fatalf("os.Executable(): %v", err)
+		}
 
 		executable, err = filepath.EvalSymlinks(executable)
-		utils.NoError(t, err)
+		if err != nil {
+			t.Fatalf("resolve executable symlinks: %v", err)
+		}
 
 		want := filepath.Dir(executable)
 
 		got, err := Directory()
-		utils.NoError(t, err)
+		if err != nil {
+			t.Fatalf("Directory(): %v", err)
+		}
 
-		utils.Equal(t, want, got)
+		if want := want; got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
 	})
 }
 
@@ -64,7 +80,9 @@ func TestInsideRejectsEscapesAndSymlinks(t *testing.T) {
 	// Inside canonicalizes the root. On macOS the temporary directory may
 	// itself be reached through a symlink, so compare canonical paths.
 	canonicalRoot, err := filepath.EvalSymlinks(root)
-	utils.NoError(t, err)
+	if err != nil {
+		t.Fatalf("resolve root symlinks: %v", err)
+	}
 	if got, err := Inside(root, "download/new"); err != nil || got != filepath.Join(canonicalRoot, "download/new") {
 		t.Fatalf("inside path: %s %v", got, err)
 	}
@@ -83,10 +101,16 @@ func TestInsideWithSymlinkedRoot(t *testing.T) {
 		t.Skip(err)
 	}
 	canonicalRoot, err := filepath.EvalSymlinks(root)
-	utils.NoError(t, err)
+	if err != nil {
+		t.Fatalf("resolve root symlinks: %v", err)
+	}
 	got, err := Inside(alias, "download/new")
-	utils.NoError(t, err)
-	utils.Equal(t, filepath.Join(canonicalRoot, "download/new"), got)
+	if err != nil {
+		t.Fatalf("Inside(): %v", err)
+	}
+	if want := filepath.Join(canonicalRoot, "download/new"); got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
 	outside := t.TempDir()
 	if err := os.Symlink(outside, filepath.Join(root, "escape")); err != nil {
 		t.Fatal(err)

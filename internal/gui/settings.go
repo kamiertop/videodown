@@ -6,9 +6,9 @@ import (
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 
+	"github.com/kamiertop/videodown/internal/ffmpeg"
 	"github.com/kamiertop/videodown/internal/gui/pages/settings"
 	"github.com/kamiertop/videodown/internal/gui/preferences"
-	"github.com/kamiertop/videodown/utils"
 )
 
 func (s *Shell) settingsServices() settings.Services {
@@ -77,7 +77,7 @@ func (s *Shell) browseSetting(directory bool) {
 		}
 		chosen = paths[0]
 		if !directory {
-			path, version, err = utils.CheckFFmpeg(chosen)
+			path, version, err = ffmpeg.Check(chosen)
 			if err != nil {
 				return err
 			}
@@ -110,7 +110,7 @@ func (s *Shell) checkFFmpeg() {
 	s.ffmpegChecking = true
 	custom := s.pages.Settings.Config.FFmpeg
 	var path, version string
-	s.runJob(func() error { var err error; path, version, err = utils.CheckFFmpeg(custom); return err }, func(err error) {
+	s.runJob(func() error { var err error; path, version, err = ffmpeg.Check(custom); return err }, func(err error) {
 		s.ffmpegChecking = false
 		s.ffmpegChecked = true
 		s.ffmpegPath, s.ffmpegVersion = path, version

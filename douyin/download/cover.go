@@ -10,7 +10,7 @@ import (
 
 	"github.com/kamiertop/videodown/douyin/model"
 	"github.com/kamiertop/videodown/internal/constant"
-	"github.com/kamiertop/videodown/utils"
+	"github.com/kamiertop/videodown/internal/mediafile"
 )
 
 // DownloadCover 从多个抖音封面候选中选择最高质量的一张并保存到作者目录。
@@ -23,12 +23,9 @@ func (d *Service) DownloadCover(covers []model.Cover, task Task) (string, error)
 	}
 
 	storagePath := d.store.DownloadDirectory()
-	targetDir, err := d.resolveDownloadDir(storagePath, task)
-	if err != nil {
-		return "", err
-	}
-	if err = os.MkdirAll(targetDir, 0o755); err != nil {
-		return "", errors.New("创建下载目录失败")
+	targetDir := d.resolveDownloadDir(storagePath, task)
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+		return "", fmt.Errorf("创建下载目录失败: %w", err)
 	}
 
 	headers, err := d.publicHeaders()
@@ -48,13 +45,13 @@ func (d *Service) DownloadCover(covers []model.Cover, task Task) (string, error)
 	}
 
 	// 封面任务由界面直接传入，标题没有经过 downloadTask 的清洗，需就地处理。
-	fileName := utils.FileName(cleanDouyinTitle(task.Title))
+	fileName := mediafile.FileName(cleanDouyinTitle(task.Title))
 	if fileName == "" {
 		fileName = "cover"
 	}
 	fileName = safeFileName(fileName, task.AwemeID)
-	ext := utils.ImageExtFromResponse(coverURL, resp.Response)
-	outPath := utils.UniqueFilePath(filepath.Join(targetDir, fileName+ext))
+	ext := mediafile.ImageExtFromResponse(coverURL, resp.Response)
+	outPath := mediafile.UniqueFilePath(filepath.Join(targetDir, fileName+ext))
 	if err = os.WriteFile(outPath, resp.Bytes(), 0o644); err != nil {
 		return "", err
 	}

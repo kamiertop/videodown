@@ -23,8 +23,7 @@ func TestStructuredConfigRoundTripAndDefaults(t *testing.T) {
 	if err = s.UpdateConfig(func(c *Config) error {
 		c.App.Theme = "dark"
 		c.App.AutoUpdate = false
-		disabled := false
-		c.App.CloseToTray = &disabled
+		c.App.CloseAction = CloseActionExit
 		c.Download.Concurrency = 4
 		c.Download.SleepSeconds = 0
 		c.Download.Grouping = false
@@ -39,7 +38,7 @@ func TestStructuredConfigRoundTripAndDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"[app]", "[download]", "[bilibili.auth]", "concurrency = 4", "skip_downloaded = false", "sleep_seconds = 0"} {
+	for _, want := range []string{"[app]", "[download]", "[bilibili.auth]", "concurrency = 4", "skip_downloaded = false", "sleep_seconds = 0", "close_to_tray = false"} {
 		if !strings.Contains(string(raw), want) {
 			t.Fatalf("missing typed TOML field %s", want)
 		}
@@ -47,11 +46,12 @@ func TestStructuredConfigRoundTripAndDefaults(t *testing.T) {
 	if strings.Contains(string(raw), "[settings]") {
 		t.Fatal("configuration still uses the string map format")
 	}
-	var decoded Config
-	if err = toml.Unmarshal(raw, &decoded); err != nil {
+	var persisted configFile
+	if err = toml.Unmarshal(raw, &persisted); err != nil {
 		t.Fatal(err)
 	}
-	if decoded.Download.Concurrency != 4 || decoded.Bilibili.Auth.UID != 42 || decoded.Download.Directory != "/downloads" || decoded.App.CloseToTray == nil || *decoded.App.CloseToTray {
+	decoded := persisted.config()
+	if decoded.Download.Concurrency != 4 || decoded.Bilibili.Auth.UID != 42 || decoded.Download.Directory != "/downloads" || decoded.App.CloseAction != CloseActionExit {
 		t.Fatal("typed TOML round trip failed")
 	}
 	if err = s.Close(); err != nil {

@@ -389,7 +389,7 @@ func TestAccountNetworkErrorClassification(t *testing.T) {
 		t.Fatal(err)
 	}
 	service.transport = transportFunc(func(r *http.Request) (*http.Response, error) {
-		return nil, errors.New("Get \"https://www.youtube.com/\": net/http: request canceled")
+		return nil, errors.New("get \"https://www.youtube.com/\": net/http: request canceled")
 	})
 	_, err = service.Account(context.Background())
 	if !errors.Is(err, ErrAccountNetwork) {

@@ -6,6 +6,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/kamiertop/videodown/bilibili/util"
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/logger"
 )
@@ -56,7 +57,7 @@ func TestDownloadedVideoKeys(t *testing.T) {
 	}
 }
 
-// 全部带 cid 的查询走 isDownloaded 点查路径，不扫描下载历史。
+// 全部带 cid 的查询走 downloadedPath 点查路径，不扫描下载历史。
 func TestDownloadedVideoKeysAllWithCid(t *testing.T) {
 	s := newTestService(t)
 
@@ -89,5 +90,27 @@ func TestDownloadedVideoKeysEmpty(t *testing.T) {
 	}
 	if len(got) != 0 {
 		t.Fatalf("expected no matches, got %v", got)
+	}
+}
+
+func TestDownloadedVideoKeysReturnsInvalidHistoryError(t *testing.T) {
+	s := newTestService(t)
+	const cid = 100
+	if err := s.store.SaveHistory(util.DownloadCacheKey(cid), `{"bvid":"BV1","cid":100,"path":123}`); err != nil {
+		t.Fatalf("save history fixture: %v", err)
+	}
+	path := filepath.Join(t.TempDir(), "valid.mp4")
+	if err := os.WriteFile(path, []byte("video"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	s.markDownloaded(Task{Bvid: "BV2", Cid: 200}, path, kindVideo)
+	if got, err := s.DownloadedVideoKeys([]Key{{Bvid: " bv2 "}}); err != nil || !slices.Equal(got, []int{0}) {
+		t.Errorf("unrelated damaged history blocked BV2: got %v, %v; want [0], nil", got, err)
+	}
+
+	for _, key := range []Key{{Bvid: "BV1", Cid: cid}, {Bvid: "BV1"}} {
+		if got, err := s.DownloadedVideoKeys([]Key{key}); err == nil {
+			t.Errorf("DownloadedVideoKeys(%+v) = %v, nil; want a history decoding error", key, got)
+		}
 	}
 }

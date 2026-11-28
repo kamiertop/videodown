@@ -4,6 +4,7 @@ package storage
 import (
 	"bytes"
 	"database/sql"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/url"
@@ -61,8 +62,7 @@ func Open(path string) (*Store, error) {
 	}
 	content, err := os.ReadFile(s.configPath)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		s.Close()
-		return nil, err
+		return nil, errors.Join(err, s.Close())
 	}
 	if errors.Is(err, os.ErrNotExist) {
 		if err = s.writeConfig(s.config); err != nil {
@@ -71,7 +71,8 @@ func Open(path string) (*Store, error) {
 		}
 	}
 	if len(content) != 0 {
-		if err = toml.NewDecoder(bytes.NewReader(content)).DisallowUnknownFields().Decode(&s.config); err != nil {
+		file := newConfigFile(s.config)
+		if err = toml.NewDecoder(bytes.NewReader(content)).DisallowUnknownFields().Decode(&file); err != nil {
 			s.Close()
 			if unknown, ok := errors.AsType[*toml.StrictMissingError](err); ok {
 				fields := make([]string, 0, min(4, len(unknown.Errors)))
@@ -83,9 +84,9 @@ func Open(path string) (*Store, error) {
 
 			return nil, fmt.Errorf("读取配置: %w", err)
 		}
+		s.config = file.config()
 		if err = s.config.Validate(); err != nil {
-			s.Close()
-			return nil, fmt.Errorf("配置无效: %w", err)
+			return nil, fmt.Errorf("配置无效: %w", errors.Join(err, s.Close()))
 		}
 	}
 
@@ -169,10 +170,21 @@ func (s *Store) HistoryRows(platform string) ([]string, error) {
 		Select(&rows, `SELECT payload FROM download_history WHERE platform=? ORDER BY downloaded DESC`, platform)
 }
 
-// BilibiliVideoRows excludes audio and cover records for downloaded-video matching.
-func (s *Store) BilibiliVideoRows() ([]string, error) {
+// BilibiliVideoRows returns video payloads, optionally restricted to normalized BV IDs.
+func (s *Store) BilibiliVideoRows(bvids ...string) ([]string, error) {
+	query := `SELECT payload FROM download_history WHERE platform='bilibili' AND cid>0
+ AND key NOT LIKE 'bilibili:downloaded:audio:%' AND key NOT LIKE 'bilibili:downloaded:cover:%'`
+	var args []any
+	if len(bvids) > 0 {
+		filter, err := json.Marshal(bvids)
+		if err != nil {
+			return nil, err
+		}
+		query += ` AND bvid IN (SELECT value FROM json_each(?))`
+		args = append(args, string(filter))
+	}
 	var rows []string
-	err := s.db.Select(&rows, `SELECT payload FROM download_history WHERE platform='bilibili' AND cid>0 AND key NOT LIKE 'bilibili:downloaded:audio:%' AND key NOT LIKE 'bilibili:downloaded:cover:%'`)
+	err := s.db.Select(&rows, query, args...)
 	return rows, err
 }
 
@@ -183,7 +195,7 @@ func (s *Store) writeConfig(config Config) error {
 	if s.configPath == "" {
 		return nil
 	}
-	data, err := toml.Marshal(config)
+	data, err := toml.Marshal(newConfigFile(config))
 	if err != nil {
 		return err
 	}

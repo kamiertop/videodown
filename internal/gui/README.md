@@ -94,7 +94,7 @@ VIDEODOWN_GUI_LIFECYCLE=1 go test ./internal/gui -run '^TestNativeQuit$' -v -cou
 抖音 API 和下载服务独立于界面运行时。验证命令：
 
 ```sh
-CGO_ENABLED=0 go test ./internal/gui/... ./douyin/... ./internal/storage/... ./utils/...
+CGO_ENABLED=0 go test ./internal/gui/... ./douyin/... ./internal/storage/... ./internal/mediafile/... ./internal/ffmpeg/... ./internal/downloadprogress/...
 CGO_ENABLED=0 go tool mygo vet ./internal/gui
 ```
 

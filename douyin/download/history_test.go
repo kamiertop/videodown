@@ -1,6 +1,8 @@
 package download
 
 import (
+	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -109,5 +111,21 @@ func TestDownloadHistoryPage(t *testing.T) {
 	}
 	if after.Total != 4 {
 		t.Fatalf("after delete total = %d, want 4", after.Total)
+	}
+}
+
+func TestDownloadTaskReturnsInvalidHistoryError(t *testing.T) {
+	s := newTestService(t)
+	const id = "123"
+	if err := s.store.SaveHistory(cacheKey(id), `{"awemeId":"123","path":123}`); err != nil {
+		t.Fatalf("save history fixture: %v", err)
+	}
+	path, skipped, err := s.DownloadTask(Task{AwemeID: id})
+	var decodeErr *json.SemanticError
+	if path != "" || skipped || !errors.As(err, &decodeErr) {
+		t.Errorf("DownloadTask() = %q, %v, %v; want empty path, false, and a history decoding error", path, skipped, err)
+	}
+	if active := s.ActiveCount(); active != 0 {
+		t.Errorf("ActiveCount() = %d after failed download; want 0", active)
 	}
 }

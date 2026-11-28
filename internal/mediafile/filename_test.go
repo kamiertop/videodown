@@ -1,6 +1,7 @@
-package utils
+package mediafile
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -46,5 +47,27 @@ func TestUniqueFilePathTooLongNameReturns(t *testing.T) {
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("UniqueFilePath did not return for over-long file name (infinite loop)")
+	}
+}
+
+func TestHistoryPathExists(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "video.mp4")
+	if got, err := HistoryPathExists(file); got || err != nil {
+		t.Errorf("HistoryPathExists(missing file) = %v, %v; want false, nil", got, err)
+	}
+	if err := os.WriteFile(file, []byte("video"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := HistoryPathExists(file); !got || err != nil {
+		t.Errorf("HistoryPathExists(existing file) = %v, %v; want true, nil", got, err)
+	}
+	loop := filepath.Join(dir, "loop")
+	if err := os.Symlink(loop, loop); err != nil {
+		t.Skipf("cannot create symlink: %v", err)
+	}
+	var pathErr *os.PathError
+	if got, err := HistoryPathExists(loop); got || !errors.As(err, &pathErr) {
+		t.Errorf("HistoryPathExists(symlink loop) = %v, %v; want false and a wrapped path error", got, err)
 	}
 }

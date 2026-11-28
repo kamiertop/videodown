@@ -1,4 +1,4 @@
-package utils
+package ffmpeg
 
 import (
 	"os"
@@ -18,17 +18,17 @@ func TestFFmpegUsesCustomExecutableForDetectionAndDownload(t *testing.T) {
 	if err := os.WriteFile(custom, []byte(script), 0700); err != nil {
 		t.Fatal(err)
 	}
-	path, version, err := CheckFFmpeg(custom)
+	path, version, err := Check(custom)
 	if err != nil || path != custom || version != "ffmpeg version fixture" {
 		t.Fatalf("detection: %s %s %v", path, version, err)
 	}
-	if err := NewFFmpeg(custom).Remux("input", output); err != nil {
+	if err := New(custom).Remux("input", output); err != nil {
 		t.Fatal(err)
 	}
 	if content, err := os.ReadFile(output); err != nil || string(content) != "fixture" {
 		t.Fatal("custom executable was not used")
 	}
-	if _, _, err := CheckFFmpeg(filepath.Join(dir, "missing")); err == nil {
+	if _, _, err := Check(filepath.Join(dir, "missing")); err == nil {
 		t.Fatal("invalid custom path fell back to system executable")
 	}
 }

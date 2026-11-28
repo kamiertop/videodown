@@ -3,14 +3,17 @@ package download
 import (
 	"encoding/json/v2"
 	"errors"
-	"os"
+	"fmt"
+	"maps"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/kamiertop/videodown/bilibili/model"
 	"github.com/kamiertop/videodown/bilibili/util"
-	"github.com/kamiertop/videodown/utils"
+	"github.com/kamiertop/videodown/internal/mediafile"
+	"github.com/kamiertop/videodown/internal/storage"
 )
 
 const (
@@ -28,53 +31,42 @@ func normalizeHTTPURL(rawURL string) string {
 }
 
 func sanitizeFilename(name string) string {
-	t := utils.FileName(name)
+	t := mediafile.FileName(name)
 	if t == "" {
 		return "video"
 	}
 	return t
 }
 
-// downloadedCachePath 返回已下载缓存中的文件路径；缓存只在下载服务使用，不增加界面传输字段。
-func (s *Service) downloadedCachePath(cid int64) (string, bool) {
+// downloadedPath returns a history path only when it still exists.
+func (s *Service) downloadedPath(cid int64) (string, error) {
 	key := util.DownloadCacheKey(cid)
 	if key == "" {
-		return "", false
+		return "", nil
 	}
 
 	raw, err := s.store.History(key)
+	if errors.Is(err, storage.ErrNotFound) {
+		return "", nil
+	}
 	if err != nil {
-		return "", false
+		return "", fmt.Errorf("读取 B 站下载历史（CID %d）: %w", cid, err)
 	}
 
-	var cached model.DownloadHistoryItem
-	if err = json.Unmarshal([]byte(raw), &cached); err != nil {
-		return "", false
+	var item model.DownloadHistoryItem
+	if err := json.Unmarshal([]byte(raw), &item); err != nil {
+		return "", fmt.Errorf("解析 B 站下载历史（CID %d）: %w", cid, err)
 	}
-	return cached.Path, true
+	exists, err := mediafile.HistoryPathExists(item.Path)
+	if !exists {
+		return "", err
+	}
+	return item.Path, nil
 }
 
 // normalizeBvid 统一 BV 号大小写与首尾空白；历史记录和查询键都先归一再比较。
 func normalizeBvid(bvid string) string {
 	return strings.ToUpper(strings.TrimSpace(bvid))
-}
-
-// pathExists 路径为空或文件已删除视为不存在，其他 stat 错误不拦（与 isDownloaded 语义一致）。
-func pathExists(path string) bool {
-	if path == "" {
-		return false
-	}
-	_, err := os.Stat(path)
-	return !errors.Is(err, os.ErrNotExist)
-}
-
-// isDownloaded 检查缓存记录且确认文件仍存在于磁盘；缓存可能因手动删文件而过期。
-func (s *Service) isDownloaded(cid int64) (string, bool) {
-	path, ok := s.downloadedCachePath(cid)
-	if !ok {
-		return "", false
-	}
-	return path, pathExists(path)
 }
 
 // DownloadedVideoKeys 返回 keys 中已下载（缓存存在且文件仍在）元素的下标，
@@ -92,7 +84,11 @@ func (s *Service) DownloadedVideoKeys(keys []Key) ([]int, error) {
 	matched := make([]int, 0)
 	if allHaveCid {
 		for i, key := range keys {
-			if _, ok := s.isDownloaded(key.Cid); ok {
+			path, err := s.downloadedPath(key.Cid)
+			if err != nil {
+				return nil, err
+			}
+			if path != "" {
 				matched = append(matched, i)
 			}
 		}
@@ -115,14 +111,14 @@ func (s *Service) DownloadedVideoKeys(keys []Key) ([]int, error) {
 		path string
 	}
 	candidates := make(map[string][]downloadedRecord, len(wanted))
-	rows, err := s.store.BilibiliVideoRows()
+	rows, err := s.store.BilibiliVideoRows(slices.Collect(maps.Keys(wanted))...)
 	if err != nil {
 		return nil, err
 	}
 	for _, row := range rows {
 		var history model.DownloadHistoryItem
-		if json.Unmarshal([]byte(row), &history) != nil {
-			continue
+		if err := json.Unmarshal([]byte(row), &history); err != nil {
+			return nil, fmt.Errorf("解析 B 站批量下载历史: %w", err)
 		}
 		bv := normalizeBvid(history.Bvid)
 		if _, ok := wanted[bv]; ok {
@@ -139,7 +135,11 @@ func (s *Service) DownloadedVideoKeys(keys []Key) ([]int, error) {
 			if key.Cid > 0 && record.cid != key.Cid {
 				continue
 			}
-			if pathExists(record.path) {
+			exists, err := mediafile.HistoryPathExists(record.path)
+			if err != nil {
+				return nil, err
+			}
+			if exists {
 				matched = append(matched, i)
 				break
 			}

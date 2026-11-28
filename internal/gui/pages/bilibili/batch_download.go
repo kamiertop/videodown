@@ -266,9 +266,9 @@ func (s *State) runBatchItem(b *batchSession, item *batchItem) {
 		if task.VideoURL == "" {
 			return errors.New("没有可下载的视频流")
 		}
-		result, err := backend.DownloadVideosByDash([]bilidownload.Task{task})
-		skipped = len(result.Results) == 1 && result.Results[0].Skipped
-		return downloadResultError(result, err)
+		var err error
+		_, skipped, err = backend.DownloadVideoByDash(task)
+		return err
 	}, func(err error) {
 		if s.stopped || epoch != s.epoch {
 			return
@@ -288,24 +288,6 @@ func (s *State) runBatchItem(b *batchSession, item *batchItem) {
 		b.InFlight--
 		s.advanceBatch(b)
 	})
-}
-
-func downloadResultError(result bilidownload.BatchResult, err error) error {
-	if err != nil {
-		return err
-	}
-	if result.Failed > 0 {
-		for _, item := range result.Results {
-			if item.Error != "" {
-				return errors.New(item.Error)
-			}
-		}
-		return errors.New("下载失败")
-	}
-	if result.Success == 0 {
-		return errors.New("下载服务未返回成功结果")
-	}
-	return nil
 }
 
 func (s *State) stopBatch(b *batchSession) {

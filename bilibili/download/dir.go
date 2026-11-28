@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/kamiertop/videodown/utils"
+	"github.com/kamiertop/videodown/internal/mediafile"
 )
 
 // resolveTargetDir 根据用户设置的分组规则，返回最终下载目录路径。
@@ -16,8 +16,8 @@ func (s *Service) resolveTargetDir(storagePath string, task Task) (string, error
 		return storagePath, nil
 	}
 
-	sourceName := utils.FileName(task.SourceName)
-	authorName := utils.FileName(task.UpperName)
+	sourceName := mediafile.FileName(task.SourceName)
+	authorName := mediafile.FileName(task.UpperName)
 
 	if authorName == "" {
 		authorName = "未知作者"

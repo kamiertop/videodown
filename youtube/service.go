@@ -21,9 +21,10 @@ import (
 
 	"github.com/imroc/req/v3"
 
+	"github.com/kamiertop/videodown/internal/ffmpeg"
+	"github.com/kamiertop/videodown/internal/mediafile"
 	"github.com/kamiertop/videodown/internal/netclient"
 	"github.com/kamiertop/videodown/internal/storage"
-	"github.com/kamiertop/videodown/utils"
 	"github.com/kamiertop/videodown/youtube/internal/extractor"
 )
 
@@ -368,16 +369,16 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 	if cfg.Download.Grouping && cfg.Download.GroupingRule != "none" {
 		switch cfg.Download.GroupingRule {
 		case "author":
-			dir = filepath.Join(dir, utils.FileName(raw.Author))
+			dir = filepath.Join(dir, mediafile.FileName(raw.Author))
 		case "source":
 			dir = filepath.Join(dir, "YouTube")
 		case "author_source":
-			dir = filepath.Join(dir, utils.FileName(raw.Author), "YouTube")
+			dir = filepath.Join(dir, mediafile.FileName(raw.Author), "YouTube")
 		case "date":
 			dir = filepath.Join(dir, time.Now().Format(time.DateOnly))
 		}
 	}
-	name := utils.ApplyFilenameTemplate(cfg.Download.FilenameTemplate,
+	name := mediafile.ApplyFilenameTemplate(cfg.Download.FilenameTemplate,
 		map[string]string{"title": raw.Title,
 			"author":       raw.Author,
 			"id":           raw.ID,
@@ -401,7 +402,7 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 		ext = ".mkv"
 	}
 	targetPath := filepath.Join(dir, name+ext)
-	if cfg.Download.SkipDownloaded && utils.ExistingVideoFile(targetPath) {
+	if cfg.Download.SkipDownloaded && mediafile.ExistingVideoFile(targetPath) {
 		emit(Progress{Phase: "已跳过", Percent: 100})
 		return targetPath, nil
 	}
@@ -413,7 +414,7 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 		if audio == nil {
 			return "", errors.New("未找到配套音频")
 		}
-		if _, _, err = utils.CheckFFmpeg(cfg.Download.FFmpegPath); err != nil {
+		if _, _, err = ffmpeg.Check(cfg.Download.FFmpegPath); err != nil {
 			return "", err
 		}
 	}
@@ -454,14 +455,14 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 		}
 		emit(Progress{Phase: "合并音视频", Percent: 98})
 		completedPath = filepath.Join(temp, "merged"+ext)
-		if err = utils.NewFFmpeg(cfg.Download.FFmpegPath).MergeContext(ctx, videoPath, audioPath, completedPath); err != nil {
+		if err = ffmpeg.New(cfg.Download.FFmpegPath).MergeContext(ctx, videoPath, audioPath, completedPath); err != nil {
 			return "", err
 		}
 	}
 	if err = ctx.Err(); err != nil {
 		return "", err
 	}
-	final, err := utils.PublishVideoFile(completedPath, targetPath)
+	final, err := mediafile.PublishVideoFile(completedPath, targetPath)
 	if err != nil {
 		return "", err
 	}

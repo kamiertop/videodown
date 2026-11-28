@@ -21,7 +21,7 @@ type Account struct {
 }
 
 // ErrCookieNotLoggedIn 表示 Cookie 已送达 YouTube，但会话处于未登录状态。
-var ErrCookieNotLoggedIn = errors.New("Cookie 未生效：当前未登录，请粘贴已登录浏览器的 Cookie")
+var ErrCookieNotLoggedIn = errors.New("cookie 未生效：当前未登录，请粘贴已登录浏览器的 Cookie")
 
 // ErrAccountNetwork 表示验证请求未能到达 YouTube 或响应被中断（超时、
 // 连接重置等），与 Cookie 本身是否有效无关。

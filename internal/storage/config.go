@@ -6,11 +6,11 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/kamiertop/videodown/internal/mediafile"
 	"github.com/kamiertop/videodown/internal/netclient"
-	"github.com/kamiertop/videodown/utils"
 )
 
-// Config is the application's TOML model. Snapshot it with Store.Config;
+// Config holds the application's settings. Snapshot it with Store.Config;
 // commit edits through Store.UpdateConfig to preserve concurrent updates.
 type Config struct {
 	YouTube  YouTubeConfig  `toml:"youtube"`
@@ -20,9 +20,9 @@ type Config struct {
 	Douyin   DouyinConfig   `toml:"douyin"`
 }
 type AppConfig struct {
-	Theme       string `toml:"theme"`
-	AutoUpdate  bool   `toml:"auto_update"`
-	CloseToTray *bool  `toml:"close_to_tray,omitempty"`
+	Theme       string      `toml:"theme"`
+	AutoUpdate  bool        `toml:"auto_update"`
+	CloseAction CloseAction `toml:"-"`
 }
 type DownloadConfig struct {
 	Directory        string `toml:"directory"`
@@ -71,10 +71,13 @@ func (c Config) Validate() error {
 	if _, err := netclient.NormalizeProxy(c.YouTube.Proxy); err != nil {
 		return err
 	}
+	if c.App.CloseAction > CloseActionTray {
+		return errors.New("无效的关闭窗口行为")
+	}
 	if !slices.Contains([]string{"system", "light", "dark", "cupcake", "caramellatte"}, c.App.Theme) {
 		return fmt.Errorf("不支持的主题：%s", c.App.Theme)
 	}
-	if strings.TrimSpace(c.Download.FilenameTemplate) == "" || !utils.SupportedFilenameTemplate(c.Download.FilenameTemplate) {
+	if strings.TrimSpace(c.Download.FilenameTemplate) == "" || !mediafile.SupportedFilenameTemplate(c.Download.FilenameTemplate) {
 		return errors.New("命名模板必须包含受支持的变量")
 	}
 	if !slices.Contains([]string{"none", "author", "source", "author_source", "date"}, c.Download.GroupingRule) {
@@ -99,12 +102,30 @@ func (c Config) Validate() error {
 	return nil
 }
 
-func cloneConfig(c Config) Config {
-	if c.App.CloseToTray != nil {
-		value := *c.App.CloseToTray
-		c.App.CloseToTray = &value
-	}
+// The TOML representation keeps close_to_tray as an optional boolean.
+type configFile struct {
+	Config
+	App struct {
+		AppConfig
+		CloseToTray *bool `toml:"close_to_tray,omitempty"`
+	} `toml:"app"`
+}
 
+func newConfigFile(c Config) configFile {
+	f := configFile{Config: c}
+	f.App.AppConfig = c.App
+	if c.App.CloseAction != CloseActionUnset {
+		f.App.CloseToTray = new(c.App.CloseAction == CloseActionTray)
+	}
+	return f
+}
+
+func (f configFile) config() Config {
+	c := f.Config
+	c.App = f.App.AppConfig
+	if f.App.CloseToTray != nil {
+		c.App.CloseAction = closeAction(*f.App.CloseToTray)
+	}
 	return c
 }
 
@@ -112,7 +133,7 @@ func cloneConfig(c Config) Config {
 func (s *Store) Config() Config {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return cloneConfig(s.config)
+	return s.config
 }
 
 // UpdateConfig applies an edit to the latest snapshot, validates it, and atomically
@@ -120,7 +141,7 @@ func (s *Store) Config() Config {
 func (s *Store) UpdateConfig(edit func(*Config) error) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	next := cloneConfig(s.config)
+	next := s.config
 	if err := edit(&next); err != nil {
 		return err
 	}
@@ -130,7 +151,7 @@ func (s *Store) UpdateConfig(edit func(*Config) error) error {
 	if err := s.writeConfig(next); err != nil {
 		return err
 	}
-	s.config = cloneConfig(next)
+	s.config = next
 
 	return nil
 }

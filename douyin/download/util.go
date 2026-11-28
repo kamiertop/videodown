@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kamiertop/videodown/utils"
+	"github.com/kamiertop/videodown/internal/mediafile"
 )
 
 const (
@@ -39,7 +39,7 @@ func cleanDouyinTitle(title string) string {
 // safeFileName 名字超过安全字节上限时退回 fallback（视频 ID）：
 // 抖音简介动辄数百字，超限名字会让 os.Stat/os.Create 返回 ENAMETOOLONG。
 func safeFileName(name, fallback string) string {
-	if len(name) > utils.MaxFileNameBytes {
+	if len(name) > mediafile.MaxFileNameBytes {
 		return fallback
 	}
 	return name
@@ -113,27 +113,25 @@ func douyinAssetExt(asset Asset) string {
 	}
 }
 
-func (d *Service) resolveDownloadDir(storagePath string, task Task) (string, error) {
+func (d *Service) resolveDownloadDir(storagePath string, task Task) string {
 	cfg := d.store.Config().Download
-	allowGroup := cfg.Grouping
-	if !allowGroup {
-		return storagePath, nil
+	if !cfg.Grouping {
+		return storagePath
 	}
-	rule := cfg.GroupingRule
-	sourceName := utils.FileName(task.SourceName)
-	author := utils.FileName(task.AuthorName)
+	sourceName := mediafile.FileName(task.SourceName)
+	author := mediafile.FileName(task.AuthorName)
 
-	switch rule {
+	switch cfg.GroupingRule {
 	case "source":
-		return filepath.Join(storagePath, sourceName), nil
+		return filepath.Join(storagePath, sourceName)
 	case "author":
-		return filepath.Join(storagePath, author), nil
+		return filepath.Join(storagePath, author)
 	case "author_source":
-		return filepath.Join(storagePath, author, sourceName), nil
+		return filepath.Join(storagePath, author, sourceName)
 	case "date":
 		// 按下载当天的日期分目录；跨午夜的批量会自然落到两天的目录。
-		return filepath.Join(storagePath, time.Now().Format(time.DateOnly)), nil
+		return filepath.Join(storagePath, time.Now().Format(time.DateOnly))
 	default:
-		return filepath.Join(storagePath), nil
+		return filepath.Join(storagePath)
 	}
 }

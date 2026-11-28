@@ -15,9 +15,10 @@ import (
 
 	"github.com/imroc/req/v3"
 
+	"github.com/kamiertop/videodown/internal/downloadprogress"
+	"github.com/kamiertop/videodown/internal/mediafile"
 	"github.com/kamiertop/videodown/internal/storage"
 	"github.com/kamiertop/videodown/logger"
-	"github.com/kamiertop/videodown/utils"
 )
 
 type Service struct {
@@ -25,9 +26,8 @@ type Service struct {
 	logger *logger.Logger
 	store  *storage.Store
 
-	mu               sync.Mutex
-	progress         map[string]float64
-	progressListener func(Progress)
+	progress         downloadprogress.Tracker
+	progressListener atomic.Pointer[func(Progress)]
 	// active 记录正在执行（含休眠间隔）的任务数，供关闭程序前判断是否有任务未完成。
 	active        atomic.Int64
 	publicHeaders func() (map[string]string, error)
@@ -46,9 +46,7 @@ func (d *Service) ActiveCount() int {
 func (d *Service) DownloadConcurrency() int { return d.store.Config().Download.Concurrency }
 
 func (d *Service) SetProgressListener(fn func(Progress)) {
-	d.mu.Lock()
-	d.progressListener = fn
-	d.mu.Unlock()
+	d.progressListener.Store(&fn)
 }
 
 func New(logger *logger.Logger, store *storage.Store, publicHeaders func() (map[string]string, error)) *Service {
@@ -56,9 +54,7 @@ func New(logger *logger.Logger, store *storage.Store, publicHeaders func() (map[
 		logger: logger,
 		store:  store,
 
-		mu:            sync.Mutex{},
 		publicHeaders: publicHeaders,
-		progress:      make(map[string]float64),
 		client: req.C().
 			EnableAutoDecompress().
 			SetTimeout(0).
@@ -70,6 +66,18 @@ func New(logger *logger.Logger, store *storage.Store, publicHeaders func() (map[
 				return json.Unmarshal(data, v)
 			}),
 	}
+}
+
+// DownloadTask runs one task, including the configured delay after a successful transfer.
+func (d *Service) DownloadTask(task Task) (string, bool, error) {
+	d.active.Add(1)
+	defer d.active.Add(-1)
+
+	path, skipped, err := d.downloadTask(task)
+	if err == nil && !skipped {
+		d.sleepAfterTask(task)
+	}
+	return path, skipped, err
 }
 
 // DownloadVideos 批量下载抖音任务；单个任务失败不会中断整批，逐条返回任务结果。
@@ -88,20 +96,13 @@ func (d *Service) DownloadVideos(tasks []Task) (BatchResult, error) {
 	for range workerCount {
 		wg.Go(func() {
 			for task := range jobs {
-				d.active.Add(1)
-				targetPath, skipped, err := d.downloadTask(task)
+				targetPath, _, err := d.DownloadTask(task)
 				item := Result{AwemeID: task.AwemeID, Title: task.Title, Path: targetPath}
 				if err != nil {
-					d.logger.Errorf("download task failed, task: %v, err: %v", task, err)
+					d.logger.Errorf("download failed for aweme %s: %v", task.AwemeID, err)
 					item.Error = err.Error()
 				}
 				results <- item
-				if err == nil && !skipped {
-					// 已下载而跳过的任务没有发起网络请求，无需休眠限速；下载成功才休眠，失败立即开始下一个任务
-					d.sleepAfterTask(task)
-				}
-				// 休眠结束后任务才算完成，避免休眠间隔内关闭程序被判定为无任务进行
-				d.active.Add(-1)
 			}
 		})
 	}
@@ -124,43 +125,30 @@ func (d *Service) DownloadVideos(tasks []Task) (BatchResult, error) {
 }
 
 func (d *Service) Download(videoURL string) error {
-	result, err := d.DownloadVideos([]Task{{
+	_, _, err := d.DownloadTask(Task{
 		AwemeID:  fmt.Sprintf("manual-%d", time.Now().UnixNano()),
 		Title:    "test",
 		VideoURL: videoURL,
-	}})
-	if err != nil {
-		return err
-	}
-	if result.Failed > 0 && len(result.Results) > 0 {
-		return errors.New(result.Results[0].Error)
-	}
-	return nil
+	})
+	return err
 }
 
 func (d *Service) emitProgress(p Progress) {
 	if p.AwemeID != "" {
-		p.Percent = utils.ClampPercent(p.Percent)
-		d.mu.Lock()
-		prev, ok := d.progress[p.AwemeID]
-		// 并发下载时避免旧事件把同一任务的进度条回退；错误事件仍允许透传给界面。
-		if ok && p.Percent < prev && p.Phase != "error" {
-			d.mu.Unlock()
+		p.Percent = downloadprogress.ClampPercent(p.Percent)
+		if p.Phase == "error" {
+			d.progress.Store(p.AwemeID, p.Percent)
+		} else if _, ok := d.progress.Advance(p.AwemeID, p.Percent); !ok {
 			return
 		}
-		d.progress[p.AwemeID] = p.Percent
-		d.mu.Unlock()
 	}
-	d.mu.Lock()
-	listener := d.progressListener
-	d.mu.Unlock()
-	if listener != nil {
-		listener(p)
+	if listener := d.progressListener.Load(); listener != nil && *listener != nil {
+		(*listener)(p)
 	}
 }
 
 // downloadURLToFile 手动流式读取响应体，这样才能持续把字节进度推给界面。
-func (d *Service) downloadURLToFile(rawURL, targetPath string, task Task, phase string, start, weight float64) error {
+func (d *Service) downloadURLToFile(rawURL, targetPath string, task Task, phase string, start, weight float64) (err error) {
 	headers, err := d.publicHeaders()
 	if err != nil {
 		return err
@@ -174,7 +162,7 @@ func (d *Service) downloadURLToFile(rawURL, targetPath string, task Task, phase 
 		return err
 	}
 	defer func() {
-		_ = resp.Body.Close()
+		err = errors.Join(err, resp.Body.Close())
 	}()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return fmt.Errorf("下载失败: %s", resp.Status)
@@ -184,12 +172,24 @@ func (d *Service) downloadURLToFile(rawURL, targetPath string, task Task, phase 
 	if err != nil {
 		return err
 	}
-	defer func() {
-		_ = file.Close()
-	}()
-
 	total := resp.ContentLength
 	var downloaded int64
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			err = errors.Join(err, fmt.Errorf("关闭下载文件: %w", closeErr))
+		}
+		if err == nil {
+			d.emitProgress(Progress{
+				AwemeID:    task.AwemeID,
+				Title:      task.Title,
+				Phase:      phase,
+				Downloaded: downloaded,
+				Total:      total,
+				Percent:    start + weight,
+			})
+		}
+	}()
+
 	buf := make([]byte, 1024*1024)
 	lastEmit := time.Time{}
 	d.emitProgress(Progress{
@@ -215,7 +215,7 @@ func (d *Service) downloadURLToFile(rawURL, targetPath string, task Task, phase 
 					Phase:      phase,
 					Downloaded: downloaded,
 					Total:      total,
-					Percent:    utils.WeightedPercent(start, weight, downloaded, total),
+					Percent:    downloadprogress.WeightedPercent(start, weight, downloaded, total),
 				})
 				lastEmit = now
 			}
@@ -230,15 +230,6 @@ func (d *Service) downloadURLToFile(rawURL, targetPath string, task Task, phase 
 			return readErr
 		}
 	}
-
-	d.emitProgress(Progress{
-		AwemeID:    task.AwemeID,
-		Title:      task.Title,
-		Phase:      phase,
-		Downloaded: downloaded,
-		Total:      total,
-		Percent:    start + weight,
-	})
 
 	return nil
 }
@@ -259,47 +250,46 @@ func (d *Service) downloadTask(task Task) (string, bool, error) {
 	skipDownloaded := d.store.Config().Download.SkipDownloaded
 	if skipDownloaded {
 		// 下载前先检查是否已下载，避免重复下载同一作品；批量会话在界面已过滤，这里是手动路径和并发窗口的兜底。
-		if path, ok := d.isDownloaded(task.AwemeID); ok {
+		path, err := d.downloadedPath(task.AwemeID)
+		if err != nil {
+			return "", false, err
+		}
+		if path != "" {
 			d.emitProgress(Progress{AwemeID: task.AwemeID, Title: task.Title, Phase: "done", Percent: 100})
 			return path, true, nil
 		}
 	}
 
 	storagePath := d.store.DownloadDirectory()
-	targetDir, err := d.resolveDownloadDir(storagePath, task)
-	if err != nil {
-		return "", false, err
-	}
+	targetDir := d.resolveDownloadDir(storagePath, task)
 	isAlbum := len(task.Assets) > 0 || len(task.ImageURLs) > 0
 	var targetPath string
 	if !isAlbum {
 		targetPath = filepath.Join(targetDir, d.videoFileName(task))
-		if skipDownloaded && utils.ExistingVideoFile(targetPath) {
+		if skipDownloaded && mediafile.ExistingVideoFile(targetPath) {
 			d.emitProgress(Progress{AwemeID: task.AwemeID, Title: task.Title, Phase: "done", Percent: 100})
 			return targetPath, true, nil
 		}
 	}
-	if err = os.MkdirAll(targetDir, 0o755); err != nil {
-		return "", false, errors.New("创建下载目录失败")
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+		return "", false, fmt.Errorf("创建下载目录失败: %w", err)
 	}
 
-	d.mu.Lock()
-	delete(d.progress, task.AwemeID)
-	d.mu.Unlock()
+	d.progress.Reset(task.AwemeID)
 	p := Progress{
 		AwemeID: task.AwemeID,
 		Title:   task.Title,
 	}
 	if isAlbum {
 		// 图文/动图保存为一个目录，素材按 001.<原始扩展名> 顺序落盘，配乐单独保存为 music.mp3。
-		dirName := utils.FileName(task.Title)
+		dirName := mediafile.FileName(task.Title)
 		if dirName == "" {
 			dirName = "douyin"
 		}
 		dirName = safeFileName(dirName, task.AwemeID)
-		dir := utils.UniqueFilePath(filepath.Join(targetDir, dirName))
-		if err = os.MkdirAll(dir, 0o755); err != nil {
-			return "", false, errors.New("创建素材目录失败")
+		dir := mediafile.UniqueFilePath(filepath.Join(targetDir, dirName))
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return "", false, fmt.Errorf("创建素材目录失败: %w", err)
 		}
 		assets := task.Assets
 		if len(assets) == 0 {
@@ -321,7 +311,7 @@ func (d *Service) downloadTask(task Task) (string, bool, error) {
 			start := float64(index) / float64(total) * 100
 			weight := 100 / float64(total)
 			join := filepath.Join(dir, fmt.Sprintf("%03d%s", index+1, ext))
-			if err = d.downloadURLToFile(asset.URL, join, task, asset.Kind, start, weight); err != nil {
+			if err := d.downloadURLToFile(asset.URL, join, task, asset.Kind, start, weight); err != nil {
 				d.emitProgress(p.withPhase("error"))
 				return "", false, err
 			}
@@ -330,7 +320,7 @@ func (d *Service) downloadTask(task Task) (string, bool, error) {
 			start := float64(len(assets)) / float64(total) * 100
 			weight := 100 / float64(total)
 			join := filepath.Join(dir, "music.mp3")
-			if err = d.downloadURLToFile(task.MusicURL, join, task, "music", start, weight); err != nil {
+			if err := d.downloadURLToFile(task.MusicURL, join, task, "music", start, weight); err != nil {
 				d.emitProgress(p.withPhase("error"))
 				return "", false, err
 			}
@@ -347,14 +337,18 @@ func (d *Service) downloadTask(task Task) (string, bool, error) {
 	if err != nil {
 		return "", false, err
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() {
+		if err := os.RemoveAll(tmpDir); err != nil {
+			d.logger.Warningf("remove download temporary directory: %v", err)
+		}
+	}()
 	tmpPath := filepath.Join(tmpDir, "video.mp4")
 
-	if err = d.downloadURLToFile(task.VideoURL, tmpPath, task, "video", 0, 100); err != nil {
+	if err := d.downloadURLToFile(task.VideoURL, tmpPath, task, "video", 0, 100); err != nil {
 		d.emitProgress(p.withPhase("error"))
 		return "", false, err
 	}
-	outPath, err := utils.PublishVideoFile(tmpPath, targetPath)
+	outPath, err := mediafile.PublishVideoFile(tmpPath, targetPath)
 	if err != nil {
 		d.emitProgress(p.withPhase("error"))
 		return "", false, err
@@ -376,7 +370,7 @@ func (d *Service) videoFileName(task Task) string {
 	if task.PublishTime > 0 {
 		values["publish_date"] = time.Unix(int64(task.PublishTime), 0).Format(time.DateOnly)
 	}
-	fileName := utils.ApplyFilenameTemplate(template, values)
+	fileName := mediafile.ApplyFilenameTemplate(template, values)
 	if fileName == "" {
 		fileName = "douyin"
 	}

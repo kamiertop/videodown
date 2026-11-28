@@ -38,9 +38,11 @@ func (c Cache) Get(url string) *Entry {
 	return entry
 }
 func (c Cache) Add(url string) *Entry {
-	var newest uint64
-	var oldest string
-	var oldestUse uint64 = ^uint64(0)
+	var (
+		newest    uint64
+		oldest    string
+		oldestUse = ^uint64(0)
+	)
 	for key, item := range c {
 		newest = max(newest, item.used)
 		if item.used < oldestUse {
@@ -76,6 +78,7 @@ func load(ctx context.Context, client *req.Client, url, referer string, thumbnai
 		return nil, err
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, errors.New("图片加载失败")
 	}
@@ -97,6 +100,7 @@ func load(ctx context.Context, client *req.Client, url, referer string, thumbnai
 	if err != nil {
 		return nil, err
 	}
+
 	return ui.NewBitmap(orientThumbnail(resizeThumbnail(img), jpegOrientation(data))), nil
 }
 

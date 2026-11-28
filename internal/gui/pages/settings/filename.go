@@ -10,7 +10,7 @@ import (
 	"github.com/kamiertop/videodown/internal/gui/components"
 	"github.com/kamiertop/videodown/internal/gui/preferences"
 	"github.com/kamiertop/videodown/internal/gui/style"
-	"github.com/kamiertop/videodown/utils"
+	"github.com/kamiertop/videodown/internal/mediafile"
 )
 
 var filenameTokens = regexp.MustCompile(`\{(?:title|source|author|folder|collection|publish_date|date|time|id|author_id)\}`)
@@ -120,7 +120,7 @@ func previewBox(c *ui.Context, label, value string) {
 }
 
 func filenamePreview(template string) string {
-	return utils.ApplyFilenameTemplate(template, map[string]string{"title": "示例视频", "author": "作者", "id": "BV1xx", "folder": "收藏夹", "collection": "合集", "author_id": "123456", "publish_date": "2026-10-09", "date": "2026-10-25", "time": "14-35-22"}) + ".mp4"
+	return mediafile.ApplyFilenameTemplate(template, map[string]string{"title": "示例视频", "author": "作者", "id": "BV1xx", "folder": "收藏夹", "collection": "合集", "author_id": "123456", "publish_date": "2026-10-09", "date": "2026-10-25", "time": "14-35-22"}) + ".mp4"
 }
 
 func (s *State) groupedPreview() string {

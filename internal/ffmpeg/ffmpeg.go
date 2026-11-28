@@ -1,4 +1,4 @@
-package utils
+package ffmpeg
 
 import (
 	"context"
@@ -16,14 +16,15 @@ type FFmpeg struct {
 	path string
 }
 
-// NewFFmpeg uses the configured executable, or discovers one when custom is empty.
-func NewFFmpeg(custom string) *FFmpeg { return &FFmpeg{path: custom} }
+// New uses the configured executable, or discovers one when custom is empty.
+func New(custom string) *FFmpeg { return &FFmpeg{path: custom} }
 
 func (f *FFmpeg) ensurePath() error {
-	path, _, err := CheckFFmpeg(f.path)
+	path, _, err := Check(f.path)
 	if err == nil {
 		f.path = path
 	}
+
 	return err
 }
 
@@ -81,7 +82,7 @@ func (f *FFmpeg) Remux(inputPath, outputPath string) error {
 	return nil
 }
 
-func CheckFFmpeg(custom string) (path, version string, err error) {
+func Check(custom string) (path, version string, err error) {
 	name := "ffmpeg"
 	if runtime.GOOS == "windows" {
 		name += ".exe"
@@ -106,5 +107,6 @@ func CheckFFmpeg(custom string) (path, version string, err error) {
 			return candidate, strings.SplitN(string(output), "\n", 2)[0], nil
 		}
 	}
+
 	return "", "", fmt.Errorf("未检测到可用的 FFmpeg，请安装或手动指定路径")
 }

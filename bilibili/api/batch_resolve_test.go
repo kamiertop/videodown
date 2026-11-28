@@ -4,6 +4,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -34,52 +35,54 @@ func TestResolveLimiterCapsConcurrency(t *testing.T) {
 }
 
 func TestResolveLimiterWaitedOnlyWhenQueued(t *testing.T) {
-	l := newResolveLimiter(1)
-	if waited := l.enter(); waited {
-		t.Fatal("first request must not wait")
-	}
-	done := make(chan bool, 1)
-	go func() { done <- l.enter() }()
-	// The second request is queued while the slot is held.
-	time.Sleep(10 * time.Millisecond)
-	select {
-	case <-done:
-		t.Fatal("second request entered while the slot was held")
-	default:
-	}
-	l.leave()
-	if waited := <-done; !waited {
-		t.Fatal("queued request must report waited")
-	}
-	l.leave()
+	synctest.Test(t, func(t *testing.T) {
+		l := newResolveLimiter(1)
+		if waited := l.enter(); waited {
+			t.Fatal("first request must not wait")
+		}
+		done := make(chan bool, 1)
+		go func() { done <- l.enter() }()
+		synctest.Wait()
+		select {
+		case <-done:
+			t.Fatal("second request entered while the slot was held")
+		default:
+		}
+		l.leave()
+		if waited := <-done; !waited {
+			t.Fatal("queued request must report waited")
+		}
+		l.leave()
+	})
 }
 
 func TestResolveLimiterResizeAppliesImmediately(t *testing.T) {
-	l := newResolveLimiter(4)
-	l.enter()
-	l.enter()
-	l.resize(1)
-	queued := make(chan struct{})
-	entered := make(chan struct{})
-	go func() {
-		close(queued)
+	synctest.Test(t, func(t *testing.T) {
+		l := newResolveLimiter(4)
 		l.enter()
-		close(entered)
-	}()
-	<-queued
-	select {
-	case <-entered:
-		t.Fatal("enter proceeded above the resized limit")
-	case <-time.After(20 * time.Millisecond):
-	}
-	l.leave() // slot A frees
-	l.leave() // slot B frees; inFlight drops below the resized limit
-	select {
-	case <-entered:
-	case <-time.After(time.Second):
-		t.Fatal("queued enter did not proceed after a slot freed")
-	}
-	l.leave() // release the queued enter's slot
+		l.enter()
+		l.resize(1)
+		entered := make(chan struct{})
+		go func() {
+			l.enter()
+			close(entered)
+		}()
+		l.leave()
+		synctest.Wait()
+		select {
+		case <-entered:
+			t.Error("enter proceeded while the remaining slot was held")
+		default:
+		}
+		l.leave()
+		synctest.Wait()
+		select {
+		case <-entered:
+			l.leave()
+		default:
+			t.Fatal("queued enter did not proceed after a slot freed")
+		}
+	})
 }
 
 func TestResolveLimiterResizeIgnoresInvalidLimits(t *testing.T) {

@@ -209,7 +209,7 @@ func (s *State) loadProfile() {
 			err = status(result.StatusCode)
 		}
 		if err == nil && result.User.Uid == "" && result.User.SecUid == "" {
-			err = errors.New("Cookie 未登录或已失效")
+			err = errors.New("cookie 未登录或已失效")
 		}
 		return result.User, err
 	}, func(model.User) {

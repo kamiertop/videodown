@@ -349,15 +349,16 @@ func (s *State) runItem(g *downloadGroup, item *queuedVideo) {
 	resolvedAt := item.ResolvedAt
 	refreshed := false
 	s.runtime.Background(func() error {
-		if _, err := taskFor(video, track, g.Title); err != nil || time.Since(resolvedAt) > 10*time.Minute {
+		task, err := taskFor(video, track, g.Title)
+		if err != nil || time.Since(resolvedAt) > 10*time.Minute {
 			if api == nil {
 				return errors.New("视频详情服务不可用")
 			}
 			s.apiMu.Lock()
-			fresh, err := api.VideoDetail(video.AwemeId)
+			fresh, fetchErr := api.VideoDetail(video.AwemeId)
 			s.apiMu.Unlock()
-			if err != nil {
-				return err
+			if fetchErr != nil {
+				return fetchErr
 			}
 			if track >= 0 && track < len(video.Video.BitRate) {
 				old := video.Video.BitRate[track]
@@ -375,27 +376,13 @@ func (s *State) runItem(g *downloadGroup, item *queuedVideo) {
 			video = fresh
 			resolvedAt = time.Now()
 			refreshed = true
+			task, err = taskFor(video, track, g.Title)
 		}
-		task, err := taskFor(video, track, g.Title)
 		if err != nil {
 			return err
 		}
-		result, err := backend.DownloadVideos([]dyDownload.Task{task})
-		if err != nil {
-			return err
-		}
-		if result.Failed > 0 {
-			for _, v := range result.Results {
-				if v.Error != "" {
-					return errors.New(v.Error)
-				}
-			}
-			return errors.New("下载失败")
-		}
-		if result.Success == 0 {
-			return errors.New("下载服务未返回成功结果")
-		}
-		return nil
+		_, _, err = backend.DownloadTask(task)
+		return err
 	}, func(err error) {
 		if s.stopped || s.epoch != epoch {
 			return

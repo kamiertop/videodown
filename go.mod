@@ -3,7 +3,7 @@ module github.com/kamiertop/videodown
 go 1.27.3
 
 require (
-	github.com/dop251/goja v0.0.0-20261125210501-5e92a7e24d0c
+	github.com/dop251/goja v0.0.0-20261127213540-516d13cfa287
 	github.com/egoist/mygo v0.10.0
 	github.com/glebarez/go-sqlite v1.23.0
 	github.com/imroc/req/v3 v3.61.0

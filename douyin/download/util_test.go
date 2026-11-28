@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kamiertop/videodown/utils"
+	"github.com/kamiertop/videodown/internal/mediafile"
 )
 
 func TestCleanDouyinTitle(t *testing.T) {
@@ -53,7 +53,7 @@ func TestCleanDouyinTitle(t *testing.T) {
 
 func TestSafeFileName(t *testing.T) {
 	// 超过安全上限的名字退回视频 ID，短名字原样保留。
-	long := strings.Repeat("抖", utils.MaxFileNameBytes/3+1)
+	long := strings.Repeat("抖", mediafile.MaxFileNameBytes/3+1)
 	if got := safeFileName(long, "7123456789012345678"); got != "7123456789012345678" {
 		t.Errorf("safeFileName(over-long) = %q, want fallback id", got)
 	}
@@ -76,7 +76,7 @@ func TestOverLongTitleFallsBackToIDAndCreatesFile(t *testing.T) {
 		t.Fatalf("trailing hashtags not stripped: %q", title)
 	}
 	values := map[string]string{"title": title, "id": awemeID}
-	fileName := utils.ApplyFilenameTemplate("{title}", values)
+	fileName := mediafile.ApplyFilenameTemplate("{title}", values)
 	if fileName == "" {
 		fileName = "douyin"
 	}
@@ -86,7 +86,7 @@ func TestOverLongTitleFallsBackToIDAndCreatesFile(t *testing.T) {
 	}
 
 	dir := t.TempDir()
-	outPath := utils.UniqueFilePath(filepath.Join(dir, fileName+".mp4"))
+	outPath := mediafile.UniqueFilePath(filepath.Join(dir, fileName+".mp4"))
 	if err := os.WriteFile(outPath, []byte("x"), 0o644); err != nil {
 		t.Fatalf("create file: %v", err)
 	}

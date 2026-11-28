@@ -18,6 +18,8 @@ github.com/dop251/goja v0.0.0-20261124180248-00ef7861e082 h1:TeTaX4/PnNLpsk+16aw
 github.com/dop251/goja v0.0.0-20261124180248-00ef7861e082/go.mod h1:L1yoLBco9M3b2Gdh1UZHg+BIePeAdV1bwknaLLxAgoc=
 github.com/dop251/goja v0.0.0-20261125210501-5e92a7e24d0c h1:DrPWTQKJbBWxW/xaQcnUMPtoYScy0n7bkJR3ONvcIBA=
 github.com/dop251/goja v0.0.0-20261125210501-5e92a7e24d0c/go.mod h1:L1yoLBco9M3b2Gdh1UZHg+BIePeAdV1bwknaLLxAgoc=
+github.com/dop251/goja v0.0.0-20261127213540-516d13cfa287 h1:dPTp01JLtpi0G5AVu1/5dEz7+vW2egVIpGBWnPTi3so=
+github.com/dop251/goja v0.0.0-20261127213540-516d13cfa287/go.mod h1:L1yoLBco9M3b2Gdh1UZHg+BIePeAdV1bwknaLLxAgoc=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/ebitengine/purego v0.11.3 h1:OB+JLpdm7ioymhyA+6s5kbb/uOuYycAgL8NNTFc5MLg=

@@ -1,4 +1,4 @@
-package utils
+package mediafile
 
 import (
 	"errors"
@@ -36,6 +36,7 @@ func ApplyFilenameTemplate(template string, values map[string]string) string {
 	// separators selected by the template (for example " - ").
 	name = regexp.MustCompile(`_+[-]_+`).ReplaceAllString(name, " - ")
 	name = regexp.MustCompile(`_+\|_+`).ReplaceAllString(name, " | ")
+
 	return strings.Trim(name, "-| .")
 }
 
@@ -51,6 +52,7 @@ func isIllegalChar(r rune) bool {
 	case '<', '>', ':', '"', '/', '\\', '|', '?', '*':
 		return true
 	}
+
 	return false
 }
 
@@ -90,6 +92,7 @@ func fileName(rawName string, preserveSpaces bool) string {
 	if isReservedWindowsName(s) {
 		s = "_" + s
 	}
+
 	return s
 }
 
@@ -99,6 +102,7 @@ func isReservedWindowsName(name string) bool {
 	case "CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9":
 		return true
 	}
+
 	return false
 }
 
@@ -111,6 +115,7 @@ const MaxFileNameBytes = 200
 // ExistingVideoFile reports whether path points to a non-empty regular file.
 func ExistingVideoFile(path string) bool {
 	info, err := os.Stat(path)
+
 	return err == nil && info.Mode().IsRegular() && info.Size() > 0
 }
 
@@ -173,4 +178,19 @@ func ImageExtFromResponse(rawURL string, resp *http.Response) string {
 	}
 
 	return ".jpg"
+}
+
+// HistoryPathExists 区分路径不存在与无法检查路径。
+func HistoryPathExists(path string) (bool, error) {
+	if path == "" {
+		return false, nil
+	}
+	if _, err := os.Stat(path); err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return false, nil
+		}
+		return false, fmt.Errorf("检查历史下载路径: %w", err)
+	}
+
+	return true, nil
 }

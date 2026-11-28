@@ -1,4 +1,4 @@
-package utils
+package api
 
 import (
 	"errors"
@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func ParseMid(spaceURLOrMid string) (string, error) {
+func parseMid(spaceURLOrMid string) (string, error) {
 	spaceURLOrMid = strings.TrimSpace(spaceURLOrMid)
 	if spaceURLOrMid == "" {
 		return "", errors.New("解析到mid为空，请输入正确的空间链接或mid")

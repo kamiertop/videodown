@@ -558,8 +558,8 @@ func (s *State) runQueuedTask(work *manualWork, item queuedDownload) {
 			}
 		}
 		resolveFailed = false
-		result, err := backend.DownloadVideosByDash([]bilidownload.Task{task})
-		return downloadResultError(result, err)
+		_, _, err := backend.DownloadVideoByDash(task)
+		return err
 	}, func(err error) {
 		if s.stopped || work.epoch != s.epoch {
 			return
