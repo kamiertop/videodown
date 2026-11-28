@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## v1.0.0-alpha.7
+
+### Enhancement
+
+- YouTube 视频和播放列表默认以访客身份解析。需要账号访问时，使用已保存的 Cookie 重试，播放列表翻页沿用首页的登录模式
+- YouTube 解析卡片支持直接下载当前画质或音轨、单独保存封面和移除预览
+- YouTube 下载页和播放列表页支持一键清空链接和按 Enter 解析
+
+
 ## v1.0.0-alpha.6
 
 ### Enhancement
