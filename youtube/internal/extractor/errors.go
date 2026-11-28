@@ -14,6 +14,7 @@ const (
 	ErrReadOnClosedResBody        = constError("http: read on closed response body")
 	ErrNotPlayableInEmbed         = constError("embedding of this video has been disabled")
 	ErrLoginRequired              = constError("YouTube 要求登录或验证当前网络")
+	ErrPlaylistNotFound           = constError("播放列表不存在或当前会话不可见")
 	ErrVideoPrivate               = constError("user restricted access to this video")
 )
 
@@ -30,6 +31,10 @@ type ErrPlayabiltyStatus struct {
 
 func (err ErrPlayabiltyStatus) Error() string {
 	return fmt.Sprintf("cannot playback and download, status: %s, reason: %s", err.Status, err.Reason)
+}
+
+func (err ErrPlayabiltyStatus) Is(target error) bool {
+	return target == ErrLoginRequired && err.Status == "LOGIN_REQUIRED"
 }
 
 // ErrUnexpectedStatusCode is returned on unexpected HTTP status codes

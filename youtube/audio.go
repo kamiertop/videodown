@@ -14,6 +14,22 @@ func usableFormats(v *extractor.Video) bool {
 	return len(description.Formats)+len(description.AudioFormats) > 0
 }
 
+func downloadFormat(formats extractor.FormatList, audioFormats []*extractor.Format, formatID int) *extractor.Format {
+	for _, f := range audioFormats {
+		if audioID(f) == formatID {
+			return f
+		}
+	}
+	for i := range formats {
+		f := &formats[i]
+		if f.ItagNo == formatID && strings.HasPrefix(f.MimeType, "video/") &&
+			(f.URL != "" || f.Cipher != "") && (f.AudioTrack == nil || f.AudioTrack.AudioIsDefault) {
+			return f
+		}
+	}
+	return nil
+}
+
 // Keep ordinary itags compatible with saved tasks. DRC is a distinct rendition
 // of the same itag, so it needs its own stable application selection ID.
 const drcAudioIDOffset = 1_000_000

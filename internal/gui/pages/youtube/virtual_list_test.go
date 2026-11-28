@@ -9,8 +9,52 @@ import (
 	"github.com/egoist/mygo/ui"
 
 	"github.com/kamiertop/videodown/internal/gui/style"
+	"github.com/kamiertop/videodown/internal/storage"
 	yt "github.com/kamiertop/videodown/youtube"
 )
+
+func TestPreviewActions(t *testing.T) {
+	for _, action := range []string{"下载", "保存封面", "移除"} {
+		t.Run(action, func(t *testing.T) {
+			store, err := storage.OpenMemory()
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = store.Close() })
+			s := NewState()
+			runtime := syncRuntime()
+			scheduled := 0
+			runtime.Background = func(func() error, func(error)) { scheduled++ }
+			s.Configure(yt.New(store), runtime)
+			t.Cleanup(s.Stop)
+			s.video = yt.Video{ID: "jNQXAC9IVRw", Title: "测试视频", Cover: "https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg", Formats: []yt.Format{{ID: 18, Label: "360p"}}}
+			s.format = 18
+			test := ui.NewTester(func(c *ui.Context) {
+				style.UseTheme(c)
+				s.Form(c, "/youtube/download", nil)
+			}, 800, 650)
+			test.Frame()
+			if err := test.Click(action); err != nil {
+				t.Fatal(err)
+			}
+			test.Frame()
+			switch action {
+			case "下载":
+				if scheduled != 1 || len(s.queue) != 1 || s.queue[0].Status != "active" || s.queue[0].Format != 18 || s.video.ID != "" {
+					t.Fatalf("download did not start with selected format: scheduled=%d, queued=%d, preview=%q", scheduled, len(s.queue), s.video.ID)
+				}
+			case "保存封面":
+				if scheduled != 1 || len(s.queue) != 0 || !s.coverSaving || s.video.ID == "" {
+					t.Fatalf("cover action did not start independently: scheduled=%d, queued=%d, saving=%t, preview=%q", scheduled, len(s.queue), s.coverSaving, s.video.ID)
+				}
+			case "移除":
+				if scheduled != 0 || len(s.queue) != 0 || s.video.ID != "" || test.HasText("测试视频") {
+					t.Fatalf("remove left preview or scheduled work: scheduled=%d, queued=%d, preview=%q", scheduled, len(s.queue), s.video.ID)
+				}
+			}
+		})
+	}
+}
 
 func TestDownloadListVirtualizesExpandedGroup(t *testing.T) {
 	s := NewState()

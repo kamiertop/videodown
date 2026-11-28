@@ -3,12 +3,14 @@ package youtube
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/egoist/mygo/ui"
 	"github.com/imroc/req/v3"
 
 	"github.com/kamiertop/videodown/internal/gui/imagecache"
+	yt "github.com/kamiertop/videodown/youtube"
 )
 
 func (s *State) loadCover() {
@@ -20,6 +22,42 @@ func (s *State) loadCover() {
 		s.requestThumbnail(s.video, entry)
 	}
 	s.cover, s.coverLoading, s.coverError = entry.Bitmap, entry.Loading, entry.Error
+}
+
+func (s *State) savePreviewCover() {
+	if s.stopped || s.api == nil || s.runtime.Background == nil || s.coverSaving || s.video.Cover == "" {
+		return
+	}
+	s.coverSaving = true
+	s.actionError = ""
+	api, video := s.api, s.video
+	ctx, cancel := context.WithTimeout(s.ctx, 30*time.Second)
+	var path string
+	var history []yt.History
+	s.runtime.Background(func() error {
+		defer cancel()
+		var err error
+		path, err = api.DownloadCover(ctx, video)
+		if err == nil {
+			history, _ = api.History()
+		}
+		return err
+	}, func(err error) {
+		s.coverSaving = false
+		if s.stopped {
+			return
+		}
+		if err != nil {
+			s.reportActionError(err.Error())
+			return
+		}
+		if history != nil {
+			s.mergeHistory(history)
+		}
+		if s.runtime.Notify != nil {
+			s.runtime.Notify(fmt.Sprintf("封面已保存：%s", path), false)
+		}
+	})
 }
 
 func (s *State) finishCover(generation uint64, bitmap *ui.Bitmap, err error) {

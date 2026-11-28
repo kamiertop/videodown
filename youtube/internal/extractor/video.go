@@ -84,7 +84,6 @@ func (v *Video) isVideoDownloadable(prData playerResponseData, isVideoPage bool)
 		if strings.HasPrefix(prData.PlayabilityStatus.Reason, "This video is private") {
 			return ErrVideoPrivate
 		}
-		return fmt.Errorf("%w：%s", ErrLoginRequired, prData.PlayabilityStatus.Reason)
 	}
 
 	return &ErrPlayabiltyStatus{

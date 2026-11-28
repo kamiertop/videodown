@@ -119,12 +119,12 @@ func ExistingVideoFile(path string) bool {
 	return err == nil && info.Mode().IsRegular() && info.Size() > 0
 }
 
-var videoPublishMu sync.Mutex
+var publishMu sync.Mutex
 
-// PublishVideoFile moves a completed video to an unused destination path.
-func PublishVideoFile(tempPath, targetPath string) (string, error) {
-	videoPublishMu.Lock()
-	defer videoPublishMu.Unlock()
+// PublishFile moves a completed file to an unused destination path.
+func PublishFile(tempPath, targetPath string) (string, error) {
+	publishMu.Lock()
+	defer publishMu.Unlock()
 	path := UniqueFilePath(targetPath)
 	return path, os.Rename(tempPath, path)
 }

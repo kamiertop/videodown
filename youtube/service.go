@@ -76,6 +76,8 @@ var (
 	// ErrAccountNetwork 账号验证的网络错误：请求未到达 YouTube 或响应被
 	// 中断，与 Cookie 本身是否有效无关，界面应引导检查代理而非换 Cookie。
 	ErrAccountNetwork = extractor.ErrAccountNetwork
+	// ErrAccountUnverified 表示 YouTube 响应不足以确认登录状态。
+	ErrAccountUnverified = extractor.ErrAccountUnverified
 	// ErrCookieNotLoggedIn Cookie 已送达 YouTube 但会话未登录。
 	ErrCookieNotLoggedIn = extractor.ErrCookieNotLoggedIn
 )
@@ -238,7 +240,7 @@ func (s *Service) Resolve(ctx context.Context, input string) (Video, error) {
 	if err != nil {
 		return Video{}, err
 	}
-	_, raw, err := s.fetchVideo(ctx, id)
+	_, raw, err := s.fetchVideo(ctx, id, 0)
 	if err != nil {
 		return Video{}, s.parseError(err)
 	}
@@ -265,13 +267,21 @@ func (s *Service) History() ([]History, error) {
 	return result, nil
 }
 
-// DeleteHistory 删除一个视频的全部下载记录（同一视频可能有视频与音频两条）；
+// DeleteHistory 删除一个视频的全部下载记录，包括视频、音频和封面；
 // 不会删除已经保存到本地的文件。
 func (s *Service) DeleteHistory(videoID string) error {
 	if strings.TrimSpace(videoID) == "" {
 		return errors.New("视频ID为空")
 	}
 	return s.store.DeleteHistoryPrefix("youtube:downloaded:" + videoID + ":")
+}
+
+// DeleteHistoryRecord removes the history entry for one saved file.
+func (s *Service) DeleteHistoryRecord(item History) error {
+	if strings.TrimSpace(item.ID) == "" {
+		return errors.New("视频ID为空")
+	}
+	return s.store.DeleteHistoryByPath("youtube:downloaded:"+item.ID+":", item.Path)
 }
 
 func (s *Service) Download(ctx context.Context, video Video, formatID int, notify func(Progress)) (string, error) {
@@ -337,47 +347,17 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 		}
 	}
 	emit(Progress{Phase: "正在获取下载地址"})
-	client, raw, err := s.fetchVideo(ctx, video.ID)
+	client, raw, err := s.fetchVideo(ctx, video.ID, formatID)
 	if err != nil {
-		return "", err
+		return "", s.parseError(err)
 	}
-	var selected *extractor.Format
 	audioFormats := selectableAudioFormats(raw.Formats)
-	for _, f := range audioFormats {
-		if audioID(f) == formatID {
-			selected = f
-			break
-		}
-	}
+	selected := downloadFormat(raw.Formats, audioFormats, formatID)
 	if selected == nil {
-		for i := range raw.Formats {
-			f := &raw.Formats[i]
-			if f.AudioTrack != nil && !f.AudioTrack.AudioIsDefault {
-				continue
-			}
-			if f.ItagNo == formatID && strings.HasPrefix(f.MimeType, "video/") {
-				selected = f
-				break
-			}
-		}
-	}
-	if selected == nil {
-		return "", errors.New("所选画质已不可用，请重新解析")
+		return "", errSelectedFormatUnavailable
 	}
 	audioOnly := strings.HasPrefix(selected.MimeType, "audio/")
-	dir := s.store.DownloadDirectory()
-	if cfg.Download.Grouping && cfg.Download.GroupingRule != "none" {
-		switch cfg.Download.GroupingRule {
-		case "author":
-			dir = filepath.Join(dir, mediafile.FileName(raw.Author))
-		case "source":
-			dir = filepath.Join(dir, "YouTube")
-		case "author_source":
-			dir = filepath.Join(dir, mediafile.FileName(raw.Author), "YouTube")
-		case "date":
-			dir = filepath.Join(dir, time.Now().Format(time.DateOnly))
-		}
-	}
+	dir := s.mediaDirectory(cfg.Download, raw.Author)
 	name := mediafile.ApplyFilenameTemplate(cfg.Download.FilenameTemplate,
 		map[string]string{"title": raw.Title,
 			"author":       raw.Author,
@@ -462,7 +442,7 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 	if err = ctx.Err(); err != nil {
 		return "", err
 	}
-	final, err := mediafile.PublishVideoFile(completedPath, targetPath)
+	final, err := mediafile.PublishFile(completedPath, targetPath)
 	if err != nil {
 		return "", err
 	}
@@ -478,58 +458,98 @@ func (s *Service) Download(ctx context.Context, video Video, formatID int, notif
 	return final, nil
 }
 
-// fetchVideo retries a public request without account cookies when the account
-// request is rejected; a successful authenticated response is always preferred.
-func (s *Service) fetchVideo(ctx context.Context, id string) (*extractor.Client, *extractor.Video, error) {
+func (s *Service) mediaDirectory(cfg storage.DownloadConfig, author string) string {
+	dir := s.store.DownloadDirectory()
+	if cfg.Grouping && cfg.GroupingRule != "none" {
+		switch cfg.GroupingRule {
+		case "author":
+			dir = filepath.Join(dir, mediafile.FileName(author))
+		case "source":
+			dir = filepath.Join(dir, "YouTube")
+		case "author_source":
+			dir = filepath.Join(dir, mediafile.FileName(author), "YouTube")
+		case "date":
+			dir = filepath.Join(dir, time.Now().Format(time.DateOnly))
+		}
+	}
+	return dir
+}
+
+var errSelectedFormatUnavailable = errors.New("所选画质已不可用，请重新解析")
+
+// fetchVideo prefers a guest session. Only account-restricted content or a
+// previously selected format missing from the guest response can use the cookie.
+func (s *Service) fetchVideo(ctx context.Context, id string, formatID int) (*extractor.Client, *extractor.Video, error) {
 	s.parseMu.Lock()
 	defer s.parseMu.Unlock()
 	if err := ctx.Err(); err != nil {
 		return nil, nil, err
 	}
-	client := s.client()
+	account := s.client()
+	guest := &extractor.Client{HTTPClient: account.HTTPClient}
+	client, video, err := s.fetchVideoSession(ctx, guest, id, formatID)
+	if err == nil || account.Cookie == "" {
+		return client, video, err
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, nil, err
+	}
+	if !requiresAccount(err) && !errors.Is(err, errSelectedFormatUnavailable) {
+		return nil, nil, err
+	}
+	client, video, accountErr := s.fetchVideoSession(ctx, account, id, formatID)
+	if accountErr != nil {
+		if loggedIn, known := account.AccountState(); known && loggedIn && !errors.Is(accountErr, errSelectedFormatUnavailable) {
+			accountErr = fmt.Errorf("%w：%w", errAuthenticatedPlayback, accountErr)
+		}
+	}
+	return client, video, accountErr
+}
+
+func (s *Service) fetchVideoSession(ctx context.Context, client *extractor.Client, id string, formatID int) (*extractor.Client, *extractor.Video, error) {
 	key := fmt.Sprintf("%s:%x", id, sha256.Sum256([]byte(client.Cookie+"\x00"+s.proxyKey())))
 	if hit, ok := s.cache[key]; ok && time.Since(hit.at) < 5*time.Minute {
+		if formatID != 0 && downloadFormat(hit.video.Formats, selectableAudioFormats(hit.video.Formats), formatID) == nil {
+			return nil, nil, errSelectedFormatUnavailable
+		}
 		return hit.client.Clone(), hit.video, nil
 	}
-	remember := func(client *extractor.Client, video *extractor.Video) (*extractor.Client, *extractor.Video, error) {
-		if s.cache == nil {
-			s.cache = map[string]cachedVideo{}
-		}
-		if len(s.cache) >= 8 {
-			var oldest string
-			var at time.Time
-			for k, v := range s.cache {
-				if at.IsZero() || v.at.Before(at) {
-					oldest, at = k, v.at
-				}
-			}
-			delete(s.cache, oldest)
-		}
-		s.cache[key] = cachedVideo{client: client.Clone(), video: video, at: time.Now()}
-		return client, video, nil
-	}
-
 	video, err := client.GetVideoContext(ctx, id)
-	if err == nil && usableFormats(video) {
-		return remember(client, video)
-	}
-	if ctx.Err() != nil {
-		return nil, nil, ctx.Err()
-	}
-	if client.Cookie != "" {
-		anonymous := &extractor.Client{HTTPClient: client.HTTPClient}
-		fallback, fallbackErr := anonymous.GetVideoContext(ctx, id)
-		if fallbackErr == nil && usableFormats(fallback) {
-			return remember(anonymous, fallback)
-		}
-	}
 	if err != nil {
-		if loggedIn, known := client.AccountState(); known && loggedIn {
-			err = fmt.Errorf("%w：%w", errAuthenticatedPlayback, err)
-		}
-		return client, nil, err
+		return nil, nil, err
 	}
-	return nil, nil, errors.New("播放器未提供可下载的直链格式，当前精简解析器尚不支持该响应")
+	if !usableFormats(video) {
+		return nil, nil, errors.New("播放器未提供可下载的直链格式，当前精简解析器尚不支持该响应")
+	}
+	if s.cache == nil {
+		s.cache = make(map[string]cachedVideo)
+	}
+	if _, exists := s.cache[key]; !exists && len(s.cache) >= 8 {
+		var oldest string
+		var at time.Time
+		for k, v := range s.cache {
+			if at.IsZero() || v.at.Before(at) {
+				oldest, at = k, v.at
+			}
+		}
+		delete(s.cache, oldest)
+	}
+	s.cache[key] = cachedVideo{client: client.Clone(), video: video, at: time.Now()}
+	if formatID != 0 && downloadFormat(video.Formats, selectableAudioFormats(video.Formats), formatID) == nil {
+		return nil, nil, errSelectedFormatUnavailable
+	}
+	return client, video, nil
+}
+
+func requiresAccount(err error) bool {
+	if errors.Is(err, extractor.ErrVideoPrivate) {
+		return true
+	}
+	if !errors.Is(err, extractor.ErrLoginRequired) {
+		return false
+	}
+	var status *extractor.ErrPlayabiltyStatus
+	return !errors.As(err, &status) || !strings.Contains(strings.ToLower(status.Reason), "not a bot")
 }
 
 // Account 验证已保存的 Cookie 并返回当前登录账号的资料；Cookie 未设置或
@@ -549,19 +569,21 @@ func (s *Service) parseError(err error) error {
 	if errors.Is(err, errAuthenticatedPlayback) {
 		return fmt.Errorf("%w。Cookie 有效，无需重复填写；当前精简解析器尚未支持该播放器响应", err)
 	}
+	if errors.Is(err, errSelectedFormatUnavailable) {
+		return err
+	}
 	var status *extractor.ErrPlayabiltyStatus
 	if errors.As(err, &status) && strings.Contains(strings.ToLower(status.Reason), "page needs to be reloaded") {
-		if s.Cookie() != "" {
-			return fmt.Errorf("已读取保存的 Cookie，但 YouTube 未通过当前客户端的播放校验：%s。当前精简解析器尚未适配此验证，请确认程序与浏览器使用相同网络出口", status.Reason)
-		}
 		return fmt.Errorf("YouTube 未通过当前客户端的播放校验：%s", status.Reason)
 	}
-
-	if errors.Is(err, extractor.ErrLoginRequired) {
+	if requiresAccount(err) {
 		if s.Cookie() != "" {
-			return fmt.Errorf("已读取保存的 Cookie，但仍要求登录或验证网络：%w。请确认 Cookie 来自当前已登录会话，且程序与浏览器使用相同的代理或网络出口；当前解析器无法自动完成验证", err)
+			return fmt.Errorf("YouTube 拒绝了账号访问：%w。请在账号页检查 Cookie 和账号权限", err)
 		}
-		return fmt.Errorf("YouTube 解析失败：%w，可在账号页填写已登录浏览器的 Cookie", err)
+		return fmt.Errorf("此内容需要 YouTube 账号：%w，可在账号页填写 Cookie", err)
+	}
+	if errors.Is(err, extractor.ErrLoginRequired) {
+		return fmt.Errorf("YouTube 要求验证当前网络：%w。请确认程序与浏览器使用相同的网络出口", err)
 	}
 	return fmt.Errorf("YouTube 解析失败：%w", err)
 }

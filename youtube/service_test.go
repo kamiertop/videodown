@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -91,8 +92,8 @@ func TestDownloadCookieHistoryAndFailureCleanup(t *testing.T) {
 				data = "signatureTimestamp:12345"
 				break
 			}
-			if !strings.Contains(r.Header.Get("Cookie"), "SID=fixture") {
-				t.Error("missing cookie")
+			if strings.Contains(r.Header.Get("Cookie"), "SID=fixture") {
+				t.Error("account cookie sent for public video")
 			}
 			data = `{"playabilityStatus":{"status":"OK"},"videoDetails":{"videoId":"jNQXAC9IVRw","title":"fixture","author":"author","lengthSeconds":"5"},"streamingData":{"formats":[{"itag":18,"url":"https://fixture.googlevideo.com/video","mimeType":"video/mp4","height":360,"audioChannels":2,"contentLength":"4"}]}}`
 		case "fixture.googlevideo.com":
@@ -116,6 +117,10 @@ func TestDownloadCookieHistoryAndFailureCleanup(t *testing.T) {
 	video, err := service.Resolve(context.Background(), "jNQXAC9IVRw")
 	if err != nil || len(video.Formats) != 1 {
 		t.Fatalf("parse: %+v %v", video, err)
+	}
+	invalid := Video{ID: video.ID, Formats: []Format{{ID: 0}}}
+	if _, err := service.Download(t.Context(), invalid, 0, nil); !errors.Is(err, errSelectedFormatUnavailable) {
+		t.Fatalf("invalid default format: %v", err)
 	}
 	path, err := service.Download(context.Background(), video, 18, nil)
 	if err != nil {
@@ -186,49 +191,127 @@ func TestFormatLabelsExplainVariantsWithoutMerging(t *testing.T) {
 	}
 }
 
-func TestSavedCookieLoginFailureRetriesAnonymous(t *testing.T) {
-	store, err := storage.Open(t.TempDir())
+func TestResolvePrefersGuestAndUsesCookieForRestrictedContent(t *testing.T) {
+	const public = `{"playabilityStatus":{"status":"OK"},"videoDetails":{"title":"fixture"},"streamingData":{"formats":[{"itag":313,"url":"https://fixture.googlevideo.com/video","height":2160,"mimeType":"video/webm"}]}}`
+	for _, tc := range []struct {
+		name       string
+		guest      string
+		status     int
+		wantCalls  []bool
+		wantHeight int
+	}{
+		{name: "public 4K", guest: public, wantCalls: []bool{false}, wantHeight: 2160},
+		{name: "private", guest: `{"playabilityStatus":{"status":"LOGIN_REQUIRED","reason":"This video is private"}}`, wantCalls: []bool{false, true}, wantHeight: 2160},
+		{name: "bot check", guest: `{"playabilityStatus":{"status":"LOGIN_REQUIRED","reason":"Sign in to confirm you are not a bot"}}`, wantCalls: []bool{false}},
+		{name: "rate limited", status: http.StatusTooManyRequests, wantCalls: []bool{false}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			store, err := storage.OpenMemory()
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = store.Close() })
+			service := New(store)
+			if err := service.SetCookie("SID=fixture"); err != nil {
+				t.Fatal(err)
+			}
+			var calls []bool
+			service.transport = transportFunc(func(r *http.Request) (*http.Response, error) {
+				body, status := "{}", http.StatusOK
+				if strings.Contains(r.URL.Path, "/youtubei/") {
+					authenticated := strings.Contains(r.Header.Get("Cookie"), "SID=fixture")
+					calls = append(calls, authenticated)
+					body = public
+					if !authenticated {
+						body = tc.guest
+						if tc.status != 0 {
+							status = tc.status
+						}
+					}
+				}
+				return &http.Response{StatusCode: status, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header), Request: r}, nil
+			})
+			video, err := service.Resolve(context.Background(), "KWGhxyu5osA")
+			if tc.wantHeight == 0 {
+				if err == nil {
+					t.Fatal("Resolve succeeded without a usable guest response")
+				}
+			} else if err != nil || len(video.Formats) != 1 || video.Formats[0].Height != tc.wantHeight {
+				t.Fatalf("Resolve() = %+v, %v; want %dp", video, err, tc.wantHeight)
+			}
+			if !slices.Equal(calls, tc.wantCalls) {
+				t.Errorf("account-cookie use per request = %v; want %v", calls, tc.wantCalls)
+			}
+		})
+	}
+}
+
+func TestSelectedFormatUsesMatchingSessionWithoutReplacingGuestCache(t *testing.T) {
+	store, err := storage.OpenMemory()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	t.Cleanup(func() { _ = store.Close() })
 	service := New(store)
 	if err := service.SetCookie("SID=fixture"); err != nil {
 		t.Fatal(err)
 	}
-	var cookieRequests, anonymousRequests int
+	const id = "KWGhxyu5osA"
+	var calls []bool
 	service.transport = transportFunc(func(r *http.Request) (*http.Response, error) {
-		data := "{}"
+		body := "{}"
 		if strings.Contains(r.URL.Path, "/youtubei/") {
-			if strings.Contains(r.Header.Get("Cookie"), "SID=fixture") {
-				cookieRequests++
-				data = `{"playabilityStatus":{"status":"LOGIN_REQUIRED","reason":"Sign in to confirm you are not a bot"}}`
-			} else {
-				anonymousRequests++
-				data = `{"playabilityStatus":{"status":"OK"},"videoDetails":{"title":"public"},"streamingData":{"formats":[{"itag":18,"url":"https://fixture.googlevideo.com/video","height":360,"mimeType":"video/mp4"}]}}`
+			authenticated := strings.Contains(r.Header.Get("Cookie"), "SID=fixture")
+			calls = append(calls, authenticated)
+			itag, height := 18, 360
+			if authenticated {
+				itag, height = 313, 2160
 			}
+			body = fmt.Sprintf(`{"playabilityStatus":{"status":"OK"},"videoDetails":{"title":"fixture"},"streamingData":{"formats":[{"itag":%d,"height":%d,"url":"https://fixture.googlevideo.com/video","mimeType":"video/webm"}]}}`, itag, height)
 		}
-		return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(data)), Header: make(http.Header), Request: r}, nil
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header), Request: r}, nil
 	})
-	if _, err := service.Resolve(context.Background(), "KWGhxyu5osA"); err != nil {
-		t.Fatal(err)
+	ctx := context.Background()
+	for range 2 {
+		client, raw, err := service.fetchVideo(ctx, id, 313)
+		if err != nil || client.Cookie == "" || len(raw.Formats) != 1 || raw.Formats[0].ItagNo != 313 {
+			t.Fatalf("could not resolve selected account format: %v", err)
+		}
 	}
-	if cookieRequests != 1 || anonymousRequests != 1 || service.Cookie() != "SID=fixture" {
-		t.Fatal("fallback did not preserve stored cookie")
+	video, err := service.Resolve(ctx, id)
+	if err != nil || len(video.Formats) != 1 || video.Formats[0].ID != 18 {
+		t.Fatalf("ordinary Resolve() = %+v, %v; want guest formats", video, err)
 	}
-	verified := service.parseError(fmt.Errorf("%w: reload", errAuthenticatedPlayback)).Error()
-	if !strings.Contains(verified, "Cookie 有效") {
-		t.Fatal("valid login was confused with missing cookie")
-	}
-	reload := service.parseError(&extractor.ErrPlayabiltyStatus{Status: "UNPLAYABLE", Reason: "The page needs to be reloaded."}).Error()
-	if !strings.Contains(reload, "已读取保存的 Cookie") || !strings.Contains(reload, "尚未适配") {
-		t.Fatal("reload error confused with missing cookie")
-	}
-	message := service.parseError(fmt.Errorf("%w: bot challenge", extractor.ErrLoginRequired)).Error()
-	if strings.Contains(message, "可填写 Cookie") || !strings.Contains(message, "已读取保存") {
-		t.Fatalf("misleading saved-cookie message: %s", message)
+	if !slices.Equal(calls, []bool{false, true}) {
+		t.Errorf("account-cookie use per request = %v; want [false true]", calls)
 	}
 }
+
+func TestPlaybackErrorsDistinguishAccountAndNetwork(t *testing.T) {
+	store, err := storage.OpenMemory()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = store.Close() })
+	service := New(store)
+	if err := service.SetCookie("SID=fixture"); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		err  error
+		want string
+	}{
+		{fmt.Errorf("%w: reload", errAuthenticatedPlayback), "Cookie 有效"},
+		{&extractor.ErrPlayabiltyStatus{Status: "UNPLAYABLE", Reason: "The page needs to be reloaded."}, "播放校验"},
+		{&extractor.ErrPlayabiltyStatus{Status: "LOGIN_REQUIRED", Reason: "Sign in to confirm you’re not a bot"}, "验证当前网络"},
+		{extractor.ErrVideoPrivate, "账号权限"},
+	} {
+		if got := service.parseError(tc.err).Error(); !strings.Contains(got, tc.want) {
+			t.Errorf("parseError(%v) = %q; want %q", tc.err, got, tc.want)
+		}
+	}
+}
+
 func TestParseCacheExpiresAndCookieChangesInvalidate(t *testing.T) {
 	store, err := storage.OpenMemory()
 	if err != nil {
@@ -274,8 +357,8 @@ func TestParseCacheExpiresAndCookieChangesInvalidate(t *testing.T) {
 	if requests != 3 {
 		t.Fatal("cookie change reused old cache")
 	}
-	if !strings.Contains(requestCookie, "SID=new-fixture") {
-		t.Fatal("first parse after saving did not send the new cookie")
+	if strings.Contains(requestCookie, "SID=new-fixture") {
+		t.Fatal("first parse after saving sent the cookie for a public video")
 	}
 	previousClient := service.requestClient()
 	if err := service.SetProxy(" http://127.0.0.1:7890/ ", true); err != nil {

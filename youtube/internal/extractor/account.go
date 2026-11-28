@@ -27,6 +27,9 @@ var ErrCookieNotLoggedIn = errors.New("cookie 未生效：当前未登录，请�
 // 连接重置等），与 Cookie 本身是否有效无关。
 var ErrAccountNetwork = errors.New("无法连接 YouTube")
 
+// ErrAccountUnverified indicates that YouTube did not provide a usable login result.
+var ErrAccountUnverified = errors.New("YouTube 未能确认登录状态，请使用与浏览器相同的网络出口后刷新账号")
+
 // networkErrorText 将超时与中断类错误翻译成可读提示，其余保留原文。
 // GFW 环境下直连 YouTube 常见“建连后读体中途被重置”，此时 net/http
 // 只报裸的 net/http: request canceled，对用户毫无提示性。
@@ -62,7 +65,7 @@ func (c *Client) GetAccountContext(ctx context.Context) (*Account, error) {
 	web := &Client{Cookie: c.Cookie, HTTPClient: c.HTTPClient, client: &ClientInfo{Name: "WEB", Version: "2.20261029.00.00", UserAgent: VisionOSClient.UserAgent}}
 	page, err := web.httpGetBodyBytes(ctx, "https://www.youtube.com/")
 	if err != nil {
-		return nil, fmt.Errorf("%w：%s", ErrAccountNetwork, networkErrorText(err))
+		return nil, accountRequestError("访问首页", err)
 	}
 	web.parseSessionConfig(string(page))
 	web.visitorId.updated = time.Now()
@@ -72,16 +75,30 @@ func (c *Client) GetAccountContext(ctx context.Context) (*Account, error) {
 	data := innertubeRequest{Context: prepareInnertubeContext(*web.client)}
 	data.Context.Client.VisitorData = web.visitorId.value
 	body, err := web.httpPostBodyBytes(ctx, "https://www.youtube.com/youtubei/v1/account/account_menu", data)
-	if err != nil {
-		return nil, fmt.Errorf("%w：%s", ErrAccountNetwork, networkErrorText(err))
+	if err == nil {
+		if account, ok := parseAccountMenu(body); ok {
+			return account, nil
+		}
 	}
-	if account, ok := parseAccountMenu(body); ok {
-		return account, nil
-	}
-	if loggedIn, known := web.AccountState(); known && loggedIn {
+	loggedIn, known := web.AccountState()
+	if known && loggedIn && ctx.Err() == nil {
 		return &Account{LoggedIn: true}, nil
 	}
-	return nil, ErrCookieNotLoggedIn
+	if err != nil {
+		return nil, accountRequestError("读取账号菜单", err)
+	}
+	if known && !loggedIn {
+		return nil, ErrCookieNotLoggedIn
+	}
+	return nil, ErrAccountUnverified
+}
+
+func accountRequestError(operation string, err error) error {
+	var status ErrUnexpectedStatusCode
+	if errors.As(err, &status) {
+		return fmt.Errorf("%w（%s：HTTP %d）", ErrAccountUnverified, operation, status)
+	}
+	return fmt.Errorf("%w：%s", ErrAccountNetwork, networkErrorText(err))
 }
 
 // parseAccountMenu 解析账号切换菜单。旧版菜单在 accountItemRenderer 列表里
@@ -132,6 +149,9 @@ func parseAccountItem(m map[string]any) *Account {
 				}
 			}
 		}
+	}
+	if account.Name == "" && account.Email == "" && account.Avatar == "" {
+		return nil
 	}
 	return account
 }

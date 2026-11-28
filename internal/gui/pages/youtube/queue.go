@@ -25,20 +25,22 @@ type queueItem struct {
 	DetailsCancel       context.CancelFunc
 }
 
-func (s *State) enqueue(video yt.Video, format int, audio bool) bool {
-	return s.enqueueGrouped(video, format, audio, "manual", "手动添加", true)
-}
-
-func (s *State) enqueueGrouped(video yt.Video, format int, audio bool, groupKey, title string, expanded bool) bool {
-	if s.stopped || s.api == nil || s.runtime.Background == nil || s.dispatch == nil || video.ID == "" {
-		return false
-	}
+func (s *State) matchingQueueItem(videoID string, format int, audio bool) *queueItem {
 	for _, item := range s.queue {
 		sameFormat := item.Format == format || item.Format <= 0 || format <= 0
-		if item.Video.ID == video.ID && sameFormat && item.AudioOnly == audio && (item.Status == "ready" || item.Status == "queued" || item.Status == "active") {
-			s.message = "该任务已在下载队列中"
-			return false
+		if item.Video.ID == videoID && sameFormat && item.AudioOnly == audio && (item.Status == "ready" || item.Status == "queued" || item.Status == "active") {
+			return item
 		}
+	}
+	return nil
+}
+
+func (s *State) enqueueGrouped(video yt.Video, format int, audio bool, groupKey, title string, expanded bool) *queueItem {
+	if s.stopped || s.api == nil || s.runtime.Background == nil || s.dispatch == nil || video.ID == "" {
+		return nil
+	}
+	if s.matchingQueueItem(video.ID, format, audio) != nil {
+		return nil
 	}
 	s.nextQueue++
 	var group *queueGroup
@@ -61,9 +63,8 @@ func (s *State) enqueueGrouped(video yt.Video, format int, audio bool, groupKey,
 	if video.ID == s.video.ID && s.cover != nil {
 		s.thumbnailEntry(video).Bitmap = s.cover
 	}
-	s.message = "已加入下载队列"
 
-	return true
+	return item
 }
 
 // Queued jobs share the configured download limit across all YouTube groups.

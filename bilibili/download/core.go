@@ -349,7 +349,7 @@ func (s *Service) downloadDashTask(task Task) (string, bool, error) {
 		s.emitProgress(p.withPhase("error"))
 		return "", false, err
 	}
-	outPath, err := mediafile.PublishVideoFile(mergedPath, targetPath)
+	outPath, err := mediafile.PublishFile(mergedPath, targetPath)
 	if err != nil {
 		s.emitProgress(p.withPhase("error"))
 		return "", false, err

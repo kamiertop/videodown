@@ -3,6 +3,7 @@ package youtube
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -53,8 +54,7 @@ type State struct {
 	authMessage             string
 	cookieSaved             bool
 	account                 yt.AccountInfo
-	accountError            string
-	accountNetwork          bool
+	accountError            error
 	accountBusy             bool
 	accountLoader           func(context.Context) (yt.AccountInfo, error)
 	accountAvatar           *ui.Bitmap
@@ -70,6 +70,7 @@ type State struct {
 	history                 []yt.History
 	historySearch           string
 	cover                   *ui.Bitmap
+	coverSaving             bool
 	api                     *yt.Service
 	runtime                 guiruntime.Runtime
 	dispatch                func(func())
@@ -149,7 +150,7 @@ func (s *State) Stop() {
 }
 
 func (s *State) resolve() {
-	if s.busy || s.proxyBusy || s.api == nil || s.runtime.Background == nil {
+	if s.stopped || s.busy || s.proxyBusy || s.api == nil || s.runtime.Background == nil || strings.TrimSpace(s.Link) == "" {
 		return
 	}
 	s.busy = true
@@ -240,8 +241,7 @@ func (s *State) checkAccount() {
 		s.accountCancel = nil
 	}
 	s.account = yt.AccountInfo{}
-	s.accountError = ""
-	s.accountNetwork = false
+	s.accountError = nil
 	s.accountAvatar = nil
 	s.accountAvatarLoading = false
 	s.accountAvatarError = ""
@@ -277,8 +277,7 @@ func (s *State) checkAccount() {
 			return
 		}
 		if err != nil {
-			s.accountError = err.Error()
-			s.accountNetwork = errors.Is(err, yt.ErrAccountNetwork)
+			s.accountError = err
 			return
 		}
 		s.account = account
@@ -287,15 +286,39 @@ func (s *State) checkAccount() {
 	})
 }
 
-func (s *State) stagePreview() {
-	if s.busy || s.video.ID == "" {
+func (s *State) downloadPreview() {
+	if s.busy || s.proxyBusy || s.stopped || len(s.formats()) == 0 {
 		return
 	}
-	if s.enqueue(s.video, s.format, s.audioOnly) {
-		s.video = yt.Video{}
-		s.cover = nil
-		s.coverGeneration++
+	format, err := chooseQueueFormat(s.video, s.format, s.audioOnly)
+	if err != nil {
+		s.reportActionError(err.Error())
+		return
 	}
+	item := s.matchingQueueItem(s.video.ID, format, s.audioOnly)
+	if item == nil {
+		item = s.enqueueGrouped(s.video, format, s.audioOnly, "manual", "手动添加", true)
+	}
+	if item == nil {
+		return
+	}
+	if item.Status != "ready" {
+		s.message = "该任务已在下载队列中"
+		return
+	}
+	item.Video, item.Format = s.video, format
+	s.removePreview()
+	s.startItem(item)
+}
+
+func (s *State) removePreview() {
+	s.video = yt.Video{}
+	s.cover = nil
+	s.coverLoading = false
+	s.coverError = ""
+	s.coverGeneration++
+	s.revealPreview = false
+	s.message = ""
 }
 
 func (s *State) formats() []yt.Format {
@@ -385,7 +408,7 @@ func (s *State) saveProxy() {
 			s.coverLoading = false
 			s.coverError = ""
 			// 代理变更后出口变了：上次因网络失败的验证立即重试。
-			if s.cookieSaved && s.accountNetwork {
+			if s.cookieSaved && (errors.Is(s.accountError, yt.ErrAccountNetwork) || errors.Is(s.accountError, yt.ErrAccountUnverified)) {
 				s.checkAccount()
 			}
 		}

@@ -20,22 +20,22 @@ const accountMenuFixture = `{"actions":[{"openPopupAction":{"popup":{"multiPageM
   {"multiPageMenuSectionRenderer":{"items":[{"compactLinkRenderer":{"title":{"simpleText":"退出账号"}}}]}}
 ]}}}}]}`
 
-func accountClient(t *testing.T, menuBody, homeBody string) (*Client, *[]*http.Request) {
+func accountClient(t *testing.T, menuBody, homeBody string, menuStatus int) (*Client, *[]*http.Request) {
 	t.Helper()
 	requests := &[]*http.Request{}
 	c := &Client{Cookie: "SAPISID=fixture; LOGIN_INFO=fixture", HTTPClient: netclient.New("", 0, roundTripFunc(func(r *http.Request) (*http.Response, error) {
 		*requests = append(*requests, r)
-		data := homeBody
+		data, status := homeBody, http.StatusOK
 		if strings.HasSuffix(r.URL.Path, "/account/account_menu") {
-			data = menuBody
+			data, status = menuBody, menuStatus
 		}
-		return &http.Response{StatusCode: 200, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(data)), Request: r}, nil
+		return &http.Response{StatusCode: status, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(data)), Request: r}, nil
 	}))}
 	return c, requests
 }
 
 func TestGetAccountContextParsesCurrentAccount(t *testing.T) {
-	c, requests := accountClient(t, accountMenuFixture, `ytcfg.set({"LOGGED_IN":true,"VISITOR_DATA":"visitor-fixture","USER_SESSION_ID":"user-fixture","INNERTUBE_CLIENT_VERSION":"2.20261029.00.00"});`)
+	c, requests := accountClient(t, accountMenuFixture, `ytcfg.set({"LOGGED_IN":true,"VISITOR_DATA":"visitor-fixture","USER_SESSION_ID":"user-fixture","INNERTUBE_CLIENT_VERSION":"2.20261029.00.00"});`, http.StatusOK)
 	account, err := c.GetAccountContext(context.Background())
 	if err != nil {
 		t.Fatal(err)
@@ -54,6 +54,7 @@ func TestGetAccountContextParsesCurrentAccount(t *testing.T) {
 	}
 	for _, check := range []struct{ key, want string }{
 		{"Authorization", "SAPISIDHASH "},
+		{"Cookie", c.Cookie},
 		{"X-Youtube-Client-Name", "1"},
 		{"X-Youtube-Client-Version", "2.20261029.00.00"},
 		{"X-Origin", "https://www.youtube.com"},
@@ -81,7 +82,7 @@ func TestGetAccountContextParsesCurrentAccount(t *testing.T) {
 }
 
 func TestGetAccountContextLoggedOutCookie(t *testing.T) {
-	c, _ := accountClient(t, `{}`, `ytcfg.set({"LOGGED_IN":false});`)
+	c, _ := accountClient(t, `{}`, `ytcfg.set({"LOGGED_IN":false});`, http.StatusOK)
 	account, err := c.GetAccountContext(context.Background())
 	if !errors.Is(err, ErrCookieNotLoggedIn) {
 		t.Fatalf("want ErrCookieNotLoggedIn, got %v", err)
@@ -93,13 +94,41 @@ func TestGetAccountContextLoggedOutCookie(t *testing.T) {
 
 // Cookie 缺少 SAPISID 时账号菜单拿不到条目，但首页仍可判定登录。
 func TestGetAccountContextFallsBackToSessionState(t *testing.T) {
-	c, _ := accountClient(t, `{}`, `ytcfg.set({"LOGGED_IN":true,"VISITOR_DATA":"visitor-fixture"});`)
+	c, _ := accountClient(t, `{}`, `ytcfg.set({"LOGGED_IN":true,"VISITOR_DATA":"visitor-fixture"});`, http.StatusOK)
 	account, err := c.GetAccountContext(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !account.LoggedIn || account.Name != "" || account.Avatar != "" {
 		t.Fatalf("unexpected account %+v", account)
+	}
+}
+
+func TestGetAccountContextUnverified(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		menu       string
+		menuStatus int
+	}{
+		{name: "unrecognized page", menu: `{}`, menuStatus: http.StatusOK},
+		{name: "empty account renderer", menu: `{"activeAccountHeaderRenderer":{}}`, menuStatus: http.StatusOK},
+		{name: "HTTP forbidden", menu: `{}`, menuStatus: http.StatusForbidden},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _ := accountClient(t, tc.menu, `<html></html>`, tc.menuStatus)
+			account, err := c.GetAccountContext(context.Background())
+			if account != nil || !errors.Is(err, ErrAccountUnverified) {
+				t.Errorf("GetAccountContext() = %+v, %v; want an unverified account", account, err)
+			}
+		})
+	}
+}
+
+func TestGetAccountContextUsesVerifiedHomepageWhenMenuIsForbidden(t *testing.T) {
+	c, _ := accountClient(t, `{}`, `ytcfg.set({"LOGGED_IN":true});`, http.StatusForbidden)
+	account, err := c.GetAccountContext(context.Background())
+	if err != nil || account == nil || !account.LoggedIn {
+		t.Fatalf("GetAccountContext() = %+v, %v; want logged in", account, err)
 	}
 }
 

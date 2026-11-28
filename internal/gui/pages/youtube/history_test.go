@@ -217,6 +217,10 @@ func TestHistoryDeleteRecord(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if err := store.SaveHistory("youtube:downloaded:vid1:cover", `{"id":"vid1","kind":"cover","title":"旅行封面","path":"/download/travel.jpg"}`); err != nil {
+		t.Fatal(err)
+	}
+
 	s := NewState()
 	s.api = api
 	s.runtime.Run = func(work func() error, done func(error)) { done(work()) }
@@ -229,24 +233,25 @@ func TestHistoryDeleteRecord(t *testing.T) {
 	s.mergeHistory([]yt.History{
 		{ID: "vid1", Title: "旅行视频", Path: "/download/travel.mp4"},
 		{ID: "vid2", Title: "音乐现场", Path: "/download/music.mkv"},
+		{ID: "vid1", Kind: "cover", Title: "旅行封面", Path: "/download/travel.jpg"},
 	})
 	test.Frame()
-	if !test.HasText("旅行视频") || !test.HasText("音乐现场") {
+	if !test.HasText("旅行视频") || !test.HasText("音乐现场") || !test.HasText("旅行封面") {
 		t.Fatal("history items missing")
 	}
-	if err := test.Click("删除记录：/download/travel.mp4"); err != nil {
+	if err := test.Click("删除记录：/download/travel.jpg"); err != nil {
 		t.Fatal(err)
 	}
 	test.Frame()
-	if test.HasText("旅行视频") {
+	if test.HasText("旅行封面") {
 		t.Fatal("deleted record still listed")
 	}
-	if !test.HasText("音乐现场") {
+	if !test.HasText("音乐现场") || !test.HasText("旅行视频") {
 		t.Fatal("delete removed the wrong record")
 	}
 	// 存储层也已删除。
 	rows, err := api.History()
-	if err != nil || len(rows) != 1 || rows[0].ID != "vid2" {
+	if err != nil || len(rows) != 2 || rows[0].Kind == "cover" || rows[1].Kind == "cover" {
 		t.Fatalf("store rows after delete: %v (err=%v)", rows, err)
 	}
 }

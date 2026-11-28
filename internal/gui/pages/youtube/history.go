@@ -97,11 +97,15 @@ func (s *State) historyPage(c *ui.Context, scroll *ui.ScrollState) {
 												MaxLines(1).
 												FontWeight(style.WeightSemibold).
 												Tooltip(item.Title)
-											if item.Kind == "audio" {
-												ui.Text(c, "音频").
-													Shrink(0).
-													FontSize(style.Font(c, style.FontMeta)).
-													TextColor(k.TextMuted)
+											var kindLabel string
+											switch item.Kind {
+											case "audio":
+												kindLabel = "音频"
+											case "cover":
+												kindLabel = "封面"
+											}
+											if kindLabel != "" {
+												ui.Text(c, kindLabel).Shrink(0).FontSize(style.Font(c, style.FontMeta)).TextColor(k.TextMuted)
 											}
 											ui.Row(c.Key("actions")).Shrink(0).Gap(style.SpaceSmall).Children(func() {
 												historyCardButton(c.Key("open"), "本地打开", components.ButtonOptions{
@@ -207,10 +211,9 @@ func (s *State) deleteHistory(item yt.History) {
 	}
 	s.historyBusy = true
 	s.actionError = ""
-	generation := s.generation
 	api := s.api
-	s.runtime.Run(func() error { return api.DeleteHistory(item.ID) }, func(err error) {
-		if s.stopped || generation != s.generation {
+	s.runtime.Run(func() error { return api.DeleteHistoryRecord(item) }, func(err error) {
+		if s.stopped {
 			return
 		}
 		s.historyBusy = false
@@ -218,6 +221,6 @@ func (s *State) deleteHistory(item yt.History) {
 			s.reportActionError("删除记录失败：" + err.Error())
 			return
 		}
-		s.history = slices.DeleteFunc(s.history, func(v yt.History) bool { return v.ID == item.ID })
+		s.history = slices.DeleteFunc(s.history, func(v yt.History) bool { return v.ID == item.ID && v.Path == item.Path })
 	})
 }

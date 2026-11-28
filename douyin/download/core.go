@@ -348,7 +348,7 @@ func (d *Service) downloadTask(task Task) (string, bool, error) {
 		d.emitProgress(p.withPhase("error"))
 		return "", false, err
 	}
-	outPath, err := mediafile.PublishVideoFile(tmpPath, targetPath)
+	outPath, err := mediafile.PublishFile(tmpPath, targetPath)
 	if err != nil {
 		d.emitProgress(p.withPhase("error"))
 		return "", false, err

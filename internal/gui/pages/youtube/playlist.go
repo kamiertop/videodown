@@ -20,15 +20,17 @@ type playlistRow struct {
 }
 
 func (s *State) loadPlaylist(more bool) {
-	if s.stopped || s.proxyBusy || s.api == nil || s.runtime.Background == nil {
+	if s.stopped || s.proxyBusy || s.api == nil || s.runtime.Background == nil || s.playlistLoading {
 		return
 	}
 	input, token := strings.TrimSpace(s.playlistLink), ""
 	if more {
-		if s.playlistLoading || s.playlist.Continuation == "" {
+		if s.playlist.Continuation == "" {
 			return
 		}
 		input, token = s.playlistSource, s.playlist.Continuation
+	} else if input == "" {
+		return
 	}
 	if s.playlistCancel != nil {
 		s.playlistCancel()
@@ -116,7 +118,7 @@ func (s *State) enqueuePlaylist() {
 		if !s.playlistAvailable(row) {
 			continue
 		}
-		if s.enqueueGrouped(row.Video, 0, false, "playlist:"+s.playlist.ID, s.playlist.Title, false) {
+		if s.enqueueGrouped(row.Video, 0, false, "playlist:"+s.playlist.ID, s.playlist.Title, false) != nil {
 			added++
 			row.Selected = false
 		}
@@ -128,10 +130,10 @@ func (s *State) playlistPage(c *ui.Context) {
 	ui.Column(c).Label("YouTube 播放列表页面").Fill().MinWidth(0).MinHeight(0).Padding(style.PagePadding).Gap(style.SpaceMedium).Children(func() {
 		panel(c.Key("playlist-input"), "YouTube 播放列表输入栏", func() {
 			ui.Row(c).FillWidth().MinWidth(0).Padding(style.SpaceSmall).Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
-				field := roundedInput(c.Key("link"), &s.playlistLink, "YouTube 播放列表链接", "粘贴包含 list= 的 YouTube 播放列表链接", false)
+				field, editor := roundedInput(c.Key("link"), &s.playlistLink, "YouTube 播放列表链接", "粘贴包含 list= 的 YouTube 播放列表链接", false, "清空播放列表链接")
 				field.Grow(1).MinWidth(0)
-				field.OnSubmit(func() { s.loadPlaylist(false) })
-				components.Button(c.Key("parse"), "解析列表", components.ButtonOptions{Variant: components.ButtonPrimary, Loading: s.playlistLoading, Disabled: s.api == nil || strings.TrimSpace(s.playlistLink) == "" || s.playlistLoading}).OnClick(func() { s.loadPlaylist(false) })
+				editor.OnSubmit(func() { s.loadPlaylist(false) })
+				components.Button(c.Key("parse"), "解析列表", components.ButtonOptions{Variant: components.ButtonPrimary, Loading: s.playlistLoading, Disabled: s.api == nil || strings.TrimSpace(s.playlistLink) == "" || s.playlistLoading}).Tooltip("也可在链接输入框按 Enter 解析").OnClick(func() { s.loadPlaylist(false) })
 			})
 		})
 

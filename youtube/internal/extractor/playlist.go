@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -57,6 +58,9 @@ func (c *Client) GetPlaylistPage(ctx context.Context, input, continuation string
 	web := &Client{Cookie: c.Cookie, HTTPClient: c.HTTPClient, client: &ClientInfo{Name: "WEB", Version: "2.20261029.00.00", UserAgent: VisionOSClient.UserAgent}}
 	page, err := web.httpGetBodyBytes(ctx, "https://www.youtube.com/playlist?list="+url.QueryEscape(id)+"&hl=en")
 	if err != nil {
+		if errors.Is(err, ErrUnexpectedStatusCode(http.StatusUnauthorized)) {
+			return PlaylistPage{}, fmt.Errorf("%w：%w", ErrLoginRequired, err)
+		}
 		return PlaylistPage{}, err
 	}
 	web.parseSessionConfig(string(page))
@@ -159,6 +163,15 @@ func parsePlaylistPage(root map[string]any) (PlaylistPage, error) {
 			}
 		})
 		if message != "" {
+			reason := strings.TrimSuffix(strings.ToLower(strings.TrimSpace(message)), ".")
+			if reason == "the playlist does not exist" || reason == "this playlist does not exist" {
+				return result, fmt.Errorf("%w：%s", ErrPlaylistNotFound, message)
+			}
+			if !strings.Contains(reason, "not a bot") &&
+				(strings.Contains(reason, "private playlist") || strings.Contains(reason, "playlist is private") ||
+					strings.Contains(reason, "sign in") || strings.Contains(reason, "log in")) {
+				return result, fmt.Errorf("%w：%s", ErrLoginRequired, message)
+			}
 			return result, fmt.Errorf("播放列表不可用：%s", message)
 		}
 	}

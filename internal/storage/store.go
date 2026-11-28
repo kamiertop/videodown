@@ -162,6 +162,17 @@ func (s *Store) DeleteHistoryPrefix(prefix string) error {
 	return err
 }
 
+// DeleteHistoryByPath deletes matching records within a download history prefix.
+func (s *Store) DeleteHistoryByPath(prefix, path string) error {
+	if historyPlatform(prefix) == "" {
+		return errors.New("无效的下载历史记录")
+	}
+	_, err := s.db.Exec(`DELETE FROM download_history
+		WHERE substr(key,1,length(?))=?
+		AND CASE WHEN json_valid(payload) THEN coalesce(json_extract(payload,'$.path'),'') END = ?`, prefix, prefix, path)
+	return err
+}
+
 // HistoryRows returns JSON models stored for one platform, newest first.
 func (s *Store) HistoryRows(platform string) ([]string, error) {
 	var rows []string

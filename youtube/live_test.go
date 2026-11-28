@@ -29,6 +29,9 @@ func TestLivePlaylist(t *testing.T) {
 	}
 	defer store.Close()
 	service := New(store)
+	if path := os.Getenv("VIDEODOWN_YOUTUBE_CONFIG"); path != "" {
+		configureLiveYouTubeSession(t, service, path)
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	page, err := service.Playlist(ctx, input, "")
@@ -36,9 +39,9 @@ func TestLivePlaylist(t *testing.T) {
 		t.Fatal(err)
 	}
 	if len(page.Videos) == 0 {
-		t.Fatal("empty public playlist")
+		t.Fatal("empty playlist")
 	}
-	t.Logf("playlist=%s entries=%d continuation=%v", page.Title, len(page.Videos), page.Continuation != "")
+	t.Logf("entries=%d continuation=%v", len(page.Videos), page.Continuation != "")
 	if os.Getenv("VIDEODOWN_YOUTUBE_PLAYLIST_COVER") == "1" {
 		bitmap, err := imagecache.Load(ctx, page.Videos[0].Cover, "https://www.youtube.com/")
 		if err != nil || bitmap == nil {
@@ -152,7 +155,7 @@ func TestLiveYouTubeResolveURL(t *testing.T) {
 	if idErr != nil {
 		t.Fatal(idErr)
 	}
-	client, raw, err := service.fetchVideo(ctx, id)
+	client, raw, err := service.fetchVideo(ctx, id, 0)
 	loggedIn, known := false, false
 	if client != nil {
 		loggedIn, known = client.AccountState()
@@ -261,35 +264,44 @@ func TestLiveAccount(t *testing.T) {
 	if path == "" {
 		t.Skip("requires explicit config path")
 	}
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var config struct {
-		YouTube struct {
-			Cookie string `toml:"cookie"`
-		} `toml:"youtube"`
-	}
-	if err := toml.Unmarshal(raw, &config); err != nil {
-		t.Fatal(err)
-	}
 	store, err := storage.OpenMemory()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer store.Close()
+	t.Cleanup(func() { _ = store.Close() })
 	service := New(store)
-	if err := service.SetCookie(config.YouTube.Cookie); err != nil {
-		t.Fatal(err)
-	}
+	configureLiveYouTubeSession(t, service, path)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	account, err := service.Account(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("account=%+v", account)
 	if !account.LoggedIn {
 		t.Fatal("stored cookie is not logged in")
+	}
+}
+
+func configureLiveYouTubeSession(t *testing.T, service *Service, path string) {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var config struct {
+		YouTube struct {
+			Cookie       string `toml:"cookie"`
+			Proxy        string `toml:"proxy"`
+			ProxyEnabled bool   `toml:"proxy_enabled"`
+		} `toml:"youtube"`
+	}
+	if err := toml.Unmarshal(raw, &config); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.SetCookie(config.YouTube.Cookie); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.SetProxy(config.YouTube.Proxy, config.YouTube.ProxyEnabled); err != nil {
+		t.Fatal(err)
 	}
 }

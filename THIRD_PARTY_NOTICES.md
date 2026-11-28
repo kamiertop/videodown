@@ -28,7 +28,7 @@ existing FFmpeg executable only for merging.
 The SID authorization protocol and authenticated TV client fields are also based
 on yt-dlp's `_get_sid_authorization_header` and `INNERTUBE_CLIENTS` documentation
 in the same source file. The Go implementation adds origin-scoped session
-signatures, authenticated player timestamps, and a public anonymous fallback.
+signatures, authenticated player timestamps, and guest-first playback and playlist requests.
 The account verification request targets the `account/account_menu` endpoint
 that powers YouTube's web account switcher, mirroring yt-dlp's account
 selection flow in the same source file. The live menu response no longer

@@ -2,6 +2,7 @@ package youtube
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -51,12 +52,12 @@ func TestSaveCookieVerifiesAccount(t *testing.T) {
 				t.Fatal("cookie not saved or check unfinished")
 			}
 			if tc.err == nil {
-				if s.accountError != "" || s.account != tc.account {
+				if s.accountError != nil || s.account != tc.account {
 					t.Fatalf("account not verified: %+v %q", s.account, s.accountError)
 				}
 			} else {
-				if s.accountError != tc.err.Error() || s.account.LoggedIn || s.accountNetwork != tc.network {
-					t.Fatalf("failure not classified: %q network=%v", s.accountError, s.accountNetwork)
+				if !errors.Is(s.accountError, tc.err) || s.account.LoggedIn || errors.Is(s.accountError, yt.ErrAccountNetwork) != tc.network {
+					t.Fatalf("failure not classified: %q network=%v", s.accountError, errors.Is(s.accountError, yt.ErrAccountNetwork))
 				}
 			}
 		})
@@ -83,7 +84,7 @@ func TestSaveCookieClearsAccount(t *testing.T) {
 	}
 	s.cookie = ""
 	s.saveCookie()
-	if s.cookieSaved || s.authMessage != "Cookie 已清除" || s.account.LoggedIn || s.accountError != "" || s.accountAvatar != nil {
+	if s.cookieSaved || s.authMessage != "Cookie 已清除" || s.account.LoggedIn || s.accountError != nil || s.accountAvatar != nil {
 		t.Fatalf("account not cleared: %+v %q", s.account, s.authMessage)
 	}
 }
@@ -148,6 +149,7 @@ func TestAccountPageShowsVerifiedAccount(t *testing.T) {
 	}{
 		{name: "登录成功", account: yt.AccountInfo{LoggedIn: true, Name: "账号_fixture", Email: "fixture@example.com"}},
 		{name: "验证失败", error: yt.ErrCookieNotLoggedIn},
+		{name: "状态未确认", error: yt.ErrAccountUnverified},
 		{name: "网络失败", error: fmt.Errorf("%w：%s", yt.ErrAccountNetwork, "连接超时或被中断"), network: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -155,20 +157,20 @@ func TestAccountPageShowsVerifiedAccount(t *testing.T) {
 			s.cookieSaved = true
 			s.account = tc.account
 			s.accountCheckedAt = time.Date(2026, 11, 27, 15, 4, 5, 0, time.Local)
-			s.accountError = ""
-			s.accountNetwork = false
-			if tc.error != nil {
-				s.accountError = tc.error.Error()
-				s.accountNetwork = tc.network
-			}
+			s.accountError = tc.error
 			scroll := &ui.ScrollState{}
 			test := ui.NewTester(func(c *ui.Context) {
 				style.UseTheme(c)
 				s.Form(c, "/youtube/profile", scroll)
 			}, 900, 700)
 			test.Frame()
+			for _, label := range []string{"当前登录账号", "YouTube 账号"} {
+				if _, ok := test.Find(label); ok {
+					t.Fatalf("redundant account heading %q is visible", label)
+				}
+			}
 			if tc.error == nil {
-				for _, want := range []string{"当前登录账号", "账号_fixture", "fixture@example.com", "Cookie 有效，已登录（15:04:05 验证）", "保存并验证", "刷新账号"} {
+				for _, want := range []string{"账号_fixture", "fixture@example.com", "Cookie 有效，已登录（15:04:05 验证）", "保存并验证", "刷新账号"} {
 					if _, ok := test.Find(want); !ok {
 						t.Fatalf("missing %q", want)
 					}
@@ -181,6 +183,12 @@ func TestAccountPageShowsVerifiedAccount(t *testing.T) {
 					t.Fatal("success message shown after failure")
 				}
 				want := "请从已登录的浏览器重新复制 Cookie 后保存"
+				if errors.Is(tc.error, yt.ErrAccountUnverified) {
+					if _, ok := test.Find(want); ok {
+						t.Fatal("unverified account shown as requiring a new Cookie")
+					}
+					return
+				}
 				if tc.network {
 					want = "程序当前直连 YouTube；可开启代理软件的 TUN（虚拟网卡）模式，或在此启用与浏览器相同的代理后重试"
 				}
@@ -212,13 +220,13 @@ func TestSaveProxyRetriesNetworkFailedCheck(t *testing.T) {
 	}
 	s.cookie = "SAPISID=fixture"
 	s.saveCookie()
-	if !s.accountNetwork || s.account.LoggedIn {
+	if !errors.Is(s.accountError, yt.ErrAccountNetwork) || s.account.LoggedIn {
 		t.Fatal("network failure not recorded")
 	}
 	s.proxyEnabled = true
 	s.saveProxy()
-	if calls != 2 || !s.account.LoggedIn || s.accountNetwork {
-		t.Fatalf("proxy save did not re-verify: calls=%d account=%+v network=%v", calls, s.account, s.accountNetwork)
+	if calls != 2 || !s.account.LoggedIn || errors.Is(s.accountError, yt.ErrAccountNetwork) {
+		t.Fatalf("proxy save did not re-verify: calls=%d account=%+v network=%v", calls, s.account, errors.Is(s.accountError, yt.ErrAccountNetwork))
 	}
 }
 
@@ -248,7 +256,7 @@ func TestSaveCookieClearsStaleSuccessWhenNetworkFails(t *testing.T) {
 	}
 	// 模拟网络断开后的再次点击：保存同样的 Cookie 也必须重新验证。
 	s.saveCookie()
-	if s.account.LoggedIn || s.accountCheckedAt != (time.Time{}) || s.accountError == "" || !s.accountNetwork {
-		t.Fatalf("stale success kept: account=%+v error=%q network=%v", s.account, s.accountError, s.accountNetwork)
+	if s.account.LoggedIn || s.accountCheckedAt != (time.Time{}) || s.accountError == nil || !errors.Is(s.accountError, yt.ErrAccountNetwork) {
+		t.Fatalf("stale success kept: account=%+v error=%q network=%v", s.account, s.accountError, errors.Is(s.accountError, yt.ErrAccountNetwork))
 	}
 }
