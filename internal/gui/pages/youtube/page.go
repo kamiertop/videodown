@@ -45,10 +45,11 @@ func (s *State) Form(c *ui.Context, path string, scroll *ui.ScrollState) {
 				Border(style.BorderWidth, k.Border).
 				Background(k.Surface).
 				Children(func() {
-					field, editor := roundedInput(c.Key("link"), &s.Link, "YouTube 视频链接", "粘贴 YouTube 视频或 Shorts 链接", s.busy, "清空视频链接")
+					field, editor := roundedInput(c.Key("link"), &s.Link, "YouTube 视频链接", "粘贴 YouTube 视频或 Shorts 链接", s.busy)
 					field.Grow(1).MinWidth(0)
 					editor.OnSubmit(s.resolve)
 					components.Button(c.Key("parse"), "解析视频", components.ButtonOptions{Variant: components.ButtonPrimary, Loading: s.busy, Disabled: s.busy || s.api == nil || strings.TrimSpace(s.Link) == ""}).Tooltip("也可在链接输入框按 Enter 解析").OnClick(s.resolve)
+					clearLinkButton(c.Key("clear"), field, editor, &s.Link, s.busy)
 				})
 			if s.message != "" {
 				components.Muted(c, s.message)

@@ -130,10 +130,11 @@ func (s *State) playlistPage(c *ui.Context) {
 	ui.Column(c).Label("YouTube 播放列表页面").Fill().MinWidth(0).MinHeight(0).Padding(style.PagePadding).Gap(style.SpaceMedium).Children(func() {
 		panel(c.Key("playlist-input"), "YouTube 播放列表输入栏", func() {
 			ui.Row(c).FillWidth().MinWidth(0).Padding(style.SpaceSmall).Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
-				field, editor := roundedInput(c.Key("link"), &s.playlistLink, "YouTube 播放列表链接", "粘贴包含 list= 的 YouTube 播放列表链接", false, "清空播放列表链接")
+				field, editor := roundedInput(c.Key("link"), &s.playlistLink, "YouTube 播放列表链接", "粘贴包含 list= 的 YouTube 播放列表链接", false)
 				field.Grow(1).MinWidth(0)
 				editor.OnSubmit(func() { s.loadPlaylist(false) })
 				components.Button(c.Key("parse"), "解析列表", components.ButtonOptions{Variant: components.ButtonPrimary, Loading: s.playlistLoading, Disabled: s.api == nil || strings.TrimSpace(s.playlistLink) == "" || s.playlistLoading}).Tooltip("也可在链接输入框按 Enter 解析").OnClick(func() { s.loadPlaylist(false) })
+				clearLinkButton(c.Key("clear"), field, editor, &s.playlistLink, false)
 			})
 		})
 

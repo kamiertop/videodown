@@ -5,6 +5,8 @@ import (
 	"slices"
 )
 
+const manualQueueGroupKey = "manual"
+
 type queueGroup struct {
 	Key, Title string
 	Expanded   bool
@@ -37,11 +39,9 @@ func (s *State) removeGroup(group *queueGroup) {
 }
 
 func groupSummary(items []*queueItem) string {
-	done, waiting, failed, canceled, active, ready := 0, 0, 0, 0, 0, 0
+	waiting, failed, canceled, active, ready := 0, 0, 0, 0, 0
 	for _, item := range items {
 		switch item.Status {
-		case "done":
-			done++
 		case "ready":
 			ready++
 		case "queued":
@@ -54,7 +54,7 @@ func groupSummary(items []*queueItem) string {
 			active++
 		}
 	}
-	text := fmt.Sprintf("共 %d 项 · 下载中 %d · 等待 %d · 已完成 %d", len(items), active, waiting, done)
+	text := fmt.Sprintf("共 %d 项 · 下载中 %d · 等待 %d", len(items), active, waiting)
 	if ready > 0 {
 		text += fmt.Sprintf(" · 待下载 %d", ready)
 	}

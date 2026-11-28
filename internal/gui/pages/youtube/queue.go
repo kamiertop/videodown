@@ -74,7 +74,8 @@ func (s *State) pumpQueue() {
 		return
 	}
 	limit := max(1, min(10, s.api.DownloadConcurrency()))
-	for _, item := range s.queue {
+	for i := 0; i < len(s.queue); i++ {
+		item := s.queue[i]
 		if len(s.active) >= limit {
 			return
 		}
@@ -152,7 +153,7 @@ func (s *State) pumpQueue() {
 				item.Status, item.Error = "error", err.Error()
 			default:
 				item.Status = "done"
-				item.Progress = yt.Progress{Phase: "已完成", Percent: 100}
+				s.removeItem(item)
 			}
 			s.pumpQueue()
 		})
@@ -194,8 +195,6 @@ func queueStatus(item *queueItem) string {
 		return "等待下载"
 	case "active":
 		return transferStatus(item.Progress)
-	case "done":
-		return "已完成"
 	case "canceled":
 		return "已取消"
 	case "error":

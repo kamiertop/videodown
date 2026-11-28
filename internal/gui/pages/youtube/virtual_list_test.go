@@ -24,7 +24,8 @@ func TestPreviewActions(t *testing.T) {
 			s := NewState()
 			runtime := syncRuntime()
 			scheduled := 0
-			runtime.Background = func(func() error, func(error)) { scheduled++ }
+			var complete func(error)
+			runtime.Background = func(_ func() error, done func(error)) { scheduled++; complete = done }
 			s.Configure(yt.New(store), runtime)
 			t.Cleanup(s.Stop)
 			s.video = yt.Video{ID: "jNQXAC9IVRw", Title: "测试视频", Cover: "https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg", Formats: []yt.Format{{ID: 18, Label: "360p"}}}
@@ -42,6 +43,18 @@ func TestPreviewActions(t *testing.T) {
 			case "下载":
 				if scheduled != 1 || len(s.queue) != 1 || s.queue[0].Status != "active" || s.queue[0].Format != 18 || s.video.ID != "" {
 					t.Fatalf("download did not start with selected format: scheduled=%d, queued=%d, preview=%q", scheduled, len(s.queue), s.video.ID)
+				}
+				if _, ok := test.Find("YouTube 队列任务：1"); !ok || test.HasText("手动添加") {
+					t.Fatal("manual task should render without a group header")
+				}
+				complete(nil)
+				test.Frame()
+				test.Frame()
+				if len(s.queue) != 0 || s.PendingDownloadCount() != 0 || test.HasText("测试视频") {
+					t.Fatal("completed task still visible in the download list")
+				}
+				if got := s.playlistTaskLabel(&playlistRow{Video: yt.Video{ID: "jNQXAC9IVRw"}}); got != "已完成" {
+					t.Fatalf("playlist task status = %q, want 已完成", got)
 				}
 			case "保存封面":
 				if scheduled != 1 || len(s.queue) != 0 || !s.coverSaving || s.video.ID == "" {

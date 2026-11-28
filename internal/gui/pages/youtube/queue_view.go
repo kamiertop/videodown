@@ -45,8 +45,10 @@ func (s *State) downloadResults(c *ui.Context) {
 			if len(items) == 0 {
 				continue
 			}
-			rows = append(rows, group)
-			if group.Expanded {
+			if group.Key != manualQueueGroupKey {
+				rows = append(rows, group)
+			}
+			if group.Key == manualQueueGroupKey || group.Expanded {
 				for _, item := range items {
 					rows = append(rows, item)
 				}

@@ -93,8 +93,8 @@ func (s *State) authorsPage(c *ui.Context, navigate func(string)) {
 					s.loadFollows(false)
 				}
 			})
-			field(c.Key("follow-search"), &s.followSearchInput, "搜索已关注用户", "搜索已关注的昵称 / 抖音号", nil).Grow(1).MinWidth(180)
-			field(c.Key("author"), &s.authorInput, "抖音用户主页", "输入用户主页链接或 sec_uid", func() { s.findAuthor(navigate) }).Grow(1).MinWidth(200)
+			field(c.Key("follow-search"), &s.followSearchInput, "搜索已关注用户", "搜索已关注的昵称 / 抖音号", nil, true).Grow(1).MinWidth(180)
+			field(c.Key("author"), &s.authorInput, "抖音用户主页", "输入用户主页链接或 sec_uid", func() { s.findAuthor(navigate) }, true).Grow(1).MinWidth(200)
 			button(c, "解析", components.ButtonOptions{Variant: components.ButtonPrimary}).OnClick(func() { s.findAuthor(navigate) })
 		})
 	})

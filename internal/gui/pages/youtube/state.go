@@ -297,7 +297,7 @@ func (s *State) downloadPreview() {
 	}
 	item := s.matchingQueueItem(s.video.ID, format, s.audioOnly)
 	if item == nil {
-		item = s.enqueueGrouped(s.video, format, s.audioOnly, "manual", "手动添加", true)
+		item = s.enqueueGrouped(s.video, format, s.audioOnly, manualQueueGroupKey, "", true)
 	}
 	if item == nil {
 		return

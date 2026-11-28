@@ -24,7 +24,7 @@ func caption(c *ui.Context, text string) {
 }
 
 // Use the native editor in an app-sized rounded frame, including its clear action.
-func field(c *ui.Context, value *string, label, placeholder string, submit func()) ui.Element {
+func field(c *ui.Context, value *string, label, placeholder string, submit func(), showClear bool) ui.Element {
 	k := c.Theme()
 	frame := ui.Row(c).MinWidth(0).MinHeight(style.InputHeight).Padding(0, style.SpaceMedium).Gap(style.SpaceSmall).
 		Radius(style.RadiusControl).Border(style.BorderWidth, k.Border).Background(k.Surface)
@@ -35,7 +35,7 @@ func field(c *ui.Context, value *string, label, placeholder string, submit func(
 		if submit != nil {
 			editor.OnSubmit(submit)
 		}
-		if *value != "" {
+		if showClear && *value != "" {
 			button(c.Key("clear"), "", components.ButtonOptions{Variant: components.ButtonGhost, Icon: icons.Must("x"), Label: "清除" + label}).Size(24, 24).MinHeight(24).MinWidth(24).Padding(0).OnClick(func() { *value = "" })
 		}
 	})
@@ -349,7 +349,7 @@ func (s *State) libraryPage(c *ui.Context, path string, navigate func(string)) {
 func (s *State) downloadPage(c *ui.Context) {
 	panel(c, "抖音视频输入栏", func() {
 		ui.Row(c).FillWidth().Padding(style.SpaceSmall).Gap(style.SpaceSmall).Children(func() {
-			field(c.Key("link"), &s.link, "抖音视频链接", "视频 ID、链接或分享文本", s.parse).Grow(1)
+			field(c.Key("link"), &s.link, "抖音视频链接", "视频 ID、链接或分享文本", s.parse, false).Grow(1)
 			button(c, "解析", components.ButtonOptions{Variant: components.ButtonPrimary, Loading: s.parsing, Disabled: s.api == nil || strings.TrimSpace(s.link) == ""}).OnClick(s.parse)
 			button(c, "清空", components.ButtonOptions{Variant: components.ButtonOutline}).OnClick(func() { s.link = ""; s.parseSeq++; s.parsing = false })
 		})
@@ -541,7 +541,7 @@ func (s *State) historyPage(c *ui.Context) {
 	panel(c, "抖音历史工具栏", func() {
 		ui.Row(c).FillWidth().Padding(style.SpaceSmall).Gap(style.SpaceSmall).Children(func() {
 			ui.Text(c, fmt.Sprintf("下载历史 · %d", s.history.Data.Total)).Shrink(0).FontWeight(style.WeightSemibold)
-			field(c.Key("search"), &s.historySearch, "搜索抖音下载历史", "搜索标题或作者", func() { s.loadHistory(false) }).Grow(1)
+			field(c.Key("search"), &s.historySearch, "搜索抖音下载历史", "搜索标题或作者", func() { s.loadHistory(false) }, true).Grow(1)
 			button(c, "刷新历史", components.ButtonOptions{Variant: components.ButtonOutline, Loading: s.history.Loading, Disabled: s.backend == nil}).OnClick(func() { s.loadHistory(false) })
 			button(c, "清空历史", components.ButtonOptions{Variant: components.ButtonGhost, Disabled: s.history.Data.Total == 0 || s.historyBusy}).OnClick(func() { s.clearOpen = true })
 		})

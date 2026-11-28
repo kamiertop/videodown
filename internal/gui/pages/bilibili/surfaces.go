@@ -24,7 +24,7 @@ func unavailable(c *ui.Context, label, icon string) {
 
 // Use the native editor in a rounded frame with the app's control radius.
 // Keep the custom frame local to Bilibili views.
-func textInput(c *ui.Context, value *string, label, placeholder string, submit ...func()) ui.Element {
+func textInput(c *ui.Context, value *string, label, placeholder string, submit func(), showClear bool) ui.Element {
 	k := c.Theme()
 	frame := ui.Row(c).FillWidth().MinWidth(0).MinHeight(style.InputHeight).Padding(0, 12).Gap(6).
 		Radius(style.RadiusControl).Border(style.BorderWidth, k.Border).Background(k.Surface)
@@ -32,10 +32,10 @@ func textInput(c *ui.Context, value *string, label, placeholder string, submit .
 	frame.Children(func() {
 		editor = components.TextInputEditor(c.Key("editor"), frame, value, false, ui.TextInputBase).
 			Label(label).Placeholder(placeholder).Grow(1).MinWidth(0).FocusRing(false)
-		if len(submit) > 0 {
-			editor.OnSubmit(submit[0])
+		if submit != nil {
+			editor.OnSubmit(submit)
 		}
-		if *value != "" {
+		if showClear && *value != "" {
 			button(c.Key("clear-input"), "", components.ButtonOptions{Variant: components.ButtonGhost, Icon: icons.Must("x"), Label: "清除" + label}).
 				Size(24, 24).MinHeight(24).MinWidth(24).Padding(0).OnClick(func() { *value = "" })
 		}

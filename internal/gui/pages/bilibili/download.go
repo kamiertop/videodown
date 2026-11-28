@@ -19,7 +19,7 @@ import (
 func (s *State) download(c *ui.Context) {
 	panel(c.Key("input-panel"), "视频下载输入栏", func() {
 		ui.Row(c).FillWidth().Padding(style.SpaceMedium).Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
-			textInput(c.Key("link"), &s.link, "BiliBili视频链接", "输入视频链接，支持 BV 号、AV 号、视频 URL", s.parseDownloadInput).Grow(1)
+			textInput(c.Key("link"), &s.link, "BiliBili视频链接", "输入视频链接，支持 BV 号、AV 号、视频 URL", s.parseDownloadInput, false).Grow(1)
 			parseLabel := "解析"
 			if s.manual.parse.Loading {
 				parseLabel = "解析中"

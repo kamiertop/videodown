@@ -63,7 +63,7 @@ func (s *State) authors(c *ui.Context, navigate func(string)) {
 					&s.authorInput,
 					"UP 主 UID 或空间链接",
 					"输入 UP 主 mid / 空间链接",
-					func() { s.findAuthor(s.authorInput, navigate) },
+					func() { s.findAuthor(s.authorInput, navigate) }, true,
 				).Width(450)
 
 				button(c.Key("parse-author"), "解析",

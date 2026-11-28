@@ -11,11 +11,11 @@ import (
 
 func TestLinkInputClearAndEnter(t *testing.T) {
 	for _, tc := range []struct {
-		page, field, clear, link string
+		page, field, parse, link string
 		value                    func(*State) *string
 	}{
-		{"/youtube/download", "YouTube 视频链接", "清空视频链接", "https://youtu.be/jNQXAC9IVRw", func(s *State) *string { return &s.Link }},
-		{"/youtube/playlist", "YouTube 播放列表链接", "清空播放列表链接", "https://www.youtube.com/playlist?list=PLfixture", func(s *State) *string { return &s.playlistLink }},
+		{"/youtube/download", "YouTube 视频链接", "解析视频", "https://youtu.be/jNQXAC9IVRw", func(s *State) *string { return &s.Link }},
+		{"/youtube/playlist", "YouTube 播放列表链接", "解析列表", "https://www.youtube.com/playlist?list=PLfixture", func(s *State) *string { return &s.playlistLink }},
 	} {
 		t.Run(tc.page, func(t *testing.T) {
 			store, err := storage.OpenMemory()
@@ -39,7 +39,12 @@ func TestLinkInputClearAndEnter(t *testing.T) {
 			if err := test.Click(tc.field); err != nil {
 				t.Fatal(err)
 			}
-			if err := test.Click(tc.clear); err != nil {
+			parse, parseVisible := test.Find(tc.parse)
+			clear, clearVisible := test.Find("清空")
+			if !parseVisible || !clearVisible || clear.X < parse.X+parse.W {
+				t.Fatalf("clear button should sit to the right of parse, got parse=%+v clear=%+v", parse, clear)
+			}
+			if err := test.Click("清空"); err != nil {
 				t.Fatal(err)
 			}
 			test.Frame()

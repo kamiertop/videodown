@@ -38,10 +38,10 @@ func (s *Service) Playlist(ctx context.Context, input, continuation string) (Pla
 	if err != nil {
 		if errors.Is(err, extractor.ErrPlaylistNotFound) {
 			if useAccount {
-				return Playlist{}, fmt.Errorf("%w。请确认当前账号能打开此播放列表", err)
+				return Playlist{}, fmt.Errorf("%w 请确认当前账号能打开此播放列表，考虑登陆或刷新Cookie", err)
 			}
 			if continuation == "" && account.Cookie == "" {
-				return Playlist{}, fmt.Errorf("%w。如果是私人列表，请在账号页登录有权限的账号", err)
+				return Playlist{}, fmt.Errorf("%w 如果是私人列表，请在账号页登录有权限的账号", err)
 			}
 		}
 		if requiresAccount(err) {

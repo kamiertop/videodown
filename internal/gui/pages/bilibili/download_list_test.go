@@ -29,6 +29,22 @@ func stageTestUploads(s *State, count int) {
 	}
 }
 
+func TestDownloadHasSingleClearLinkAction(t *testing.T) {
+	s := NewState()
+	s.link = "BV1xx411c7mD"
+	test := downloadTester(s)
+	test.Frame()
+	if _, ok := test.Find("清除BiliBili视频链接"); ok {
+		t.Fatal("the link editor still shows its inline clear button")
+	}
+	if err := test.Click("清空"); err != nil {
+		t.Fatal(err)
+	}
+	if s.link != "" {
+		t.Fatalf("clear left the link %q", s.link)
+	}
+}
+
 func TestDownloadListEmptyAndRemove(t *testing.T) {
 	s := NewState()
 	tester := downloadTester(s)

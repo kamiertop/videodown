@@ -155,7 +155,7 @@ func (s *State) downloadHistory(c *ui.Context) {
 		ui.Row(c).FillWidth().Height(style.LibraryHeaderHeight).Padding(style.SpaceSmall, style.SpaceMedium).
 			Gap(style.SpaceSmall).AlignItems(ui.Center).Children(func() {
 			ui.Text(c, fmt.Sprintf("下载历史 · %d", s.history.page.Data.Total)).FontWeight(style.WeightSemibold).Shrink(0)
-			textInput(c.Key("search"), s.search("history"), "搜索下载历史", "搜索标题、UP 主或 BV 号", func() { s.loadDownloadHistory(false) }).Grow(1).MinWidth(0)
+			textInput(c.Key("search"), s.search("history"), "搜索下载历史", "搜索标题、UP 主或 BV 号", func() { s.loadDownloadHistory(false) }, true).Grow(1).MinWidth(0)
 			button(c.Key("refresh"), "刷新", components.ButtonOptions{Variant: components.ButtonOutline, Icon: icons.Must("refresh-cw"), Loading: s.history.page.Loading, Disabled: s.history.mutating || s.api == nil}).OnClick(func() { s.loadDownloadHistory(false) })
 			button(c.Key("clear"), "清空", components.ButtonOptions{Variant: components.ButtonGhost, Icon: icons.Must("trash-2"), Disabled: s.history.mutating || s.history.page.Data.Total == 0 || s.api == nil}).OnClick(func() { s.history.clearOpen = true })
 		})

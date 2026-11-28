@@ -111,7 +111,7 @@ func (s *State) accountProxySettings(c *ui.Context) {
 				ui.Text(c, "代理服务器").Grow(1).FontWeight(style.WeightSemibold)
 				components.SettingsSwitch(c.Key("proxy-enabled"), &s.proxyEnabled, "启用 YouTube 代理", components.SwitchOptions{Disabled: disabled}).OnClick(s.saveProxy)
 			})
-			field, editor := roundedInput(c.Key("proxy-input"), &s.proxy, "YouTube 代理服务器", "http://127.0.0.1:7890", disabled, "")
+			field, editor := roundedInput(c.Key("proxy-input"), &s.proxy, "YouTube 代理服务器", "http://127.0.0.1:7890", disabled)
 			field.FillWidth()
 			editor.OnChange(s.scheduleProxySave).OnSubmit(s.saveProxy)
 			components.Muted(c, "支持 HTTP、HTTPS 和 SOCKS5，修改后自动保存。关闭后仅 YouTube 改为直连。")
